@@ -1,0 +1,37 @@
+[project]
+name = "kasia-warehouse"
+version = "0.1.0"
+description = "Warehouse management tool for Kasia vera s.r.o."
+requires-python = ">=3.14"
+dependencies = [
+    "django>=5.2,<6.0",
+    "psycopg[binary]>=3.2,<4.0",
+    "weasyprint>=69,<70",
+    "django-htmx>=1.27,<2.0",
+    "whitenoise>=6.8,<7.0",
+    "gunicorn>=23.0,<24.0",
+    "dj-database-url>=2.3,<3.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<9.0",
+    "pytest-django>=4.9,<5.0",
+    "ruff>=0.8,<1.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"kasia/settings/*.py" = ["E501"]
+"**/migrations/*.py" = ["E501", "I001"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "kasia.settings.base"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]

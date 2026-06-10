@@ -1,0 +1,24 @@
+# Per context/decisions/0024-tls-caddy.md.
+#
+# When a domain lands, replace the :80 block below with:
+#
+#   kasia.example.cz {
+#       reverse_proxy web:8000
+#       encode zstd gzip
+#       log {
+#           output stdout
+#           format console
+#       }
+#   }
+#
+# Caddy auto-provisions Let's Encrypt certs and renews them.
+# Also publish :443 in compose.yaml's `proxy` service.
+
+:80 {
+    reverse_proxy web:8000
+    encode zstd gzip
+    log {
+        output stdout
+        format console
+    }
+}

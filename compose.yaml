@@ -1,0 +1,94 @@
+# Per context/decisions/0023-runtime-orchestration-compose.md.
+# Same file is used for local dev and on the production VPS;
+# differences live in .env. The `backup` service is profiled so it
+# stays out of the local dev loop.
+
+name: kasia
+
+services:
+  web:
+    build: .
+    image: ${WEB_IMAGE:-kasia-web:local}
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: kasia.settings.base
+      DATABASE_URL: postgres://kasia:${POSTGRES_PASSWORD}@db:5432/kasia
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks: [internal]
+
+  db:
+    image: postgres:18-trixie
+    environment:
+      POSTGRES_DB: kasia
+      POSTGRES_USER: kasia
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--locale=cs_CZ.UTF-8 --encoding=UTF8"
+      LANG: cs_CZ.UTF-8
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      # Localhost-bound only — emergency psql access from the host,
+      # never reachable from outside the box. Drop the publish line
+      # entirely on production if Matej prefers `docker exec` only.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kasia -d kasia"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks: [internal]
+
+  proxy:
+    image: caddy:2-alpine
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      # Uncomment when a domain lands and the Caddyfile is updated.
+      # - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    networks: [internal]
+
+  backup:
+    # Off-box restic backups to Hetzner Storage Box per
+    # context/decisions/0027-hosting-hetzner.md. Excluded from the
+    # default local dev loop via the `prod` profile.
+    profiles: [prod]
+    image: offen/docker-volume-backup:latest
+    depends_on:
+      - db
+    environment:
+      BACKUP_CRON_EXPRESSION: "0 3 * * *"
+      BACKUP_FILENAME: kasia-%Y-%m-%dT%H-%M-%S.tar.gz
+      BACKUP_SOURCES: /backup
+      BACKUP_STOP_CONTAINER_LABEL: kasia-backup
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD}
+    volumes:
+      - pgdata:/backup/pgdata:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    networks: [internal]
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
+    driver: bridge

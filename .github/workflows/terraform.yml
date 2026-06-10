@@ -1,0 +1,47 @@
+name: terraform
+
+# Plan-only — apply runs manually from Matej's workstation per
+# context/decisions/0025-iac-terraform-hcloud.md.
+
+on:
+  pull_request:
+    paths:
+      - "infra/terraform/**"
+      - ".github/workflows/terraform.yml"
+
+defaults:
+  run:
+    working-directory: infra/terraform
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: fmt -check
+        run: terraform fmt -check -recursive
+
+      - name: init
+        run: terraform init -backend=false
+
+      - name: validate
+        run: terraform validate -no-color
+
+      - name: plan
+        id: plan
+        env:
+          # Placeholder vars so `terraform plan` is syntactically OK;
+          # no real apply happens in CI.
+          TF_VAR_hcloud_token: "dummy"
+          TF_VAR_ssh_pub_key: "ssh-ed25519 AAAA dummy"
+          TF_VAR_admin_ip: "192.0.2.1/32"
+        run: terraform plan -no-color -input=false || true

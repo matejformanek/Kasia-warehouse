@@ -1,0 +1,1016 @@
+ZPRÁVA PRO PETRA — návrh skladové aplikace
+==========================================
+
+Ahoj tati,
+
+posílám ti dohromady, jak jsem si představil tu skladovou aplikaci.
+Není to ještě naprogramované — jen návrh, jak to bude vypadat a jak
+se s tím bude pracovat, aby si to mohly holky na pobočce za měsíc
+otevřít a poznat, co kam patří, bez školení.
+
+Místo abych ti to popisoval technicky, projdu tě tím jako bych
+seděl vedle tebe a ukazoval ti na obrazovku. Vodítko po stránkách,
+co kde uvidíš, kam se klikne a co se stane. Zhruba v pořadí, v
+jakém budeš s aplikací denně pracovat.
+
+Na konci jsou věci, které jsem rozhodl za tebe (řekni, jestli s
+nimi souhlasíš), a otázky, kde potřebuju tvůj vstup.
+
+
+------------------------------------------------------------------
+JAK SE TO CELÉ OTEVÍRÁ
+------------------------------------------------------------------
+
+Aplikace bude webová — žádná instalace, otevřeš si ji jako
+jakoukoli stránku v prohlížeči. Můžeš mít rozjeté Týniště v jedné
+záložce a Sezimovo v druhé, nebo si to otevřít na telefonu, když
+jsi mimo kancelář. Holky to budou mít na počítači v kanceláři
+pobočky a na telefonu, když jsou ve skladu.
+
+První věc, kterou každý uvidí, je přihlašovací stránka. Jen logo
+Kasia vera nahoře, pod ním pole pro e-mail a heslo a tlačítko
+"Přihlásit". Když si někdo zapomene heslo, klikne na "Zapomenuté
+heslo" pod tlačítkem a přijde mu e-mail s odkazem na obnovu. Nikdo
+se sem nedá zaregistrovat zvenku — účty zakládáš ty nebo Karolína
+v administraci (viz dál).
+
+
+------------------------------------------------------------------
+KDYŽ SE PŘIHLÁSÍŠ TY (NEBO KAROLÍNA) — ÚVODNÍ OBRAZOVKA
+------------------------------------------------------------------
+
+Po přihlášení se otevře tvoje úvodní stránka. Vypadá takhle:
+
+Úplně nahoře přes celou šířku je hlavička — vlevo logo Kasia vera,
+vpravo tvoje jméno a tlačítko "Odhlásit".
+
+Pod hlavičkou je hlavní menu s odkazy: Katalog, Příjem, Výdej,
+Dodací listy, Historie pohybů a (úplně vpravo) Admin (uživatelé,
+nastavení). Toto menu je vidět z každé stránky — kdykoli klikneš
+na cokoli v něm, jdeš tam přímo, ať jsi kdekoli. Když klikneš na
+logo, vrátíš se sem na úvod.
+
+Hlavní plocha úvodní stránky je rozdělená na dva panely vedle sebe
+— vlevo Týniště nad Orlicí, vpravo Sezimovo Ústí. Každý panel ti
+říká:
+
+  - Jméno pobočky a adresa.
+  - Kolik různých produktů má pobočka aktuálně skladem (např.
+    "187 produktů, celkem 4 230 kg").
+  - Krátký seznam pěti nejvýraznějších položek — co je tam nejvíc.
+  - Posledních zhruba pět pohybů na té pobočce — co se tam přijalo,
+    co vydalo, co převedlo. Pro každý pohyb je vidět datum, typ
+    (příjem / výdej / převod), položka, množství a kdo to
+    zaevidoval.
+  - Tlačítko "Zobrazit pobočku" v rohu, které tě pošle na detail
+    té pobočky (viz dál).
+
+Pod oběma panely je lišta posledních dodacích listů, které vyjely
+napříč oběma pobočkami — datum, číslo dodáku, odběratel, pobočka.
+Tahle sekce ti dává rychlý přehled "co dnes a včera šlo ven".
+Klik na řádek tě pošle na detail toho dodáku.
+
+Úplně dole je sekce "K vyřešení". Tahle sekce je obvykle prázdná a
+to je dobré znamení. Když se ale stane něco, co potřebuje tvoji
+pozornost — třeba že se nějaký dodák nepodařilo poslat e-mailem,
+nebo holka přidala při příjmu novou položku do katalogu, která
+potřebuje doplnit — objeví se to tady. Vyřešení se postará samo:
+jakmile se příčina napraví (re-send dodáku se povede, holka doplní
+popis položky), položka ze seznamu zmizí. Nemusíš nic "odbavovat"
+ručně.
+
+To, co tady NENÍ: žádné finanční přehledy (obrat, marže, výnosy) —
+systém krmí účetní, sám není finanční výkaznictví. A Říčany nejsou
+vidět jako panel, protože tam neevidujeme stav skladu.
+
+
+------------------------------------------------------------------
+PŘEPÍNÁNÍ MEZI POBOČKAMI
+------------------------------------------------------------------
+
+Pobočky vidíš vždycky obě najednou na úvodu, takže žádné
+"přepínání" v hlavním smyslu neexistuje — máš dvě okna do dvou
+světů vedle sebe. Když chceš vidět jednu podrobně, klikneš na
+"Zobrazit pobočku" v jejím panelu a otevře se ti detail pobočky.
+
+Když pak chceš přejít na druhou pobočku, jsou dvě možnosti:
+
+  1. Kliknout na logo nahoře — vrátíš se na úvod a klikneš na
+     "Zobrazit pobočku" v druhém panelu.
+  2. V detailu pobočky budeš mít přepínač (drobné tlačítko v
+     pravém horním rohu, typu "Přepnout na Sezimovo Ústí") — to
+     tě pošle rovnou na druhou pobočku, bez zacházky přes úvod.
+
+Holky na pobočce takovou volbu nemají — vidí jen svou. Když by se
+Týnišťská snažila otevřít Sezimovo, dostane zdvořilé "nemáte
+oprávnění" a zůstane, kde je.
+
+
+------------------------------------------------------------------
+DETAIL POBOČKY
+------------------------------------------------------------------
+
+Tahle stránka je pro tebe drill-down do jedné pobočky. Pro holky
+je to úvodní stránka — když se přihlásí, otevře se jim právě
+tahle, ne ta s dvěma panely.
+
+Layout:
+
+Nahoře jméno pobočky, adresa, malý časový údaj typu "aktuální k
+2026-06-02 09:14".
+
+Hlavní obsah je rozdělený do dvou sloupců:
+
+Vlevo, velký sloupec: zásoba na pobočce.
+Tabulka produktů, které mají na téhle pobočce nějakou zásobu.
+Vidíš jméno produktu, celkové množství v kilech a — když má
+produkt víc balení — rozpis. Příklad jednoho řádku:
+
+    Oregano — celkem 14,750 kg
+    (sypké: 12,500 kg · 25 kg pytel: 0 ks · 1 kg sáček: 2 ks ·
+    100 g dóza: 250 ks)
+
+Nahoře nad tabulkou je políčko vyhledávání — když napíšeš "ore",
+tabulka se okamžitě zúží na položky, jejichž jméno obsahuje "ore"
+(s diakritikou nebo bez, velikost písmen je jedno).
+
+Když má položka nízkou nebo nulovou zásobu, je u ní drobný
+výstražný znak, aby ti to nezapadlo.
+
+Vpravo, užší sloupec: poslední pohyby.
+Stejně jako na úvodu, jen omezené na tuto pobočku. Datum, typ,
+položka, množství, protistrana (dodavatel / odběratel / "Říčany"),
+kdo to zaevidoval. Pod seznamem je odkaz "Zobrazit celou historii",
+který tě pošle do plné historie (filtrované na tuhle pobočku).
+
+Úplně nahoře nad tím vším, hned pod jménem pobočky, jsou tři velká
+rychlá tlačítka:
+
+  - NOVÝ PŘÍJEM — naskladnit, co právě přijelo.
+  - NOVÝ VÝDEJ — vystavit dodací list pro zákazníka.
+  - PŘEVOD DO ŘÍČAN — poslat něco do Říčan.
+
+Tato tlačítka jsou tady proto, aby si holka při běžné práci
+otevřela hlavní stránku pobočky a hned měla akce po ruce, ne
+zanořené v menu.
+
+Klikneš-li na konkrétní produkt v tabulce, dostaneš se na detail
+produktu (viz dál).
+
+Co tahle stránka NEumí: editovat pohyby (od toho je samostatná
+úprava — viz dál), editovat katalog (jdi do katalogu), nikdy ti
+neukáže druhou pobočku, pokud jsi holka přiřazená k téhle.
+
+
+------------------------------------------------------------------
+HLAVNÍ MENU — CO NAJDEŠ KDEKOLI
+------------------------------------------------------------------
+
+Pruh menu pod hlavičkou je tvoje navigační páteř. Ať jsi kdekoli,
+máš přístup k:
+
+  - Katalog — encyklopedie všeho zboží.
+  - Příjem — nový příjem (otevře se rovnou na "tvojí" pobočce, pro
+    tebe na poslední, kterou jsi navštívil, s možností výběru).
+  - Výdej — nový výdej, stejné chování.
+  - Dodací listy — seznam všech, co kdy šly ven.
+  - Historie pohybů — chronologický záznam všeho.
+  - Admin (jen pro tebe a Karolínu) — rozbalovací nabídka s
+    "Uživatelé" a "Nastavení".
+
+Když holka nevidí "Admin", je to tak správně — má omezený přístup.
+
+
+------------------------------------------------------------------
+KATALOG PRODUKTŮ
+------------------------------------------------------------------
+
+Klik na "Katalog" v menu. Otevře se ti seznam všech produktů, co
+Kasia vede — zhruba 369 koření + 236 finálních produktů VERA
+GURMET, tedy něco přes 600 řádků.
+
+Layout:
+
+Nahoře velké vyhledávací políčko — to je hlavní nástroj na téhle
+stránce. Holka tu hledá dvakrát denně.
+
+Pod tím filtry: typ (koření / směs / vše), stav (aktivní /
+archivované / vše), případně "jen položky, co jsou na pobočce X".
+
+Hlavní plocha je tabulka produktů. Jeden řádek = jeden produkt. V
+řádku vidíš:
+
+  - Jméno produktu česky.
+  - Typ: koření nebo směs (drobná ikonka).
+  - Počet balení, pokud má produkt víc než jedno (např. "4 balení"
+    u oregana, "1 balení" u nějakého, co se prodává jen sypce).
+  - Celková zásoba napříč pobočkami v kg (pro tebe; holky vidí jen
+    svou pobočku).
+  - U směsí značka "má recepturu".
+
+Klik na řádek → otevře se detail produktu.
+
+Vpravo nahoře máš pro sebe tlačítko "Přidat položku". Holky ho
+nevidí, protože katalog spravuješ ty a Karolína. Jediná výjimka:
+když přijde do skladu něco úplně nového a holka chce zaevidovat
+příjem, může si položku "rychle přidat" rovnou z příjmového
+formuláře (s minimem polí: jméno + balení). Ty pak detaily doplníš
+později — systém ti to připomene v sekci "K vyřešení" na úvodu.
+
+Co katalog NEdělá: žádné ceníky, žádné dodavatelské historie,
+žádné marže. Pouze identifikace zboží a stav skladu.
+
+
+------------------------------------------------------------------
+DETAIL JEDNOHO PRODUKTU
+------------------------------------------------------------------
+
+Když klikneš na řádek v katalogu (nebo na položku v zásobě
+pobočky), otevře se ti detail produktu. Tahle stránka je trochu
+hutnější — záleží, jestli je to běžné koření nebo směs.
+
+* U BĚŽNÉHO KOŘENÍ (např. oregano)
+
+Nahoře jméno produktu velkým písmem, pod tím malý štítek "typ:
+koření" a "stav: aktivní".
+
+Vlevo identifikační údaje:
+
+  - Jméno.
+  - Typ.
+  - Volitelná poznámka (krátký popis — kde se kupuje, na co se
+    hodí, cokoli, co chceš mít vidět).
+  - Datum a autor poslední úpravy ("naposledy upravil: Karolína,
+    2026-06-01").
+
+Hlavní sekce uprostřed: BALENÍ. Tohle je ta část, kde se projevuje,
+že prodáváte v různých formách. Pro oregano to bude něco jako:
+
+  - sypké         — Týniště: 12,500 kg · Sezimovo: 8,750 kg
+                    (volitelná cena: nevyplněno)
+  - 25 kg pytel   — Týniště: 0 ks · Sezimovo: 2 ks
+                    (volitelná cena: nevyplněno)
+  - 1 kg sáček    — Týniště: 2 ks · Sezimovo: 18 ks
+                    (volitelná cena: nevyplněno)
+  - 100 g dóza    — Týniště: 250 ks · Sezimovo: 145 ks
+                    (volitelná cena: nevyplněno)
+
+Pro tebe a Karolínu jsou políčka editovatelná. Můžete přidat nové
+balení (např. "5 kg sáček"), upravit jeho popisek, archivovat
+balení, které se přestalo používat. Ale — balení, které už má
+historické pohyby, NEjde přejmenovat ani změnit jeho hmotnost
+(jinak bys zfalšoval staré záznamy). Když potřebuješ něco
+přejmenovat, založíš nové balení a staré archivuješ.
+
+Sloupec "Volitelná cena" je tam pro budoucnost. V MVP cena na
+dodací list nejde (vysvětlím dál). Můžeš si tam zapsat orientační
+ceny pro vlastní přehled, nebo to nechat prázdné. Když se
+rozhodneš, že chceš ceny na dodáky, doděláme to.
+
+Dole na stránce je proužek posledních pohybů s tímhle produktem
+(klikneš → otevře se plná historie filtrovaná na tuto položku).
+
+* U SMĚSI (např. Zlaté Kuře)
+
+Stejné jako výše, plus navíc sekce RECEPTURA:
+
+  - Paprika      30 %
+  - Sůl          25 %
+  - Pepř černý   15 %
+  - ...          ...
+  - CELKEM      100 %
+
+Receptura musí být dohromady přesně 100 %. Pokud uložíš něco
+jiného, dostaneš inline varování.
+
+Vlastní míchání směsi (kdy se z koření opravdu udělá hotové Zlaté
+Kuře) je samostatná obrazovka, kterou v MVP ještě nepustíme — viz
+"Co bude později" níže. Receptura se zatím dá vést a později ji
+systém začne používat na výrobní dávky.
+
+Co detail produktu NEumí: zaznamenat pohyb (od toho je
+příjem/výdej), spustit míchání (to bude budoucí obrazovka).
+
+
+------------------------------------------------------------------
+PŘÍJEM ZBOŽÍ — KDYŽ HOLKA NASKLADŇUJE
+------------------------------------------------------------------
+
+Holka klikne na "Nový příjem" (z menu nebo z rychlých tlačítek na
+pobočce) a otevře se formulář příjmu. Pobočka je předvyplněná —
+holka v Týništi automaticky eviduje příjem v Týništi a nemůže to
+přepnout. (Ty to přepnout můžeš.)
+
+Layout formuláře:
+
+Nahoře: nadpis "Nový příjem na pobočce Týniště nad Orlicí".
+
+První blok: kdo a kdy.
+  - Dodavatel — výběr z dosavadních dodavatelů. Když je dodavatel
+    nový, klikne "Přidat dodavatele" rovnou tady (jméno, IČO,
+    případně adresa) a může pokračovat. Žádné odbíhání jinam.
+  - Doklad dodavatele — volitelně, kdyby chtěl dodavatel referenci
+    k jeho papírové dodávce.
+  - Datum příjmu — defaultně dnešní, dá se přepnout (např. když
+    zapomněla zaevidovat včerejší dodávku).
+
+Druhý blok: řádky.
+
+Každý řádek = jedna položka, co přišla. Pro každý řádek vyplní:
+
+  - Balení — vybere konkrétní balení (např. "Oregano — sypké" v
+    případě, že přijel 25kg pytel oregana volně, nebo "Oregano —
+    25 kg pytel" v případě, že přijel zapečetěný pytel jako kus).
+    U sypkého zboží zadává v kilech (s desetinnými místy), u
+    baleného zboží v kusech.
+  - Množství — číslo.
+  - Šarže — volitelně. Když dodavatel na pytli vytiskl kódik šarže
+    (a často to vytiskne), holka ho opíše. Když ne, nechá prázdné.
+    Žádné nutkání vyplnit, když to není.
+  - Expirace — volitelně, stejná logika.
+  - Poznámka — volitelně, krátký volný text.
+
+Pod prvním řádkem je tlačítko "Přidat další řádek". Můžou jich být
+desítky.
+
+Úplně dole: tlačítko "Uložit příjem" (zelené, velké) a "Zrušit"
+(vlevo, nenápadné).
+
+Co se stane po kliknutí na "Uložit příjem":
+
+  1. Systém ti řekne "Příjem uložen".
+  2. Stav zásoby na pobočce se okamžitě navýší (a uvidíš to, když
+     se vrátíš na detail pobočky).
+  3. Příjem se objeví v historii pohybů.
+  4. Žádný papír se netiskne, žádný e-mail se neposílá. Příjem je
+     interní záznam.
+
+Co příjem NEumí: poslat e-mail dodavateli, vyřešit vratku
+dodavateli (zatím nemodelujeme — když to bude potřeba, doděláme),
+spustit balení nebo míchání (samostatné akce).
+
+
+------------------------------------------------------------------
+VÝDEJ ZBOŽÍ — TO NEJDŮLEŽITĚJŠÍ
+------------------------------------------------------------------
+
+Tohle je hlavní akce systému. Holka klikne "Nový výdej" a otevře
+se formulář — opět s předvyplněnou pobočkou.
+
+Layout:
+
+Nahoře: nadpis "Nový výdej z pobočky Týniště nad Orlicí" a
+přepínač "Komu vydáváme?" se dvěma možnostmi:
+
+  - Odběrateli (defaultní — zákazníkovi)
+  - Do Říčan (převod — viz samostatná kapitola dál)
+
+Zbytek popisu předpokládá "Odběrateli".
+
+První blok: zákazník a datum.
+
+  - Odběratel — výběr z dosavadních zákazníků. Hledá se podle
+    jména, IČO. Pokud je zákazník nový, klikne "Přidat odběratele"
+    inline a vyplní jméno, IČO, DIČ, adresu. Žádná samostatná
+    evidence zákazníků v MVP nebude — žijí jako řádky tady, v
+    pickeru.
+  - Datum — defaultně dnešní.
+
+Druhý blok: řádky.
+
+Pro každý řádek:
+
+  - Balení — vybere produkt a jeho balení (např. "Oregano — 100 g
+    dóza" pro retail nebo "Oregano — sypké" pro volný prodej).
+  - Množství — v jednotce daného balení.
+  - Šarže — volitelně.
+  - Poznámka — volitelně. Tato poznámka se vytiskne na dodák.
+
+Tlačítko "Přidat další řádek" pod prvním. Stejně jako u příjmu.
+
+Třetí blok, vpravo: NÁHLED DODACÍHO LISTU.
+
+Tohle je důležité. Jak holka přidává řádky, vpravo se jí v reálném
+čase mění náhled dodacího listu, který za chvíli vystaví. Tj.
+vidí:
+
+  - Hlavička s logem Kasia vera, IČO, DIČ, adresou.
+  - Blok zákazníka.
+  - Tabulka řádků — položka, množství, jednotka, případně šarže,
+    případně poznámka.
+  - Datum.
+  - Místo pro podpis.
+
+Tohle není jen estetika — holka okamžitě vidí, co dostane
+zákazník. Pokud se překlepla, je to vidět ještě před uložením.
+
+Čtvrtý blok, dole: PŘÍJEMCI E-MAILU.
+
+Tohle je seznam adres, kam se po uložení pošle dodák. Defaultně
+tam je tvoje e-mailová adresa a Karolínina — to nelze odebrat.
+Pokud má vybraný odběratel u sebe uložené adresy (např. v
+minulosti holka u tohoto zákazníka napsala "vždycky posílat na
+fakturace@xy"), zobrazí se tam taky.
+
+Holka může přidat ad-hoc adresu pro tenhle jeden výdej — typicky
+e-mail samotného zákazníka. U každé ad-hoc adresy je checkbox
+"Uložit pro tohoto odběratele". Pokud ho zaškrtne, napříště se ta
+adresa už předvyplní automaticky a tu samou adresu už nemusí psát
+znova.
+
+Dole: "Vystavit dodací list a uložit výdej" (velké, zelené) a
+"Zrušit".
+
+Co se stane po kliknutí na uložit:
+
+  1. Stav zásoby na pobočce se sníží podle řádků.
+  2. Vznikne záznam o výdeji s auditem.
+  3. Vygeneruje se PDF dodací list s číslem ve formátu
+     TYN-2026-0042 (pro Týniště v roce 2026 jako 42. dodák) nebo
+     SEZ-2026-0042 pro Sezimovo. Číslo se vygeneruje automaticky,
+     holka ho nezadává.
+  4. PDF se automaticky pošle e-mailem tobě, Karolíně a všem
+     ostatním příjemcům.
+  5. Holka skončí na detailu právě vystaveného dodacího listu.
+
+Když z nějakého důvodu e-mail neprojde (např. nefunguje server),
+výdej i dodák přesto existují, holka dostane upozornění a dodák
+se objeví v "K vyřešení" na tvém úvodu. Z detailu dodáku ho jde
+znovu odeslat.
+
+Co výdej NEumí: přijímat objednávky od zákazníků (objednávky chodí
+stále po telefonu / e-mailu — systém zákazníkovi nedovoluje si
+vystavit dodák sám), vystavit fakturu (faktury dělá účetní z
+dodáků), částečné dodání jednoho výdeje na víc dodáků (jeden výdej
+= jeden dodák; když chcete částečku, jsou dva výdeje), editovat
+starší výdeje (od toho je úprava — viz dál).
+
+
+------------------------------------------------------------------
+SEZNAM VŠECH DODACÍCH LISTŮ
+------------------------------------------------------------------
+
+Klik na "Dodací listy" v menu. Otevře se ti kompletní seznam
+všech, co kdy systém vystavil.
+
+Layout:
+
+Nahoře: filtry — pobočka (jen pro tebe), odběratel, datum od / do,
+stav e-mailu ("vše / odesláno / chyba odeslání / znovu odesláno"),
+zatržítko "Pouze editované".
+
+Hlavní obsah: tabulka dodáků, nejnovější nahoře. V řádku:
+
+  - Číslo dodáku (TYN-2026-0042).
+  - Datum.
+  - Pobočka.
+  - Odběratel.
+  - Počet řádků / hrubá hmotnost ("4 řádky · 14,300 kg").
+  - Stav e-mailu (zelená fajfka = odesláno; oranžový vykřičník =
+    chyba; modrá šipka = znovu odesláno po opravě).
+  - Značka "editováno", pokud se původní výdej někdy opravoval.
+
+Klik na řádek → detail dodáku.
+
+Co seznam NEumí: vystavit nový dodák (to je výdej), editovat
+existující (oprava jde přes pohyb), smazat (dodák se v systému
+nikdy nesmaže — to je úmyslné, kvůli auditní stopě), sledovat
+"zákazník otevřel e-mail" (GDPR + není to potřeba).
+
+
+------------------------------------------------------------------
+DETAIL JEDNOHO DODACÍHO LISTU
+------------------------------------------------------------------
+
+Sem se dostaneš buď z předchozího seznamu, nebo přímo z výdeje
+hned po vystavení.
+
+Layout:
+
+Nahoře: nadpis "Dodací list TYN-2026-0042". Pod tím malé
+informace — datum vystavení, pobočka, kdo vystavil. Pokud byl
+dodák po vystavení opravován, je tu výrazný oranžový banner
+"Editováno" s odkazem na audit.
+
+Hlavní oblast je rozdělená do dvou částí.
+
+Vlevo, velký prostor: náhled PDF.
+Skutečné PDF dodáku, tak jak ho dostal zákazník. Můžeš ho
+prohlédnout přímo v aplikaci, klikem na "Stáhnout PDF" ho stáhneš
+lokálně.
+
+Vpravo, sloupec s metadaty:
+
+  - Blok odběratele (jméno, IČO, DIČ, adresa).
+  - Řádky v čitelné tabulce (totéž, co je na PDF, jen líp
+    formátované pro obrazovku).
+  - Verze a odeslání — důležitá sekce. Tabulka, ve které je každý
+    PDF, co kdy vyšel ven:
+      * Verze 1 — 2026-06-02 09:14, odesláno na petr@kasia.cz,
+        karolina@kasia.cz, fakturace@odberatel.cz. Důvod:
+        "vystavení".
+      * Verze 2 — 2026-06-04 15:20, odesláno tamtéž. Důvod:
+        "oprava hmotnosti na řádku 2 (12,500 → 11,750 kg)".
+    Pokud dodák ještě nikdo nepustil znovu, je tu jen Verze 1.
+
+  - Tlačítko "Znovu odeslat" — pošle aktuální PDF znovu stejným
+    příjemcům. Užitečné, když si zákazník stěžuje, že to nedostal.
+  - Tlačítko "Přidat příjemce a odeslat" — pošleš PDF jednorázově
+    na nějakou adresu navíc.
+
+  - Odkaz "Otevřít výdej" — proklikne tě na detail výdeje, ze
+    kterého dodák vznikl. Pro tebe to znamená možnost ho upravit
+    (viz dál); pro holky pouze čtení.
+
+Co detail dodáku NEumí: editovat řádky napřímo (oprava jde přes
+pohyb — řádky tady se samy aktualizují), vystavit fakturu, smazat
+dodák (nikdy), poslat data do nějakého zákaznického portálu
+(žádné takové napojení v MVP není).
+
+
+------------------------------------------------------------------
+HISTORIE POHYBŮ
+------------------------------------------------------------------
+
+Klik na "Historie pohybů" v menu. Otevře se ti chronologická
+tabulka všeho, co se kdy v systému událo.
+
+Layout:
+
+Nahoře: filtry. Pobočka, typ pohybu (vše / příjem / výdej /
+převod / případně budoucí typy), položka (vybrat z katalogu),
+protistrana (dodavatel / odběratel / "Říčany"), datum od / do,
+operátor (kdo to zaevidoval), zatržítko "Pouze editované".
+
+Hlavní obsah: tabulka pohybů, nejnovější nahoře. V řádku:
+
+  - Datum a čas ("2026-06-02 09:14").
+  - Typ pohybu — s vizuální ikonou (např. zelená šipka dolů =
+    příjem, oranžová šipka nahoru = výdej, modrá šipka stranou =
+    převod).
+  - Položka — pokud má pohyb víc řádků, je tu první + "a 3 další".
+  - Množství.
+  - Šarže — pokud byla zaznamenaná.
+  - Protistrana (dodavatel / odběratel / "Říčany").
+  - Operátor.
+  - Značka "editováno", pokud byl pohyb někdy opravován.
+  - U výdejů odkaz na dodák, který z něj vznikl.
+
+Klik na řádek → otevře se ti detail toho pohybu (pro tebe v
+editovatelném režimu, pro holky pouze čtení).
+
+Co historie NEumí: zaznamenat nový pohyb (od toho jsou příslušné
+formuláře), editovat v tabulce (oprava jde přes detail), mazat,
+exportovat (zatím — viz "Co bude později").
+
+
+------------------------------------------------------------------
+ÚPRAVA JEDNOHO POHYBU — OPRAVY SE ZÁPISEM KDO, KDY, PROČ
+------------------------------------------------------------------
+
+Když si v historii všimneš, že holka něco naťukala špatně, klikneš
+na ten řádek a otevře se ti detail toho jednoho pohybu. Pro holky
+je to jen čtení; pro tebe a Karolínu tu navíc je velké tlačítko
+"Upravit".
+
+Layout v režimu čtení:
+
+Nahoře: nadpis "Výdej — 2026-06-02 09:14 — pobočka Týniště nad
+Orlicí". Pod tím souhrnný blok (typ, datum, pobočka, protistrana,
+kdo to původně zaevidoval, odkaz na dodák u výdejů, značka
+"editováno: 0×" nebo "editováno: 2×").
+
+Pod tím: tabulka řádků pohybu (balení, množství, případně šarže,
+poznámka).
+
+Pokud byl pohyb už dřív upravován, dole je sekce "Historie úprav"
+— seznam všech předchozích zásahů, vždy s:
+
+  - Datum a čas úpravy.
+  - Kdo to upravil.
+  - Důvod úpravy (povinný text, který editor zadal).
+  - Co se konkrétně změnilo — vizuálně jako "bylo X → je Y" pro
+    každé pole, kterého se změna týkala.
+
+Když klikneš "Upravit", všechna pole se otevřou. Můžeš změnit
+prakticky cokoli: datum, pobočku (i přepnout pobočku z Týniště na
+Sezimovo, ale dostaneš výrazné varování, že to ovlivní stavy
+obou poboček), protistranu, řádky (přidat / odebrat / upravit),
+šarže, poznámky.
+
+Co změnit NEjde: typ pohybu. Z příjmu se nikdy nestane výdej —
+když byl pohyb původně zaevidovaný špatně jako jiný typ, správný
+postup je upravit ho na nulové množství se zdůvodněním "chybně
+zaevidováno jako příjem" a založit nový pohyb správného typu.
+Tohle pravidlo brání tomu, aby se v historii ztrácely události.
+
+Před uložením úpravy je povinné textové pole "Důvod úpravy" —
+bez něj systém uložit odmítne. Něco jako "oprava hmotnosti, holka
+přehlédla desetinou čárku". Tenhle text se uloží do historie změn
+a objeví se i v e-mailu, pokud opravená editace vyvolá automatické
+přeposlání dodáku (viz dál).
+
+* CO SE STANE, KDYŽ OPRAVÍŠ VÝDEJ S JIŽ ODESLANÝM DODÁKEM
+
+Tahle situace je důležitá a stane se. Postup:
+
+  1. Klikneš na výdej v historii, klikneš "Upravit".
+  2. Upravíš, co je potřeba (např. řádek 2 mělo být 11,750 kg,
+     ne 12,500 kg). Napíšeš důvod.
+  3. Před uložením uvidíš zřetelné upozornění: "Tento výdej je
+     na již odeslaném dodacím listu TYN-2026-0042. Uložení vyvolá
+     automatické vygenerování opravené verze PDF a její odeslání
+     stejným příjemcům jako původní (petr@kasia.cz,
+     karolina@kasia.cz, fakturace@odberatel.cz)."
+  4. Klikneš "Uložit změny".
+  5. Stav skladu se opraví, audit se zapíše, PDF se znovu
+     vygeneruje s aktuálními daty a automaticky pošle všem
+     příjemcům originálu. V předmětu e-mailu je prefix [OPRAVA] a
+     v těle krátká věta s tvým zdůvodněním.
+  6. Verze odeslání v detailu dodáku se aktualizuje — Verze 2
+     (datum, příjemci, důvod).
+
+Žádné "potvrď, že chceš poslat e-mail" — pokud máš pohyb v
+opravdové úpravě a uložíš, e-mail jde. Pokud nechceš e-mail
+vyvolat, pohyb prostě neupravuj.
+
+Co úprava pohybu NEumí: smazat pohyb (nejblíž je úprava na nulové
+množství se zdůvodněním), změnit typ pohybu, dělat "tichou"
+úpravu (zdůvodnění je vždy povinné, e-mail u dodáku vždycky
+odejde).
+
+
+------------------------------------------------------------------
+PŘEVOD DO ŘÍČAN
+------------------------------------------------------------------
+
+Vrátím se k tomu, co jsem zmiňoval u výdeje. Když z pobočky
+odjíždí něco do Říčan — vzorek pro odběratele, něco pro spotřebu v
+kanceláři, něco, co budeš expedovat z Říčan jinam — holka otevře
+"Nový výdej", přepne nahoře přepínač na "Do Říčan" a otevře se jí
+mírně jiný formulář.
+
+Zjednodušení oproti výdeji zákazníkovi:
+
+  - Žádný odběratel — destinací jsou Říčany.
+  - Žádné PDF, žádný e-mail. Říčany nejsou skladem; nevzniká
+    dodací list. V Říčanech to víš ty a Karolína i bez papíru.
+  - Volitelně malé pole "účel převodu" ("vzorek pro Makro",
+    "spotřeba kuchyně", "expedice do Plzně") — volné textové pole.
+    Pomáhá tobě, když to později čteš v historii.
+
+Zbytek je jako u výdeje: pobočka, datum, řádky (balení + množství
++ případně šarže + poznámka), tlačítko "Uložit převod".
+
+Po uložení: stav pobočky se sníží, vznikne záznam typu "převod" v
+historii pohybů. Žádné PDF, žádný e-mail. Hotovo.
+
+Co převod NEumí: generovat papírovou převodku PDF — pokud
+zjistíš, že potřebuješ něco fyzicky předat řidiči nebo nechat
+někomu v Říčanech, řekni, doděláme to. Modelovat příchod v
+Říčanech (tam zboží neevidujeme). Dělat převody mezi pobočkami
+(zatím se nedějí).
+
+
+------------------------------------------------------------------
+SPRÁVA UŽIVATELŮ (jen pro tebe a Karolínu)
+------------------------------------------------------------------
+
+Klik na "Admin" → "Uživatelé" v menu.
+
+Layout:
+
+Hlavní obsah: jednoduchá tabulka účtů. Sloupce:
+
+  - Jméno.
+  - E-mail (přihlašovací identifikátor).
+  - Role: "vlastník / správce" (ty, Karolína) nebo "obsluha
+    pobočky" (holky).
+  - Pobočka (jen u holek — ty a Karolína nemáte pobočku, vidíte
+    obě).
+  - Stav: aktivní / deaktivovaný.
+  - Datum posledního přihlášení.
+
+Tlačítko "Přidat uživatele" vlevo nahoře.
+
+Akce na řádku:
+
+  - Upravit — změnit jméno, roli, pobočku.
+  - Deaktivovat — účet zůstává v systému (jeho minulé záznamy se
+    nesmí ztratit), ale nejde se s ním přihlásit.
+  - Reset hesla — pošle uživateli e-mail s odkazem na obnovu.
+
+Co správa uživatelů NEumí: smazat účet (jen deaktivovat), dát
+holce dvě pobočky najednou, přidat nějakou exotickou roli mimo
+ty čtyři, co jsme nadefinovali. A nemůžeš deaktivovat sám sebe,
+dokud v systému nezbude alespoň jeden další "vlastník".
+
+
+------------------------------------------------------------------
+NASTAVENÍ (taky jen pro tebe a Karolínu)
+------------------------------------------------------------------
+
+Klik na "Admin" → "Nastavení". Klidná stránka, kam chodíš zřídka.
+
+Layout — postupně dolů jdou sekce:
+
+* SPOLEČNOST / HLAVIČKA DOKUMENTU
+co se tiskne nahoře na každý dodací list:
+  - Název firmy ("Kasia vera s.r.o.").
+  - IČO, DIČ.
+  - Adresa sídla (Říčany).
+  - Telefon, kontaktní e-mail.
+  - Logo (uploadneš obrázek; doporučuju vektor — SVG nebo PDF —
+    aby se tisklo čistě).
+  - Volitelná patička (krátký text, který se otiskne dole na PDF).
+
+* ODESLÁNÍ DODACÍCH LISTŮ
+  - Konfigurace e-mailového serveru (server, port, uživatel,
+    heslo, adresa, ze které se posílá).
+  - Tlačítko "Otestovat odeslání" — pošle ti testovací e-mail na
+    tvoji adresu, abys viděl, že to funguje.
+  - Výchozí příjemci dodacích listů — defaultně tvoje a Karolínina
+    adresa. Jediné místo, kde se tyhle adresy mění. Seznam nesmí
+    být prázdný.
+
+* DODACÍ LIST — FORMÁT
+  - Číslo dodáku má pevný formát <POBOČKA>-<ROK>-<NNNN> (např.
+    TYN-2026-0042). To se nedá změnit (je to schválně, kvůli
+    jednotnosti s tvojí účetní). Zobrazuje se ti tu jen poslední
+    pořadové číslo na každé pobočce — kvůli zdravému rozumu,
+    kdyby se v něčem nesedělo.
+  - Šablona PDF — strukturu jsme rozkreslili (hlavička s logem,
+    blok dokumentu, blok odběratele, tabulka řádků bez cen,
+    podpisová řádka, patička). Finální vizuál čeká na tvoje
+    podklady (viz otázky níže).
+
+* POBOČKY
+jen ke čtení: Týniště nad Orlicí s kódem TYN, Sezimovo Ústí s
+kódem SEZ. Říčany jako poznámka pod čarou ("HQ; bez evidence
+skladu"). Kódy poboček nelze měnit po prvním vystaveném dodáku.
+
+Co nastavení NEdělá: účty (jdi na "Uživatelé"), katalog (jdi na
+"Katalog"), barvičky / témata / jazyky (čeština jediná v MVP),
+zálohy (řeší se mimo aplikaci, s tím, kdo to bude hostovat).
+
+
+------------------------------------------------------------------
+CO BUDE POZDĚJI, ALE NE HNED (futures)
+------------------------------------------------------------------
+
+Tyhle obrazovky NEJSOU v první verzi, ale počítáme s nimi v
+podkladovém modelu, abychom je mohli rozsvítit bez přepisování:
+
+* MÍCHÁNÍ SMĚSI
+Až bude potřeba a Karolína ji vyžádá, otevřeme obrazovku, kde
+holka vybere směs (např. Zlaté Kuře), zadá cílovou hmotnost (např.
+"5 kg Zlatého Kuřete"), systém spočítá, kolik se z každé
+komponenty spotřebuje, holka to fyzicky umíchá a po dokončení
+potvrdí skutečně vyrobené množství (které může být kvůli
+zaokrouhlení nebo ztrátám prachu trochu jiné). Receptura se
+"otiskne" v okamžiku spuštění, takže pozdější změny receptury
+neovlivní starší dávky.
+
+* EXPORT PRO ÚČETNÍ
+Strukturovaný export dodáků a / nebo pohybů za zvolené období v
+nějakém formátu, který si bere vaše účetní. Formát si potřebujeme
+s ní domluvit (CSV? Pohoda XML? Money S3? Naformátovaný PDF
+balík?). Dnes se přeposílá ručně, takže tlačítko "vyexportuj" je
+další úroveň. Otázka pro tebe níže.
+
+* ODPIS / SKARTACE
+Když se něco rozsype, expiruje, poškodí nebo zničí — dnes to
+zaznamenáváme jako úpravu pohybu se zdůvodněním ("rozsypáno",
+"expirováno"). Pokud se ukáže, že se to děje často, pustíme
+samostatnou obrazovku s vyklikávacím důvodem.
+
+* INVENTURA
+Pravidelné fyzické přepočítávání proti záznamům. V MVP NENÍ —
+když se objeví manko, řeší se přes úpravu pohybu se zdůvodněním.
+Otázka pro tebe níže, jestli by ti to stačilo, nebo chceš
+samostatnou obrazovku.
+
+
+==================================================================
+CO JSEM ROZHODL ZA TEBE (ať nemusíš číst vše dvakrát)
+==================================================================
+
+V průběhu návrhu jsem musel uzavřít desítku konkrétních otázek,
+aby celé to ne-bylo pořád nekonečné "uvidíme". Když ti něco z toho
+nesedí, řekni — zatím jsme neprogramovali nic, dá se změnit
+cokoli.
+
+  1. ŠARŽE (kódik na pytli, který říká, ze které várky to bylo)
+     je VOLITELNÁ. Zapisujeme ji, jen když je k mání. Nikdo nemusí
+     na každé řádce vyplňovat něco, co nemá.
+
+  2. JEDEN KATALOG PRO OBĚ POBOČKY. Oregano je v systému jeden
+     produkt; jeho zásoba se eviduje zvlášť za Týniště a zvlášť za
+     Sezimovo Ústí.
+
+  3. HLAVNÍ JEDNOTKA = kilogramy se třemi desetinnými místy. Stav
+     v kg s přesností na gram stačí; nejsme chemická laboratoř.
+     Balení v kusech (100 g dóza, atd.) si nese svoji hmotnost.
+
+  4. ŘÍČANY JSOU DESTINACE, NE SKLAD. Převody tam jsou samostatný
+     typ pohybu, nemají dodací list, neposílají e-mail.
+
+  5. RECEPTURA SMĚSI se v okamžiku spuštění výroby "otiskne" do
+     té konkrétní dávky. Pozdější změny receptury neovlivní starší
+     dávky.
+
+  6. BALENÍ MODELUJEME tak, že produkt má pod sebou několik
+     "tváří". Oregano je jeden produkt; jeho čtyři balení (sypké,
+     25 kg pytel, 1 kg sáček, 100 g dóza) jsou jeho varianty. Stav
+     skladu je na úrovni balení; recept se píše na úroveň
+     produktu.
+
+  7. OPRAVENÝ DODÁK SE PŘEPOŠLE AUTOMATICKY. Když opravíš výdej,
+     ke kterému už šel dodák, systém to PDF okamžitě nakreslí
+     znovu a sám pošle všem, komu šel originál. V předmětu je
+     [OPRAVA], v těle tvoje zdůvodnění.
+
+  8. ČÍSLOVÁNÍ DODÁKŮ: <POBOČKA>-<ROK>-<NNNN> (např. TYN-2026-0042).
+     Resetuje se 1. ledna každého roku. Opravená verze dodáku
+     NEDOSTÁVÁ nové číslo — v rámci jednoho čísla jsou interní
+     verze 1, 2, 3, takže když ti účetní řekne "ten z pondělka",
+     víš, o čem mluví, i kdyby ses opravil.
+
+  9. ADRESY PRO E-MAIL DODÁKU = ty + Karolína + ad-hoc + paměť za
+     odběratele. Když holka při výdeji přidá adresu zákazníka a
+     zatrhne "uložit pro tohoto odběratele", napříště se mu posílá
+     sama.
+
+ 10. NA DODACÍM LISTĚ V MVP NEJSOU CENY. Karolína má svůj ceník,
+     posílá to účetní, ta vystaví fakturu. Pokud později budeš
+     chtít ceny na dodáku, je to úprava šablony PDF, ne přestavba
+     systému. Místo na cenu v katalogu je — pro budoucnost a
+     vnitřní účely.
+
+
+==================================================================
+OTÁZKY PRO TEBE
+==================================================================
+
+* SOUHLASÍŠ S CELKOVÝM RÁMCEM VÝŠE?
+
+Systém má 14 obrazovek + 3 budoucí, dělá jen to, co je popsané, a
+všechno ostatní (e-shop, mobilní aplikace, mezi-pobočkové převody,
+finanční reporty) NENÍ v plánu. Pokud ti něco zásadního chybí nebo
+ti něco přebývá, teď je nejlepší chvíle to říct. Po výběru
+technologií a začátku programování bude každá změna stát víc.
+
+
+* BRAND ASSETY PRO PDF DODACÍ LIST
+
+Potřebuju od tebe:
+
+  - Logo Kasia vera ve vektoru (SVG nebo PDF). Pokud máš jen PNG /
+    JPG, nech v rozumně velké velikosti.
+  - Případně i logo VERA GURMET, jestli chceš oba (např. Kasia
+    v hlavičce, VERA GURMET v patičce).
+  - Preferované písmo — nebo dáme rozumný klasický font.
+  - Znění podpisové řádky — default mám "Předal / Převzal" a
+    místa na datum a podpis. Souhlasíš nebo chceš jinou formulaci?
+  - Patička — stačí "Kasia vera s.r.o. · IČO 25756729" nebo
+    chceš dlouhou kontaktní patičku se vším (telefon, web, e-mail)?
+
+
+* TEXTY AUTOMATICKÝCH E-MAILŮ
+
+Default znění předmětu a těla u nového dodáku by bylo něco jako:
+
+  Předmět: Dodací list TYN-2026-0042 — Kasia vera
+
+  Tělo:
+  Dobrý den, v příloze posíláme dodací list TYN-2026-0042 ze dne
+  2026-06-02. S pozdravem, Kasia vera s.r.o.
+
+A u opraveného:
+
+  Předmět: [OPRAVA] Dodací list TYN-2026-0042 — Kasia vera
+
+  Tělo:
+  Dobrý den, opravujeme dříve zaslaný dodací list TYN-2026-0042.
+  Důvod: <text, který napsala holka>. Nová verze v příloze
+  nahrazuje předchozí. S pozdravem, Kasia vera s.r.o.
+
+Chceš to přepsat? Tvůj styl, tvoji zákazníci — řekni a uděláme to
+lépe.
+
+
+* ÚČETNÍ — CO PO NÍ CHCEME DO EXPORTU?
+
+Aby se z "Karolína přeposílá e-maily" stala skutečná pomoc, musíme
+vědět, co účetní dnes nejvíc zdržuje a co by jí pomohlo:
+
+  - Stačí jí PDF dodáky tak, jak chodí dnes?
+  - Chce jednou měsíčně tabulku CSV se všemi řádky výdeje?
+  - Pracuje v Pohodě / Money S3 / něčem jiném? Existuje formát,
+    co jí to nahraje rovnou?
+  - Potřebuje to za pobočku nebo dohromady?
+
+Můžeš se jí zeptat a poslat mi její odpověď? Bez ní můžu jen
+hádat.
+
+
+* INVENTURA — JAK JI DNES DĚLÁTE?
+
+V MVP samostatná obrazovka inventury NENÍ. Bez toho, abych věděl,
+jak ji dnes děláte, nedokážu rozhodnout, jestli ji nutně
+potřebujete.
+
+  - Jak často děláte inventuru — jednou ročně? čtvrtletně? po
+    regálech?
+  - Děláte celou pobočku najednou nebo postupně po regálech /
+    kategoriích?
+  - Stačila by zatím varianta, kdy se rozdíly mezi papírem a
+    realitou vyrovnají přes úpravu pohybu se zdůvodněním ("při
+    inventuře nalezeno manko 0,5 kg oregana, doplněno do mínusu"),
+    nebo chceš samostatnou obrazovku, která to vede strukturovaně
+    po regálech?
+
+
+* CENÍK NA VARIANTĚ — STAČÍ JEDNA CENA?
+
+V katalogu má každé balení políčko "cena". Otázka, jestli stačí:
+
+  - Jedna cena na variantě (která se přepíše, když ji upravíš).
+    Pro náš účel (potenciálně později ji tisknout na dodák, vést
+    si v systému aspoň orientační čísla) je to nejjednodušší.
+    Default.
+  - Historie cen v čase — víš, kolik stálo oregano 100 g v dubnu
+    2026. Zatím nepotřebné, ledaže by si to účetní vyžádala.
+  - Ceník na odběratele — Makro má jiné ceny než drobný odběratel.
+    Nedělá se, dokud to není potřeba.
+
+Default je první. Pokud nepotřebuješ jiné, nic složitějšího
+nestavíme.
+
+
+* PŘEBALOVÁNÍ — JAK ČASTO A CHCETE NA TO VLASTNÍ TLAČÍTKO?
+
+Když z 25 kg pytle uděláte 250 ks 100g dóziček, je to operace
+mezi dvěma "tvářemi" téhož produktu. Jak často se to děje?
+
+  - Pokud zřídka (jednou týdně, jednou měsíčně): stačí to
+    zaznamenat jako dvě úpravy pohybu — 25 kg pryč z varianty
+    "25 kg pytel", 250 ks naskočí na variantě "100 g dóza", se
+    zdůvodněním "přebaleno".
+  - Pokud denně: dělá smysl udělat samostatnou rychlou obrazovku
+    "Přebalit", která to zaznamená jedním krokem (holka vybere
+    zdrojové balení, cílové balení a množství, systém doplní
+    pohyby sám).
+
+Mě by zajímalo, jestli to děláte tak často, aby vlastní obrazovka
+ušetřila čas, nebo jen občas a stačí to přes úpravu.
+
+
+* DROBNOSTI, KDE MI DEFAULT VYHOVOVAL, ALE KLIDNĚ ŘEKNI JINAK
+
+  - Mobilní použití: holky budou moct otevírat aplikaci na
+    telefonu (webová stránka, responzivní), ale skutečnou aplikaci
+    pro Android / iOS s čtečkou čárových kódů zatím NEPLÁNUJEME.
+    Pokud používáte na pobočce čárové kódy (a holky by ocenily
+    skenování), řekni — promyslíme.
+  - Záloha dat: bere se jako samozřejmost, ale je to věc, která
+    se řeší až ve chvíli, kdy budeme vědět, na čem to celé poběží.
+    V dalším kole.
+  - Mezi-pobočkové převody: zatím se nedějí, takže to
+    nemodelujeme. Pokud se to ale děje pravidelně (Týniště pošle
+    něco Sezimovu), řekni — doplníme.
+
+
+==================================================================
+
+Když si toto projdeš a dáš mi vědět — souhlasím / s tímhle ne / na
+tohle ti odpovím za týden — můžeme jít na další krok: vybrat, na
+čem se to celé postaví (programovací jazyk, kde to poběží). Tam
+mám tři kandidáty a porovnám je, až budeš mít čas projít si tyto
+otázky.
+
+Měj se a kdyby cokoli nebylo jasné, klidně napiš nebo zavolej,
+
+Matej
+
+
+==================================================================
+
+Příloha 2026-06-09 — Petrova odpověď narýsovala užší rozsah
+
+Petr odpověděl; rozsah zjednodušen. Aktuální stav:
+
+  - Bez cen kdekoli (0029 ruší 0011): žádné cena v UI, PDF, e-mailu
+    ani exportu.
+  - Bez variant / jen kg (0028 ruší 0006): katalog = jeden řádek na
+    produkt, sklad v kg. ~20–30 položek na pobočku.
+  - Bez přebalování (0033 ruší 0013): vůbec se neřeší.
+  - Bez separátního převodu (0030 ruší 0004): jeden druh výdeje,
+    defaultně příjemce Říčany. Lišta převod vypadla.
+  - E-maily jen Petr + Karolína (0031 ruší 0009): žádné zapamatované
+    adresy zákazníků, žádné ad-hoc přidávání.
+  - Míchání směsí v MVP (0032): ~25 směsí, ≤15 surovin.
+  - 14 dnů nanečisto (0034) před ostrým provozem.
+
+Decize 0001–0010 zůstávají v platnosti tam, kde 0028–0034
+nepřepisují; tech-stack 0014–0027 zjednodušený rozsah podporuje.

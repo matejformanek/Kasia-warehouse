@@ -298,10 +298,25 @@
   `Product`. 17 pytest tests pass (model constraints, custom auth,
   seed migrations); ruff clean; `ruff per-file-ignores` extended to
   exempt Django-generated `**/migrations/*.py` from `E501`/`I001`.
-  **Postgres verification deferred** — `compose.yaml` `db` service
-  fails to start on Postgres 18 due to a pre-existing
-  `/var/lib/postgresql/data` volume-layout incompatibility unrelated
-  to this pass; logged as a follow-up. SQLite migrate is clean.
+  SQLite migrate clean.
+- **2026-06-10** — `compose.yaml` `db` service volume mount moved
+  from `/var/lib/postgresql/data` to `/var/lib/postgresql` so
+  `postgres:18-trixie` starts cleanly (PG18+ stores data under a
+  major-version-specific subdirectory and refuses the old layout —
+  see docker-library/postgres#1259). Backup-service mount path
+  updated to match. End-to-end verification: with the locale flags
+  temporarily neutralised to `C.UTF-8` (to isolate the layout fix
+  from the second, unrelated locale issue below),
+  `docker compose up -d db && uv run python manage.py migrate`
+  applies all migrations against PG18, and the full 17-test suite
+  passes against Postgres. Locale flags restored after verification.
+  **Latent issue still blocking compose: `cs_CZ.UTF-8` is not
+  available in the `postgres:18-trixie` base image** (`initdb:
+  error: invalid locale name "cs_CZ.UTF-8"`), so the stack currently
+  still cannot bring `db` up with the locale settings required by
+  [`0016`](./decisions/0016-database-postgres.md). Promoted to
+  § Next item 1 — needs a planning step (extend the image with
+  `locales-all` vs. switch to ICU locale provider).
 
 ## In progress
 
@@ -310,7 +325,22 @@ _(nothing — first real models landed; ready for movement tables
 
 ## Next
 
-1. **Movement tables + audit + dodací list** —
+1. **Make `cs_CZ.UTF-8` available in the `db` service** (planning
+   needed). Surfaced 2026-06-10 after the compose volume-layout fix
+   landed. Options to pick between:
+   - extend `postgres:18-trixie` with `locales-all` (or just
+     `locales` + a one-line `localedef`) via a small db-side
+     Dockerfile — preserves [`0016`](./decisions/0016-database-postgres.md)
+     verbatim;
+   - switch to ICU locale provider (`--locale-provider=icu
+     --icu-locale=cs-CZ`) — supersedes the `LC_COLLATE`/`LC_CTYPE`
+     specifics of [`0016`](./decisions/0016-database-postgres.md);
+     PG18 supports this natively and the Czech sort order semantics
+     are very close.
+   Pick one, write a numbered decision file, then implement. Until
+   this lands, the compose stack only starts with a neutralised
+   locale.
+2. **Movement tables + audit + dodací list** (needs a fresh plan).
    `inventory.Movement` (kind ∈ {prijem, vydej} per
    [`0030`](./decisions/0030-vydej-default-ricany-supersedes-0004.md)),
    `MovementLine`, `MovementAudit` per
@@ -322,12 +352,8 @@ _(nothing — first real models landed; ready for movement tables
    `Settings` singleton for Petr+Karolína recipient pair + PDF
    defaults per `screens/14-nastaveni.md`. Also: a small management
    command to render one výdej as PDF to smoke-test WeasyPrint
-   before screen 07 lands.
-2. **Fix the compose Postgres 18 volume layout** — `compose.yaml`
-   currently mounts `pgdata:/var/lib/postgresql/data`, which
-   `postgres:18-trixie` refuses (it wants the mount one level up).
-   Surfaced 2026-06-10 during the models pass. Small infra fix;
-   does not require a new decision.
+   before screen 07 lands. The previous models pass explicitly
+   deferred this to a fresh plan.
 3. **Provision the Hetzner box** —
    `cd infra/terraform && terraform apply` from Matej's
    workstation, populate `/srv/kasia/.env`, set GH Actions

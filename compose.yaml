@@ -34,7 +34,11 @@ services:
       POSTGRES_INITDB_ARGS: "--locale=cs_CZ.UTF-8 --encoding=UTF8"
       LANG: cs_CZ.UTF-8
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # Postgres 18+ requires the mount one level above `data` so the
+      # image can manage major-version-specific cluster subdirectories
+      # (.../<major>/docker). Mounting at /var/lib/postgresql/data on
+      # 18+ fails at startup. See docker-library/postgres#1259.
+      - pgdata:/var/lib/postgresql
     ports:
       # Localhost-bound only — emergency psql access from the host,
       # never reachable from outside the box. Drop the publish line
@@ -79,6 +83,8 @@ services:
       RESTIC_REPOSITORY: ${RESTIC_REPOSITORY}
       RESTIC_PASSWORD: ${RESTIC_PASSWORD}
     volumes:
+      # Mount matches the db service (see note there) so backups capture
+      # the version-specific cluster subdirectory.
       - pgdata:/backup/pgdata:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped

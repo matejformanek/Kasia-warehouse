@@ -299,6 +299,43 @@
   seed migrations); ruff clean; `ruff per-file-ignores` extended to
   exempt Django-generated `**/migrations/*.py` from `E501`/`I001`.
   SQLite migrate clean.
+- **2026-06-11** — Movement + audit pass 1 of 2 landed (per
+  `state.md` § Next item 2 forward pointer). Audit-shape extension
+  recorded as
+  [`0035`](./decisions/0035-audit-line-events.md) (supersedes the
+  column list in
+  [`0021`](./decisions/0021-audit-hand-rolled.md); 0021 banner
+  added). New models: `inventory.Movement`
+  (kind ∈ {prijem, vydej} per
+  [`0030`](./decisions/0030-vydej-default-ricany-supersedes-0004.md),
+  named counterparty CHECK constraint, `clean()` mirror, delete
+  disabled in admin), `MovementLine` (positive-quantity CHECK,
+  šarže ≤64, expiry, `signed_quantity` property), `MovementAudit`
+  (target_kind ∈ {movement, line}, event ∈ {field_changed,
+  line_added, line_removed}, line_id non-FK so audit survives line
+  delete, non-empty `reason` CHECK).
+  `inventory/services.py` introduced with the single create / edit
+  write path: `apply_movement(...)` (atomic; no audit on insert)
+  and `edit_movement(...)` (atomic; one audit row per changed field
+  + per line lifecycle event; reason mandatory; kind-change
+  forbidden; `# TODO Pass 2 — DodaciList re-render hook`). Stock
+  mutation wraps `stock.save()` in a nested `transaction.atomic()`
+  savepoint so a `stock_non_negative` violation converts cleanly to
+  `ValidationError` without breaking the outer transaction.
+  `MovementAdmin` registered with `MovementLineInline` and a
+  `save_related` override that calls `apply_movement` /
+  `edit_movement` (no DB writes in `save_model` per the user's
+  option (I) choice on 2026-06-11); `MovementAuditAdmin` is
+  read-only. Migration `inventory/0003_movement_and_audit.py`
+  generated and renamed. 21 new tests appended in
+  `inventory/tests.py` (schema constraints + apply / edit service
+  + admin smoke); `inventory/conftest.py` introduced with
+  seed-aware fixtures (`tyn`, `sez`, `ricany`, `pepper`, `paprika`,
+  `supplier`, `user_tyn`, `user_vlastnik`, `admin_user`) that
+  `.objects.get(...)` against already-seeded rows. Full suite: 38
+  pytest tests green; ruff clean; SQLite migrate clean. Pass 2
+  (DodaciList + Settings + WeasyPrint + e-mail) deferred to a
+  fresh plan per the original split.
 - **2026-06-10** — `compose.yaml` `db` service volume mount moved
   from `/var/lib/postgresql/data` to `/var/lib/postgresql` so
   `postgres:18-trixie` starts cleanly (PG18+ stores data under a
@@ -320,8 +357,8 @@
 
 ## In progress
 
-_(nothing — first real models landed; ready for movement tables
-+ audit + dodací list pass)_
+_(nothing — movement + audit pass 1 of 2 landed; ready for pass 2
+draft: DodaciList + Settings + WeasyPrint + e-mail)_
 
 ## Next
 
@@ -340,20 +377,19 @@ _(nothing — first real models landed; ready for movement tables
    Pick one, write a numbered decision file, then implement. Until
    this lands, the compose stack only starts with a neutralised
    locale.
-2. **Movement tables + audit + dodací list** (needs a fresh plan).
-   `inventory.Movement` (kind ∈ {prijem, vydej} per
-   [`0030`](./decisions/0030-vydej-default-ricany-supersedes-0004.md)),
-   `MovementLine`, `MovementAudit` per
-   [`0021`](./decisions/0021-audit-hand-rolled.md), `DodaciList` +
-   `DodaciListVersion` + `DodaciListEmailLog` per
+2. **Pass 2: dodák + Settings + PDF + e-mail** (fresh plan needed).
+   `inventory.DodaciList` + `DodaciListVersion` +
+   `DodaciListEmailLog` per
    [`0007`](./decisions/0007-auto-reissue-corrected-dodaky.md) +
    [`0008`](./decisions/0008-dodaci-list-numbering.md) +
    [`0031`](./decisions/0031-emails-internal-only-supersedes-0009.md);
    `Settings` singleton for Petr+Karolína recipient pair + PDF
-   defaults per `screens/14-nastaveni.md`. Also: a small management
+   defaults per `screens/14-nastaveni.md`; a small management
    command to render one výdej as PDF to smoke-test WeasyPrint
-   before screen 07 lands. The previous models pass explicitly
-   deferred this to a fresh plan.
+   before screen 07 lands; the auto re-issue hook in
+   `inventory/services.py:edit_movement` (TODO marker already
+   placed). Pass 1 (Movement + audit + service + admin) landed
+   2026-06-11.
 3. **Provision the Hetzner box** —
    `cd infra/terraform && terraform apply` from Matej's
    workstation, populate `/srv/kasia/.env`, set GH Actions

@@ -1,5 +1,7 @@
 # 0021 — Audit trail: hand-rolled `movement_audit` table
 
+> **Superseded in part by [`0035-audit-line-events.md`](./0035-audit-line-events.md)** — the column list under § Choice is extended; the rest stands.
+
 ## Context
 
 R7 in [`../tech-options.md`](../tech-options.md) and the design in

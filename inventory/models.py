@@ -1,18 +1,22 @@
 """Inventory models — first real pass, simplified per Petr's 2026-06-09 brief.
 
 Schema scope per:
-- 0001 šarže optional (deferred to movement-line pass)
+- 0001 šarže optional
 - 0002 one catalogue, branch-specific stock
 - 0003 primary unit kg with 3 dp
 - 0005 mixture recipe model
 - 0020 custom user with branch FK (in accounts.User)
+- 0021 audit trail: hand-rolled movement_audit table (see 0035 for column extension)
 - 0028 mass-only (no Variant)
 - 0029 no prices
-- 0030 default odběratel Říčany — a seeded Customer, not a Branch
+- 0030 default odběratel Říčany — a seeded Customer, not a Branch; movement kinds
+  ∈ {prijem, vydej} (no separate převod)
 - 0031 Customer.email = contact only
 - 0032 míchání in MVP
+- 0035 movement_audit line events (target_kind, line_id, event columns)
 """
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CheckConstraint, Q, UniqueConstraint
@@ -196,3 +200,192 @@ class RecipeComponent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.mixture_product} ← {self.component_product} ({self.ratio})"
+
+
+class Movement(models.Model):
+    """A header row for one stock movement at one branch.
+
+    Sign convention: lines store `quantity_kg` as positive; the parent's
+    `kind` decides direction (příjem = +, výdej = −). See MovementLine.
+    """
+
+    class Kind(models.TextChoices):
+        PRIJEM = "prijem", "příjem"
+        VYDEJ = "vydej", "výdej"
+
+    branch = models.ForeignKey(
+        Branch,
+        on_delete=models.PROTECT,
+        related_name="movements",
+        verbose_name="pobočka",
+    )
+    kind = models.CharField("druh pohybu", max_length=16, choices=Kind.choices)
+    date_issued = models.DateField("datum vystavení")
+    odberatel = models.ForeignKey(
+        Customer,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="vydej_movements",
+        verbose_name="odběratel",
+    )
+    dodavatel = models.ForeignKey(
+        Supplier,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="prijem_movements",
+        verbose_name="dodavatel",
+    )
+    note = models.TextField("poznámka", blank=True)
+    created_at = models.DateTimeField("vytvořeno", auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_movements",
+        verbose_name="vytvořil",
+    )
+
+    class Meta:
+        verbose_name = "pohyb"
+        verbose_name_plural = "pohyby"
+        ordering = ("-date_issued", "-id")
+        constraints = [
+            CheckConstraint(
+                condition=(
+                    Q(kind="vydej")
+                    & Q(odberatel__isnull=False)
+                    & Q(dodavatel__isnull=True)
+                )
+                | (
+                    Q(kind="prijem")
+                    & Q(dodavatel__isnull=False)
+                    & Q(odberatel__isnull=True)
+                ),
+                name="movement_counterparty_matches_kind",
+            ),
+        ]
+
+    def clean(self) -> None:
+        if self.kind == self.Kind.VYDEJ:
+            if self.odberatel_id is None:
+                raise ValidationError(
+                    {"odberatel": "Výdej musí mít odběratele."}
+                )
+            if self.dodavatel_id is not None:
+                raise ValidationError(
+                    {"dodavatel": "Výdej nemůže mít dodavatele."}
+                )
+        elif self.kind == self.Kind.PRIJEM:
+            if self.dodavatel_id is None:
+                raise ValidationError(
+                    {"dodavatel": "Příjem musí mít dodavatele."}
+                )
+            if self.odberatel_id is not None:
+                raise ValidationError(
+                    {"odberatel": "Příjem nemůže mít odběratele."}
+                )
+
+    def __str__(self) -> str:
+        return f"{self.get_kind_display()} {self.date_issued.isoformat()} @ {self.branch.code}"
+
+
+class MovementLine(models.Model):
+    """One product line of a Movement. `quantity_kg` is positive; signed
+    quantity is derived from the parent's kind."""
+
+    movement = models.ForeignKey(
+        Movement,
+        on_delete=models.CASCADE,
+        related_name="lines",
+        verbose_name="pohyb",
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.PROTECT,
+        related_name="movement_lines",
+        verbose_name="produkt",
+    )
+    quantity_kg = models.DecimalField(
+        "množství (kg)",
+        max_digits=10,
+        decimal_places=3,
+    )
+    sarze = models.CharField("šarže", max_length=64, blank=True)
+    expiry = models.DateField("expirace", null=True, blank=True)
+    note = models.CharField("poznámka", max_length=256, blank=True)
+
+    class Meta:
+        verbose_name = "položka pohybu"
+        verbose_name_plural = "položky pohybu"
+        ordering = ("movement_id", "id")
+        constraints = [
+            CheckConstraint(
+                condition=Q(quantity_kg__gt=0),
+                name="movement_line_quantity_positive",
+            ),
+        ]
+
+    @property
+    def signed_quantity(self):
+        """Positive for příjem, negative for výdej. Requires `movement` loaded."""
+        if self.movement.kind == Movement.Kind.PRIJEM:
+            return self.quantity_kg
+        return -self.quantity_kg
+
+    def __str__(self) -> str:
+        return f"{self.product} {self.quantity_kg} kg"
+
+
+class MovementAudit(models.Model):
+    """Append-only audit row per changed field (or per line lifecycle event)
+    of a Movement edit. See decisions 0021 and 0035."""
+
+    class TargetKind(models.TextChoices):
+        MOVEMENT = "movement", "pohyb"
+        LINE = "line", "položka"
+
+    class Event(models.TextChoices):
+        FIELD_CHANGED = "field_changed", "změna pole"
+        LINE_ADDED = "line_added", "přidaná položka"
+        LINE_REMOVED = "line_removed", "odebraná položka"
+
+    movement = models.ForeignKey(
+        Movement,
+        on_delete=models.CASCADE,
+        related_name="audit_entries",
+        verbose_name="pohyb",
+    )
+    edited_at = models.DateTimeField("upraveno", auto_now_add=True)
+    edited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="movement_edits",
+        verbose_name="upravil",
+    )
+    reason = models.TextField("důvod úpravy")
+    target_kind = models.CharField(
+        "cíl změny",
+        max_length=16,
+        choices=TargetKind.choices,
+    )
+    line_id = models.BigIntegerField("ID položky", null=True, blank=True)
+    event = models.CharField("událost", max_length=24, choices=Event.choices)
+    field = models.CharField("pole", max_length=64, blank=True, default="")
+    old_value = models.TextField("původní hodnota", blank=True, default="")
+    new_value = models.TextField("nová hodnota", blank=True, default="")
+
+    class Meta:
+        verbose_name = "záznam auditu"
+        verbose_name_plural = "záznamy auditu"
+        ordering = ("movement_id", "edited_at", "id")
+        constraints = [
+            CheckConstraint(
+                condition=~Q(reason=""),
+                name="movement_audit_reason_required",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        suffix = f" ({self.field})" if self.field else ""
+        return f"{self.movement_id} {self.event}{suffix} @ {self.edited_at.isoformat()}"

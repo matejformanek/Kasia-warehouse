@@ -1,5 +1,12 @@
 # 0007 — Auto re-issue and re-email of corrected dodáky
 
+> Schema specifics (three-table layout) superseded in part by
+> [`0036`](./0036-dodaci-list-shape.md): the "version" lives as
+> `DodaciList.current_version`, not as a separate
+> `dodaci_list_version` table. Trigger semantics, `[OPRAVA]`
+> e-mail behaviour, and PDF re-render rules below stand
+> unchanged.
+
 ## Context
 
 When a movement that is already on a sent dodací list is corrected via

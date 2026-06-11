@@ -1,0 +1,217 @@
+{% load static %}<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Dodací list {{ dodaci_list.cislo }}</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 18mm 16mm 22mm 16mm;
+
+    @bottom-right {
+      content: "Strana " counter(page) " z " counter(pages);
+      font-family: "DejaVu Sans", sans-serif;
+      font-size: 9pt;
+      color: #555;
+    }
+    @bottom-center {
+      content: "{{ settings.footer_text }}";
+      font-family: "DejaVu Sans", sans-serif;
+      font-size: 9pt;
+      color: #555;
+    }
+  }
+
+  html, body {
+    font-family: "DejaVu Sans", sans-serif;
+    font-size: 10pt;
+    color: #111;
+    margin: 0;
+    padding: 0;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid #999;
+    padding-bottom: 6mm;
+    margin-bottom: 6mm;
+  }
+  .header .company {
+    font-size: 11pt;
+  }
+  .header .company .name {
+    font-weight: bold;
+    font-size: 13pt;
+    margin-bottom: 1mm;
+  }
+  .header .logo {
+    text-align: right;
+    max-width: 60mm;
+    font-size: 14pt;
+    font-weight: bold;
+    color: #444;
+  }
+  .header .logo img {
+    max-height: 24mm;
+    max-width: 60mm;
+  }
+
+  .document-block {
+    margin-bottom: 6mm;
+  }
+  .document-block h1 {
+    margin: 0 0 1mm 0;
+    font-size: 16pt;
+  }
+  .document-block .meta {
+    color: #444;
+    font-size: 10pt;
+  }
+  .document-block .oprava {
+    color: #a40000;
+    font-weight: bold;
+    margin-top: 1mm;
+  }
+
+  .odberatel {
+    margin-bottom: 6mm;
+  }
+  .odberatel .label {
+    color: #555;
+    font-size: 9pt;
+    text-transform: uppercase;
+    margin-bottom: 1mm;
+  }
+  .odberatel .name {
+    font-weight: bold;
+    font-size: 11pt;
+  }
+
+  table.lines {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8mm;
+  }
+  table.lines th, table.lines td {
+    border-bottom: 1px solid #ccc;
+    padding: 2mm 2mm;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.lines th {
+    background: #f3f3f3;
+    font-size: 9pt;
+    text-transform: uppercase;
+    color: #444;
+  }
+  table.lines td.qty {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  table.lines td.idx {
+    color: #777;
+    width: 8mm;
+    text-align: right;
+  }
+
+  .signatures {
+    margin-top: 12mm;
+    display: flex;
+    justify-content: space-between;
+  }
+  .signatures .block {
+    width: 45%;
+    border-top: 1px solid #999;
+    padding-top: 2mm;
+  }
+  .signatures .label {
+    font-weight: bold;
+    margin-bottom: 6mm;
+  }
+  .signatures .field {
+    color: #555;
+    margin-bottom: 3mm;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="company">
+    <div class="name">{{ settings.company_name }}</div>
+    {% if settings.company_address %}<div>{{ settings.company_address|linebreaksbr }}</div>{% endif %}
+    {% if settings.company_ico %}<div>IČO: {{ settings.company_ico }}</div>{% endif %}
+    {% if settings.company_dic %}<div>DIČ: {{ settings.company_dic }}</div>{% endif %}
+    {% if settings.company_phone %}<div>Tel: {{ settings.company_phone }}</div>{% endif %}
+    {% if settings.company_email %}<div>E-mail: {{ settings.company_email }}</div>{% endif %}
+  </div>
+  <div class="logo">
+    {% if settings.logo %}
+      <img src="{{ settings.logo.path }}" alt="{{ settings.company_name }}">
+    {% else %}
+      {{ settings.company_name }}
+    {% endif %}
+  </div>
+</div>
+
+<div class="document-block">
+  <h1>Dodací list {{ dodaci_list.cislo }}</h1>
+  <div class="meta">
+    Datum vystavení: {{ dodaci_list.date_issued|date:"d. m. Y" }}
+    &nbsp;·&nbsp; Pobočka: {{ dodaci_list.branch.code }} — {{ dodaci_list.branch.name }}
+  </div>
+  {% if dodaci_list.is_edited %}
+    <div class="oprava">
+      [OPRAVA] · verze {{ dodaci_list.current_version }}
+    </div>
+  {% endif %}
+</div>
+
+<div class="odberatel">
+  <div class="label">Odběratel</div>
+  <div class="name">{{ dodaci_list.odberatel.name }}</div>
+  {% if dodaci_list.odberatel.ico %}<div>IČO: {{ dodaci_list.odberatel.ico }}</div>{% endif %}
+  {% if dodaci_list.odberatel.dic %}<div>DIČ: {{ dodaci_list.odberatel.dic }}</div>{% endif %}
+  {% if dodaci_list.odberatel.address %}<div>{{ dodaci_list.odberatel.address|linebreaksbr }}</div>{% endif %}
+</div>
+
+<table class="lines">
+  <thead>
+    <tr>
+      <th>Pořadí</th>
+      <th>Produkt</th>
+      <th style="text-align:right">Množství (kg)</th>
+      {% if show_sarze %}<th>Šarže</th>{% endif %}
+      {% if show_note %}<th>Poznámka</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for line in lines %}
+      <tr>
+        <td class="idx">{{ forloop.counter }}.</td>
+        <td>{{ line.product.name_cs }}</td>
+        <td class="qty">{{ line.quantity_kg }}</td>
+        {% if show_sarze %}<td>{{ line.sarze }}</td>{% endif %}
+        {% if show_note %}<td>{{ line.note }}</td>{% endif %}
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="signatures">
+  <div class="block">
+    <div class="label">Předal</div>
+    <div class="field">Datum: ____________________</div>
+    <div class="field">Podpis: ____________________</div>
+  </div>
+  <div class="block">
+    <div class="label">Převzal</div>
+    <div class="field">Datum: ____________________</div>
+    <div class="field">Podpis: ____________________</div>
+  </div>
+</div>
+
+</body>
+</html>

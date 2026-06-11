@@ -355,10 +355,71 @@
   § Next item 1 — needs a planning step (extend the image with
   `locales-all` vs. switch to ICU locale provider).
 
+- **2026-06-11** — Pass 2 (DodaciList + Settings + WeasyPrint +
+  e-mail) landed. Two new decisions:
+  [`0036`](./decisions/0036-dodaci-list-shape.md) (two tables, not
+  three: `DodaciList(current_version)` + `DodaciListEmailLog`; per-
+  (branch, year) `DodaciListNumberSequence` row allocated under
+  `SELECT … FOR UPDATE`; live FK to Customer, no snapshot fields —
+  supersedes the three-table hint in
+  [`0007`](./decisions/0007-auto-reissue-corrected-dodaky.md) §
+  Consequences; 0007 banner added),
+  [`0037`](./decisions/0037-settings-singleton.md) (singleton via
+  `singleton_key` + `UniqueConstraint`; `Settings.load()`
+  classmethod; plaintext `smtp_password` with
+  `PasswordInput(render_value=False)` and "empty input keeps
+  existing value" semantics; `FileField` logo under `MEDIA_ROOT`).
+  New models: `inventory.DodaciList` (cislo unique,
+  `(branch, year_issued, counter)` unique, counter/version
+  positive checks, `is_edited` + `total_quantity_kg` properties,
+  live FK to Customer per 0036),
+  `DodaciListEmailLog` (status ∈ {sent, failed}, version positive
+  check, ordering `(dodaci_list_id, sent_at, id)` for screen 09),
+  `DodaciListNumberSequence` ((branch, year) unique;
+  internal — not registered in admin),
+  `Settings` (singleton; full field list per `screens/14`; defaults
+  Matej-ratified — recipient pair left blank intentionally).
+  `inventory/services.py` extended with `_assert_recipients_set`,
+  `_reserve_dodak_number`, `_create_dodaci_list_for_movement`,
+  `render_dodaci_list_pdf` (WeasyPrint 69, CSS Paged Media,
+  DejaVu Sans), `send_dodaci_list_email` (try/except wrapped per
+  [`0019`](./decisions/0019-email-smtp-sync.md) — failure writes a
+  FAILED log row, never re-raises). `apply_movement` for kind=vydej
+  reserves cislo + creates dodák + renders PDF inside the atomic
+  block; the SMTP send fires from `transaction.on_commit` so a
+  later rollback never sends. `edit_movement` replaces the
+  `# TODO Pass 2` marker: on a linked dodák, bumps
+  `current_version`, re-renders, queues `[OPRAVA]` send. Template
+  `kasia/templates/inventory/dodaci_list.html` with embedded CSS
+  Paged Media (header + N/M footer + signature line "Předal /
+  Převzal"); conditional šarže / poznámka columns computed in the
+  service. Management command `generate_dodaci_list <movement_id>
+  [--output path]` — auto-creates the dodák row if missing
+  (WeasyPrint smoke before screens 07 / 09 land). Admin: `DodaciListAdmin`
+  read-only + "Znovu odeslat" action, `DodaciListEmailLogAdmin`
+  read-only, `SettingsAdmin` (singleton — add gated on row count,
+  delete forbidden; password field write-only; fieldsets per
+  screen 14). `MEDIA_URL` / `MEDIA_ROOT` added to
+  `kasia/settings/base.py`. Migrations:
+  `inventory/0004_dodaci_list_and_settings`,
+  `inventory/0005_seed_settings`. Tests: 25 new in
+  `inventory/tests.py` (schema constraints, numbering atomicity
+  across branches/years, vydej auto-create + PDF render + outbox
+  + sent log + failed-send fallback, edit re-issue + rollback
+  guard, prijem skips hook, management cmd PDF bytes, admin add
+  forbidden / resend action / read-only logs). `conftest.py` adds
+  `settings_with_recipients` autouse fixture (sets recipient pair
+  for all tests) and converts `tyn` / `sez` / `ricany` fixtures to
+  `get_or_create` so `transaction=True` tests survive flush.
+  Full suite: **63 pytest tests green**; ruff clean; SQLite
+  migrate clean; management-cmd smoke `TYN-2026-0001.pdf` =
+  12 228 B starting `%PDF-1.7`. Pass 1's vydej-touching tests
+  pick up the recipient fixture transparently — no assertions
+  weakened.
+
 ## In progress
 
-_(nothing — movement + audit pass 1 of 2 landed; ready for pass 2
-draft: DodaciList + Settings + WeasyPrint + e-mail)_
+_(nothing — Pass 2 landed; ready for view-layer plan or locale fix)_
 
 ## Next
 
@@ -377,19 +438,13 @@ draft: DodaciList + Settings + WeasyPrint + e-mail)_
    Pick one, write a numbered decision file, then implement. Until
    this lands, the compose stack only starts with a neutralised
    locale.
-2. **Pass 2: dodák + Settings + PDF + e-mail** (fresh plan needed).
-   `inventory.DodaciList` + `DodaciListVersion` +
-   `DodaciListEmailLog` per
-   [`0007`](./decisions/0007-auto-reissue-corrected-dodaky.md) +
-   [`0008`](./decisions/0008-dodaci-list-numbering.md) +
-   [`0031`](./decisions/0031-emails-internal-only-supersedes-0009.md);
-   `Settings` singleton for Petr+Karolína recipient pair + PDF
-   defaults per `screens/14-nastaveni.md`; a small management
-   command to render one výdej as PDF to smoke-test WeasyPrint
-   before screen 07 lands; the auto re-issue hook in
-   `inventory/services.py:edit_movement` (TODO marker already
-   placed). Pass 1 (Movement + audit + service + admin) landed
-   2026-06-11.
+2. **HTMX view layer for screens 02, 06, 07, 08, 09, 11**
+   (dashboard, příjem, výdej, seznam dodacích listů, detail
+   dodacího listu, úprava pohybu) + auth/URL namespacing. Pass 2
+   ships the admin surface for shadow-run; screens are the
+   operator-facing entry point. Models, services, templates,
+   admin all in place; remaining is view + URL + form work and
+   the screen 07 live-preview affordance.
 3. **Provision the Hetzner box** —
    `cd infra/terraform && terraform apply` from Matej's
    workstation, populate `/srv/kasia/.env`, set GH Actions

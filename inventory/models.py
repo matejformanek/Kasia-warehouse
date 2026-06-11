@@ -5,15 +5,19 @@ Schema scope per:
 - 0002 one catalogue, branch-specific stock
 - 0003 primary unit kg with 3 dp
 - 0005 mixture recipe model
+- 0007 dodák auto-reissue + monotonic version (current_version column per 0036)
+- 0008 dodák number <BRANCH>-<YYYY>-<NNNN> per (branch, year)
 - 0020 custom user with branch FK (in accounts.User)
 - 0021 audit trail: hand-rolled movement_audit table (see 0035 for column extension)
 - 0028 mass-only (no Variant)
 - 0029 no prices
 - 0030 default odběratel Říčany — a seeded Customer, not a Branch; movement kinds
   ∈ {prijem, vydej} (no separate převod)
-- 0031 Customer.email = contact only
+- 0031 dodák e-mails to fixed (Petr, Karolína) pair from Settings
 - 0032 míchání in MVP
 - 0035 movement_audit line events (target_kind, line_id, event columns)
+- 0036 dodák shape: two tables (DodaciList + EmailLog), sequence row, live FK to Customer
+- 0037 Settings singleton via singleton_key + UniqueConstraint
 """
 
 from django.conf import settings
@@ -389,3 +393,242 @@ class MovementAudit(models.Model):
     def __str__(self) -> str:
         suffix = f" ({self.field})" if self.field else ""
         return f"{self.movement_id} {self.event}{suffix} @ {self.edited_at.isoformat()}"
+
+
+# ---------------------------------------------------------------------------
+# Dodací list + send trail + numbering (per 0007 / 0008 / 0031 / 0036)
+# ---------------------------------------------------------------------------
+
+
+class DodaciListNumberSequence(models.Model):
+    """Per-(branch, year) monotonic counter for dodák čísla per 0008. One row
+    per (branch, year); allocated under SELECT … FOR UPDATE in services."""
+
+    branch = models.ForeignKey(
+        Branch,
+        on_delete=models.PROTECT,
+        related_name="number_sequences",
+        verbose_name="pobočka",
+    )
+    year = models.PositiveSmallIntegerField("rok")
+    last_counter = models.PositiveIntegerField("poslední pořadí", default=0)
+
+    class Meta:
+        verbose_name = "číselná řada dodacích listů"
+        verbose_name_plural = "číselné řady dodacích listů"
+        ordering = ("branch__code", "year")
+        constraints = [
+            UniqueConstraint(
+                fields=["branch", "year"],
+                name="unique_branch_year_sequence",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.branch.code} {self.year}: {self.last_counter}"
+
+
+class DodaciList(models.Model):
+    """One issued dodací list per výdej Movement. Číslo is the per-(branch,
+    year) sequence rendered as TYN-2026-0042 per 0008; current_version is
+    the monotonic internal counter per 0007 (initial issue = 1, each
+    correction increments by one); odberatel is a live FK per 0036."""
+
+    movement = models.OneToOneField(
+        Movement,
+        on_delete=models.PROTECT,
+        related_name="dodaci_list",
+        verbose_name="pohyb",
+    )
+    branch = models.ForeignKey(
+        Branch,
+        on_delete=models.PROTECT,
+        related_name="dodaci_lists",
+        verbose_name="pobočka",
+    )
+    odberatel = models.ForeignKey(
+        Customer,
+        on_delete=models.PROTECT,
+        related_name="dodaci_lists",
+        verbose_name="odběratel",
+    )
+    date_issued = models.DateField("datum vystavení")
+    year_issued = models.PositiveSmallIntegerField("rok vystavení")
+    counter = models.PositiveIntegerField("pořadí")
+    cislo = models.CharField("číslo", max_length=24, unique=True)
+    current_version = models.PositiveIntegerField("aktuální verze", default=1)
+    created_at = models.DateTimeField("vytvořeno", auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_dodaci_lists",
+        verbose_name="vytvořil",
+    )
+
+    class Meta:
+        verbose_name = "dodací list"
+        verbose_name_plural = "dodací listy"
+        ordering = ("-date_issued", "-id")
+        constraints = [
+            UniqueConstraint(
+                fields=["branch", "year_issued", "counter"],
+                name="unique_dodaci_list_branch_year_counter",
+            ),
+            CheckConstraint(
+                condition=Q(counter__gte=1),
+                name="dodaci_list_counter_positive",
+            ),
+            CheckConstraint(
+                condition=Q(current_version__gte=1),
+                name="dodaci_list_version_positive",
+            ),
+        ]
+
+    @property
+    def is_edited(self) -> bool:
+        """True iff the dodák has been re-issued at least once (per 0007)."""
+        return self.current_version > 1
+
+    @property
+    def total_quantity_kg(self):
+        """Sum of all line quantities — feeds screen 08's "hrubý objem" column."""
+        return sum(
+            (line.quantity_kg for line in self.movement.lines.all()),
+            start=0,
+        )
+
+    def __str__(self) -> str:
+        return self.cislo
+
+
+class DodaciListEmailLog(models.Model):
+    """One row per send attempt for one dodák version. Per 0007 + 0019:
+    every send (successful or failed) writes a row. Screen 09's "verze a
+    odeslání" audit table reads these rows ordered by sent_at."""
+
+    class Status(models.TextChoices):
+        SENT = "sent", "odesláno"
+        FAILED = "failed", "selhalo"
+
+    dodaci_list = models.ForeignKey(
+        DodaciList,
+        on_delete=models.CASCADE,
+        related_name="email_logs",
+        verbose_name="dodací list",
+    )
+    version = models.PositiveIntegerField("verze")
+    sent_at = models.DateTimeField("odesláno v", auto_now_add=True)
+    recipients = models.CharField("příjemci", max_length=512)
+    trigger_reason = models.TextField("důvod odeslání")
+    status = models.CharField(
+        "stav",
+        max_length=16,
+        choices=Status.choices,
+    )
+    error_message = models.TextField("chybová zpráva", blank=True, default="")
+
+    class Meta:
+        verbose_name = "záznam odeslání dodacího listu"
+        verbose_name_plural = "záznamy odeslání dodacích listů"
+        ordering = ("dodaci_list_id", "sent_at", "id")
+        constraints = [
+            CheckConstraint(
+                condition=Q(version__gte=1),
+                name="email_log_version_positive",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.dodaci_list.cislo} v{self.version} · {self.status}"
+
+
+# ---------------------------------------------------------------------------
+# Settings singleton (per 0037)
+# ---------------------------------------------------------------------------
+
+
+class Settings(models.Model):
+    """Single-row configuration object. Loaded via Settings.load(); enforced
+    single-row via singleton_key + UniqueConstraint per 0037.
+
+    Field list mirrors screens/14-nastaveni.md verbatim. Defaults are the
+    Matej-ratified MVP values; recipient pair (Petr, Karolína) is left blank
+    intentionally so an operator fills them on first run.
+    """
+
+    singleton_key = models.CharField(
+        max_length=16,
+        default="singleton",
+        editable=False,
+    )
+
+    # Company header (Společnost / hlavička dokumentu).
+    company_name = models.CharField(
+        "název firmy", max_length=128, default="Kasia vera s.r.o."
+    )
+    company_ico = models.CharField("IČO", max_length=16, default="25756729")
+    company_dic = models.CharField("DIČ", max_length=16, blank=True)
+    company_address = models.TextField("adresa", default="Říčany u Prahy")
+    company_phone = models.CharField("telefon", max_length=32, blank=True)
+    company_email = models.EmailField("kontaktní e-mail", blank=True)
+    logo = models.FileField("logo", upload_to="logos/", blank=True)
+    footer_text = models.TextField(
+        "patička",
+        blank=True,
+        default="Kasia vera s.r.o. · IČO 25756729 · Říčany u Prahy",
+    )
+
+    # SMTP configuration.
+    smtp_host = models.CharField("SMTP server", max_length=128, blank=True)
+    smtp_port = models.PositiveIntegerField("SMTP port", default=587)
+    smtp_use_tls = models.BooleanField("použít TLS", default=True)
+    smtp_user = models.CharField("SMTP uživatel", max_length=128, blank=True)
+    smtp_password = models.CharField("SMTP heslo", max_length=128, blank=True)
+    email_from_address = models.EmailField("odesílatel — adresa", blank=True)
+    email_from_name = models.CharField("odesílatel — jméno", max_length=128, blank=True)
+
+    # Dodák recipients per 0031.
+    recipient_petr = models.EmailField("příjemce Petr", blank=True)
+    recipient_karolina = models.EmailField("příjemce Karolína", blank=True)
+
+    # E-mail templates per screens/14.
+    template_initial_subject = models.CharField(
+        "předmět — nový dodák",
+        max_length=256,
+        default="Dodací list <číslo> — Kasia vera",
+    )
+    template_initial_body = models.TextField(
+        "tělo — nový dodák",
+        default=(
+            "Dobrý den, v příloze posíláme dodací list <číslo> ze dne "
+            "<datum>. S pozdravem, Kasia vera s.r.o."
+        ),
+    )
+    template_oprava_subject = models.CharField(
+        "předmět — oprava",
+        max_length=256,
+        default="[OPRAVA] Dodací list <číslo> — Kasia vera",
+    )
+    template_oprava_body = models.TextField(
+        "tělo — oprava",
+        default=(
+            "Dobrý den, opravujeme dříve zaslaný dodací list <číslo>. "
+            "Důvod: <text zdůvodnění od operátorky>. Nová verze v příloze "
+            "nahrazuje předchozí. S pozdravem, Kasia vera s.r.o."
+        ),
+    )
+
+    class Meta:
+        verbose_name = "nastavení"
+        verbose_name_plural = "nastavení"
+        constraints = [
+            UniqueConstraint(fields=["singleton_key"], name="settings_singleton"),
+        ]
+
+    @classmethod
+    def load(cls) -> Settings:
+        obj, _ = cls.objects.get_or_create(singleton_key="singleton")
+        return obj
+
+    def __str__(self) -> str:
+        return "Nastavení"

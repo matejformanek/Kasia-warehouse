@@ -1,18 +1,26 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 
 from .models import (
     Branch,
     Customer,
+    DodaciList,
+    DodaciListEmailLog,
     Movement,
     MovementAudit,
     MovementLine,
     Product,
     RecipeComponent,
+    Settings,
     Stock,
     Supplier,
 )
-from .services import apply_movement, edit_movement
+from .services import (
+    apply_movement,
+    edit_movement,
+    render_dodaci_list_pdf,
+    send_dodaci_list_email,
+)
 
 
 @admin.register(Branch)
@@ -240,4 +248,175 @@ class MovementAuditAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
+        return False
+
+
+# ---------------------------------------------------------------------------
+# DodaciList + DodaciListEmailLog + Settings (per 0007 / 0031 / 0036 / 0037)
+# ---------------------------------------------------------------------------
+
+
+@admin.register(DodaciList)
+class DodaciListAdmin(admin.ModelAdmin):
+    list_display = (
+        "cislo",
+        "date_issued",
+        "branch",
+        "odberatel",
+        "current_version",
+        "is_edited_display",
+        "created_by",
+    )
+    list_filter = ("branch", "year_issued")
+    search_fields = ("cislo", "odberatel__name", "movement__id")
+    readonly_fields = (
+        "cislo",
+        "branch",
+        "year_issued",
+        "counter",
+        "current_version",
+        "movement",
+        "odberatel",
+        "date_issued",
+        "created_at",
+        "created_by",
+    )
+    actions = ("resend_dodaci_list",)
+
+    @admin.display(boolean=True, description="editováno")
+    def is_edited_display(self, obj: DodaciList) -> bool:
+        return obj.is_edited
+
+    def has_add_permission(self, request) -> bool:
+        # Dodáky are created only by apply_movement (or the management cmd).
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        # Per screens/09: a dodací list is never deleted.
+        return False
+
+    @admin.action(description="Znovu odeslat")
+    def resend_dodaci_list(self, request, queryset) -> None:
+        sent = 0
+        failed = 0
+        for dodaci_list in queryset:
+            pdf_bytes = render_dodaci_list_pdf(dodaci_list)
+            log = send_dodaci_list_email(
+                dodaci_list=dodaci_list,
+                trigger_reason="ruční opětovné odeslání",
+                pdf_bytes=pdf_bytes,
+            )
+            if log.status == DodaciListEmailLog.Status.SENT:
+                sent += 1
+            else:
+                failed += 1
+        if sent:
+            self.message_user(
+                request, f"Odesláno: {sent}", level=messages.SUCCESS
+            )
+        if failed:
+            self.message_user(
+                request, f"Selhalo: {failed}", level=messages.ERROR
+            )
+
+
+@admin.register(DodaciListEmailLog)
+class DodaciListEmailLogAdmin(admin.ModelAdmin):
+    list_display = (
+        "sent_at",
+        "dodaci_list",
+        "version",
+        "status",
+        "recipients",
+        "trigger_reason",
+        "error_message",
+    )
+    list_filter = ("status", "version")
+    search_fields = ("dodaci_list__cislo", "trigger_reason", "error_message")
+
+    def has_add_permission(self, request) -> bool:
+        return False
+
+    def has_change_permission(self, request, obj=None) -> bool:
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        return False
+
+
+class SettingsAdminForm(forms.ModelForm):
+    """Admin form for Settings — renders smtp_password as a write-only field.
+
+    An empty input leaves the existing password untouched (per 0037).
+    """
+
+    class Meta:
+        model = Settings
+        exclude = ("singleton_key",)
+        widgets = {
+            "smtp_password": forms.PasswordInput(render_value=False),
+        }
+
+    def clean_smtp_password(self) -> str:
+        new_value = self.cleaned_data.get("smtp_password", "")
+        if not new_value and self.instance and self.instance.pk:
+            # Empty input on edit → keep the existing value.
+            return self.instance.smtp_password
+        return new_value
+
+
+@admin.register(Settings)
+class SettingsAdmin(admin.ModelAdmin):
+    form = SettingsAdminForm
+    fieldsets = (
+        (
+            "Společnost / hlavička dokumentu",
+            {
+                "fields": (
+                    "company_name",
+                    "company_ico",
+                    "company_dic",
+                    "company_address",
+                    "company_phone",
+                    "company_email",
+                    "logo",
+                    "footer_text",
+                )
+            },
+        ),
+        (
+            "SMTP",
+            {
+                "fields": (
+                    "smtp_host",
+                    "smtp_port",
+                    "smtp_use_tls",
+                    "smtp_user",
+                    "smtp_password",
+                    "email_from_address",
+                    "email_from_name",
+                )
+            },
+        ),
+        (
+            "Příjemci dodacího listu",
+            {"fields": ("recipient_petr", "recipient_karolina")},
+        ),
+        (
+            "Šablony e-mailů",
+            {
+                "fields": (
+                    "template_initial_subject",
+                    "template_initial_body",
+                    "template_oprava_subject",
+                    "template_oprava_body",
+                )
+            },
+        ),
+    )
+
+    def has_add_permission(self, request) -> bool:
+        return not Settings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None) -> bool:
         return False

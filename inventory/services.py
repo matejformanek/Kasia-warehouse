@@ -20,9 +20,20 @@ from decimal import Decimal
 from typing import Any
 
 from django.core.exceptions import ValidationError
+from django.core.mail import EmailMessage
 from django.db import IntegrityError, transaction
+from django.template.loader import render_to_string
 
-from .models import Movement, MovementAudit, MovementLine, Stock
+from .models import (
+    DodaciList,
+    DodaciListEmailLog,
+    DodaciListNumberSequence,
+    Movement,
+    MovementAudit,
+    MovementLine,
+    Settings,
+    Stock,
+)
 
 _MOVEMENT_AUDITABLE_FIELDS = ("kind", "branch", "date_issued", "odberatel", "dodavatel", "note")
 _LINE_AUDITABLE_FIELDS = ("product", "quantity_kg", "sarze", "expiry", "note")
@@ -90,6 +101,9 @@ def apply_movement(
 
     direction = 1 if movement.kind == Movement.Kind.PRIJEM else -1
 
+    if movement.kind == Movement.Kind.VYDEJ:
+        _assert_recipients_set()
+
     with transaction.atomic():
         movement.created_by = user
         movement.full_clean()
@@ -99,6 +113,18 @@ def apply_movement(
             line.full_clean()
             line.save()
             _apply_line_to_stock(line, direction=direction)
+
+        if movement.kind == Movement.Kind.VYDEJ:
+            dodaci_list = _create_dodaci_list_for_movement(movement)
+            pdf_bytes = render_dodaci_list_pdf(dodaci_list)
+            transaction.on_commit(
+                lambda dl=dodaci_list, pdf=pdf_bytes: send_dodaci_list_email(
+                    dodaci_list=dl,
+                    trigger_reason="vystavení",
+                    pdf_bytes=pdf,
+                )
+            )
+
         return movement
 
 
@@ -262,7 +288,184 @@ def edit_movement(
 
         MovementAudit.objects.bulk_create(audit_rows)
 
-        # TODO Pass 2 — if movement is linked to a posted DodaciList, trigger
-        # PDF re-render + [OPRAVA] e-mail per decision 0007.
+        # Per decision 0007: a movement edit on a posted dodák bumps the
+        # internal version counter, re-renders the PDF against current
+        # data + template, and re-sends with an [OPRAVA] subject. The
+        # send itself runs on commit so a rollback of the outer atomic
+        # block (e.g. a stock overdraw later) skips the e-mail entirely.
+        dodaci_list = DodaciList.objects.filter(movement=movement).first()
+        if dodaci_list is not None:
+            _assert_recipients_set()
+            dodaci_list.current_version += 1
+            dodaci_list.save(update_fields=["current_version"])
+            pdf_bytes = render_dodaci_list_pdf(dodaci_list)
+            transaction.on_commit(
+                lambda dl=dodaci_list, pdf=pdf_bytes, r=reason: send_dodaci_list_email(
+                    dodaci_list=dl,
+                    trigger_reason=f"oprava: {r}",
+                    pdf_bytes=pdf,
+                )
+            )
 
         return movement
+
+
+# ---------------------------------------------------------------------------
+# Dodací list services (per 0007 / 0008 / 0017 / 0019 / 0031 / 0036 / 0037)
+# ---------------------------------------------------------------------------
+
+
+def _assert_recipients_set() -> None:
+    """Refuse to start a vydej apply / edit if Settings recipients are blank.
+
+    Per 0031 every dodák goes to the fixed (Petr, Karolína) pair from
+    Settings; the seed migration leaves them empty intentionally so an
+    operator fills them on first run. We check before doing any DB work
+    that the on-commit hook can't roll back.
+    """
+    s = Settings.load()
+    if not s.recipient_petr or not s.recipient_karolina:
+        raise ValidationError(
+            {
+                "recipients": (
+                    "V nastavení chybí příjemci dodacího listu "
+                    "(Petr a Karolína). Doplňte je v Nastavení před výdejem."
+                )
+            }
+        )
+
+
+def _reserve_dodak_number(*, branch, year: int) -> int:
+    """Allocate the next per-(branch, year) counter under SELECT … FOR UPDATE.
+
+    Must be called inside the caller's transaction.atomic() block — the
+    row lock is released at commit.
+    """
+    seq, _ = (
+        DodaciListNumberSequence.objects.select_for_update().get_or_create(
+            branch=branch, year=year, defaults={"last_counter": 0}
+        )
+    )
+    seq.last_counter += 1
+    seq.save(update_fields=["last_counter"])
+    return seq.last_counter
+
+
+def _create_dodaci_list_for_movement(movement: Movement) -> DodaciList:
+    """Insert one DodaciList row for a vydej Movement.
+
+    Inside the caller's atomic block. Computes cislo from
+    (branch.code, year, counter) per 0008.
+    """
+    year = movement.date_issued.year
+    counter = _reserve_dodak_number(branch=movement.branch, year=year)
+    cislo = f"{movement.branch.code}-{year}-{counter:04d}"
+    return DodaciList.objects.create(
+        movement=movement,
+        branch=movement.branch,
+        odberatel=movement.odberatel,
+        date_issued=movement.date_issued,
+        year_issued=year,
+        counter=counter,
+        cislo=cislo,
+        current_version=1,
+        created_by=movement.created_by,
+    )
+
+
+def render_dodaci_list_pdf(dodaci_list: DodaciList) -> bytes:
+    """Render the dodák PDF via WeasyPrint per 0017.
+
+    Template is templates/inventory/dodaci_list.html with embedded CSS
+    Paged Media. Always re-renders against current Settings + current
+    Customer (per 0007 / 0036).
+    """
+    # Imported lazily — keeps module import cheap for non-PDF callers
+    # (admin pages, tests touching services without rendering).
+    from weasyprint import HTML
+
+    lines = list(dodaci_list.movement.lines.all().order_by("id"))
+    html_string = render_to_string(
+        "inventory/dodaci_list.html",
+        {
+            "dodaci_list": dodaci_list,
+            "movement": dodaci_list.movement,
+            "lines": lines,
+            "show_sarze": any(line.sarze for line in lines),
+            "show_note": any(line.note for line in lines),
+            "settings": Settings.load(),
+        },
+    )
+    return HTML(string=html_string).write_pdf()
+
+
+def _substitute_template(text: str, dodaci_list: DodaciList) -> str:
+    """Substitute the screen-14 placeholders. Reason placeholder is only
+    used in the oprava body; the caller is expected to append the
+    operator reason via trigger_reason for the e-mail log."""
+    return (
+        text
+        .replace("<číslo>", dodaci_list.cislo)
+        .replace("<datum>", dodaci_list.date_issued.strftime("%d. %m. %Y"))
+    )
+
+
+def send_dodaci_list_email(
+    *,
+    dodaci_list: DodaciList,
+    trigger_reason: str,
+    pdf_bytes: bytes,
+) -> DodaciListEmailLog:
+    """Send one dodák e-mail to the fixed (Petr, Karolína) pair per 0031.
+
+    Wrapped in try/except per 0019: a send failure writes a FAILED log
+    row and returns it; it does NOT re-raise. The výdej / oprava write
+    that triggered the send is already committed.
+    """
+    s = Settings.load()
+    recipients = [s.recipient_petr, s.recipient_karolina]
+    recipients_joined = ", ".join(recipients)
+    is_oprava = trigger_reason.startswith("oprava")
+    subject_template = (
+        s.template_oprava_subject if is_oprava else s.template_initial_subject
+    )
+    body_template = s.template_oprava_body if is_oprava else s.template_initial_body
+    subject = _substitute_template(subject_template, dodaci_list)
+    body = _substitute_template(body_template, dodaci_list)
+    if is_oprava:
+        operator_reason = trigger_reason[len("oprava:") :].strip()
+        body = body.replace("<text zdůvodnění od operátorky>", operator_reason)
+
+    from_email = (
+        f"{s.email_from_name} <{s.email_from_address}>"
+        if s.email_from_name and s.email_from_address
+        else (s.email_from_address or None)
+    )
+
+    msg = EmailMessage(
+        subject=subject,
+        body=body,
+        from_email=from_email,
+        to=recipients,
+    )
+    msg.attach(f"{dodaci_list.cislo}.pdf", pdf_bytes, "application/pdf")
+
+    try:
+        msg.send(fail_silently=False)
+    except Exception as exc:
+        return DodaciListEmailLog.objects.create(
+            dodaci_list=dodaci_list,
+            version=dodaci_list.current_version,
+            recipients=recipients_joined,
+            trigger_reason=trigger_reason,
+            status=DodaciListEmailLog.Status.FAILED,
+            error_message=str(exc),
+        )
+
+    return DodaciListEmailLog.objects.create(
+        dodaci_list=dodaci_list,
+        version=dodaci_list.current_version,
+        recipients=recipients_joined,
+        trigger_reason=trigger_reason,
+        status=DodaciListEmailLog.Status.SENT,
+    )

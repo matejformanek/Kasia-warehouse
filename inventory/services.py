@@ -25,14 +25,20 @@ from django.db import IntegrityError, transaction
 from django.template.loader import render_to_string
 
 from .models import (
+    Customer,
     DodaciList,
     DodaciListEmailLog,
     DodaciListNumberSequence,
+    MixingJob,
+    MixingJobLine,
     Movement,
     MovementAudit,
     MovementLine,
+    Product,
+    RecipeComponent,
     Settings,
     Stock,
+    Supplier,
 )
 
 _MOVEMENT_AUDITABLE_FIELDS = ("kind", "branch", "date_issued", "odberatel", "dodavatel", "note")
@@ -101,7 +107,18 @@ def apply_movement(
 
     direction = 1 if movement.kind == Movement.Kind.PRIJEM else -1
 
-    if movement.kind == Movement.Kind.VYDEJ:
+    # Internal-counterparty pohyby (e.g. míchání-job consume per
+    # decision 0039) bypass the dodák PDF + e-mail path entirely.
+    # apply_movement still writes the Movement + decrements stock; the
+    # operator-facing surface treats these rows like any other movement
+    # except they aren't paired with a DodaciList.
+    is_internal_vydej = (
+        movement.kind == Movement.Kind.VYDEJ
+        and movement.odberatel is not None
+        and movement.odberatel.is_internal
+    )
+
+    if movement.kind == Movement.Kind.VYDEJ and not is_internal_vydej:
         _assert_recipients_set()
 
     with transaction.atomic():
@@ -114,7 +131,7 @@ def apply_movement(
             line.save()
             _apply_line_to_stock(line, direction=direction)
 
-        if movement.kind == Movement.Kind.VYDEJ:
+        if movement.kind == Movement.Kind.VYDEJ and not is_internal_vydej:
             dodaci_list = _create_dodaci_list_for_movement(movement)
             pdf_bytes = render_dodaci_list_pdf(dodaci_list)
             transaction.on_commit(
@@ -468,4 +485,339 @@ def send_dodaci_list_email(
         recipients=recipients_joined,
         trigger_reason=trigger_reason,
         status=DodaciListEmailLog.Status.SENT,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Mixing job services (screen 15, per decision 0039)
+# ---------------------------------------------------------------------------
+
+
+def _micharna_customer() -> Customer:
+    return Customer.objects.get(name="Míchárna", is_internal=True)
+
+
+def _micharna_supplier() -> Supplier:
+    return Supplier.objects.get(name="Míchárna", is_internal=True)
+
+
+def start_mixing_job(
+    *,
+    branch,
+    mixture: Product,
+    target_qty: Decimal,
+    user,
+    as_of=None,
+    note: str = "",
+    sarze_by_component: dict | None = None,
+) -> MixingJob:
+    """Snapshot the recipe at the current ratios, write the consume
+    Movement (kind=vydej, odberatel=Míchárna internal) atomically, and
+    return a running MixingJob.
+
+    Raises ValidationError on:
+    - mixture without recipe;
+    - target_qty <= 0;
+    - any component's stock would go negative at this branch.
+
+    Per 0039: ratios snapshotted at start; future recipe edits don't
+    touch in-flight jobs. Stock-overdraw refusal hits via the existing
+    `_apply_line_to_stock` invariant.
+    """
+    from datetime import date as _date
+
+    if mixture.kind != Product.Kind.MIXTURE:
+        raise ValidationError(
+            {"mixture": "Vybraný produkt není směs."}
+        )
+    if target_qty is None or target_qty <= 0:
+        raise ValidationError(
+            {"target_qty": "Cílové množství musí být větší než 0."}
+        )
+
+    recipe = list(
+        RecipeComponent.objects.filter(mixture_product=mixture)
+        .select_related("component_product")
+        .order_by("component_product__name_cs")
+    )
+    if not recipe:
+        raise ValidationError(
+            {"mixture": "Směs nemá vyplněnou recepturu."}
+        )
+
+    sarze_by_component = sarze_by_component or {}
+    date_issued = as_of.date() if hasattr(as_of, "date") else (
+        as_of if as_of is not None else _date.today()
+    )
+
+    with transaction.atomic():
+        # Build the consume Movement (one vydej with N lines).
+        consume_movement = Movement(
+            branch=branch,
+            kind=Movement.Kind.VYDEJ,
+            date_issued=date_issued,
+            odberatel=_micharna_customer(),
+            note=(
+                f"Míchání směsi {mixture.name_cs} ({target_qty} kg). "
+                f"{note}".strip()
+            ),
+        )
+
+        consume_lines: list[MovementLine] = []
+        snapshots: list[tuple[Product, Decimal, Decimal]] = []
+        for rc in recipe:
+            derived = (target_qty * rc.ratio).quantize(Decimal("0.001"))
+            if derived <= 0:
+                # Pathological: a positive ratio rounded to 0 at 3 dp.
+                raise ValidationError(
+                    {
+                        "target_qty": (
+                            f"Odvozené množství pro {rc.component_product} "
+                            f"je 0; zvolte větší cíl."
+                        )
+                    }
+                )
+            consume_lines.append(
+                MovementLine(
+                    product=rc.component_product,
+                    quantity_kg=derived,
+                    sarze=sarze_by_component.get(rc.component_product_id, ""),
+                )
+            )
+            snapshots.append((rc.component_product, rc.ratio, derived))
+
+        apply_movement(
+            movement=consume_movement, lines=consume_lines, user=user
+        )
+
+        job = MixingJob.objects.create(
+            branch=branch,
+            mixture=mixture,
+            target_qty=target_qty,
+            state=MixingJob.State.RUNNING,
+            created_by=user,
+            note=note,
+            consume_movement=consume_movement,
+        )
+        MixingJobLine.objects.bulk_create(
+            [
+                MixingJobLine(
+                    mixing_job=job,
+                    component_product=component,
+                    ratio_at_start=ratio,
+                    derived_qty=derived,
+                    actual_qty=derived,
+                    sarze=sarze_by_component.get(component.pk, ""),
+                )
+                for component, ratio, derived in snapshots
+            ]
+        )
+        return job
+
+
+def finish_mixing_job(
+    *,
+    mixing_job: MixingJob,
+    actual_produced_qty: Decimal,
+    line_actuals: dict[int, Decimal] | None = None,
+    user,
+    as_of=None,
+) -> MixingJob:
+    """Write the produce Movement, persist any operator-edited actual
+    consumption per component, and mark the job done.
+
+    `line_actuals` is `{mixing_job_line_id: actual_qty}`. Missing
+    entries keep the line's existing `actual_qty` (defaulted to
+    `derived_qty` at start). If an actual differs from the derived,
+    the consume Movement is corrected via `edit_movement` with a
+    canned reason so the audit trail captures it.
+    """
+    from datetime import date as _date
+
+    if mixing_job.state != MixingJob.State.RUNNING:
+        raise ValidationError(
+            {"state": "Lze ukončit pouze probíhající dávku."}
+        )
+    if actual_produced_qty is None or actual_produced_qty < 0:
+        raise ValidationError(
+            {
+                "actual_produced_qty": (
+                    "Skutečné vyrobené množství nemůže být záporné."
+                )
+            }
+        )
+
+    line_actuals = line_actuals or {}
+    date_issued = as_of.date() if hasattr(as_of, "date") else (
+        as_of if as_of is not None else _date.today()
+    )
+
+    with transaction.atomic():
+        # Per-line actual edits — applied via edit_movement so the
+        # stock delta + audit trail are computed by the existing service.
+        line_changes = []
+        consume_movement = mixing_job.consume_movement
+        consume_lines_by_product = {
+            ml.product_id: ml for ml in consume_movement.lines.all()
+        }
+
+        for jl_id, new_actual in line_actuals.items():
+            jl = MixingJobLine.objects.get(pk=jl_id, mixing_job=mixing_job)
+            new_actual = Decimal(new_actual).quantize(Decimal("0.001"))
+            if new_actual <= 0:
+                raise ValidationError(
+                    {
+                        "line_actuals": (
+                            f"Spotřeba {jl.component_product} musí být > 0."
+                        )
+                    }
+                )
+            jl.actual_qty = new_actual
+            jl.save(update_fields=["actual_qty"])
+
+            consume_line = consume_lines_by_product.get(jl.component_product_id)
+            if consume_line is not None and consume_line.quantity_kg != new_actual:
+                line_changes.append(
+                    {
+                        "op": "update",
+                        "line_id": consume_line.pk,
+                        "fields": {"quantity_kg": new_actual},
+                    }
+                )
+
+        if line_changes:
+            edit_movement(
+                movement=consume_movement,
+                changes={},
+                line_changes=line_changes,
+                reason=f"míchání: skutečná spotřeba (dávka #{mixing_job.pk})",
+                user=user,
+            )
+
+        # Produce Movement — single-line prijem from Míchárna supplier.
+        produce_movement = Movement(
+            branch=mixing_job.branch,
+            kind=Movement.Kind.PRIJEM,
+            date_issued=date_issued,
+            dodavatel=_micharna_supplier(),
+            note=(
+                f"Míchání směsi {mixing_job.mixture.name_cs} — vyrobeno "
+                f"{actual_produced_qty} kg (cíl {mixing_job.target_qty} kg)."
+            ),
+        )
+        produce_line = MovementLine(
+            product=mixing_job.mixture,
+            quantity_kg=actual_produced_qty,
+        )
+        if actual_produced_qty > 0:
+            apply_movement(
+                movement=produce_movement,
+                lines=[produce_line],
+                user=user,
+            )
+            mixing_job.produce_movement = produce_movement
+
+        mixing_job.actual_produced_qty = actual_produced_qty
+        mixing_job.state = MixingJob.State.DONE
+        from django.utils.timezone import now as _now
+        mixing_job.finished_at = _now()
+        mixing_job.save(
+            update_fields=[
+                "actual_produced_qty",
+                "state",
+                "finished_at",
+                "produce_movement",
+            ]
+        )
+        # Refresh consume_movement reference (in case edit_movement
+        # changed the line set / quantities).
+        _ = mixing_job.consume_movement
+        return mixing_job
+
+
+def cancel_mixing_job(
+    *,
+    mixing_job: MixingJob,
+    reason: str,
+    user,
+) -> MixingJob:
+    """Cancel a running job: zero each consume line via edit_movement
+    (returns consumed stock to the branch) and mark the job cancelled.
+    """
+    if mixing_job.state != MixingJob.State.RUNNING:
+        raise ValidationError(
+            {"state": "Lze zrušit pouze probíhající dávku."}
+        )
+    if not reason or not reason.strip():
+        raise ValidationError(
+            {"reason": "Důvod zrušení je povinný."}
+        )
+
+    with transaction.atomic():
+        consume_movement = mixing_job.consume_movement
+        # Remove every line of the consume Movement — edit_movement
+        # reverses the stock delta atomically and writes a LINE_REMOVED
+        # audit row per line.
+        line_changes = [
+            {"op": "remove", "line_id": ml.pk}
+            for ml in consume_movement.lines.all()
+        ]
+        if line_changes:
+            edit_movement(
+                movement=consume_movement,
+                changes={},
+                line_changes=line_changes,
+                reason=f"míchání zrušeno: {reason}",
+                user=user,
+            )
+
+        mixing_job.state = MixingJob.State.CANCELLED
+        mixing_job.cancel_reason = reason
+        from django.utils.timezone import now as _now
+        mixing_job.finished_at = _now()
+        mixing_job.save(
+            update_fields=["state", "cancel_reason", "finished_at"]
+        )
+        return mixing_job
+
+
+def record_completed_mixing_job(
+    *,
+    branch,
+    mixture: Product,
+    target_qty: Decimal,
+    actual_produced_qty: Decimal,
+    line_actuals_by_component_pk: dict[int, Decimal] | None = None,
+    user,
+    as_of=None,
+    note: str = "",
+    sarze_by_component: dict | None = None,
+) -> MixingJob:
+    """One-shot path per 0039: start + finish in a single transaction
+    using a single `as_of` date for both Movements. The operator uses
+    this when they forgot to open the screen at start and is recording
+    a completed batch after the fact.
+    """
+    job = start_mixing_job(
+        branch=branch,
+        mixture=mixture,
+        target_qty=target_qty,
+        user=user,
+        as_of=as_of,
+        note=note,
+        sarze_by_component=sarze_by_component,
+    )
+    line_actuals: dict[int, Decimal] = {}
+    if line_actuals_by_component_pk:
+        for jl in job.lines.all():
+            if jl.component_product_id in line_actuals_by_component_pk:
+                line_actuals[jl.pk] = line_actuals_by_component_pk[
+                    jl.component_product_id
+                ]
+    return finish_mixing_job(
+        mixing_job=job,
+        actual_produced_qty=actual_produced_qty,
+        line_actuals=line_actuals,
+        user=user,
+        as_of=as_of,
     )

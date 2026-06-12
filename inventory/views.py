@@ -37,6 +37,7 @@ from .models import (
     Branch,
     DodaciList,
     DodaciListEmailLog,
+    MixingJob,
     Movement,
     MovementAudit,
     MovementLine,
@@ -44,7 +45,16 @@ from .models import (
     RecipeComponent,
     Stock,
 )
-from .services import apply_movement, edit_movement, render_dodaci_list_pdf, send_dodaci_list_email
+from .services import (
+    apply_movement,
+    cancel_mixing_job,
+    edit_movement,
+    finish_mixing_job,
+    record_completed_mixing_job,
+    render_dodaci_list_pdf,
+    send_dodaci_list_email,
+    start_mixing_job,
+)
 
 
 @require_GET
@@ -889,3 +899,296 @@ def _line_changes(existing_lines: list[MovementLine], formset) -> list[dict]:
                 }
             )
     return ops
+
+
+# ---------------------------------------------------------------------------
+# Mixing job (screen 15, per 0039)
+# ---------------------------------------------------------------------------
+
+
+@require_GET
+def mixing_job_index(request):
+    """Recent mixing jobs, branch-scoped for obsluha."""
+    qs = (
+        MixingJob.objects.select_related(
+            "branch", "mixture", "created_by"
+        ).order_by("-started_at", "-id")
+    )
+    if request.user.is_obsluha and request.user.branch_id:
+        qs = qs.filter(branch_id=request.user.branch_id)
+    jobs = list(qs[:100])
+    return render(
+        request,
+        "inventory/mixing_job_index.html",
+        {"jobs": jobs, "count": len(jobs)},
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def mixing_job_create(request):
+    """Pick a mixture + target qty → start (default) or one-shot record.
+
+    GET shows the form + (after HTMX preview swap) the derived
+    consumption per component vs. on-hand stock.
+    POST starts (or records-completed if mode=record) and lands on
+    the job detail / branch dashboard.
+    """
+    mixtures = list(
+        Product.objects.filter(
+            kind=Product.Kind.MIXTURE,
+            is_active=True,
+            recipe_components__isnull=False,
+        )
+        .distinct()
+        .order_by("name_cs")
+    )
+    branches = list(Branch.objects.filter(is_active=True).order_by("code"))
+    default_branch = (
+        request.user.branch
+        if request.user.branch_id
+        else (branches[0] if branches else None)
+    )
+
+    error: str | None = None
+    if request.method == "POST":
+        try:
+            branch_id = int(request.POST.get("branch", "") or 0)
+            branch = Branch.objects.get(pk=branch_id)
+        except (ValueError, Branch.DoesNotExist):
+            error = "Vyberte pobočku."
+            branch = None
+        try:
+            mixture_id = int(request.POST.get("mixture", "") or 0)
+            mixture = Product.objects.get(pk=mixture_id, kind=Product.Kind.MIXTURE)
+        except (ValueError, Product.DoesNotExist):
+            error = error or "Vyberte směs."
+            mixture = None
+        try:
+            target_qty = Decimal(request.POST.get("target_qty", ""))
+        except (InvalidOperation, ValueError):
+            error = error or "Cílové množství musí být číslo."
+            target_qty = None
+        note = request.POST.get("note", "").strip()
+        mode = request.POST.get("mode", "start")
+
+        if branch is not None and mixture is not None and target_qty is not None:
+            if (
+                request.user.is_obsluha
+                and request.user.branch_id != branch.pk
+            ):
+                error = "Nemáte oprávnění pro tuto pobočku."
+            else:
+                try:
+                    if mode == "record":
+                        try:
+                            actual_produced_qty = Decimal(
+                                request.POST.get("actual_produced_qty", "")
+                            )
+                        except (InvalidOperation, ValueError):
+                            actual_produced_qty = target_qty
+                        job = record_completed_mixing_job(
+                            branch=branch,
+                            mixture=mixture,
+                            target_qty=target_qty,
+                            actual_produced_qty=actual_produced_qty,
+                            user=request.user,
+                            note=note,
+                        )
+                        messages.success(
+                            request,
+                            f"Dávka zaznamenána ({job.actual_produced_qty} kg).",
+                        )
+                    else:
+                        job = start_mixing_job(
+                            branch=branch,
+                            mixture=mixture,
+                            target_qty=target_qty,
+                            user=request.user,
+                            note=note,
+                        )
+                        messages.success(
+                            request,
+                            "Dávka zahájena — pokračujte k dokončení po smíchání.",
+                        )
+                    return redirect("inventory:mixing_job_detail", pk=job.pk)
+                except ValidationError as exc:
+                    error = "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
+
+    return render(
+        request,
+        "inventory/mixing_job_create.html",
+        {
+            "mixtures": mixtures,
+            "branches": branches,
+            "default_branch": default_branch,
+            "is_branch_locked": bool(
+                request.user.is_obsluha and request.user.branch_id
+            ),
+            "error": error,
+        },
+    )
+
+
+@require_GET
+def mixing_preview_partial(request):
+    """HTMX: given branch + mixture + target_qty, return the derived
+    consumption table + stock-availability flags."""
+    try:
+        branch_id = int(request.GET.get("branch", "") or 0)
+        branch = Branch.objects.get(pk=branch_id)
+    except (ValueError, Branch.DoesNotExist):
+        return HttpResponse("")
+    try:
+        mixture_id = int(request.GET.get("mixture", "") or 0)
+        mixture = Product.objects.get(pk=mixture_id, kind=Product.Kind.MIXTURE)
+    except (ValueError, Product.DoesNotExist):
+        return HttpResponse("")
+    try:
+        target_qty = Decimal(request.GET.get("target_qty", ""))
+        if target_qty <= 0:
+            return HttpResponse("")
+    except (InvalidOperation, ValueError):
+        return HttpResponse("")
+
+    recipe = list(
+        RecipeComponent.objects.filter(mixture_product=mixture)
+        .select_related("component_product")
+        .order_by("component_product__name_cs")
+    )
+    stock_by_product = {
+        s.product_id: s.quantity
+        for s in Stock.objects.filter(
+            product__in=[rc.component_product_id for rc in recipe],
+            branch=branch,
+        )
+    }
+    rows = []
+    any_overdraw = False
+    for rc in recipe:
+        derived = (target_qty * rc.ratio).quantize(Decimal("0.001"))
+        on_hand = stock_by_product.get(rc.component_product_id, Decimal("0.000"))
+        over = derived > on_hand
+        if over:
+            any_overdraw = True
+        rows.append(
+            {
+                "component": rc.component_product,
+                "ratio": rc.ratio,
+                "derived": derived,
+                "on_hand": on_hand,
+                "over": over,
+            }
+        )
+    return render(
+        request,
+        "inventory/_mixing_preview.html",
+        {
+            "rows": rows,
+            "any_overdraw": any_overdraw,
+            "target_qty": target_qty,
+            "mixture": mixture,
+        },
+    )
+
+
+@require_GET
+def mixing_job_detail(request, pk: int):
+    job = get_object_or_404(
+        MixingJob.objects.select_related(
+            "branch", "mixture", "created_by", "consume_movement", "produce_movement"
+        ),
+        pk=pk,
+    )
+    if (
+        request.user.is_obsluha
+        and request.user.branch_id != job.branch_id
+    ):
+        return HttpResponse(
+            "Nemáte oprávnění zobrazit tuto dávku.",
+            content_type="text/plain; charset=utf-8",
+            status=403,
+        )
+    lines = list(
+        job.lines.select_related("component_product").order_by(
+            "component_product__name_cs"
+        )
+    )
+    return render(
+        request,
+        "inventory/mixing_job_detail.html",
+        {"job": job, "lines": lines},
+    )
+
+
+@require_http_methods(["POST"])
+def mixing_job_finish(request, pk: int):
+    job = get_object_or_404(MixingJob, pk=pk)
+    if (
+        request.user.is_obsluha
+        and request.user.branch_id != job.branch_id
+    ):
+        return HttpResponse(
+            "Nemáte oprávnění upravit tuto dávku.",
+            content_type="text/plain; charset=utf-8",
+            status=403,
+        )
+    try:
+        actual_produced_qty = Decimal(request.POST.get("actual_produced_qty", ""))
+    except (InvalidOperation, ValueError):
+        messages.error(request, "Skutečné vyrobené množství musí být číslo.")
+        return redirect("inventory:mixing_job_detail", pk=job.pk)
+    line_actuals: dict[int, Decimal] = {}
+    for jl in job.lines.all():
+        raw = request.POST.get(f"line-{jl.pk}-actual_qty")
+        if raw is None or raw == "":
+            continue
+        try:
+            line_actuals[jl.pk] = Decimal(raw)
+        except (InvalidOperation, ValueError):
+            messages.error(
+                request, f"Spotřeba {jl.component_product} musí být číslo."
+            )
+            return redirect("inventory:mixing_job_detail", pk=job.pk)
+    try:
+        finish_mixing_job(
+            mixing_job=job,
+            actual_produced_qty=actual_produced_qty,
+            line_actuals=line_actuals,
+            user=request.user,
+        )
+    except ValidationError as exc:
+        messages.error(
+            request,
+            "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc),
+        )
+        return redirect("inventory:mixing_job_detail", pk=job.pk)
+    messages.success(request, "Dávka dokončena.")
+    return redirect("inventory:mixing_job_detail", pk=job.pk)
+
+
+@require_http_methods(["POST"])
+def mixing_job_cancel(request, pk: int):
+    job = get_object_or_404(MixingJob, pk=pk)
+    if (
+        request.user.is_obsluha
+        and request.user.branch_id != job.branch_id
+    ):
+        return HttpResponse(
+            "Nemáte oprávnění upravit tuto dávku.",
+            content_type="text/plain; charset=utf-8",
+            status=403,
+        )
+    reason = (request.POST.get("reason") or "").strip()
+    if not reason:
+        messages.error(request, "Důvod zrušení je povinný.")
+        return redirect("inventory:mixing_job_detail", pk=job.pk)
+    try:
+        cancel_mixing_job(mixing_job=job, reason=reason, user=request.user)
+    except ValidationError as exc:
+        messages.error(
+            request,
+            "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc),
+        )
+        return redirect("inventory:mixing_job_detail", pk=job.pk)
+    messages.success(request, "Dávka zrušena.")
+    return redirect("inventory:mixing_job_detail", pk=job.pk)

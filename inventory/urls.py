@@ -24,6 +24,24 @@ urlpatterns = [
     path("pohyby/<int:pk>/upravit/", views.movement_edit, name="movement_edit"),
     path("katalog/", views.catalogue_index, name="catalogue_index"),
     path("katalog/<int:pk>/", views.product_detail, name="product_detail"),
+    path("michani/", views.mixing_job_index, name="mixing_job_index"),
+    path("michani/novy/", views.mixing_job_create, name="mixing_job_create"),
+    path("michani/<int:pk>/", views.mixing_job_detail, name="mixing_job_detail"),
+    path(
+        "michani/<int:pk>/dokoncit/",
+        views.mixing_job_finish,
+        name="mixing_job_finish",
+    ),
+    path(
+        "michani/<int:pk>/zrusit/",
+        views.mixing_job_cancel,
+        name="mixing_job_cancel",
+    ),
+    path(
+        "_partials/mixing-preview/",
+        views.mixing_preview_partial,
+        name="mixing_preview_partial",
+    ),
     path("dodaky/", views.dodaci_list_index, name="dodaci_list_index"),
     path("dodaky/<str:cislo>/", views.dodaci_list_detail, name="dodaci_list_detail"),
     path(

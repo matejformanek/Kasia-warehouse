@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Míchací dávky — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Míchací dávky</h1>
+<p>
+  <a class="primary" href="{% url 'inventory:mixing_job_create' %}" style="text-decoration:none;display:inline-block;padding:0.55rem 1.1rem;border-radius:4px;color:white;">
+    Nová dávka
+  </a>
+</p>
+
+<p style="color:var(--fg-soft);">Nalezeno: {{ count }} dávek.</p>
+
+{% if jobs %}
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Zahájeno</th>
+        <th>Pobočka</th>
+        <th>Směs</th>
+        <th style="text-align:right;">Cíl (kg)</th>
+        <th style="text-align:right;">Vyrobeno (kg)</th>
+        <th>Stav</th>
+        <th>Operátor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for j in jobs %}
+        <tr>
+          <td>
+            <a href="{% url 'inventory:mixing_job_detail' pk=j.pk %}">
+              {{ j.started_at|date:"d. m. Y H:i" }}
+            </a>
+          </td>
+          <td>{{ j.branch.code }}</td>
+          <td>{{ j.mixture.name_cs }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ j.target_qty|floatformat:"3" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">
+            {% if j.actual_produced_qty is not None %}{{ j.actual_produced_qty|floatformat:"3" }}{% endif %}
+          </td>
+          <td>
+            {% if j.state == "running" %}
+              <span style="color:var(--accent);">{{ j.get_state_display }}</span>
+            {% elif j.state == "done" %}
+              <span style="color:var(--ok);">{{ j.get_state_display }}</span>
+            {% else %}
+              <span style="color:var(--fg-soft);">{{ j.get_state_display }}</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--fg-soft);">{{ j.created_by.email }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p style="color:var(--fg-soft);">Zatím žádné dávky.</p>
+{% endif %}
+{% endblock %}

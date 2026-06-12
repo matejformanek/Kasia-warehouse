@@ -1,5 +1,13 @@
 # Míchání směsi / Mixing job
 
+> **Open questions in this screen** (reserve-vs-consume,
+> after-the-fact recording, dust loss tracking) are closed by
+> [`../decisions/0039-mixing-job-shape.md`](../decisions/0039-mixing-job-shape.md):
+> consume at start; allow one-shot "Zaznamenat dokončenou dávku";
+> yield surfaces as the implicit delta between target and actual,
+> no separate column. The full text below remains the canonical
+> screen spec.
+
 **In MVP** per
 [`../decisions/0032-mixing-in-mvp.md`](../decisions/0032-mixing-in-mvp.md)
 (Petr's 2026-06-09 brief: ~25 mixtures, ≤15 components each, "řešit

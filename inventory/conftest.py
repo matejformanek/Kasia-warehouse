@@ -115,6 +115,29 @@ def user_obsluha_sez(db, sez):
 
 
 @pytest.fixture(autouse=True)
+def _ensure_micharna_seed(db) -> None:
+    """Re-seed the internal Míchárna Customer + Supplier rows.
+
+    Migration 0007 inserts them, but `transaction=True` tests flush
+    the DB without re-serializing the data; later transactional tests
+    would otherwise crash when start_mixing_job fetches them.
+    get_or_create is idempotent for the non-flushed case.
+    """
+    from inventory.models import Customer, Supplier
+
+    Customer.objects.get_or_create(
+        name="Míchárna",
+        is_internal=True,
+        defaults={"address": "interní výroba směsí"},
+    )
+    Supplier.objects.get_or_create(
+        name="Míchárna",
+        is_internal=True,
+        defaults={"address": "interní výroba směsí"},
+    )
+
+
+@pytest.fixture(autouse=True)
 def settings_with_recipients(db) -> Settings:
     """Populate Settings.recipient_petr / recipient_karolina for all tests.
 

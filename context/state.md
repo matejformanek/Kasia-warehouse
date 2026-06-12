@@ -722,10 +722,100 @@
   `apply_movement` / `edit_movement` services + the existing
   audit-trail infrastructure.
 
+- **2026-06-12** — Dockerfile hotfix
+  ([`4e0216c`](https://github.com/matejformanek/Kasia-warehouse/commit/4e0216c)):
+  `COPY --from=ghcr.io/astral-sh/uv:${UV_VERSION}` failed on the
+  push-to-main `deploy` workflow with "variable expansion is not
+  supported for --from". Fix per the buildx error message:
+  pull the uv image into a named stage
+  (`FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv_stage`) and
+  `COPY --from=uv_stage`. ARG survives in `FROM`, so the version
+  pin stays externally configurable. Verified with a local
+  `docker build --target runtime .` → all stages exported
+  cleanly. The build + push to GHCR now succeeds on CI; the
+  remaining `deploy` failure ("missing server host") is the
+  expected pre-provisioning state — no `SSH_HOST` secret until
+  the Hetzner box exists.
+
+- **2026-06-12** — Pass 4 (míchání, screen 15) landed per
+  [`0039`](./decisions/0039-mixing-job-shape.md). Two new
+  models in `inventory/0006_mixing_job`:
+  - `MixingJob` (branch + mixture + target_qty +
+    actual_produced_qty + state ∈ {running, done, cancelled} +
+    started_at + finished_at + cancel_reason + note +
+    consume_movement FK + produce_movement FK + created_by) with
+    CHECK constraints (target > 0, actual_produced >= 0,
+    cancel_reason required iff state=cancelled);
+  - `MixingJobLine` (per-component snapshot: ratio_at_start
+    copied from RecipeComponent at start, derived_qty +
+    actual_qty + sarze) with unique (mixing_job, component) +
+    positive-qty CHECKs.
+  Customer + Supplier each gain an `is_internal` boolean (default
+  False). Seed migration 0007 inserts the internal Míchárna
+  Customer + Supplier rows. `apply_movement` vydej path gains a
+  guard: when `movement.odberatel.is_internal`, the dodák PDF +
+  e-mail hook is skipped — mixing-job consume Movements still
+  decrement stock and appear in screen 10 history, but no
+  customer-facing dodák is generated.
+  Four new services in `inventory/services.py`:
+  - `start_mixing_job(branch, mixture, target_qty, user, …)` —
+    snapshots the recipe, writes the consume Movement via
+    `apply_movement` (kind=vydej to Míchárna internal customer),
+    stores `consume_movement` on the job, returns
+    `state=running`. Refuses non-mixture products, mixtures
+    without a recipe, or zero/negative target. Stock-overdraw
+    refusal is the existing `_apply_line_to_stock` invariant.
+  - `finish_mixing_job(mixing_job, actual_produced_qty,
+    line_actuals, user)` — operator-edited line actuals (≠
+    derived) get applied via `edit_movement` on the consume
+    Movement so the audit trail captures them; if
+    `actual_produced_qty > 0`, writes the produce Movement
+    (kind=prijem from Míchárna internal supplier) and stores it
+    on the job; marks the job done. Handles full-loss case
+    (actual_produced = 0 → no produce Movement, still done).
+  - `cancel_mixing_job(mixing_job, reason, user)` — calls
+    `edit_movement` with line_changes that remove every consume
+    line; stock returns to the branch atomically; reason
+    required; state → cancelled.
+  - `record_completed_mixing_job(...)` — one-shot path per 0039
+    that calls start + finish in a single transaction; used for
+    after-the-fact recording when the operator forgot to open the
+    screen at start.
+  Six new URL routes (`/michani/`, `/michani/novy/`,
+  `/michani/<pk>/`, `/michani/<pk>/dokoncit/`,
+  `/michani/<pk>/zrusit/`, `/_partials/mixing-preview/`),
+  templates `mixing_job_index.html` + `mixing_job_create.html`
+  (HTMX preview on branch+mixture+target change; start /
+  record-completed mode toggle) + `mixing_job_detail.html`
+  (finish form with per-line actual edits and produce qty;
+  cancel form with required reason) + `_mixing_preview.html`
+  (derived consumption table with nedostatek flags). Branch
+  scoping: obsluha can only see their own branch's jobs and gets
+  403 on the other branch's detail. "Míchání" nav link added
+  between Výdej and Dodací listy.
+  Admin: read-only `MixingJobAdmin` (no add, no delete; system
+  state machine owns writes); read-only `MixingJobLineAdmin`.
+  Screen 15 markdown gains a banner pointing at 0039 as
+  resolving its three operational opens.
+  23 new tests (12 service + 11 view): seed rows exist; internal
+  customer skips dodák; start writes consume + snapshot; start
+  rejects overdraw / non-mixture / no-recipe; finish writes
+  produce + done; finish with line_actuals corrects consume via
+  audit; finish with zero produce skips Movement; finish rejects
+  non-running; cancel restores stock; cancel requires reason;
+  one-shot record_completed; mixing routes require login;
+  index empty; create lists only mixtures-with-recipe; start
+  POST + record POST + overdraw form-keeps; finish POST; cancel
+  POST requires reason; obsluha forbidden on other branch;
+  preview partial flags nedostatek. Full suite **156 pytest
+  tests green** (133 → 156); ruff clean; system check clean;
+  makemigrations --check clean.
+
 ## In progress
 
-_(nothing — decision 0039 landed; ready for the míchání
-implementation pass when desired)_
+_(nothing — all MVP code work landed: 12 of 14 screens built,
+13/14 covered by admin, only Hetzner box provisioning remains
+operationally)_
 
 ## Next
 

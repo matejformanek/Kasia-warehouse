@@ -14,6 +14,7 @@ from inventory.models import (
     DodaciList,
     DodaciListEmailLog,
     DodaciListNumberSequence,
+    MixingJob,
     Movement,
     MovementAudit,
     MovementLine,
@@ -2403,3 +2404,505 @@ def test_product_detail_obsluha_sees_only_own_branch_stock(
     body = response.content.decode("utf-8")
     assert "8,000" in body
     assert "99,000" not in body and "99.000" not in body
+
+
+# ---------------------------------------------------------------------------
+# Pass 4 — mixing job (screen 15, per decision 0039)
+# ---------------------------------------------------------------------------
+
+
+def _mk_mixture_with_recipe(name="Gulášové koření", components=None):
+    """Helper: returns the mixture Product."""
+    from inventory.models import RecipeComponent
+
+    mixture = Product.objects.create(name_cs=name, kind=Product.Kind.MIXTURE)
+    components = components or []
+    for component, ratio in components:
+        RecipeComponent.objects.create(
+            mixture_product=mixture,
+            component_product=component,
+            ratio=Decimal(str(ratio)),
+        )
+    return mixture
+
+
+@pytest.mark.django_db
+def test_micharna_seed_rows_exist() -> None:
+    """Seed migration 0007 inserts the internal Míchárna pair."""
+    from inventory.models import Customer, Supplier
+
+    assert Customer.objects.filter(name="Míchárna", is_internal=True).exists()
+    assert Supplier.objects.filter(name="Míchárna", is_internal=True).exists()
+
+
+@pytest.mark.django_db
+def test_is_internal_customer_skips_dodaci_list(
+    tyn, user_tyn, pepper
+) -> None:
+    """A vydej to an internal odběratel must NOT create a DodaciList +
+    must NOT require recipient_petr/karolina to be set."""
+    from inventory.models import Customer
+    from inventory.services import apply_movement
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    micharna = Customer.objects.get(name="Míchárna", is_internal=True)
+    # Clear settings recipients to prove the guard is real.
+    Settings.objects.update(recipient_petr="", recipient_karolina="")
+
+    mv = apply_movement(
+        movement=Movement(
+            branch=tyn,
+            kind=Movement.Kind.VYDEJ,
+            date_issued=date(2026, 6, 12),
+            odberatel=micharna,
+        ),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
+        user=user_tyn,
+    )
+    assert not DodaciList.objects.filter(movement=mv).exists()
+
+
+@pytest.mark.django_db
+def test_start_mixing_job_writes_consume_and_snapshot(
+    tyn, user_tyn, pepper, paprika
+) -> None:
+    from inventory.services import start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("10.000"))
+    mixture = _mk_mixture_with_recipe(
+        "Test směs",
+        [(pepper, "0.7"), (paprika, "0.3")],
+    )
+
+    job = start_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("5.000"),
+        user=user_tyn,
+    )
+    assert job.state == MixingJob.State.RUNNING
+    assert job.consume_movement is not None
+    # Stock decremented by derived qty (5 * 0.7 = 3.5 and 5 * 0.3 = 1.5).
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("6.500")
+    assert Stock.objects.get(product=paprika, branch=tyn).quantity == Decimal("8.500")
+    lines = {jl.component_product_id: jl for jl in job.lines.all()}
+    assert lines[pepper.pk].ratio_at_start == Decimal("0.700000")
+    assert lines[pepper.pk].derived_qty == Decimal("3.500")
+    assert lines[paprika.pk].derived_qty == Decimal("1.500")
+
+
+@pytest.mark.django_db
+def test_start_mixing_job_rejects_overdraw(tyn, user_tyn, pepper) -> None:
+    from inventory.services import start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    with pytest.raises(ValidationError):
+        start_mixing_job(
+            branch=tyn,
+            mixture=mixture,
+            target_qty=Decimal("5.000"),
+            user=user_tyn,
+        )
+    # Job and Movement rolled back.
+    assert MixingJob.objects.count() == 0
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("1.000")
+
+
+@pytest.mark.django_db
+def test_start_mixing_job_rejects_non_mixture(tyn, user_tyn, pepper) -> None:
+    from inventory.services import start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    with pytest.raises(ValidationError):
+        start_mixing_job(
+            branch=tyn,
+            mixture=pepper,
+            target_qty=Decimal("1.000"),
+            user=user_tyn,
+        )
+
+
+@pytest.mark.django_db
+def test_start_mixing_job_rejects_mixture_without_recipe(
+    tyn, user_tyn
+) -> None:
+    from inventory.services import start_mixing_job
+
+    mixture = Product.objects.create(name_cs="Empty", kind=Product.Kind.MIXTURE)
+    with pytest.raises(ValidationError):
+        start_mixing_job(
+            branch=tyn,
+            mixture=mixture,
+            target_qty=Decimal("1.000"),
+            user=user_tyn,
+        )
+
+
+@pytest.mark.django_db
+def test_finish_mixing_job_writes_produce_and_marks_done(
+    tyn, user_tyn, pepper, paprika
+) -> None:
+    from inventory.services import finish_mixing_job, start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("10.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "0.7"), (paprika, "0.3")])
+    job = start_mixing_job(
+        branch=tyn, mixture=mixture, target_qty=Decimal("5.000"), user=user_tyn
+    )
+    finish_mixing_job(
+        mixing_job=job,
+        actual_produced_qty=Decimal("4.900"),
+        line_actuals=None,
+        user=user_tyn,
+    )
+    job.refresh_from_db()
+    assert job.state == MixingJob.State.DONE
+    assert job.actual_produced_qty == Decimal("4.900")
+    assert job.produce_movement is not None
+    assert (
+        Stock.objects.get(product=mixture, branch=tyn).quantity == Decimal("4.900")
+    )
+    assert job.yield_delta == Decimal("-0.100")
+
+
+@pytest.mark.django_db
+def test_finish_mixing_job_with_line_actuals_corrects_consume(
+    tyn, user_tyn, pepper, paprika
+) -> None:
+    from inventory.services import finish_mixing_job, start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("10.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "0.7"), (paprika, "0.3")])
+    job = start_mixing_job(
+        branch=tyn, mixture=mixture, target_qty=Decimal("5.000"), user=user_tyn
+    )
+    pepper_line = job.lines.get(component_product=pepper)
+    finish_mixing_job(
+        mixing_job=job,
+        actual_produced_qty=Decimal("5.000"),
+        line_actuals={pepper_line.pk: Decimal("3.600")},
+        user=user_tyn,
+    )
+    pepper_line.refresh_from_db()
+    assert pepper_line.actual_qty == Decimal("3.600")
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal(
+        "6.400"
+    )
+    from inventory.models import MovementAudit
+
+    assert MovementAudit.objects.filter(
+        movement=job.consume_movement, field="quantity_kg"
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_finish_mixing_job_zero_produce_skips_movement(
+    tyn, user_tyn, pepper
+) -> None:
+    from inventory.services import finish_mixing_job, start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = start_mixing_job(
+        branch=tyn, mixture=mixture, target_qty=Decimal("1.000"), user=user_tyn
+    )
+    finish_mixing_job(
+        mixing_job=job,
+        actual_produced_qty=Decimal("0.000"),
+        user=user_tyn,
+    )
+    job.refresh_from_db()
+    assert job.state == MixingJob.State.DONE
+    assert job.produce_movement is None
+
+
+@pytest.mark.django_db
+def test_finish_mixing_job_rejects_non_running(tyn, user_tyn, pepper) -> None:
+    from inventory.services import (
+        cancel_mixing_job,
+        finish_mixing_job,
+        start_mixing_job,
+    )
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = start_mixing_job(
+        branch=tyn, mixture=mixture, target_qty=Decimal("1.000"), user=user_tyn
+    )
+    cancel_mixing_job(mixing_job=job, reason="testing", user=user_tyn)
+    job.refresh_from_db()
+    with pytest.raises(ValidationError):
+        finish_mixing_job(
+            mixing_job=job,
+            actual_produced_qty=Decimal("0.500"),
+            user=user_tyn,
+        )
+
+
+@pytest.mark.django_db
+def test_cancel_mixing_job_restores_stock(tyn, user_tyn, pepper) -> None:
+    from inventory.services import cancel_mixing_job, start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = start_mixing_job(
+        branch=tyn, mixture=mixture, target_qty=Decimal("2.000"), user=user_tyn
+    )
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal(
+        "3.000"
+    )
+    cancel_mixing_job(mixing_job=job, reason="error v poměru", user=user_tyn)
+    job.refresh_from_db()
+    assert job.state == MixingJob.State.CANCELLED
+    assert job.cancel_reason == "error v poměru"
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal(
+        "5.000"
+    )
+
+
+@pytest.mark.django_db
+def test_cancel_mixing_job_requires_reason(tyn, user_tyn, pepper) -> None:
+    from inventory.services import cancel_mixing_job, start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = start_mixing_job(
+        branch=tyn, mixture=mixture, target_qty=Decimal("1.000"), user=user_tyn
+    )
+    with pytest.raises(ValidationError):
+        cancel_mixing_job(mixing_job=job, reason="   ", user=user_tyn)
+
+
+@pytest.mark.django_db
+def test_record_completed_mixing_job_one_shot(
+    tyn, user_tyn, pepper, paprika
+) -> None:
+    from inventory.services import record_completed_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("10.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "0.7"), (paprika, "0.3")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("5.000"),
+        actual_produced_qty=Decimal("4.800"),
+        line_actuals_by_component_pk={pepper.pk: Decimal("3.600")},
+        user=user_tyn,
+    )
+    job.refresh_from_db()
+    assert job.state == MixingJob.State.DONE
+    assert job.actual_produced_qty == Decimal("4.800")
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal(
+        "6.400"
+    )
+    assert Stock.objects.get(product=paprika, branch=tyn).quantity == Decimal(
+        "8.500"
+    )
+    assert Stock.objects.get(product=mixture, branch=tyn).quantity == Decimal(
+        "4.800"
+    )
+
+
+# View tests --------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_routes_require_login() -> None:
+    for path in ("/michani/", "/michani/novy/", "/michani/1/"):
+        response = Client().get(path)
+        assert response.status_code == 302
+        assert response.headers["Location"].startswith("/login/")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_index_empty(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/michani/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Míchací dávky" in body
+    assert "Nalezeno: 0" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_create_get_lists_only_mixtures_with_recipe(
+    user_vlastnik, pepper
+) -> None:
+    with_recipe = _mk_mixture_with_recipe("S recepturou", [(pepper, "1.0")])
+    Product.objects.create(name_cs="Bez receptury", kind=Product.Kind.MIXTURE)
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/michani/novy/")
+    body = response.content.decode("utf-8")
+    assert with_recipe.name_cs in body
+    assert "Bez receptury" not in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_create_post_starts_job(user_vlastnik, tyn, pepper) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/michani/novy/",
+        {
+            "branch": tyn.pk,
+            "mixture": mixture.pk,
+            "target_qty": "2.000",
+            "mode": "start",
+            "note": "",
+        },
+    )
+    assert response.status_code == 302, response.content[:500]
+    assert response.headers["Location"].startswith("/michani/")
+    job = MixingJob.objects.get()
+    assert job.state == MixingJob.State.RUNNING
+    assert job.target_qty == Decimal("2.000")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_create_post_record_mode(user_vlastnik, tyn, pepper) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/michani/novy/",
+        {
+            "branch": tyn.pk,
+            "mixture": mixture.pk,
+            "target_qty": "2.000",
+            "actual_produced_qty": "1.950",
+            "mode": "record",
+        },
+    )
+    assert response.status_code == 302
+    job = MixingJob.objects.get()
+    assert job.state == MixingJob.State.DONE
+    assert job.actual_produced_qty == Decimal("1.950")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_create_overdraw_keeps_form(
+    user_vlastnik, tyn, pepper
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/michani/novy/",
+        {
+            "branch": tyn.pk,
+            "mixture": mixture.pk,
+            "target_qty": "5.000",
+            "mode": "start",
+        },
+    )
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "pod nulu" in body or "Skladová" in body
+    assert MixingJob.objects.count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_finish_view(user_vlastnik, tyn, pepper) -> None:
+    from inventory.services import start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = start_mixing_job(
+        branch=tyn, mixture=mixture, target_qty=Decimal("2.000"), user=user_vlastnik
+    )
+    line = job.lines.get()
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/michani/{job.pk}/dokoncit/",
+        {
+            "actual_produced_qty": "1.900",
+            f"line-{line.pk}-actual_qty": "2.000",
+        },
+    )
+    assert response.status_code == 302
+    job.refresh_from_db()
+    assert job.state == MixingJob.State.DONE
+    assert job.actual_produced_qty == Decimal("1.900")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_cancel_view_requires_reason(
+    user_vlastnik, tyn, pepper
+) -> None:
+    from inventory.services import start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = start_mixing_job(
+        branch=tyn, mixture=mixture, target_qty=Decimal("2.000"), user=user_vlastnik
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(f"/michani/{job.pk}/zrusit/", {"reason": "   "})
+    assert response.status_code == 302
+    job.refresh_from_db()
+    assert job.state == MixingJob.State.RUNNING
+    response = client.post(
+        f"/michani/{job.pk}/zrusit/", {"reason": "vzal jsem špatnou recepturu"}
+    )
+    assert response.status_code == 302
+    job.refresh_from_db()
+    assert job.state == MixingJob.State.CANCELLED
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_obsluha_forbidden_on_other_branch(
+    user_obsluha_tyn, sez, pepper
+) -> None:
+    from inventory.services import start_mixing_job
+
+    User = get_user_model()
+    sez_runner = User.objects.create_user(
+        email="sez-runner@example.cz", password="x" * 12, branch=sez
+    )
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("5.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = start_mixing_job(
+        branch=sez, mixture=mixture, target_qty=Decimal("1.000"), user=sez_runner
+    )
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get(f"/michani/{job.pk}/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_preview_partial(user_vlastnik, tyn, pepper) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("3.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(
+        f"/_partials/mixing-preview/?branch={tyn.pk}&mixture={mixture.pk}&target_qty=5.000"
+    )
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "nedostatek" in body
+    assert "5,000" in body or "5.000" in body

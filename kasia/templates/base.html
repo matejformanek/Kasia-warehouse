@@ -170,6 +170,30 @@
     border-radius: 4px;
     margin-bottom: 0.75rem;
   }
+  .row-delete-btn {
+    background: #fbe8e8;
+    color: var(--error);
+    border: 1px solid #f0c0c0;
+    border-radius: 4px;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    font: inherit;
+  }
+  .row-delete-btn:hover { background: #f8d6d6; }
+  .line-row.marked-deleted { opacity: 0.45; text-decoration: line-through; }
+  .line-row.marked-deleted .row-delete-btn {
+    background: var(--bg-card);
+    color: var(--fg);
+    text-decoration: none;
+  }
+  .line-row.marked-deleted .row-delete-btn::before { content: "↺ "; }
+  .field-required::after { content: " *"; color: var(--error); font-weight: bold; }
+  .required-legend {
+    font-size: 0.85rem;
+    color: var(--fg-soft);
+    margin-bottom: 0.5rem;
+  }
+  .required-legend::before { content: "* "; color: var(--error); font-weight: bold; }
 </style>
 <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
 </head>
@@ -208,5 +232,19 @@
   {% endif %}
   {% block content %}{% endblock %}
 </main>
+<script>
+  // Wire up "× Smazat" / "↺" toggle on formset rows.
+  // Delegated so it works for rows added later via HTMX.
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest(".row-delete-btn");
+    if (!btn) return;
+    const cb = document.getElementById(btn.dataset.target);
+    if (!cb) return;
+    cb.checked = !cb.checked;
+    const row = btn.closest(".line-row");
+    if (row) row.classList.toggle("marked-deleted", cb.checked);
+    btn.textContent = cb.checked ? "Vrátit zpět" : "× Smazat";
+  });
+</script>
 </body>
 </html>

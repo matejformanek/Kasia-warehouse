@@ -51,8 +51,12 @@ Context variables:
            value="{{ line_form.note.value|default_if_none:'' }}" maxlength="256">
   </td>
   <td>
-    <label style="font-size:0.85rem;color:var(--fg-soft);">
-      <input type="checkbox" name="lines-{{ index }}-DELETE"> smazat
-    </label>
+    <input type="checkbox" name="lines-{{ index }}-DELETE"
+           id="lines-{{ index }}-DELETE" hidden>
+    <button type="button" class="row-delete-btn"
+            data-target="lines-{{ index }}-DELETE"
+            title="Označit řádek ke smazání (uloží se až s formulářem)">
+      × Smazat
+    </button>
   </td>
 </tr>

@@ -691,13 +691,41 @@
   filters down to 1; product detail for Oregano shows TYN +
   SEZ stock + "Použito v směsích → Gulášové koření".
 
+- **2026-06-12** — Decision
+  [`0039`](./decisions/0039-mixing-job-shape.md) drafted —
+  resolves the three operational opens from
+  [`../screens/15-michani.md`](./screens/15-michani.md) before
+  the míchání code lands:
+  - **Reserve vs. consume at start → consume.** Start step
+    writes the consume `Movement` immediately; cancel is an
+    audited correction. Avoids introducing a "reserved" stock
+    concept that has zero other uses.
+  - **After-the-fact recording → allow.** UI exposes a
+    "Zaznamenat dokončenou dávku" one-shot affordance with
+    optional `as_of`; default two-step start → finish still
+    the primary path.
+  - **Yield loss → delta on produced movement.** Operator
+    enters `actual_produced_kg`; loss is `target - actual` and
+    derived, not stored separately. Future explicit column is
+    an additive migration if reporting needs it.
+  Locked-in implementation notes (`MixingJob` +
+  `MixingJobLine` tables; recipe ratios snapshotted at start
+  per [`0005`](./decisions/0005-mixture-recipe-model.md);
+  internal "Míchárna" Customer + Supplier with new
+  `is_internal` boolean; `apply_movement` vydej path skips the
+  dodák PDF + e-mail hook when
+  `movement.odberatel.is_internal`; three new services
+  `start_mixing_job` / `finish_mixing_job` /
+  `cancel_mixing_job` + a `record_completed_mixing_job`
+  one-shot helper) anchor the next code pass; no model /
+  service code in this commit. Builds on Pass 1's
+  `apply_movement` / `edit_movement` services + the existing
+  audit-trail infrastructure.
+
 ## In progress
 
-_(nothing — operator-facing surface now spans screens 02 + 03 +
-04 + 05 + 06 + 07 + 08 + 09 + 10 + 11. Remaining MVP code work
-is screen 15 míchání — needs design decisions first
-(reserve-vs-consume, post-hoc recording). Otherwise just
-operational tasks.)_
+_(nothing — decision 0039 landed; ready for the míchání
+implementation pass when desired)_
 
 ## Next
 

@@ -5,10 +5,17 @@
 ARG PYTHON_VERSION=3.14
 ARG UV_VERSION=0.5
 
+# --- uv binary ----------------------------------------------------------------
+# Newer buildx refuses variable expansion in COPY --from=…; the workaround is
+# to pull the uv image into a named stage so subsequent COPY --from=uv_stage
+# is a plain reference. (Error seen on main pre-fix:
+# "variable expansion is not supported for --from".)
+FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv_stage
+
 # --- builder ----------------------------------------------------------------
 FROM python:${PYTHON_VERSION}-slim-trixie AS builder
 
-COPY --from=ghcr.io/astral-sh/uv:${UV_VERSION} /uv /uvx /usr/local/bin/
+COPY --from=uv_stage /uv /uvx /usr/local/bin/
 
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \

@@ -399,9 +399,20 @@ def render_dodaci_list_pdf(dodaci_list: DodaciList) -> bytes:
     """
     # Imported lazily — keeps module import cheap for non-PDF callers
     # (admin pages, tests touching services without rendering).
+    from pathlib import Path
+
+    from django.conf import settings as django_settings
     from weasyprint import HTML
 
     lines = list(dodaci_list.movement.lines.all().order_by("id"))
+
+    # WeasyPrint resolves images from disk. When Settings.logo is empty,
+    # fall back to the bundled brand mark at
+    # kasia/static/brand/kasia-logo.jpg. The template gets an absolute
+    # file:// URL it can use directly.
+    bundled_logo = Path(django_settings.BASE_DIR) / "kasia" / "static" / "brand" / "kasia-logo.jpg"
+    default_logo_url = f"file://{bundled_logo}" if bundled_logo.exists() else ""
+
     html_string = render_to_string(
         "inventory/dodaci_list.html",
         {
@@ -411,6 +422,7 @@ def render_dodaci_list_pdf(dodaci_list: DodaciList) -> bytes:
             "show_sarze": any(line.sarze for line in lines),
             "show_note": any(line.note for line in lines),
             "settings": Settings.load(),
+            "default_logo_url": default_logo_url,
         },
     )
     return HTML(string=html_string).write_pdf()

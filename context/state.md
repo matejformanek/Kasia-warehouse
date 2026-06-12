@@ -811,21 +811,107 @@
   tests green** (133 → 156); ruff clean; system check clean;
   makemigrations --check clean.
 
-## In progress
+- **2026-06-12** — Kasia brand logo landed.
+  `kasia/static/brand/kasia-logo.jpg` (white "KASIA" on green
+  with a leaf/flag mark; supplied by Petr 2026-06-09). Wired
+  into two places:
+  - `kasia/templates/base.html` nav: anchored `<a class="brand"
+    href="home">` with `<img>` + "sklad" subtitle, replacing
+    the plain "Kasia vera · sklad" text.
+  - `kasia/templates/inventory/dodaci_list.html`: the bundled
+    logo is the new PDF fallback when `Settings.logo` is empty
+    (a Petr-uploaded operator override still wins). The path is
+    computed in `render_dodaci_list_pdf` as
+    `file://{BASE_DIR}/kasia/static/brand/kasia-logo.jpg` and
+    passed via `default_logo_url` context — WeasyPrint reads
+    from disk, not via the static-files URL. Smoke test:
+    `TYN-2026-0001.pdf` grew from 12 228 B → 54 281 B with the
+    logo embedded, `%PDF-1.7` magic intact.
+  Settings template placeholder text ("Kasia vera s.r.o." in
+  the company-name field) is unchanged; the visual brand mark
+  in the header replaces the text placeholder that was the
+  Matej-ratified MVP default per
+  [`screens/14-nastaveni.md`](./screens/14-nastaveni.md) §
+  Hlavička. Closes the "Petr's logo files" open question for
+  the JPEG; SVG/PDF marks (if Petr ever supplies them) plug in
+  the same way via `Settings.logo` upload in admin.
 
-_(nothing — all MVP code work landed: 12 of 14 screens built,
-13/14 covered by admin, only Hetzner box provisioning remains
-operationally)_
+## Hand-off for the next session (post-compact)
+
+**Posture (Matej 2026-06-12):**
+- Keep building all screens locally; **no Hetzner deploy yet**.
+  Hetzner provisioning + the shadow run come *after* the full
+  surface is built and Matej has tested it locally.
+- Test only against the local dev server (`uv run python
+  manage.py runserver`) + the local compose stack. The deploy
+  workflow on `origin/main` will keep failing on the SSH step
+  ("missing server host") — that is the expected pre-Hetzner
+  state.
+- Matej will open the local app and feed back fixes /
+  ideology changes screen by screen once everything is built.
+
+**MVP code surface — 12 of 14 screens already in:**
+- Built: 01 login (Django built-in), 02 owner dashboard,
+  03 branch dashboard, 04 catalogue, 05 product detail,
+  06 příjem, 07 výdej, 08 dodáky list, 09 dodák detail,
+  10 movement history, 11 movement edit, 15 míchání.
+- **Not yet built**, admin only: **13 správa uživatelů**
+  (user / role management) and **14 nastavení** (Settings UI
+  beyond the admin form). These are the next two screens to
+  ship before we declare the operator-facing MVP complete.
+
+**Verification of where each screen lives:**
+- URL conf: `inventory/urls.py` (and `kasia/urls.py` for
+  /login/ /logout/ /admin/).
+- Views: `inventory/views.py` — function-based, grouped by
+  screen with `# --- ###` headers.
+- Templates: `kasia/templates/inventory/*.html` extending
+  `base.html`; the dodák PDF is `inventory/dodaci_list.html`
+  with embedded CSS Paged Media; the registration template is
+  `registration/login.html`.
+- Services (single write path): `inventory/services.py` —
+  `apply_movement` / `edit_movement` /
+  `start_mixing_job` / `finish_mixing_job` /
+  `cancel_mixing_job` / `record_completed_mixing_job` /
+  `render_dodaci_list_pdf` / `send_dodaci_list_email`.
+
+**Quality bar (do not weaken on later passes):**
+- `uv run pytest` → all green (currently 156).
+- `uv run ruff check` → clean.
+- `uv run python manage.py check` → clean.
+- `uv run python manage.py makemigrations --check --dry-run`
+  → "No changes detected" unless this pass adds models.
+- Every pass smoke-tested against
+  `DJANGO_DEBUG=1 uv run python manage.py runserver 8765`
+  with real seed data.
 
 ## Next
 
-1. **Provision the Hetzner box** —
-   `cd infra/terraform && terraform apply` from Matej's
-   workstation, populate `/srv/kasia/.env`, set GH Actions
-   secrets (`SSH_HOST`, `SSH_USER`, `SSH_KEY`), push to `main` to
-   trigger the first deploy. Verify against
-   [`../infra/RUNBOOK.md`](../infra/RUNBOOK.md). First production
-   use runs **14 days in shadow** (Petr + Karolína only, real
-   data, no operational reliance) per
-   [`0034`](./decisions/0034-shadow-run-before-go-live.md), then
+1. **Screen 13 — Správa uživatelů.** Owner-level only; create
+   / edit / activate / deactivate users; assign group (`obsluha`
+   vs vlastník) + branch FK; password reset. Spec in
+   [`screens/13-sprava-uzivatelu.md`](./screens/13-sprava-uzivatelu.md).
+   Builds on the existing `accounts.User` model + the
+   `is_obsluha` / `is_vlastnik` properties from Pass 3d.
+2. **Screen 14 — Nastavení (full operator UI).** Owner-level
+   only; mirror the admin SettingsAdmin shape into an
+   operator-friendly form per
+   [`screens/14-nastaveni.md`](./screens/14-nastaveni.md):
+   Společnost / SMTP / Příjemci / Šablony e-mailů sections,
+   "Otestovat odeslání" inline action (sends a test e-mail to
+   the current user). Settings.logo upload affordance.
+3. **Quality-of-life:** branch-code rename guard (lock after
+   first dodák per
+   [`0008`](./decisions/0008-dodaci-list-numbering.md)),
+   admin `is_internal` filter on Customer/Supplier so
+   Míchárna doesn't clutter the picker.
+4. **Local-only validation.** Once 13 + 14 land, run the full
+   compose stack locally (db service with the ICU locale
+   landed in 0038) and walk through every screen by hand
+   before Matej takes over for feedback iteration.
+5. **(Deferred until Matej says go.)** Provision the Hetzner
+   box per
+   [`infra/RUNBOOK.md`](../infra/RUNBOOK.md) → 14-day shadow
+   run per
+   [`0034`](./decisions/0034-shadow-run-before-go-live.md) →
    branch-staff cutover.

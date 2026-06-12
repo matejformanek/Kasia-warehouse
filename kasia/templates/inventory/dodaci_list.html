@@ -150,6 +150,8 @@
   <div class="logo">
     {% if settings.logo %}
       <img src="{{ settings.logo.path }}" alt="{{ settings.company_name }}">
+    {% elif default_logo_url %}
+      <img src="{{ default_logo_url }}" alt="{{ settings.company_name }}">
     {% else %}
       {{ settings.company_name }}
     {% endif %}

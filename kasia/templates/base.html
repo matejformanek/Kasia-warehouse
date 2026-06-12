@@ -37,6 +37,19 @@
     font-weight: bold;
     font-size: 1.1rem;
     color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  header.top .brand img {
+    height: 32px;
+    width: auto;
+    display: block;
+  }
+  header.top .brand .subtitle {
+    color: var(--fg-soft);
+    font-weight: normal;
+    font-size: 0.9rem;
   }
   header.top nav a, header.top nav button {
     margin-left: 1rem;
@@ -164,7 +177,10 @@
   hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
   hx-include="[name=csrfmiddlewaretoken]">
 <header class="top">
-  <div class="brand">Kasia vera · sklad</div>
+  <a class="brand" href="{% url 'inventory:home' %}" style="text-decoration:none;">
+    <img src="{% static 'brand/kasia-logo.jpg' %}" alt="Kasia">
+    <span class="subtitle">sklad</span>
+  </a>
   <nav>
     {% if user.is_authenticated %}
       <a href="{% url 'inventory:catalogue_index' %}">Katalog</a>

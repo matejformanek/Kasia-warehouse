@@ -238,7 +238,7 @@
   {% block content %}{% endblock %}
 </main>
 <script>
-  // Wire up "× Smazat" / "↺" toggle on formset rows.
+  // Wire up "× Smazat" / "Vrátit zpět" toggle on formset rows.
   // Delegated so it works for rows added later via HTMX.
   document.addEventListener("click", function (e) {
     const btn = e.target.closest(".row-delete-btn");
@@ -250,6 +250,24 @@
     if (row) row.classList.toggle("marked-deleted", cb.checked);
     btn.textContent = cb.checked ? "Vrátit zpět" : "× Smazat";
   });
+
+  // hx-vals helper for výdej stock-warn check. Reads the line row's
+  // current product + qty + the form's branch, returning empty strings
+  // instead of `undefined` so the URL stays clean and the server view's
+  // empty-input guard works as designed.
+  function stockWarnVals(row) {
+    const form = row.closest("form");
+    const idx = row.dataset.index;
+    const get = (sel) => {
+      const el = (form || document).querySelector(sel);
+      return (el && el.value) || "";
+    };
+    return {
+      branch: get("[name=branch]"),
+      product: get(`[name='lines-${idx}-product']`),
+      qty: get(`[name='lines-${idx}-quantity_kg']`),
+    };
+  }
 </script>
 </body>
 </html>

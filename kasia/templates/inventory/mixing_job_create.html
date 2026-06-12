@@ -37,7 +37,8 @@
               hx-get="{% url 'inventory:mixing_preview_partial' %}"
               hx-trigger="change"
               hx-target="#mixing-preview"
-              hx-vals='js:{branch: document.querySelector("[name=branch]").value, mixture: this.value, target_qty: document.querySelector("[name=target_qty]").value}'>
+              hx-include="closest form"
+              hx-params="branch,mixture,target_qty">
         <option value="">— vyberte směs —</option>
         {% for m in mixtures %}
           <option value="{{ m.pk }}">{{ m.name_cs }}</option>
@@ -52,7 +53,8 @@
              hx-get="{% url 'inventory:mixing_preview_partial' %}"
              hx-trigger="input changed delay:400ms"
              hx-target="#mixing-preview"
-             hx-vals='js:{branch: document.querySelector("[name=branch]").value, mixture: document.querySelector("[name=mixture]").value, target_qty: this.value}'>
+             hx-include="closest form"
+             hx-params="branch,mixture,target_qty">
     </div>
 
     <div class="field">

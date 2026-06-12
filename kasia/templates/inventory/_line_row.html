@@ -15,8 +15,7 @@ Context variables:
             {% if show_stock_warn %}hx-get="{% url 'inventory:stock_warn_partial' %}"
             hx-trigger="change"
             hx-target="closest tr .stock-warn-cell"
-            hx-include="closest tr [name=lines-{{ index }}-quantity_kg], [name=branch]"
-            hx-vals='js:{branch: document.querySelector("[name=branch]").value, product: this.value, qty: document.querySelector("[name=lines-{{ index }}-quantity_kg]").value}'{% endif %}>
+            hx-vals='js:stockWarnVals(this.closest("tr"))'{% endif %}>
       <option value="">— vyberte produkt —</option>
       {% for product in line_form.fields.product.queryset %}
         <option value="{{ product.pk }}"
@@ -34,7 +33,7 @@ Context variables:
            {% if show_stock_warn %}hx-get="{% url 'inventory:stock_warn_partial' %}"
            hx-trigger="input changed delay:300ms"
            hx-target="closest tr .stock-warn-cell"
-           hx-vals='js:{branch: document.querySelector("[name=branch]").value, product: document.querySelector("[name=lines-{{ index }}-product]").value, qty: this.value}'{% endif %}>
+           hx-vals='js:stockWarnVals(this.closest("tr"))'{% endif %}>
     {% if line_form.quantity_kg.errors %}<div class="errorlist">{{ line_form.quantity_kg.errors }}</div>{% endif %}
     {% if show_stock_warn %}<div class="stock-warn-cell"></div>{% endif %}
   </td>

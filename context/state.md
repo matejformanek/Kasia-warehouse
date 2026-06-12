@@ -506,18 +506,59 @@
   detail). Full suite: **91 pytest tests green** (77 → 91);
   ruff clean; system check clean; makemigrations --check clean.
 
+- **2026-06-12** — Pass 3c (screen 02 dashboard) landed. The
+  post-login landing replaces the placeholder home view with a
+  real owner dashboard per `screens/02-prehled-vlastnik.md`:
+  - **Top action strip** with "K vyřešení: N" (or "K vyřešení
+    dnes nic není" on a clean morning) + Nový příjem / Nový
+    výdej quick actions.
+  - **K vyřešení** section — only rendered when there is
+    something to surface. Two buckets:
+    - *Nedoručené e-maily* — dodáky whose latest send attempt at
+      `current_version` is `FAILED` and where no `SENT` log
+      exists at `current_version` (drops out automatically once
+      a successful re-send lands; matches screen 02's
+      "auto-resolution" expectation).
+    - *Nedávno editované dodáky* — `DodaciList.current_version
+      > 1`, latest 5, with `v{N}` marker.
+  - **Two branch panels side-by-side** (TYN + SEZ) — product
+    count, total mass on hand (`floatformat:"3"` so kg always
+    shows 3 dp under the Czech locale, which otherwise trims
+    trailing zeros), top-5 stocks by quantity, last 5 movements
+    each linking to `movement_edit`. Empty-state placeholders
+    ("Zatím žádné zboží na skladě" / "Zatím žádné pohyby").
+  - **Dodací listy k revizi** table — latest 10 across both
+    branches, columns Číslo / Datum / Pobočka / Odběratel /
+    Verze, with the edited-version cell highlighted; "Celý
+    seznam" link to `dodaci_list_index`.
+  No role gating yet — every authenticated user lands on this
+  dashboard. Branch-staff routing to screen 03 is a future pass
+  (the screen exists in the design but isn't built; shadow-run
+  per [`0034`](./decisions/0034-shadow-run-before-go-live.md)
+  only has Petr + Karolína, both owner-level). Fixed `dodaci_list_index`'s
+  awkward triple-form `pluralize` ("dodác{í,ích} list{,y}") to a
+  plain "N záznamů"; same for the dashboard "K vyřešení" count.
+  6 new view tests in `inventory/tests.py` (clean-morning
+  placeholders, branch stock + top products, recent dodáky
+  feed, edited-dodák flagged in "K vyřešení", failed-send bucket
+  populates / drops on successful re-send, login-required gate
+  on `/`). Full suite: **97 pytest tests green** (91 → 97);
+  ruff clean; system check clean; makemigrations --check clean.
+  End-to-end smoke against the dev server with seeded TYN (2
+  products, total 33 kg) + SEZ (1 product, 3,5 kg) + 1 výdej
+  edited to v2: dashboard rendered "K vyřešení: 2" with both
+  failed-send + editováno entries, both branch panels with top
+  stocks, dodáky table with `v2` flag.
+
 ## In progress
 
-_(nothing — Pass 3b landed; ready for Pass 3c: screen 02
-dashboard)_
+_(nothing — Pass 3c landed; the operator-facing surface is now
+feature-complete for shadow-run per
+[`0034`](./decisions/0034-shadow-run-before-go-live.md))_
 
 ## Next
 
-1. **Pass 3c — screen 02 dashboard.** "K vyřešení" rollup
-   (failed sends from `DodaciListEmailLog(status=failed)`,
-   recent corrections, low-stock peek). Lands once 3b ships
-   the data shapes the dashboard rolls up.
-3. **Make `cs_CZ.UTF-8` available in the `db` service** (planning
+1. **Make `cs_CZ.UTF-8` available in the `db` service** (planning
    needed). Surfaced 2026-06-10 after the compose volume-layout fix
    landed. Options to pick between:
    - extend `postgres:18-trixie` with `locales-all` (or just
@@ -532,7 +573,7 @@ dashboard)_
    Pick one, write a numbered decision file, then implement. Until
    this lands, the compose stack only starts with a neutralised
    locale.
-4. **Provision the Hetzner box** —
+2. **Provision the Hetzner box** —
    `cd infra/terraform && terraform apply` from Matej's
    workstation, populate `/srv/kasia/.env`, set GH Actions
    secrets (`SSH_HOST`, `SSH_USER`, `SSH_KEY`), push to `main` to

@@ -47,8 +47,99 @@ from .services import apply_movement, edit_movement, render_dodaci_list_pdf, sen
 
 @require_GET
 def home(request):
-    """Post-login landing. Pass 3c will replace with the dashboard."""
-    return render(request, "inventory/home.html")
+    """Post-login landing — the owner dashboard per screen 02.
+
+    Two branch panels (TYN + SEZ) with per-branch stock summary +
+    recent movements; a "Dodací listy k revizi" feed across both
+    branches; a "K vyřešení" rollup of failed sends and
+    recently-edited dodáky.
+
+    No role gating yet — branch-staff routing to screen 03 lands in
+    a later pass. For shadow-run (per 0034) all users land here.
+    """
+    from django.db.models import Sum
+
+    branches = list(Branch.objects.filter(is_active=True).order_by("code"))
+    branch_panels = []
+    for b in branches:
+        stocks = list(
+            Stock.objects.filter(branch=b, quantity__gt=0)
+            .select_related("product")
+            .order_by("-quantity")
+        )
+        total_mass = (
+            Stock.objects.filter(branch=b).aggregate(s=Sum("quantity"))["s"]
+            or Decimal("0.000")
+        )
+        recent_movements = list(
+            Movement.objects.filter(branch=b)
+            .select_related("odberatel", "dodavatel", "created_by")
+            .prefetch_related("lines__product")
+            .order_by("-date_issued", "-id")[:5]
+        )
+        branch_panels.append(
+            {
+                "branch": b,
+                "product_count": len(stocks),
+                "total_mass": total_mass,
+                "top_stocks": stocks[:5],
+                "recent_movements": recent_movements,
+            }
+        )
+
+    recent_dodaky = list(
+        DodaciList.objects.select_related("branch", "odberatel")
+        .order_by("-date_issued", "-id")[:10]
+    )
+
+    # K vyřešení: failed sends whose dodák hasn't yet been re-sent
+    # successfully at the current version. The query: dodáky that
+    # have ≥1 FAILED log at the current version and 0 SENT logs at
+    # the current version.
+    failed_dodaky = []
+    for dl in DodaciList.objects.prefetch_related("email_logs"):
+        logs_at_current = [
+            log for log in dl.email_logs.all() if log.version == dl.current_version
+        ]
+        if not logs_at_current:
+            continue
+        any_sent = any(
+            log.status == DodaciListEmailLog.Status.SENT for log in logs_at_current
+        )
+        any_failed = any(
+            log.status == DodaciListEmailLog.Status.FAILED for log in logs_at_current
+        )
+        if any_failed and not any_sent:
+            last_failed = max(
+                (
+                    log
+                    for log in logs_at_current
+                    if log.status == DodaciListEmailLog.Status.FAILED
+                ),
+                key=lambda log: log.sent_at,
+            )
+            failed_dodaky.append(
+                {"dodaci_list": dl, "last_failed": last_failed}
+            )
+
+    # Recently edited dodáky (current_version > 1), latest first, top 5.
+    edited_dodaky = list(
+        DodaciList.objects.select_related("branch", "odberatel")
+        .filter(current_version__gt=1)
+        .order_by("-id")[:5]
+    )
+
+    return render(
+        request,
+        "inventory/home.html",
+        {
+            "branch_panels": branch_panels,
+            "recent_dodaky": recent_dodaky,
+            "failed_dodaky": failed_dodaky,
+            "edited_dodaky": edited_dodaky,
+            "to_resolve_count": len(failed_dodaky) + len(edited_dodaky),
+        },
+    )
 
 
 @require_GET

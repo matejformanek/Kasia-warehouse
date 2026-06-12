@@ -1636,3 +1636,129 @@ def test_vydej_post_now_redirects_to_dodaci_list_detail(
     )
     assert response.status_code == 302
     assert response.headers["Location"] == "/dodaky/TYN-2026-0001/"
+
+
+# ---------------------------------------------------------------------------
+# Pass 3c — dashboard (screen 02)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dashboard_clean_morning(user_tyn) -> None:
+    """First-ever state: branch panels exist with placeholders;
+    K vyřešení says nothing to worry about today."""
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "K vyřešení dnes nic není" in body
+    assert "TYN" in body and "SEZ" in body
+    assert "Zatím žádné zboží na skladě" in body
+    assert "Zatím nebyly vystaveny žádné dodací listy" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dashboard_shows_branch_stock(user_tyn, tyn, sez, pepper, paprika) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("8.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("3.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("1.500"))
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/")
+    body = response.content.decode("utf-8")
+    # TYN total = 11.000 kg with 2 products; SEZ total = 1.500 kg with 1
+    # product. Both numbers should appear somewhere in the body.
+    assert "11,000" in body or "11.000" in body
+    assert "1,500" in body or "1.500" in body
+    assert pepper.name_cs in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dashboard_lists_recent_dodaky(user_tyn, tyn, ricany, pepper) -> None:
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/")
+    body = response.content.decode("utf-8")
+    assert "Dodací listy k revizi" in body
+    assert dl.cislo in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dashboard_flags_edited_dodak(user_tyn, tyn, ricany, pepper) -> None:
+    from inventory.services import edit_movement
+
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    line = mv.lines.get()
+    edit_movement(
+        movement=mv,
+        changes={},
+        line_changes=[
+            {"op": "update", "line_id": line.pk, "fields": {"quantity_kg": Decimal("3.000")}}
+        ],
+        reason="oprava hmotnosti",
+        user=user_tyn,
+    )
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/")
+    body = response.content.decode("utf-8")
+    assert "Nedávno editované dodáky" in body
+    # The edited dodák appears with its v2 marker.
+    assert dl.cislo in body
+    assert "v2" in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch) -> None:
+    """A dodák whose latest send at current_version FAILED appears in
+    the 'Nedoručené e-maily' bucket; once re-sent successfully, it
+    drops out."""
+    from inventory import services
+    from inventory.models import DodaciListEmailLog
+
+    # First create the výdej WITH a failing SMTP so the initial send logs FAILED.
+    def _fail(self, *args, **kwargs):
+        raise RuntimeError("smtp down")
+
+    monkeypatch.setattr(services.EmailMessage, "send", _fail)
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    assert DodaciListEmailLog.objects.filter(
+        dodaci_list=dl, status=DodaciListEmailLog.Status.FAILED
+    ).exists()
+
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/")
+    body = response.content.decode("utf-8")
+    assert "Nedoručené e-maily" in body
+    assert dl.cislo in body
+    # to_resolve_count should be ≥ 1
+    assert "K vyřešení" in body
+
+    # Now restore normal send and re-send → the latest log at v1 is SENT,
+    # the failed bucket should empty.
+    monkeypatch.undo()
+    pdf = services.render_dodaci_list_pdf(dl)
+    services.send_dodaci_list_email(
+        dodaci_list=dl,
+        trigger_reason="ruční opětovné odeslání",
+        pdf_bytes=pdf,
+    )
+    response2 = client.get("/")
+    body2 = response2.content.decode("utf-8")
+    assert "Nedoručené e-maily" not in body2
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dashboard_requires_login() -> None:
+    response = Client().get("/")
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/login/")

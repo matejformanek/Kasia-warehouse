@@ -22,6 +22,8 @@ urlpatterns = [
     path("pohyby/", views.movement_history, name="movement_history"),
     path("pohyby/<int:pk>/", views.movement_saved, name="movement_saved"),
     path("pohyby/<int:pk>/upravit/", views.movement_edit, name="movement_edit"),
+    path("katalog/", views.catalogue_index, name="catalogue_index"),
+    path("katalog/<int:pk>/", views.product_detail, name="product_detail"),
     path("dodaky/", views.dodaci_list_index, name="dodaci_list_index"),
     path("dodaky/<str:cislo>/", views.dodaci_list_detail, name="dodaci_list_detail"),
     path(

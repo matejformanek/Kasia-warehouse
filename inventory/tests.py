@@ -2203,3 +2203,203 @@ def test_history_obsluha_branch_filter_param_ignored(
     # and the branch filter dropdown is NOT rendered.
     assert "pobočka TYN" in body
     assert 'id="id_filter_branch"' not in body
+
+
+# ---------------------------------------------------------------------------
+# Pass 3f — catalogue (screens 04 + 05, read-only)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_requires_login() -> None:
+    response = Client().get("/katalog/")
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/login/")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_lists_active_only_by_default(
+    user_vlastnik, pepper, paprika
+) -> None:
+    paprika.is_active = False
+    paprika.save()
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/katalog/")
+    body = response.content.decode("utf-8")
+    assert pepper.name_cs in body
+    assert paprika.name_cs not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_archived_filter(user_vlastnik, pepper, paprika) -> None:
+    paprika.is_active = False
+    paprika.save()
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/katalog/?status=archived")
+    body = response.content.decode("utf-8")
+    assert paprika.name_cs in body
+    assert pepper.name_cs not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_search_filter(user_vlastnik, pepper, paprika) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/katalog/?q={pepper.name_cs[:4]}")
+    body = response.content.decode("utf-8")
+    assert pepper.name_cs in body
+    assert paprika.name_cs not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_kind_filter(user_vlastnik) -> None:
+    Product.objects.create(name_cs="Surovina", kind=Product.Kind.RAW_SPICE)
+    Product.objects.create(name_cs="Směs", kind=Product.Kind.MIXTURE)
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/katalog/?kind=mixture")
+    body = response.content.decode("utf-8")
+    assert "Směs" in body
+    assert "Surovina" not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_shows_total_kg_for_vlastnik(
+    user_vlastnik, tyn, sez, pepper
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("8.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("3.500"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/katalog/")
+    body = response.content.decode("utf-8")
+    # 11.500 → Czech "11,500"
+    assert "11,500" in body
+    assert "Skladem celkem" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_shows_branch_kg_for_obsluha(
+    user_obsluha_tyn, tyn, sez, pepper
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("8.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("99.000"))
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/katalog/")
+    body = response.content.decode("utf-8")
+    assert "Skladem v TYN" in body
+    assert "8,000" in body
+    assert "99,000" not in body and "99.000" not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_marks_mixture_with_recipe(user_vlastnik, pepper) -> None:
+    mixture = Product.objects.create(
+        name_cs="Gulášové koření", kind=Product.Kind.MIXTURE
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper, ratio=Decimal("1.0")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/katalog/")
+    body = response.content.decode("utf-8")
+    assert mixture.name_cs in body
+    assert "má recepturu" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_renders_for_raw_spice(
+    user_vlastnik, tyn, sez, pepper
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("8.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("3.500"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/katalog/{pepper.pk}/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert pepper.name_cs in body
+    assert "8,000" in body
+    assert "3,500" in body
+    assert "11,500" in body
+    # Recipe section absent for raw spice.
+    assert "Receptura" not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_renders_recipe_for_mixture(
+    user_vlastnik, pepper, paprika
+) -> None:
+    mixture = Product.objects.create(
+        name_cs="Gulášové koření", kind=Product.Kind.MIXTURE
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper, ratio=Decimal("0.7")
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=paprika, ratio=Decimal("0.3")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/katalog/{mixture.pk}/")
+    body = response.content.decode("utf-8")
+    assert "Receptura" in body
+    assert pepper.name_cs in body
+    assert paprika.name_cs in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_shows_used_in_for_raw_spice(
+    user_vlastnik, pepper
+) -> None:
+    mixture = Product.objects.create(
+        name_cs="Gulášové koření", kind=Product.Kind.MIXTURE
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper, ratio=Decimal("1.0")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/katalog/{pepper.pk}/")
+    body = response.content.decode("utf-8")
+    assert "Použito v směsích" in body
+    assert mixture.name_cs in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_404_for_unknown(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/katalog/99999/")
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_obsluha_sees_only_own_branch_stock(
+    user_obsluha_tyn, tyn, sez, pepper
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("8.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("99.000"))
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get(f"/katalog/{pepper.pk}/")
+    body = response.content.decode("utf-8")
+    assert "8,000" in body
+    assert "99,000" not in body and "99.000" not in body

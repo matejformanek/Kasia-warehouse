@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Katalog produktů — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Katalog produktů</h1>
+
+<form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_q">Hledat</label>
+    <input type="search" name="q" id="id_filter_q" value="{{ filter_q }}"
+           placeholder="česky, např. „pepř"…" style="min-width:240px;">
+  </div>
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_kind">Typ</label>
+    <select name="kind" id="id_filter_kind">
+      <option value="">— vše —</option>
+      <option value="raw_spice" {% if filter_kind == "raw_spice" %}selected{% endif %}>koření</option>
+      <option value="mixture" {% if filter_kind == "mixture" %}selected{% endif %}>směs</option>
+    </select>
+  </div>
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_status">Stav</label>
+    <select name="status" id="id_filter_status">
+      <option value="active" {% if filter_status == "active" %}selected{% endif %}>aktivní</option>
+      <option value="archived" {% if filter_status == "archived" %}selected{% endif %}>archivované</option>
+      <option value="all" {% if filter_status == "all" %}selected{% endif %}>vše</option>
+    </select>
+  </div>
+  <div>
+    <button class="primary" type="submit">Filtrovat</button>
+    <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Vymazat</a>
+  </div>
+</form>
+
+<p style="color:var(--fg-soft);">Nalezeno: {{ count }} produktů.</p>
+
+{% if rows %}
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Název</th>
+        <th>Typ</th>
+        {% if obsluha_branch %}
+          <th style="text-align:right;">Skladem v {{ obsluha_branch.code }} (kg)</th>
+        {% else %}
+          <th style="text-align:right;">Skladem celkem (kg)</th>
+        {% endif %}
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <td>
+            <a href="{% url 'inventory:product_detail' pk=row.product.pk %}">
+              {{ row.product.name_cs }}
+            </a>
+            {% if not row.product.is_active %}
+              <span style="color:var(--fg-soft);font-size:0.85rem;">(archivováno)</span>
+            {% endif %}
+          </td>
+          <td>{{ row.product.get_kind_display }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">
+            {{ row.total|floatformat:"3" }}
+          </td>
+          <td>
+            {% if row.product.kind == "mixture" and row.has_recipe %}
+              <span style="color:var(--accent);">má recepturu</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% elif filter_q or filter_kind or filter_status != "active" %}
+  <p>Nic neodpovídá filtru.
+    <a href="{% url 'inventory:catalogue_index' %}">Vymazat filtry</a>
+  </p>
+{% else %}
+  <p>Katalog je zatím prázdný. Nové produkty se přidávají v administraci.</p>
+{% endif %}
+{% endblock %}

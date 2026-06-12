@@ -41,6 +41,7 @@ from .models import (
     MovementAudit,
     MovementLine,
     Product,
+    RecipeComponent,
     Stock,
 )
 from .services import apply_movement, edit_movement, render_dodaci_list_pdf, send_dodaci_list_email
@@ -499,6 +500,133 @@ def _push_validation_error_to_formset(exc: ValidationError, formset) -> None:
     else:
         msgs.extend(exc.messages)
     formset._non_form_errors = formset.error_class(msgs)
+
+
+# ---------------------------------------------------------------------------
+# Catalogue (screens 04 / 05 — read-only browse)
+# ---------------------------------------------------------------------------
+
+
+@require_GET
+def catalogue_index(request):
+    """Browse the product catalogue. Filters: q (icontains on name),
+    kind (raw_spice / mixture), status (active / archived / all).
+    Defaults to active products only.
+    """
+
+    qs = Product.objects.all().order_by("name_cs")
+
+    status = request.GET.get("status") or "active"
+    if status == "active":
+        qs = qs.filter(is_active=True)
+    elif status == "archived":
+        qs = qs.filter(is_active=False)
+    # "all" → no filter
+
+    kind = request.GET.get("kind") or ""
+    if kind in (Product.Kind.RAW_SPICE, Product.Kind.MIXTURE):
+        qs = qs.filter(kind=kind)
+
+    search = (request.GET.get("q") or "").strip()
+    if search:
+        qs = qs.filter(name_cs__icontains=search)
+
+    products = list(qs)
+
+    # Per-product stock (in branch scope for obsluha, across both
+    # branches for vlastník) + recipe presence, zipped into one row
+    # struct so the template doesn't need custom filters to index a
+    # dict by primary key.
+    stock_qs = Stock.objects.filter(product__in=products).select_related("branch")
+    if request.user.is_obsluha and request.user.branch_id:
+        stock_qs = stock_qs.filter(branch_id=request.user.branch_id)
+    totals: dict[int, Decimal] = {}
+    for s in stock_qs:
+        totals[s.product_id] = totals.get(s.product_id, Decimal("0.000")) + s.quantity
+
+    has_recipe = set(
+        RecipeComponent.objects.filter(mixture_product__in=products)
+        .values_list("mixture_product_id", flat=True)
+        .distinct()
+    )
+
+    rows = [
+        {
+            "product": p,
+            "total": totals.get(p.pk, Decimal("0.000")),
+            "has_recipe": p.pk in has_recipe,
+        }
+        for p in products
+    ]
+
+    return render(
+        request,
+        "inventory/catalogue_index.html",
+        {
+            "rows": rows,
+            "count": len(rows),
+            "filter_q": search,
+            "filter_kind": kind,
+            "filter_status": status,
+            "obsluha_branch": (
+                request.user.branch if request.user.is_obsluha else None
+            ),
+        },
+    )
+
+
+@require_GET
+def product_detail(request, pk: int):
+    """Per-product detail with per-branch stock + recipe (for mixtures)
+    + recent movements for this product."""
+    product = get_object_or_404(Product, pk=pk)
+
+    stock_qs = Stock.objects.filter(product=product).select_related("branch")
+    if request.user.is_obsluha and request.user.branch_id:
+        stock_qs = stock_qs.filter(branch_id=request.user.branch_id)
+    stocks = list(stock_qs.order_by("branch__code"))
+    total = sum((s.quantity for s in stocks), start=Decimal("0.000"))
+
+    recipe = []
+    if product.kind == Product.Kind.MIXTURE:
+        recipe = list(
+            RecipeComponent.objects.filter(mixture_product=product)
+            .select_related("component_product")
+            .order_by("component_product__name_cs")
+        )
+
+    used_in = []
+    if product.kind == Product.Kind.RAW_SPICE:
+        used_in = list(
+            RecipeComponent.objects.filter(component_product=product)
+            .select_related("mixture_product")
+            .order_by("mixture_product__name_cs")
+        )
+
+    recent_movements_qs = (
+        Movement.objects.filter(lines__product=product)
+        .select_related("branch", "odberatel", "dodavatel", "created_by")
+        .prefetch_related("lines__product")
+        .distinct()
+    )
+    if request.user.is_obsluha and request.user.branch_id:
+        recent_movements_qs = recent_movements_qs.filter(
+            branch_id=request.user.branch_id
+        )
+    recent_movements = list(recent_movements_qs.order_by("-date_issued", "-id")[:20])
+
+    return render(
+        request,
+        "inventory/product_detail.html",
+        {
+            "product": product,
+            "stocks": stocks,
+            "total_quantity": total,
+            "recipe": recipe,
+            "used_in": used_in,
+            "recent_movements": recent_movements,
+        },
+    )
 
 
 # ---------------------------------------------------------------------------

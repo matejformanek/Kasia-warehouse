@@ -167,6 +167,7 @@
   <div class="brand">Kasia vera · sklad</div>
   <nav>
     {% if user.is_authenticated %}
+      <a href="{% url 'inventory:catalogue_index' %}">Katalog</a>
       <a href="{% url 'inventory:prijem_create' %}">Příjem</a>
       <a href="{% url 'inventory:vydej_create' %}">Výdej</a>
       <a href="{% url 'inventory:dodaci_list_index' %}">Dodací listy</a>

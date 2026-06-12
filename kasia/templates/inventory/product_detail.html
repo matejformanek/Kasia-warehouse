@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name_cs }} — Katalog{% endblock %}
+
+{% block content %}
+<h1>
+  {{ product.name_cs }}
+  <span style="font-weight:normal;color:var(--fg-soft);font-size:1rem;">
+    · {{ product.get_kind_display }}
+  </span>
+  {% if not product.is_active %}
+    <span style="font-weight:normal;color:var(--warn);font-size:1rem;">
+      · archivováno
+    </span>
+  {% endif %}
+</h1>
+
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Stav skladu</h2>
+  {% if stocks %}
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Pobočka</th>
+          <th style="text-align:right;">Množství (kg)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in stocks %}
+          <tr>
+            <td>{{ s.branch.code }} — {{ s.branch.name }}</td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">
+              {{ s.quantity|floatformat:"3" }}
+            </td>
+          </tr>
+        {% endfor %}
+        <tr>
+          <td><strong>Celkem</strong></td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">
+            <strong>{{ total_quantity|floatformat:"3" }}</strong>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  {% else %}
+    <p style="color:var(--fg-soft);">Tento produkt zatím nikde na skladě není.</p>
+  {% endif %}
+  {% if product.notes %}
+    <p style="margin-top:1rem;color:var(--fg-soft);">{{ product.notes|linebreaksbr }}</p>
+  {% endif %}
+</div>
+
+{% if product.kind == "mixture" %}
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Receptura</h2>
+  {% if recipe %}
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Surovina</th>
+          <th style="text-align:right;">Podíl</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rc in recipe %}
+          <tr>
+            <td>
+              <a href="{% url 'inventory:product_detail' pk=rc.component_product.pk %}">
+                {{ rc.component_product.name_cs }}
+              </a>
+            </td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">
+              {{ rc.ratio }}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p style="color:var(--fg-soft);">
+      Receptura se snapshotuje při zahájení míchání (per decision 0005).
+    </p>
+  {% else %}
+    <p style="color:var(--fg-soft);">Recept zatím nebyl vyplněn.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if used_in %}
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Použito v směsích</h2>
+  <ul>
+    {% for rc in used_in %}
+      <li>
+        <a href="{% url 'inventory:product_detail' pk=rc.mixture_product.pk %}">
+          {{ rc.mixture_product.name_cs }}
+        </a> — podíl {{ rc.ratio }}
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Nedávné pohyby s tímto produktem</h2>
+  {% if recent_movements %}
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Druh</th>
+          <th>Pobočka</th>
+          <th>Protistrana</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mv in recent_movements %}
+          <tr>
+            <td>
+              <a href="{% url 'inventory:movement_edit' pk=mv.pk %}">
+                {{ mv.date_issued|date:"d. m. Y" }}
+              </a>
+            </td>
+            <td>{{ mv.get_kind_display }}</td>
+            <td>{{ mv.branch.code }}</td>
+            <td>
+              {% if mv.kind == "vydej" %}{{ mv.odberatel.name }}{% else %}{{ mv.dodavatel.name }}{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="color:var(--fg-soft);">Tento produkt zatím nemá žádné pohyby.</p>
+  {% endif %}
+</div>
+
+<p>
+  <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Zpět na katalog</a>
+</p>
+{% endblock %}

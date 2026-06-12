@@ -658,12 +658,46 @@
   **120 pytest tests green** (110 → 120); ruff clean; system
   check clean.
 
+- **2026-06-12** — Pass 3f (catalogue, screens 04 + 05,
+  read-only) landed. Two new routes under `inventory:`:
+  - `/katalog/` (`catalogue_index`) — browse with `q`
+    (icontains on `name_cs`), `kind` (raw_spice / mixture),
+    `status` (active / archived / all, default active). Per-row
+    stock column adapts: vlastník sees "Skladem celkem" summed
+    across branches; obsluha sees "Skladem v <branch.code>"
+    scoped to their own branch. Mixtures with a recipe show a
+    "má recepturu" badge.
+  - `/katalog/<int:pk>/` (`product_detail`) — header with type +
+    archived marker; per-branch stock table + total row (scoped
+    for obsluha); for mixtures, the recipe rendered as
+    surovina+podíl with links to each component; for raw spices,
+    a "Použito v směsích" section listing mixtures whose recipe
+    references this product; recent movements involving this
+    product (top 20, branch-scoped for obsluha) linked into
+    `movement_edit`.
+  Nav extended with a "Katalog" link (leftmost item). Write +
+  edit affordances deferred — admin still covers product
+  create / archive / recipe edit for the shadow run; pass 3f is
+  the read-only operator-facing browse surface. 13 new tests:
+  login gate; default active-only filter; archived filter;
+  search; kind filter; vlastník total kg vs obsluha branch kg;
+  mixture "má recepturu" badge; product detail render for raw
+  spice / mixture; "Použito v směsích" cross-link from a raw
+  spice; 404 on unknown pk; obsluha stock scoping on the detail
+  page. Full suite: **133 pytest tests green** (120 → 133);
+  ruff clean; system check clean. End-to-end smoke against the
+  dev server: katalog lists 5 seeded products including
+  Gulášové koření with the "má recepturu" badge; ?kind=mixture
+  filters down to 1; product detail for Oregano shows TYN +
+  SEZ stock + "Použito v směsích → Gulášové koření".
+
 ## In progress
 
 _(nothing — operator-facing surface now spans screens 02 + 03 +
-06 + 07 + 08 + 09 + 10 + 11. Remaining MVP code work is screen
-15 míchání — needs design decisions first (reserve-vs-consume,
-post-hoc recording). Otherwise just operational tasks.)_
+04 + 05 + 06 + 07 + 08 + 09 + 10 + 11. Remaining MVP code work
+is screen 15 míchání — needs design decisions first
+(reserve-vs-consume, post-hoc recording). Otherwise just
+operational tasks.)_
 
 ## Next
 

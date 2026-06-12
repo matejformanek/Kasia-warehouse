@@ -836,6 +836,98 @@
   the JPEG; SVG/PDF marks (if Petr ever supplies them) plug in
   the same way via `Settings.logo` upload in admin.
 
+- **2026-06-12** — Screen 13 (Správa uživatelů) landed.
+  New `accounts.urls` mounted at `/uzivatele/`; views
+  `user_index`, `user_create`, `user_edit`, `user_deactivate`,
+  `user_reactivate`, `user_password_reset`. Owner-only:
+  `_require_vlastnik` raises `PermissionDenied` (403) for
+  obsluha. Forms `UserCreateForm` + `UserEditForm` enforce
+  the role/branch rules from
+  [`screens/13`](./screens/13-sprava-uzivatelu.md) (obsluha
+  must have a branch; vlastník has none; e-mail read-only on
+  edit; password mismatch + duplicate-email + Django password
+  validators on create) plus the **last-vlastník protection**
+  (form-level on demotion, view-level on deactivate). Role
+  maps onto Django group membership via `_sync_role` (presence
+  of the `obsluha` group ↔ obsluha; absence ↔ vlastník).
+  Password reset is handled by Django's built-in
+  `PasswordResetForm.save()`. New Czech `registration/`
+  templates wired in `kasia/urls.py` for the full reset flow
+  (form / done / confirm / complete / email / subject), each
+  reachable without login via `@login_not_required`. Nav
+  `"Uživatelé"` link added in `base.html` under
+  `{% if user.is_vlastnik %}`.
+  17 new tests in `accounts/tests.py` (login gate, obsluha
+  403, vlastník 200, create vlastník / obsluha / missing-branch
+  reject / duplicate-email reject / password-mismatch reject,
+  edit role+branch, last-vlastník demotion refused, deactivate
+  success / last-vlastník refused, reactivate,
+  password-reset sends mail + refused for deactivated, nav
+  link shown for vlastník + hidden for obsluha). Autouse
+  fixture `_view_overrides` applies plain-staticfiles +
+  locmem-email so `base.html` renders under tests. Full suite:
+  **173 pytest tests green** (156 → 173); ruff clean; system
+  check clean; makemigrations --check clean. No new models, no
+  migrations — pure views + forms + templates.
+
+- **2026-06-12** — Screen 14 (Nastavení operator UI) landed.
+  New routes under `inventory:` —
+  `/nastaveni/` (`settings_edit`) and `/nastaveni/test-smtp/`
+  (`settings_test_smtp`, POST-only). Owner-only via the local
+  `_require_vlastnik` helper in `inventory/views.py`. Form
+  `SettingsForm(ModelForm)` in `inventory/forms.py` mirrors
+  `SettingsAdminForm`: excludes `singleton_key`, renders
+  `smtp_password` as `PasswordInput(render_value=False)`, blank
+  input on edit preserves the existing password. Template
+  `kasia/templates/inventory/settings_form.html` lays out the
+  four sections per
+  [`screens/14`](./screens/14-nastaveni.md) (Společnost +
+  hlavička / SMTP / Příjemci / Šablony e-mailů), plus three
+  read-only blocks: "Otestovat odeslání" with current-user
+  default, "Dodací list — formát" with a per-branch counter
+  table (`DodaciListNumberSequence` lookup; "letos ještě nic"
+  placeholder if no dodáky issued this year), and "Pobočky"
+  with the read-only branch identity table + Říčany footnote.
+  Test-SMTP path builds a one-shot `get_connection()` with the
+  live `Settings` values and sends a Czech test message; any
+  exception is surfaced via Django messages without leaking
+  the traceback into the response body. `SmtpTestForm` rejects
+  invalid e-mails without sending. Nav `"Nastavení"` link
+  added in `base.html` next to "Uživatelé", still gated on
+  `{% if user.is_vlastnik %}`. 11 new tests in
+  `inventory/tests.py` (login gate, obsluha 403, vlastník
+  renders all section headers, save updates company fields +
+  preserves singleton, blank password preserves stored value,
+  test-SMTP sends to target / forbidden for obsluha / rejects
+  invalid e-mail, branch-counter table shows the latest číslo
+  preview, nav link shown for vlastník + hidden for obsluha).
+  Full suite: **184 pytest tests green** (173 → 184); ruff
+  clean; system check clean; makemigrations --check clean. No
+  new models, no migrations — pure views + form + template.
+  Smoke-tested in the running docker stack:
+  `GET /nastaveni/` returns 200, all four section headers and
+  the "Otestovat odeslání" button render correctly.
+
+- **2026-06-12** — Local dev switched to **full docker compose
+  stack** (web + db + caddy proxy), not `manage.py runserver`
+  against a standalone Postgres. Added top-level `Makefile`
+  with `up / down / wipe / build / logs / shell / psql /
+  migrate / superuser / test / ps` targets — `make up` builds
+  the image (multi-stage per
+  [`0022`](./decisions/0022-container-image.md)), brings up
+  `db` (PG18 + ICU `cs-CZ`), runs `migrate --noinput`, then
+  starts `web` + `proxy`. Local `.env` (gitignored) sets safe
+  local defaults (`DJANGO_DEBUG=1`, throwaway secret key,
+  blank SMTP). `make superuser` creates
+  `admin@kasia.local / heslo1234`. End-to-end verified against
+  the running stack: `/uzivatele/` returns 200 to the seeded
+  superuser; the schema works on PG18 + ICU; Caddy proxy
+  serves the app on `http://localhost/`. The runtime image is
+  `--no-dev` so it has no pytest; `make test` runs the suite
+  on the host (uv) against SQLite, matching existing CI
+  behaviour. Same image we ship to Hetzner — local and prod
+  are now byte-identical except for `.env`.
+
 ## Hand-off for the next session (post-compact)
 
 **Posture (Matej 2026-06-12):**
@@ -850,15 +942,15 @@
 - Matej will open the local app and feed back fixes /
   ideology changes screen by screen once everything is built.
 
-**MVP code surface — 12 of 14 screens already in:**
+**MVP code surface — all 14 screens now in:**
 - Built: 01 login (Django built-in), 02 owner dashboard,
   03 branch dashboard, 04 catalogue, 05 product detail,
   06 příjem, 07 výdej, 08 dodáky list, 09 dodák detail,
-  10 movement history, 11 movement edit, 15 míchání.
-- **Not yet built**, admin only: **13 správa uživatelů**
-  (user / role management) and **14 nastavení** (Settings UI
-  beyond the admin form). These are the next two screens to
-  ship before we declare the operator-facing MVP complete.
+  10 movement history, 11 movement edit, 13 správa uživatelů,
+  **14 nastavení**, 15 míchání.
+- **Operator-facing MVP surface is complete.** Next step is
+  Matej's local walkthrough → feedback iteration → Hetzner
+  provisioning + shadow run.
 
 **Verification of where each screen lives:**
 - URL conf: `inventory/urls.py` (and `kasia/urls.py` for
@@ -876,31 +968,24 @@
   `render_dodaci_list_pdf` / `send_dodaci_list_email`.
 
 **Quality bar (do not weaken on later passes):**
-- `uv run pytest` → all green (currently 156).
+- `make test` (= `uv run pytest`) → all green (currently 184).
 - `uv run ruff check` → clean.
 - `uv run python manage.py check` → clean.
 - `uv run python manage.py makemigrations --check --dry-run`
   → "No changes detected" unless this pass adds models.
-- Every pass smoke-tested against
-  `DJANGO_DEBUG=1 uv run python manage.py runserver 8765`
-  with real seed data.
+- Every pass smoke-tested against the **full docker compose
+  stack** (`make up` → http://localhost/) — not
+  `manage.py runserver`. Same image we ship to Hetzner. See
+  the `Makefile` targets and
+  [[feedback-docker-full-stack]] memory.
 
 ## Next
 
-1. **Screen 13 — Správa uživatelů.** Owner-level only; create
-   / edit / activate / deactivate users; assign group (`obsluha`
-   vs vlastník) + branch FK; password reset. Spec in
-   [`screens/13-sprava-uzivatelu.md`](./screens/13-sprava-uzivatelu.md).
-   Builds on the existing `accounts.User` model + the
-   `is_obsluha` / `is_vlastnik` properties from Pass 3d.
-2. **Screen 14 — Nastavení (full operator UI).** Owner-level
-   only; mirror the admin SettingsAdmin shape into an
-   operator-friendly form per
-   [`screens/14-nastaveni.md`](./screens/14-nastaveni.md):
-   Společnost / SMTP / Příjemci / Šablony e-mailů sections,
-   "Otestovat odeslání" inline action (sends a test e-mail to
-   the current user). Settings.logo upload affordance.
-3. **Quality-of-life:** branch-code rename guard (lock after
+1. **Local walkthrough by Matej.** All 14 screens land in
+   docker (`make up` → http://localhost/). Matej steps
+   through every screen with realistic data and feeds back
+   fixes / ideology changes.
+2. **Quality-of-life:** branch-code rename guard (lock after
    first dodák per
    [`0008`](./decisions/0008-dodaci-list-numbering.md)),
    admin `is_internal` filter on Customer/Supplier so

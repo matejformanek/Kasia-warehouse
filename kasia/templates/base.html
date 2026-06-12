@@ -222,6 +222,7 @@
       <a href="{% url 'inventory:dodaci_list_index' %}">Dodací listy</a>
       <a href="{% url 'inventory:movement_history' %}">Historie</a>
       {% if user.is_vlastnik %}
+        <a href="{% url 'inventory:branch_index' %}">Pobočky</a>
         <a href="{% url 'accounts:user_index' %}">Uživatelé</a>
         <a href="{% url 'inventory:settings_edit' %}">Nastavení</a>
       {% endif %}

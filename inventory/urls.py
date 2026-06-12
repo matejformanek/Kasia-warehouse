@@ -90,6 +90,24 @@ urlpatterns = [
         views.supplier_reactivate,
         name="supplier_reactivate",
     ),
+    # Branch CRUD (Pass 5c, per 0040 — vlastník-only)
+    path("pobocky/", views.branch_index, name="branch_index"),
+    path("pobocky/novy/", views.branch_create, name="branch_create"),
+    path(
+        "pobocky/<str:code>/upravit/",
+        views.branch_edit,
+        name="branch_edit",
+    ),
+    path(
+        "pobocky/<str:code>/archivovat/",
+        views.branch_archive,
+        name="branch_archive",
+    ),
+    path(
+        "pobocky/<str:code>/aktivovat/",
+        views.branch_reactivate,
+        name="branch_reactivate",
+    ),
     # Customer CRUD (Pass 5, per 0040)
     path("odberatele/", views.customer_index, name="customer_index"),
     path("odberatele/novy/", views.customer_create, name="customer_create"),

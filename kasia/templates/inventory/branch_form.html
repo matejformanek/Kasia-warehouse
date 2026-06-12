@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if mode == "create" %}Nová pobočka{% else %}Úprava pobočky — {{ target.code }}{% endif %} — Kasia vera
+{% endblock %}
+
+{% block content %}
+<h1>
+  {% if mode == "create" %}
+    Nová pobočka
+  {% else %}
+    Úprava pobočky — {{ target.code }} ({{ target.name }})
+  {% endif %}
+</h1>
+
+<p class="required-legend">povinné pole</p>
+
+<form method="post" class="card">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="non-form-errors">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="field">
+    <label class="field-required" for="{{ form.code.id_for_label }}">{{ form.code.label }}</label>
+    {{ form.code }}
+    {% if code_locked %}
+      <small style="color:var(--fg-soft); display:block;">
+        Kód je zamčený — pobočka už má {{ dodak_count }} vystavený(ch) dodáků
+        (per rozhodnutí 0008 je kód součástí číslování a nelze ho měnit).
+      </small>
+    {% else %}
+      <small style="color:var(--fg-soft); display:block;">
+        Třípísmenný kód, např. <code>TYN</code>, <code>SEZ</code>.
+        Po vystavení prvního dodáku se zamkne.
+      </small>
+    {% endif %}
+    {{ form.code.errors }}
+  </div>
+  <div class="field">
+    <label class="field-required" for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+    {{ form.name }}
+    {{ form.name.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.address.id_for_label }}">{{ form.address.label }}</label>
+    {{ form.address }}
+    {{ form.address.errors }}
+  </div>
+  <div class="field">
+    <label>
+      {{ form.is_active }} aktivní
+    </label>
+    {{ form.is_active.errors }}
+  </div>
+
+  <button type="submit" class="primary">
+    {% if mode == "create" %}Přidat pobočku{% else %}Uložit změny{% endif %}
+  </button>
+  <a class="secondary" href="{% url 'inventory:branch_index' %}">Zrušit</a>
+</form>
+{% endblock %}

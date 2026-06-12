@@ -3559,3 +3559,202 @@ def test_catalogue_has_new_product_button(user_obsluha_tyn) -> None:
     response = client.get("/katalog/")
     assert response.status_code == 200
     assert b"Nov\xc3\xbd produkt" in response.content
+
+
+# ---------------------------------------------------------------------------
+# Pass 5c — Branch CRUD (per decision 0040, vlastník-only)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_index_requires_login() -> None:
+    response = Client().get("/pobocky/")
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_index_forbidden_for_obsluha(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/pobocky/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_index_renders_for_vlastnik(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/pobocky/")
+    assert response.status_code == 200
+    assert b"TYN" in response.content
+    assert b"SEZ" in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_create_by_vlastnik(user_vlastnik) -> None:
+    from inventory.models import Branch as B
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/pobocky/novy/",
+        {
+            "code": "prh",  # lower-case input; clean_code uppercases
+            "name": "Praha (sklad)",
+            "address": "Praha 5",
+            "is_active": "on",
+        },
+    )
+    assert response.status_code == 302
+    new_branch = B.objects.get(code="PRH")
+    assert new_branch.name == "Praha (sklad)"
+    assert new_branch.is_active is True
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_create_rejects_invalid_code(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/pobocky/novy/",
+        {"code": "TY", "name": "Test", "address": "", "is_active": "on"},
+    )
+    assert response.status_code == 200
+    assert b"3 p\xc3\xadsmena" in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_create_rejects_duplicate_code(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/pobocky/novy/",
+        {"code": "TYN", "name": "Dup", "address": "", "is_active": "on"},
+    )
+    assert response.status_code == 200
+    assert b"s t\xc3\xadmto k\xc3\xb3dem u\xc5\xbe existuje" in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_edit_locks_code_after_first_dodak(
+    user_vlastnik, tyn
+) -> None:
+    """Per 0008, the code is part of dodák number — locked once issued."""
+    from datetime import date
+
+    from inventory.models import DodaciList, DodaciListNumberSequence
+
+    # Synthesise a dodák for TYN so the gate triggers.
+    DodaciListNumberSequence.objects.create(
+        branch=tyn, year=date.today().year, last_counter=1
+    )
+    # No movement required for the gate — _branch_code_locked looks at
+    # DodaciList table directly.
+    from inventory.models import Movement
+    # Create a placeholder movement so the dodák FK is valid.
+    mv = Movement.objects.create(
+        branch=tyn,
+        kind=Movement.Kind.VYDEJ,
+        odberatel=Customer.objects.get(is_default_recipient=True),
+        date_issued=date.today(),
+        note="",
+        created_by=user_vlastnik,
+    )
+    DodaciList.objects.create(
+        movement=mv,
+        branch=tyn,
+        odberatel=mv.odberatel,
+        date_issued=date.today(),
+        year_issued=date.today().year,
+        counter=1,
+        cislo=f"TYN-{date.today().year}-0001",
+        current_version=1,
+        created_by=user_vlastnik,
+    )
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/pobocky/TYN/upravit/")
+    assert response.status_code == 200
+    assert b"K\xc3\xb3d je zam\xc4\x8den\xc3\xbd" in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_archive_refuses_with_stock(
+    user_vlastnik, tyn, pepper
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.0"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/pobocky/TYN/archivovat/", follow=True
+    )
+    assert response.status_code == 200
+    tyn.refresh_from_db()
+    assert tyn.is_active is True
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_archive_refuses_with_active_users(
+    user_vlastnik, sez
+) -> None:
+    """SEZ has obsluha-sez user (autouse seed) — archive should refuse."""
+    from accounts.models import User as UserModel
+    # Ensure at least one active user is on SEZ.
+    UserModel.objects.create_user(
+        email="sez-active@example.cz", password="x" * 12, branch=sez
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post("/pobocky/SEZ/archivovat/", follow=True)
+    assert response.status_code == 200
+    sez.refresh_from_db()
+    assert sez.is_active is True
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_archive_succeeds_when_clean(user_vlastnik) -> None:
+    """A branch with no stock + no active users can be archived."""
+    from inventory.models import Branch as B
+    new_branch = B.objects.create(code="ZZZ", name="Test", is_active=True)
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/pobocky/{new_branch.code}/archivovat/", follow=True
+    )
+    assert response.status_code == 200
+    new_branch.refresh_from_db()
+    assert new_branch.is_active is False
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_nav_pobocky_link_visible_to_vlastnik(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert b"Pobo\xc4\x8dky" in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_nav_pobocky_link_hidden_for_obsluha(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/pobocka/TYN/")
+    assert response.status_code == 200
+    # The text "Pobočky" must not appear as a nav anchor for obsluha.
+    # The branch dashboard h1 might have "pobočka" — sanity check on
+    # the /pobocky/ URL not appearing in the anchors.
+    assert b'href="/pobocky/"' not in response.content

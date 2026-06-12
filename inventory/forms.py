@@ -356,3 +356,59 @@ RecipeComponentFormSet = forms.modelformset_factory(
     extra=0,
     can_delete=True,
 )
+
+
+# ---------------------------------------------------------------------------
+# Branch CRUD (Pass 5c, per decision 0040, vlastník-only)
+# ---------------------------------------------------------------------------
+
+
+from .models import Branch  # noqa: E402
+
+
+class BranchForm(forms.ModelForm):
+    """Operator-facing form for branches. Vlastník-only per 0040.
+
+    `code` is locked once any dodák has been issued from that branch
+    (per [0008](../context/decisions/0008-dodaci-list-numbering.md))
+    — re-using/changing the code would break číslování invariants.
+    """
+
+    class Meta:
+        model = Branch
+        fields = ("code", "name", "address", "is_active")
+        widgets = {
+            "address": forms.Textarea(attrs={"rows": 2}),
+        }
+        labels = {
+            "code": "Kód (3 písmena)",
+            "name": "Název",
+            "address": "Adresa",
+        }
+
+    def __init__(self, *args, code_locked: bool = False, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        if code_locked:
+            self.fields["code"].disabled = True
+
+    def clean_code(self) -> str:
+        code = (self.cleaned_data["code"] or "").strip().upper()
+        if len(code) != 3:
+            raise forms.ValidationError(
+                "Kód pobočky musí mít přesně 3 písmena (např. TYN, SEZ)."
+            )
+        if not code.isalpha():
+            raise forms.ValidationError(
+                "Kód pobočky smí obsahovat pouze písmena."
+            )
+        qs = Branch.objects.filter(code=code)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(
+                "Pobočka s tímto kódem už existuje."
+            )
+        return code
+
+    def clean_name(self) -> str:
+        return (self.cleaned_data["name"] or "").strip()

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Pobočky — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Pobočky</h1>
+
+<form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_status">Stav</label>
+    <select name="status" id="id_filter_status" onchange="this.form.submit()">
+      <option value="active" {% if filter_status == "active" %}selected{% endif %}>aktivní</option>
+      <option value="archived" {% if filter_status == "archived" %}selected{% endif %}>archivované</option>
+      <option value="all" {% if filter_status == "all" %}selected{% endif %}>vše</option>
+    </select>
+  </div>
+  <div style="margin-left:auto;">
+    <a class="primary" href="{% url 'inventory:branch_create' %}">+ Nová pobočka</a>
+  </div>
+</form>
+
+<p style="color:var(--fg-soft);">Nalezeno: {{ rows|length }} poboček.</p>
+
+{% if rows %}
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Kód</th>
+        <th>Název</th>
+        <th>Adresa</th>
+        <th style="text-align:right;">Dodáků</th>
+        <th>Stav</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr {% if not row.branch.is_active %}style="opacity:0.55;"{% endif %}>
+          <td><strong>{{ row.branch.code }}</strong>
+            {% if row.code_locked %}
+              <small style="color:var(--fg-soft);">· kód zamčen</small>
+            {% endif %}
+          </td>
+          <td>{{ row.branch.name }}</td>
+          <td>{{ row.branch.address|default:"—" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.dodak_count }}</td>
+          <td>
+            {% if row.branch.is_active %}
+              <span style="color:var(--ok);">aktivní</span>
+            {% else %}
+              <span style="color:var(--fg-soft);">archivovaná</span>
+            {% endif %}
+          </td>
+          <td style="white-space:nowrap;">
+            <a class="secondary" href="{% url 'inventory:branch_edit' code=row.branch.code %}">Upravit</a>
+            {% if row.branch.is_active %}
+              <form method="post" action="{% url 'inventory:branch_archive' code=row.branch.code %}" style="display:inline;"
+                    onsubmit="return confirm('Opravdu archivovat pobočku {{ row.branch.code }}?');">
+                {% csrf_token %}
+                <button class="secondary" type="submit">Archivovat</button>
+              </form>
+            {% else %}
+              <form method="post" action="{% url 'inventory:branch_reactivate' code=row.branch.code %}" style="display:inline;">
+                {% csrf_token %}
+                <button class="secondary" type="submit">Aktivovat</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p style="color:var(--fg-soft);">Žádné pobočky v tomto filtru.</p>
+{% endif %}
+
+<p style="color:var(--fg-soft); font-size:0.9rem; margin-top:1rem;">
+  Kód pobočky je součástí čísla dodacího listu (<code>&lt;KÓD&gt;-&lt;YYYY&gt;-&lt;NNNN&gt;</code>,
+  per rozhodnutí 0008). Po vystavení prvního dodáku z dané pobočky se kód uzamkne.
+  Říčany nejsou pobočka — jsou výchozí odběratel (per 0030).
+</p>
+{% endblock %}

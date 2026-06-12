@@ -12,11 +12,12 @@
 #   make psql       # psql inside the db container
 #   make migrate    # run migrations
 #   make superuser  # create the default local superuser (admin@kasia.local / heslo1234)
+#   make seed       # seed walkthrough data (users, catalogue, sample movements)
 #   make test       # run pytest inside the web container
 
 COMPOSE ?= docker compose
 
-.PHONY: up down wipe build logs shell psql migrate superuser test ps
+.PHONY: up down wipe build logs shell psql migrate superuser seed test ps
 
 build:
 	$(COMPOSE) build
@@ -58,6 +59,12 @@ superuser:
 		-e DJANGO_SUPERUSER_PASSWORD=heslo1234 \
 		web python manage.py createsuperuser --noinput || true
 	@echo "Superuser: admin@kasia.local / heslo1234"
+
+seed:
+	# Idempotent: users + catalogue always upserted; movement history
+	# seeded only when the DB has no Movement rows yet. Re-run on
+	# `make wipe` + `make up` + `make seed` to regenerate.
+	$(COMPOSE) run --rm -e DJANGO_DEBUG=1 web python manage.py seed_walkthrough_data
 
 test:
 	# Tests run on the host (uv) against SQLite — the production image is

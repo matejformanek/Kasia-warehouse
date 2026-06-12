@@ -101,7 +101,7 @@ class MovementLineForm(forms.Form):
 
 MovementLineFormSet = forms.formset_factory(
     MovementLineForm,
-    extra=1,
+    extra=0,
     min_num=1,
     validate_min=True,
     can_delete=True,
@@ -131,7 +131,7 @@ class MovementEditLineForm(MovementLineForm):
 
 MovementEditLineFormSet = forms.formset_factory(
     MovementEditLineForm,
-    extra=1,
+    extra=0,
     can_delete=True,
 )
 

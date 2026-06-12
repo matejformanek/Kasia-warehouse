@@ -115,7 +115,7 @@
     margin: 0.25rem 0 0;
     font-size: 0.9rem;
   }
-  button.primary {
+  .primary, button.primary, a.primary {
     background: var(--accent);
     color: white;
     border: 0;
@@ -123,8 +123,13 @@
     border-radius: 4px;
     font: inherit;
     cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
   }
-  button.primary:hover { filter: brightness(1.1); }
+  .primary:hover, button.primary:hover, a.primary:hover {
+    filter: brightness(1.1);
+    color: white;
+  }
   button.secondary, a.secondary {
     background: white;
     color: var(--fg);

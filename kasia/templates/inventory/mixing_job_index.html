@@ -5,9 +5,7 @@
 {% block content %}
 <h1>Míchací dávky</h1>
 <p>
-  <a class="primary" href="{% url 'inventory:mixing_job_create' %}" style="text-decoration:none;display:inline-block;padding:0.55rem 1.1rem;border-radius:4px;color:white;">
-    Nová dávka
-  </a>
+  <a class="primary" href="{% url 'inventory:mixing_job_create' %}">+ Nová dávka</a>
 </p>
 
 <p style="color:var(--fg-soft);">Nalezeno: {{ count }} dávek.</p>

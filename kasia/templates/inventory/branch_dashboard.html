@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}{{ branch.code }} — {{ branch.name }} — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>{{ branch.code }} — {{ branch.name }}</h1>
+{% if branch.address %}
+  <p style="color:var(--fg-soft);margin-top:-0.5rem;">{{ branch.address }}</p>
+{% endif %}
+
+<div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+  <div style="color:var(--fg-soft);">
+    Stav skladu k {% now "d. m. Y H:i" %}.
+  </div>
+  <div>
+    <a class="secondary" href="{% url 'inventory:prijem_create' %}">Nový příjem</a>
+    <a class="secondary" href="{% url 'inventory:vydej_create' %}">Nový výdej</a>
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Stav skladu</h2>
+  <form method="get" style="margin-bottom:0.75rem;">
+    <input type="search" name="q" value="{{ search }}"
+           placeholder="Hledat produkt…"
+           style="max-width:280px;">
+    <button class="secondary" type="submit">Hledat</button>
+    {% if search %}
+      <a class="secondary" href="{% url 'inventory:branch_dashboard' code=branch.code %}">
+        Vymazat
+      </a>
+    {% endif %}
+  </form>
+
+  {% if stocks %}
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Produkt</th>
+          <th style="text-align:right;">Množství (kg)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in stocks %}
+          <tr>
+            <td>{{ s.product.name_cs }}</td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ s.quantity|floatformat:"3" }}</td>
+            <td>
+              {% if s.quantity <= 0 %}
+                <span style="color:var(--error);font-weight:bold;">prázdné</span>
+              {% elif s.quantity < 1 %}
+                <span style="color:var(--warn);">nízký stav</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% elif search %}
+    <p style="color:var(--fg-soft);">Nic neodpovídá hledání „{{ search }}".</p>
+  {% else %}
+    <p style="color:var(--fg-soft);">Na pobočce zatím není evidováno žádné zboží.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Nedávné pohyby</h2>
+  {% if recent_movements %}
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Druh</th>
+          <th>Protistrana</th>
+          <th>Položky</th>
+          <th>Operátor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mv in recent_movements %}
+          <tr>
+            <td>{{ mv.date_issued|date:"d. m. Y" }}</td>
+            <td>
+              <a href="{% url 'inventory:movement_edit' pk=mv.pk %}">
+                {{ mv.get_kind_display }}
+              </a>
+            </td>
+            <td>
+              {% if mv.kind == "vydej" %}{{ mv.odberatel.name }}{% else %}{{ mv.dodavatel.name }}{% endif %}
+            </td>
+            <td>{{ mv.lines.count }}</td>
+            <td style="color:var(--fg-soft);">{{ mv.created_by.email }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="color:var(--fg-soft);">Zatím žádné pohyby.</p>
+  {% endif %}
+</div>
+{% endblock %}

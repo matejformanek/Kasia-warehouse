@@ -579,10 +579,60 @@
   provider. No production cluster exists yet, so this is a
   clean re-initialisation (0038 § Consequences).
 
+- **2026-06-12** — Pass 3d (role gating + branch dashboard,
+  screen 03) landed. `accounts.User` grew two properties:
+  - `is_obsluha` — `True` iff the user is in the seeded
+    `obsluha` group (and not a superuser);
+  - `is_vlastnik` — `True` for superusers, for users in
+    `vlastnik` (implicit via "not obsluha"), and for the
+    *unassigned* default (no group) — so existing admin-created
+    accounts continue to land on the owner dashboard without an
+    explicit migration step. Branch staff get the `obsluha`
+    group explicitly on account creation.
+
+  `inventory.home` now checks role + branch FK and redirects
+  `obsluha + has branch` users to `/pobocka/<branch.code>/`
+  (screen 03); everyone else still sees the owner dashboard
+  (screen 02) — matches the screen-02 spec "branch staff who try
+  to reach it are redirected to their own Přehled pobočky".
+
+  New route `/pobocka/<code>/` (`branch_dashboard`) — branch
+  name + address, "Stav skladu" table with product search
+  (`?q=…` icontains), "nízký stav" / "prázdné" markers on
+  small / zero rows, "Nedávné pohyby" (last 15) each linked to
+  `movement_edit`, quick-action buttons (Nový příjem / Nový
+  výdej). Access rules: vlastník / superuser users may open
+  either branch; obsluha users on the other branch see a 403
+  with the Czech "Nemáte oprávnění zobrazit tuto pobočku"
+  placeholder per the screen-03 spec.
+
+  New conftest fixtures `user_obsluha_tyn` + `user_obsluha_sez`
+  (branch-scoped, in `obsluha` group); the existing `user_tyn`
+  is now documented as a "generic logged-in user → default
+  vlastník" fixture (kept stable so Pass 3a/b/c tests still
+  pass). Owner dashboard branch-panel headers are now clickable
+  links into the per-branch view.
+
+  13 new tests: `is_vlastnik` / `is_obsluha` property semantics
+  (unassigned default, group membership, superuser),
+  obsluha-to-branch-dashboard redirect, owner-to-owner-dashboard
+  landing, branch dashboard renders with stock + recent
+  movements, stock list scoped strictly to this branch (SEZ
+  stock invisible on TYN), search filters by product name,
+  obsluha forbidden on the other branch (403 + Czech text),
+  vlastník can view either branch, 404 on unknown code,
+  login-required gate. Full suite: **110 pytest tests green**
+  (97 → 110); ruff clean; system check clean;
+  makemigrations --check clean. End-to-end smoke against the
+  dev server: obsluha login redirects to /pobocka/TYN/; obsluha
+  GET /pobocka/SEZ/ returns 403; vlastník login lands on owner
+  dashboard with "K vyřešení" + "Dodací listy k revizi".
+
 ## In progress
 
-_(nothing — locale gate closed; the compose stack is ready to
-bring up cleanly with the Czech ICU collation)_
+_(nothing — operator-facing surface complete for both roles;
+the only remaining MVP work is operational: provision the
+Hetzner box and start the shadow run)_
 
 ## Next
 

@@ -6,6 +6,7 @@ app_name = "inventory"
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("pobocka/<str:code>/", views.branch_dashboard, name="branch_dashboard"),
     path("prijem/novy/", views.prijem_create, name="prijem_create"),
     path("vydej/novy/", views.vydej_create, name="vydej_create"),
     path(

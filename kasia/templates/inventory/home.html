@@ -57,7 +57,10 @@
   {% for panel in branch_panels %}
     <div class="card">
       <h2 style="font-size:1.05rem;margin-top:0;">
-        {{ panel.branch.code }} — {{ panel.branch.name }}
+        <a href="{% url 'inventory:branch_dashboard' code=panel.branch.code %}"
+           style="color:inherit;text-decoration:none;">
+          {{ panel.branch.code }} — {{ panel.branch.name }}
+        </a>
       </h2>
       {% if panel.branch.address %}
         <p style="color:var(--fg-soft);margin-top:0;">{{ panel.branch.address }}</p>

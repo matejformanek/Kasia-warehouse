@@ -59,3 +59,23 @@ class User(AbstractUser):
 
     def __str__(self) -> str:
         return self.email
+
+    @property
+    def is_obsluha(self) -> bool:
+        """True iff this user is branch staff (in the seeded `obsluha`
+        group). Superusers are not obsluha even if they happen to be
+        in the group."""
+        if self.is_superuser:
+            return False
+        return self.groups.filter(name="obsluha").exists()
+
+    @property
+    def is_vlastnik(self) -> bool:
+        """True iff this user is owner-level — superuser, in the
+        `vlastnik` group, or unassigned (the default for shadow-run
+        per decision 0034, where only Petr + Karolína use the system
+        and neither is branch-scoped). Branch staff get the `obsluha`
+        group explicitly on account creation."""
+        if self.is_superuser:
+            return True
+        return not self.is_obsluha

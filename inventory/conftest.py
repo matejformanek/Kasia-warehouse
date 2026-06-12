@@ -61,9 +61,13 @@ def paprika(db) -> Product:
 
 @pytest.fixture
 def user_tyn(db, tyn):
+    """Generic logged-in user with branch=TYN. No role group — falls
+    back to vlastník per accounts.User.is_vlastnik default. Pass 3a/b/c
+    tests use this fixture and rely on the owner-dashboard routing
+    that "unassigned → vlastník" produces."""
     User = get_user_model()
     return User.objects.create_user(
-        email="obsluha-tyn@example.cz",
+        email="user-tyn@example.cz",
         password="x" * 12,
         branch=tyn,
     )
@@ -76,6 +80,38 @@ def user_vlastnik(db):
         email="vlastnik@example.cz",
         password="x" * 12,
     )
+
+
+@pytest.fixture
+def user_obsluha_tyn(db, tyn):
+    """Branch-staff user explicitly in the `obsluha` group + scoped to
+    TYN. Routes to /pobocka/TYN/ on /."""
+    from django.contrib.auth.models import Group
+
+    User = get_user_model()
+    u = User.objects.create_user(
+        email="obsluha-tyn@example.cz",
+        password="x" * 12,
+        branch=tyn,
+    )
+    obsluha, _ = Group.objects.get_or_create(name="obsluha")
+    u.groups.add(obsluha)
+    return u
+
+
+@pytest.fixture
+def user_obsluha_sez(db, sez):
+    from django.contrib.auth.models import Group
+
+    User = get_user_model()
+    u = User.objects.create_user(
+        email="obsluha-sez@example.cz",
+        password="x" * 12,
+        branch=sez,
+    )
+    obsluha, _ = Group.objects.get_or_create(name="obsluha")
+    u.groups.add(obsluha)
+    return u
 
 
 @pytest.fixture(autouse=True)

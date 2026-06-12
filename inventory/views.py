@@ -47,16 +47,19 @@ from .services import apply_movement, edit_movement, render_dodaci_list_pdf, sen
 
 @require_GET
 def home(request):
-    """Post-login landing — the owner dashboard per screen 02.
+    """Post-login landing.
 
-    Two branch panels (TYN + SEZ) with per-branch stock summary +
-    recent movements; a "Dodací listy k revizi" feed across both
-    branches; a "K vyřešení" rollup of failed sends and
-    recently-edited dodáky.
-
-    No role gating yet — branch-staff routing to screen 03 lands in
-    a later pass. For shadow-run (per 0034) all users land here.
+    Role routing per screens/02 + screens/03:
+    - Branch staff (`obsluha` group, has `user.branch` FK) redirect
+      to `/pobocka/<branch.code>/` (screen 03).
+    - Everyone else (vlastník / superuser / unassigned) lands on
+      the owner dashboard below (screen 02).
     """
+    if request.user.is_obsluha and request.user.branch_id:
+        return redirect(
+            "inventory:branch_dashboard", code=request.user.branch.code
+        )
+
     from django.db.models import Sum
 
     branches = list(Branch.objects.filter(is_active=True).order_by("code"))
@@ -154,6 +157,54 @@ def movement_saved(request, pk: int):
         request,
         "inventory/movement_saved.html",
         {"movement": movement, "dodaci_list": dodaci_list},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Branch dashboard (screen 03)
+# ---------------------------------------------------------------------------
+
+
+@require_GET
+def branch_dashboard(request, code: str):
+    """Per-branch dashboard. Vlastník / superuser users may open any
+    branch; obsluha users are scoped to their own branch (403 on the
+    other branch).
+    """
+    branch = get_object_or_404(Branch, code=code)
+
+    if request.user.is_obsluha:
+        if request.user.branch_id != branch.pk:
+            return HttpResponse(
+                "Nemáte oprávnění zobrazit tuto pobočku.",
+                content_type="text/plain; charset=utf-8",
+                status=403,
+            )
+
+    stocks_qs = (
+        Stock.objects.filter(branch=branch)
+        .select_related("product")
+        .order_by("product__name_cs")
+    )
+    search = (request.GET.get("q") or "").strip()
+    if search:
+        stocks_qs = stocks_qs.filter(product__name_cs__icontains=search)
+    stocks = list(stocks_qs)
+    recent_movements = list(
+        Movement.objects.filter(branch=branch)
+        .select_related("odberatel", "dodavatel", "created_by")
+        .prefetch_related("lines__product")
+        .order_by("-date_issued", "-id")[:15]
+    )
+    return render(
+        request,
+        "inventory/branch_dashboard.html",
+        {
+            "branch": branch,
+            "stocks": stocks,
+            "recent_movements": recent_movements,
+            "search": search,
+        },
     )
 
 

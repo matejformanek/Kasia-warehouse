@@ -1762,3 +1762,162 @@ def test_dashboard_requires_login() -> None:
     response = Client().get("/")
     assert response.status_code == 302
     assert response.headers["Location"].startswith("/login/")
+
+
+# ---------------------------------------------------------------------------
+# Pass 3d — role gating + branch dashboard (screen 03)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_user_is_vlastnik_default_unassigned(user_tyn) -> None:
+    # user_tyn has no group → default vlastník per accounts.User.is_vlastnik.
+    assert user_tyn.is_vlastnik is True
+    assert user_tyn.is_obsluha is False
+
+
+@pytest.mark.django_db
+def test_user_is_obsluha_when_in_group(user_obsluha_tyn) -> None:
+    assert user_obsluha_tyn.is_obsluha is True
+    assert user_obsluha_tyn.is_vlastnik is False
+
+
+@pytest.mark.django_db
+def test_user_superuser_is_vlastnik(admin_user) -> None:
+    assert admin_user.is_vlastnik is True
+    assert admin_user.is_obsluha is False
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_home_routes_obsluha_to_branch_dashboard(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/")
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/pobocka/TYN/"
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_home_owner_lands_on_owner_dashboard(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    # Owner dashboard markers.
+    assert "Dodací listy k revizi" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_renders_for_obsluha(user_obsluha_tyn, tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/pobocka/TYN/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "TYN" in body and tyn.name in body
+    assert "Stav skladu" in body
+    assert "Nedávné pohyby" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_lists_stock_for_branch(
+    user_obsluha_tyn, tyn, sez, pepper, paprika
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("8.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("3.000"))
+    # SEZ stock that must NOT appear on TYN's dashboard.
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("99.000"))
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/pobocka/TYN/")
+    body = response.content.decode("utf-8")
+    assert pepper.name_cs in body
+    assert paprika.name_cs in body
+    # 99.000 from SEZ should NOT appear (TYN only has 8 and 3).
+    assert "99,000" not in body and "99.000" not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_search_filters_stock(
+    user_obsluha_tyn, tyn, pepper, paprika
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("8.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("3.000"))
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get(f"/pobocka/TYN/?q={pepper.name_cs[:4]}")
+    body = response.content.decode("utf-8")
+    assert pepper.name_cs in body
+    assert paprika.name_cs not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_obsluha_forbidden_on_other_branch(
+    user_obsluha_tyn, sez
+) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/pobocka/SEZ/")
+    assert response.status_code == 403
+    assert "Nemáte oprávnění" in response.content.decode("utf-8")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_vlastnik_can_view_either_branch(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    for code in ("TYN", "SEZ"):
+        response = client.get(f"/pobocka/{code}/")
+        assert response.status_code == 200, code
+        assert code in response.content.decode("utf-8")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_404_for_unknown_code(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/pobocka/ZZZ/")
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_requires_login() -> None:
+    response = Client().get("/pobocka/TYN/")
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/login/")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_recent_movements(
+    user_obsluha_tyn, tyn, ricany, pepper
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    from inventory.services import apply_movement as _apply
+
+    _apply(
+        movement=Movement(
+            branch=tyn,
+            kind=Movement.Kind.VYDEJ,
+            date_issued=date(2026, 6, 12),
+            odberatel=ricany,
+        ),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.500"))],
+        user=user_obsluha_tyn,
+    )
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/pobocka/TYN/")
+    body = response.content.decode("utf-8")
+    assert "Říčany" in body
+    assert "výdej" in body

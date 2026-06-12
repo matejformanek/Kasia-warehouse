@@ -76,12 +76,8 @@
     <tbody>
       {% for mv in movements %}
         {% with first_line=mv.lines.first lines_count=mv.lines.count %}
-        <tr>
-          <td>
-            <a href="{% url 'inventory:movement_edit' pk=mv.pk %}">
-              {{ mv.date_issued|date:"d. m. Y" }}
-            </a>
-          </td>
+        <tr class="row-link" data-href="{% url 'inventory:movement_edit' pk=mv.pk %}">
+          <td>{{ mv.date_issued|date:"d. m. Y" }}</td>
           <td>
             {% if mv.kind == "prijem" %}
               <span style="color:var(--ok);">{{ mv.get_kind_display }}</span>

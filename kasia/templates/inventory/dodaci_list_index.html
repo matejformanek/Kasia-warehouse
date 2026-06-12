@@ -56,8 +56,8 @@
     </thead>
     <tbody>
       {% for dl in dodaci_listy %}
-        <tr>
-          <td><a href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}"><strong>{{ dl.cislo }}</strong></a></td>
+        <tr class="row-link" data-href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">
+          <td><strong>{{ dl.cislo }}</strong></td>
           <td>{{ dl.date_issued|date:"d. m. Y" }}</td>
           <td>{{ dl.branch.code }}</td>
           <td>{{ dl.odberatel.name }}</td>

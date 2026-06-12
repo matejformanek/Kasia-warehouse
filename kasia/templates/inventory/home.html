@@ -124,8 +124,8 @@
       </thead>
       <tbody>
         {% for dl in recent_dodaky %}
-          <tr>
-            <td><a href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">{{ dl.cislo }}</a></td>
+          <tr class="row-link" data-href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">
+            <td>{{ dl.cislo }}</td>
             <td>{{ dl.date_issued|date:"d. m. Y" }}</td>
             <td>{{ dl.branch.code }}</td>
             <td>{{ dl.odberatel.name }}</td>

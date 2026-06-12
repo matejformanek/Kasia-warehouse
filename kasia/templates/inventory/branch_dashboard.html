@@ -79,13 +79,9 @@
       </thead>
       <tbody>
         {% for mv in recent_movements %}
-          <tr>
+          <tr class="row-link" data-href="{% url 'inventory:movement_edit' pk=mv.pk %}">
             <td>{{ mv.date_issued|date:"d. m. Y" }}</td>
-            <td>
-              <a href="{% url 'inventory:movement_edit' pk=mv.pk %}">
-                {{ mv.get_kind_display }}
-              </a>
-            </td>
+            <td>{{ mv.get_kind_display }}</td>
             <td>
               {% if mv.kind == "vydej" %}{{ mv.odberatel.name }}{% else %}{{ mv.dodavatel.name }}{% endif %}
             </td>

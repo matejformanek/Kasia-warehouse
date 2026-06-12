@@ -199,6 +199,9 @@
     margin-bottom: 0.5rem;
   }
   .required-legend::before { content: "* "; color: var(--error); font-weight: bold; }
+  tr.row-link { cursor: pointer; }
+  tr.row-link:hover { background: #f3f6fa; }
+  tr.row-link td a { color: var(--fg); }
 </style>
 <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
 </head>
@@ -247,6 +250,16 @@
     const row = btn.closest(".line-row");
     if (row) row.classList.toggle("marked-deleted", cb.checked);
     btn.textContent = cb.checked ? "Vrátit zpět" : "× Smazat";
+  });
+
+  // Whole-row clickable handler for tables. Looks for the nearest
+  // tr.row-link with a data-href and navigates there — unless the
+  // click landed on an interactive element (a, button, input, label).
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("a, button, input, select, label")) return;
+    const tr = e.target.closest("tr.row-link[data-href]");
+    if (!tr) return;
+    window.location = tr.dataset.href;
   });
 
   // hx-vals helper for výdej stock-warn check. Reads the line row's

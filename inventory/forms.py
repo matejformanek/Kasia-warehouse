@@ -279,3 +279,80 @@ class CustomerForm(forms.ModelForm):
                 "Aktivní odběratel s tímto názvem už existuje."
             )
         return name
+
+
+# ---------------------------------------------------------------------------
+# Product + Recipe CRUD (Pass 5b, per decision 0040)
+# ---------------------------------------------------------------------------
+
+
+from .models import RecipeComponent  # noqa: E402 (kept here to group concerns)
+
+
+class ProductForm(forms.ModelForm):
+    """Operator-facing form for new + edit produkt (surovina / směs).
+
+    Per [0040](../context/decisions/0040-operator-crud-tiering.md):
+    all authenticated users may create + edit. Archive lives on a
+    separate POST endpoint gated to vlastník.
+    """
+
+    class Meta:
+        model = Product
+        fields = ("name_cs", "kind", "notes")
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+        labels = {
+            "name_cs": "Název (česky)",
+            "kind": "Typ",
+            "notes": "Poznámka",
+        }
+
+    def __init__(self, *args, lock_kind: bool = False, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        if lock_kind:
+            # Once stock or recipe references exist, flipping
+            # surovina↔směs would orphan data. The view passes
+            # lock_kind=True in those cases.
+            self.fields["kind"].disabled = True
+
+    def clean_name_cs(self) -> str:
+        name = (self.cleaned_data["name_cs"] or "").strip()
+        qs = Product.objects.filter(name_cs__iexact=name, is_active=True)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(
+                "Aktivní produkt s tímto názvem už existuje."
+            )
+        return name
+
+
+class RecipeComponentForm(forms.ModelForm):
+    """One row of a mixture's recipe — inline-edited by vlastník
+    on the mixture's product detail / edit screen."""
+
+    class Meta:
+        model = RecipeComponent
+        fields = ("component_product", "ratio")
+
+    def __init__(self, *args, mixture: Product | None = None, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        # Limit the dropdown to raw spices (surovina) — a mixture can
+        # only contain raw-spice components in MVP. Also drop the
+        # mixture itself from the queryset to avoid self-reference.
+        qs = Product.objects.filter(
+            kind=Product.Kind.RAW_SPICE, is_active=True
+        ).order_by("name_cs")
+        if mixture is not None and mixture.pk:
+            qs = qs.exclude(pk=mixture.pk)
+        self.fields["component_product"].queryset = qs
+
+
+RecipeComponentFormSet = forms.modelformset_factory(
+    RecipeComponent,
+    form=RecipeComponentForm,
+    extra=0,
+    can_delete=True,
+)

@@ -191,6 +191,7 @@
 </div>
 
 <p>
+  <a class="primary" href="{% url 'inventory:product_edit' pk=product.pk %}">Upravit produkt</a>
   <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Zpět na katalog</a>
 </p>
 {% endblock %}

@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if mode == "create" %}Nový produkt{% else %}Úprava produktu — {{ target.name_cs }}{% endif %} — Kasia vera
+{% endblock %}
+
+{% block content %}
+<h1>
+  {% if mode == "create" %}
+    Nový produkt
+  {% else %}
+    Úprava produktu — {{ target.name_cs }}
+    {% if not target.is_active %}
+      <span style="font-weight:normal;color:var(--warn);font-size:1rem;">· archivováno</span>
+    {% endif %}
+  {% endif %}
+</h1>
+
+<p class="required-legend">povinné pole</p>
+
+<form method="post" class="card">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="non-form-errors">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="field">
+    <label class="field-required" for="{{ form.name_cs.id_for_label }}">{{ form.name_cs.label }}</label>
+    {{ form.name_cs }}
+    {{ form.name_cs.errors }}
+  </div>
+  <div class="field">
+    <label class="field-required" for="{{ form.kind.id_for_label }}">{{ form.kind.label }}</label>
+    {{ form.kind }}
+    {% if kind_locked %}
+      <small style="color:var(--fg-soft); display:block;">
+        Typ produktu je zamčený — produkt už má skladové zásoby nebo
+        je součástí receptury, jeho přetypování by osiřelo data.
+      </small>
+    {% endif %}
+    {{ form.kind.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+    {{ form.notes }}
+    {{ form.notes.errors }}
+  </div>
+
+  {% if recipe_formset %}
+    <h2 style="font-size:1.05rem;margin-top:1.5rem;">Receptura</h2>
+    <p style="color:var(--fg-soft); font-size:0.9rem;">
+      Podíl je zlomek 0–1 (např. <code>0.500</code> = 50 %). Součet
+      všech podílů by měl dát 1.000.
+    </p>
+
+    {{ recipe_formset.management_form }}
+    {% if recipe_formset.non_form_errors %}
+      <div class="non-form-errors">{{ recipe_formset.non_form_errors }}</div>
+    {% endif %}
+
+    <table class="lines" id="recipe-table">
+      <thead>
+        <tr>
+          <th class="field-required">Surovina</th>
+          <th class="field-required" style="text-align:right;">Podíl</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="recipe-body">
+        {% for rc_form in recipe_formset.forms %}
+          <tr class="line-row" data-index="{{ forloop.counter0 }}">
+            <td>
+              {{ rc_form.id }}
+              {{ rc_form.component_product }}
+              {{ rc_form.component_product.errors }}
+            </td>
+            <td style="text-align:right;">
+              {{ rc_form.ratio }}
+              {{ rc_form.ratio.errors }}
+            </td>
+            <td>
+              <input type="checkbox" name="{{ rc_form.DELETE.html_name }}"
+                     id="{{ rc_form.DELETE.id_for_label }}" hidden>
+              <button type="button" class="row-delete-btn"
+                      data-target="{{ rc_form.DELETE.id_for_label }}">
+                × Smazat
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {# Hidden empty-row template; JS clones it on "+ Přidat surovinu" click #}
+    <template id="recipe-empty-row">
+      <tr class="line-row" data-index="__INDEX__">
+        <td>
+          {{ new_recipe_row.component_product }}
+        </td>
+        <td style="text-align:right;">
+          {{ new_recipe_row.ratio }}
+        </td>
+        <td>
+          <input type="checkbox" name="recipe-__INDEX__-DELETE"
+                 id="recipe-__INDEX__-DELETE" hidden>
+          <button type="button" class="row-delete-btn"
+                  data-target="recipe-__INDEX__-DELETE">
+            × Smazat
+          </button>
+        </td>
+      </tr>
+    </template>
+
+    <p>
+      <button type="button" class="secondary" id="recipe-add-row">
+        + Přidat surovinu
+      </button>
+    </p>
+
+    <script>
+      (function () {
+        const btn = document.getElementById("recipe-add-row");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          const body = document.getElementById("recipe-body");
+          const total = document.querySelector("[name=recipe-TOTAL_FORMS]");
+          const idx = parseInt(total.value, 10);
+          const tpl = document.getElementById("recipe-empty-row").innerHTML;
+          // Replace the form-prefix placeholder in cloned widget HTML.
+          // The new_recipe_row form was rendered with no prefix (it's an
+          // unbound RecipeComponentForm), so its inputs use bare names
+          // like `component_product` + `ratio`. Rewrite them onto the
+          // formset-prefixed scheme.
+          const html = tpl
+            .replace(/__INDEX__/g, idx)
+            .replace(
+              /name="component_product"/g,
+              `name="recipe-${idx}-component_product"`
+            )
+            .replace(
+              /name="ratio"/g,
+              `name="recipe-${idx}-ratio"`
+            )
+            .replace(/id="id_component_product"/g, `id="id_recipe-${idx}-component_product"`)
+            .replace(/id="id_ratio"/g, `id="id_recipe-${idx}-ratio"`);
+          body.insertAdjacentHTML("beforeend", html);
+          total.value = idx + 1;
+        });
+      })();
+    </script>
+  {% endif %}
+
+  <p>
+    <button type="submit" class="primary">
+      {% if mode == "create" %}Přidat produkt{% else %}Uložit změny{% endif %}
+    </button>
+    {% if mode == "create" %}
+      <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Zrušit</a>
+    {% else %}
+      <a class="secondary" href="{% url 'inventory:product_detail' pk=target.pk %}">Zrušit</a>
+    {% endif %}
+  </p>
+</form>
+
+{% if mode == "edit" and user.is_vlastnik %}
+  <div class="card">
+    <h2 style="font-size:1rem;margin-top:0;">Archivace</h2>
+    {% if target.is_active %}
+      <p style="color:var(--fg-soft);font-size:0.9rem;">
+        Archivace nesmaže produkt — pouze ho skryje z výběrů.
+        Historické pohyby zůstanou.
+      </p>
+      <form method="post" action="{% url 'inventory:product_archive' pk=target.pk %}"
+            onsubmit="return confirm('Opravdu archivovat produkt {{ target.name_cs }}?');">
+        {% csrf_token %}
+        <button class="secondary" type="submit">Archivovat produkt</button>
+      </form>
+    {% else %}
+      <form method="post" action="{% url 'inventory:product_reactivate' pk=target.pk %}">
+        {% csrf_token %}
+        <button class="secondary" type="submit">Aktivovat produkt</button>
+      </form>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

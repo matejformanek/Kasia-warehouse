@@ -44,6 +44,9 @@
     <button class="primary" type="submit">Filtrovat</button>
     <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Vymazat</a>
   </div>
+  <div style="margin-left:auto;">
+    <a class="primary" href="{% url 'inventory:product_create' %}">+ Nový produkt</a>
+  </div>
 </form>
 
 <p style="color:var(--fg-soft);">Nalezeno: {{ count }} produktů.</p>

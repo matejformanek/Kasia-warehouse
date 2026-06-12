@@ -30,6 +30,9 @@ from .forms import (
     MovementLineFormSet,
     PrijemEditForm,
     PrijemForm,
+    ProductForm,
+    RecipeComponentForm,
+    RecipeComponentFormSet,
     SettingsForm,
     SmtpTestForm,
     SupplierForm,
@@ -1507,3 +1510,155 @@ def customer_reactivate(request, pk: int):
     cust.save(update_fields=["is_active"])
     messages.success(request, f"Odběratel {cust.name} aktivován.")
     return redirect("inventory:customer_index")
+
+
+# ---------------------------------------------------------------------------
+# Pass 5b — Product + Recipe CRUD (per decision 0040)
+#
+# Tier:
+# - Product fields (name, kind, notes): all authenticated may create/edit.
+# - Product archive: vlastník-only (affects stock semantics).
+# - Recipe (RecipeComponent) edit on směs: vlastník-only.
+# ---------------------------------------------------------------------------
+
+
+def product_create(request):
+    """Create a new product (surovina or směs). All authenticated users.
+
+    Recipe is not editable here; for a new mixture, create it first
+    then edit it to add components. Keeps the create form small.
+    """
+    if request.method == "POST":
+        form = ProductForm(request.POST)
+        if form.is_valid():
+            product = form.save()
+            messages.success(request, f"Produkt {product.name_cs} přidán.")
+            if (
+                product.kind == Product.Kind.MIXTURE
+                and request.user.is_vlastnik
+            ):
+                # Steer the vlastník straight into recipe editing.
+                return redirect("inventory:product_edit", pk=product.pk)
+            return redirect("inventory:product_detail", pk=product.pk)
+    else:
+        form = ProductForm()
+    return render(
+        request,
+        "inventory/product_form.html",
+        {"form": form, "mode": "create", "recipe_formset": None},
+    )
+
+
+def product_edit(request, pk: int):
+    """Edit product fields. For směsi + vlastník, recipe inline edit too.
+
+    The kind field is locked once the product is referenced by Stock
+    or as a recipe component — flipping surovina↔směs would orphan
+    those references.
+    """
+    product = get_object_or_404(Product, pk=pk)
+    is_mixture = product.kind == Product.Kind.MIXTURE
+    can_edit_recipe = is_mixture and request.user.is_vlastnik
+
+    kind_locked = (
+        Stock.objects.filter(product=product).exists()
+        or RecipeComponent.objects.filter(
+            Q(mixture_product=product) | Q(component_product=product)
+        ).exists()
+    )
+
+    recipe_qs = RecipeComponent.objects.filter(
+        mixture_product=product
+    ).order_by("component_product__name_cs")
+
+    if request.method == "POST":
+        form = ProductForm(request.POST, instance=product, lock_kind=kind_locked)
+
+        recipe_formset = None
+        if can_edit_recipe:
+            recipe_formset = RecipeComponentFormSet(
+                request.POST,
+                queryset=recipe_qs,
+                prefix="recipe",
+                form_kwargs={"mixture": product},
+            )
+
+        forms_valid = form.is_valid()
+        if recipe_formset is not None:
+            forms_valid = recipe_formset.is_valid() and forms_valid
+
+        if forms_valid:
+            form.save()
+            if recipe_formset is not None:
+                instances = recipe_formset.save(commit=False)
+                for inst in instances:
+                    inst.mixture_product = product
+                    inst.save()
+                for deleted in recipe_formset.deleted_objects:
+                    deleted.delete()
+            messages.success(request, "Změny uloženy.")
+            return redirect("inventory:product_detail", pk=product.pk)
+    else:
+        form = ProductForm(instance=product, lock_kind=kind_locked)
+        recipe_formset = (
+            RecipeComponentFormSet(
+                queryset=recipe_qs,
+                prefix="recipe",
+                form_kwargs={"mixture": product},
+            )
+            if can_edit_recipe
+            else None
+        )
+
+    new_recipe_row = (
+        RecipeComponentForm(mixture=product) if can_edit_recipe else None
+    )
+
+    return render(
+        request,
+        "inventory/product_form.html",
+        {
+            "form": form,
+            "mode": "edit",
+            "target": product,
+            "recipe_formset": recipe_formset,
+            "new_recipe_row": new_recipe_row,
+            "kind_locked": kind_locked,
+            "can_edit_recipe": can_edit_recipe,
+        },
+    )
+
+
+@require_POST
+def product_archive(request, pk: int):
+    """Soft-archive a product. Vlastník-only per 0040."""
+    if not request.user.is_vlastnik:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("Pouze vlastník může archivovat produkty.")
+    product = get_object_or_404(Product, pk=pk)
+    product.is_active = False
+    product.save(update_fields=["is_active"])
+    messages.success(request, f"Produkt {product.name_cs} archivován.")
+    return redirect("inventory:catalogue_index")
+
+
+@require_POST
+def product_reactivate(request, pk: int):
+    """Re-activate an archived product. Vlastník-only per 0040."""
+    if not request.user.is_vlastnik:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("Pouze vlastník může aktivovat produkty.")
+    product = get_object_or_404(Product, pk=pk)
+    if Product.objects.filter(
+        name_cs__iexact=product.name_cs, is_active=True
+    ).exclude(pk=product.pk).exists():
+        messages.error(
+            request,
+            "Aktivní produkt se stejným názvem už existuje — "
+            "přejmenuj jednoho z nich než aktivuješ.",
+        )
+        return redirect("inventory:product_detail", pk=product.pk)
+    product.is_active = True
+    product.save(update_fields=["is_active"])
+    messages.success(request, f"Produkt {product.name_cs} aktivován.")
+    return redirect("inventory:product_detail", pk=product.pk)

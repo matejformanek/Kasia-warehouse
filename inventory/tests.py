@@ -3336,3 +3336,226 @@ def test_nav_supplier_customer_links_visible_to_all(user_obsluha_tyn) -> None:
     assert response.status_code == 200
     assert b"Dodavatel" in response.content
     assert b"Odb\xc4\x9bratel" in response.content
+
+
+# ---------------------------------------------------------------------------
+# Pass 5b — Product + Recipe CRUD (per decision 0040)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_create_requires_login() -> None:
+    response = Client().get("/katalog/novy/")
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_create_by_obsluha(user_obsluha_tyn) -> None:
+    """Per 0040: workers can add a new product."""
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(
+        "/katalog/novy/",
+        {
+            "name_cs": "Tymián",
+            "kind": "raw_spice",
+            "notes": "Nově převzato od dodavatele.",
+        },
+    )
+    assert response.status_code == 302
+    p = Product.objects.get(name_cs="Tymián")
+    assert p.kind == "raw_spice"
+    assert p.is_active is True
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_create_redirects_vlastnik_into_recipe_edit_for_mixtures(
+    user_vlastnik,
+) -> None:
+    """When a vlastník creates a mixture, redirect to the edit form so
+    they can add components immediately."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/katalog/novy/",
+        {"name_cs": "Nová směs", "kind": "mixture"},
+    )
+    p = Product.objects.get(name_cs="Nová směs")
+    assert response.status_code == 302
+    assert response["Location"].endswith(f"/katalog/{p.pk}/upravit/")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_create_obsluha_mixture_lands_on_detail(user_obsluha_tyn) -> None:
+    """Obsluha can create a mixture but doesn't get redirected into
+    recipe edit (they can't edit recipes per 0040)."""
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(
+        "/katalog/novy/",
+        {"name_cs": "Směs B", "kind": "mixture"},
+    )
+    p = Product.objects.get(name_cs="Směs B")
+    assert response.status_code == 302
+    assert response["Location"].endswith(f"/katalog/{p.pk}/")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_create_rejects_duplicate_name(user_obsluha_tyn, pepper) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(
+        "/katalog/novy/",
+        {"name_cs": pepper.name_cs, "kind": "raw_spice"},
+    )
+    assert response.status_code == 200
+    assert (
+        b"Aktivn\xc3\xad produkt s t\xc3\xadmto n\xc3\xa1zvem u\xc5\xbe existuje"
+        in response.content
+    )
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_edit_updates_name(user_obsluha_tyn, pepper) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(
+        f"/katalog/{pepper.pk}/upravit/",
+        {
+            "name_cs": "Pepř (přejmenovaný)",
+            "kind": "raw_spice",
+            "notes": "",
+            # No recipe formset — obsluha can't edit recipe; template won't render it.
+        },
+    )
+    assert response.status_code == 302
+    pepper.refresh_from_db()
+    assert pepper.name_cs == "Pepř (přejmenovaný)"
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_edit_locks_kind_when_stock_exists(
+    user_vlastnik, pepper, tyn
+) -> None:
+    """Kind field is disabled once Stock or RecipeComponent references exist."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/katalog/{pepper.pk}/upravit/")
+    assert response.status_code == 200
+    assert b"Typ produktu je zam\xc4\x8den\xc3\xbd" in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_archive_vlastnik_only(user_obsluha_tyn, pepper) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(f"/katalog/{pepper.pk}/archivovat/")
+    assert response.status_code == 403
+    pepper.refresh_from_db()
+    assert pepper.is_active is True
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_archive_by_vlastnik(user_vlastnik, pepper) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(f"/katalog/{pepper.pk}/archivovat/")
+    assert response.status_code == 302
+    pepper.refresh_from_db()
+    assert pepper.is_active is False
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_reactivate_blocks_name_collision(
+    user_vlastnik, pepper
+) -> None:
+    """Can't re-activate when another active product has the same name."""
+    pepper.is_active = False
+    pepper.save()
+    Product.objects.create(name_cs=pepper.name_cs, kind=pepper.kind)
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/katalog/{pepper.pk}/aktivovat/", follow=True
+    )
+    assert response.status_code == 200
+    pepper.refresh_from_db()
+    assert pepper.is_active is False
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipe_edit_visible_only_to_vlastnik(
+    user_vlastnik, user_obsluha_tyn, pepper, paprika
+) -> None:
+    """Recipe formset is rendered only when can_edit_recipe = True."""
+    mixture = Product.objects.create(name_cs="Směs X", kind="mixture")
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper,
+        ratio=Decimal("0.500"),
+    )
+    # As vlastník — should see recipe section.
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/katalog/{mixture.pk}/upravit/")
+    assert response.status_code == 200
+    assert b"Receptura" in response.content
+    assert b"recipe-TOTAL_FORMS" in response.content
+    # As obsluha — recipe section hidden (mixture's recipe is vlastník-only).
+    client2 = Client()
+    client2.force_login(user_obsluha_tyn)
+    response2 = client2.get(f"/katalog/{mixture.pk}/upravit/")
+    assert response2.status_code == 200
+    assert b"recipe-TOTAL_FORMS" not in response2.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipe_edit_saves_changes(user_vlastnik, pepper, paprika) -> None:
+    """Vlastník can change ratio of an existing recipe row."""
+    mixture = Product.objects.create(name_cs="Směs Y", kind="mixture")
+    rc = RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper,
+        ratio=Decimal("0.300"),
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/katalog/{mixture.pk}/upravit/",
+        {
+            "name_cs": mixture.name_cs,
+            "kind": "mixture",
+            "notes": "",
+            "recipe-TOTAL_FORMS": "1",
+            "recipe-INITIAL_FORMS": "1",
+            "recipe-MIN_NUM_FORMS": "0",
+            "recipe-MAX_NUM_FORMS": "1000",
+            "recipe-0-id": str(rc.pk),
+            "recipe-0-component_product": str(pepper.pk),
+            "recipe-0-ratio": "0.700",
+        },
+    )
+    assert response.status_code == 302
+    rc.refresh_from_db()
+    assert rc.ratio == Decimal("0.700")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_has_new_product_button(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/katalog/")
+    assert response.status_code == 200
+    assert b"Nov\xc3\xbd produkt" in response.content

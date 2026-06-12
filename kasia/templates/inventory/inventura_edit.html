@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Inventura — {{ branch.code }} — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Inventura — {{ branch.code }} ({{ branch.name }})</h1>
+
+<div class="card" style="background:#fbf3e0;border-left:3px solid var(--warn);">
+  <strong>Hromadná úprava stavu skladu.</strong>
+  Projděte řádky a zapište skutečně naměřené hodnoty.
+  Změněné řádky se po uložení převedou na pohyby s prefixem
+  <code>[STAV]</code> (per rozhodnutí 0041). Beze změny ponechané
+  řádky se nezapíšou.
+</div>
+
+<div style="margin-bottom:1rem;">
+  <strong>Pobočka:</strong>
+  {% for b in all_branches %}
+    {% if b.code == branch.code %}
+      <span class="primary" style="padding:0.3rem 0.7rem;">{{ b.code }} — {{ b.name }}</span>
+    {% else %}
+      <a class="secondary" href="{% url 'inventory:inventura_edit' code=b.code %}">{{ b.code }} — {{ b.name }}</a>
+    {% endif %}
+  {% endfor %}
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Produkt</th>
+        <th>Druh</th>
+        <th style="text-align:right;">Aktuálně skladem (kg)</th>
+        <th style="text-align:right;">Nový stav (kg)</th>
+        <th style="text-align:right;">Rozdíl</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr class="inventura-row" data-current="{{ row.current }}">
+          <td><strong>{{ row.product.name_cs }}</strong></td>
+          <td style="color:var(--fg-soft);">{{ row.product.get_kind_display }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">
+            {{ row.current|floatformat:"3" }}
+          </td>
+          <td style="text-align:right;">
+            <input type="number" step="0.001" min="0"
+                   name="qty_{{ row.product.pk }}"
+                   value="{{ row.current|stringformat:'.3f' }}"
+                   style="max-width:140px;text-align:right;font-variant-numeric:tabular-nums;">
+          </td>
+          <td class="inventura-delta" style="text-align:right;font-variant-numeric:tabular-nums;color:var(--fg-soft);">
+            —
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="card" style="margin-top:1.5rem;">
+    <p class="required-legend">povinné pole</p>
+    <div class="field">
+      <label class="field-required" for="id_reason">Důvod úpravy (jeden pro celou dávku)</label>
+      <input type="text" name="reason" id="id_reason" size="60"
+             placeholder="např. inventura k {% now 'd. m. Y' %}">
+    </div>
+    <p>
+      <button type="submit" class="primary">Uložit všechny změny</button>
+      <a class="secondary" href="{% url 'inventory:catalogue_index' %}?branch={{ branch.code }}">Zrušit</a>
+    </p>
+  </div>
+</form>
+
+<script>
+  // Live "rozdíl" indicator — re-compute new - current as the operator types.
+  (function () {
+    function recompute(row) {
+      const input = row.querySelector("input[name^=qty_]");
+      const delta = row.querySelector(".inventura-delta");
+      const current = parseFloat(row.dataset.current);
+      const next = parseFloat(input.value);
+      if (!isFinite(next) || !isFinite(current)) {
+        delta.textContent = "—";
+        delta.style.color = "var(--fg-soft)";
+        return;
+      }
+      const diff = next - current;
+      if (Math.abs(diff) < 0.0005) {
+        delta.textContent = "—";
+        delta.style.color = "var(--fg-soft)";
+        return;
+      }
+      const sign = diff > 0 ? "+" : "−";
+      delta.textContent = `${sign}${Math.abs(diff).toFixed(3)}`;
+      delta.style.color = diff > 0 ? "var(--ok)" : "var(--error)";
+      delta.style.fontWeight = "bold";
+    }
+    document.querySelectorAll(".inventura-row").forEach(function (row) {
+      const input = row.querySelector("input[name^=qty_]");
+      input.addEventListener("input", function () { recompute(row); });
+    });
+  })();
+</script>
+{% endblock %}

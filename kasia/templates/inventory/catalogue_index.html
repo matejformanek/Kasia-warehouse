@@ -45,6 +45,13 @@
     <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Vymazat</a>
   </div>
   <div style="margin-left:auto;">
+    {% if selected_branch and user.is_vlastnik %}
+      <a class="primary"
+         href="{% url 'inventory:inventura_edit' code=selected_branch.code %}"
+         style="background:var(--warn);">
+        Inventura {{ selected_branch.code }}
+      </a>
+    {% endif %}
     <a class="primary" href="{% url 'inventory:product_create' %}">+ Nový produkt</a>
   </div>
 </form>

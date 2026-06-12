@@ -928,6 +928,101 @@
   behaviour. Same image we ship to Hetzner — local and prod
   are now byte-identical except for `.env`.
 
+- **2026-06-12** — Local walkthrough feedback → 5 UX hotfixes
+  (`b071edb` → `7b84cb3`):
+  B1 příjem/výdej formset extra=0 (1 row default, not 2);
+  B2 visible "× Smazat" button replacing hidden checkbox;
+  B3 mixing "Nová dávka" CSS fix (.primary works on `<a>`);
+  B4 HTMX previews stop sending `target_qty=undefined`
+  (`hx-vals` → `hx-include="closest form"`);
+  B5 stop sending CSRF token twice in HTMX URLs (drop
+  body-level `hx-include` of csrfmiddlewaretoken).
+
+- **2026-06-12** — Visible improvements batch
+  (`e6d3e93` → `b3f0fed`):
+  P1 required-field markers + "* povinné" legend on all 6
+  operator forms; P4 whole-row clickable
+  (`tr.row-link[data-href]` + delegated click handler) in
+  Historie, owner + branch dashboards, Dodáky list, Katalog;
+  K1 `?branch=<CODE>` filter on `/katalog/` (vlastník only;
+  obsluha auto-scoped) with column header that switches to
+  "Skladem v TYN (kg)" when scoped; K6 recipe scaling
+  calculator on mixture detail (`/katalog/<id>/` shows
+  "Spočítat dávku" with target input → live per-component
+  derived kg); D1+M4 `make seed` + `seed_walkthrough_data`
+  management command generating 3 příjmy + 5 výdejů + 1
+  edited dodák so Historie / Dodáky have real content for
+  walkthrough.
+
+- **2026-06-12** — **Pass 5 — operator-facing CRUD**
+  (`828f204` → `59a5b6b` → Pass 5e). Migrates every
+  admin-only entity into the Czech operator app per walkthrough
+  feedback ("everything in admin should be in the app, with
+  per-user permissions"). New decisions:
+  - [`0040`](./decisions/0040-operator-crud-tiering.md) —
+    two-tier-per-entity gating. Suppliers / Customers /
+    Products (fields) = all authenticated; Recipes /
+    Branches / Stock direct edit / Product archive =
+    vlastník-only. Forward-compatible to a third tier.
+  - [`0041`](./decisions/0041-manual-stock-adjustment.md) —
+    direct Stock edits go through a synthetic Movement with
+    `[STAV] ` note prefix and an internal
+    "Inventura / ruční úprava" counterparty pair (seeded by
+    migration `0008_seed_adjustment_counterparty`). Never raw
+    UPDATE on `Stock.quantity`; every delta flows through
+    `apply_movement` → `MovementAudit` like any other movement.
+    Internal `is_internal=True` so the dodák hook is skipped.
+
+  **Pass 5a — Supplier + Customer CRUD** (all users):
+  `/dodavatele/` + `/odberatele/` with create / edit /
+  archive / reactivate. Soft-uniqueness on active name;
+  internal Míchárna pair hidden + protected from archive;
+  default-recipient Říčany protected from archive (per
+  [0030](./decisions/0030-vydej-default-ricany-supersedes-0004.md)).
+  Nav links "Dodavatelé" + "Odběratelé" visible to all.
+
+  **Pass 5b — Product + Recipe CRUD**: `/katalog/novy/` +
+  `/katalog/<pk>/upravit/` + archive/reactivate. Product
+  fields = all users. Kind field auto-locks once Stock or
+  recipe references exist. **Recipe edit (RecipeComponent
+  inline formset) is vlastník-only** (per
+  [0005](./decisions/0005-mixture-recipe-model.md)
+  domain-knowledge ownership). Vlastník creating a mixture
+  is redirected straight to recipe edit. "+ Nový produkt"
+  on catalogue index, "Upravit produkt" on product detail
+  (+ "Archivovat / Aktivovat" card for vlastník).
+
+  **Pass 5c — Branch CRUD** (vlastník-only): `/pobocky/` +
+  create / edit / archive. Code validates `[A-Z]{3}` and is
+  locked once any DodaciList exists from that branch (per
+  [0008](./decisions/0008-dodaci-list-numbering.md)). Archive
+  refused when branch still has positive Stock or active
+  users. "Pobočky" nav link gated to vlastník.
+
+  **Pass 5d — Stock direct edit** (vlastník-only):
+  `/katalog/<pk>/upravit-stav/` + new
+  `apply_stock_adjustment(...)` service that builds a
+  synthetic Movement (prijem for positive delta, vydej for
+  negative; zero = noop). Internal "Inventura / ruční
+  úprava" counterparty pair seeded by
+  `inventory/0008_seed_adjustment_counterparty.py`.
+  `conftest.py` autouse seed extended to re-seed both
+  internal pairs (Míchárna + Inventura) after transactional
+  flush.
+
+  **Pass 5e — Bulk inventura editor** (vlastník-only):
+  `/katalog/inventura/<code>/` — walk every product at one
+  branch, type the new quantities, hit "Uložit všechny
+  změny". Each non-zero delta = one `apply_stock_adjustment`
+  call sharing the batch reason. Zero-deltas skipped. JS
+  shows a live "Rozdíl" column. Entry point: "Inventura
+  TYN" button next to "+ Nový produkt" on `/katalog/?branch=…`
+  (vlastník only).
+
+  234 → **242 pytest tests green** through the whole Pass 5
+  (200 → 213 → 225 → 234 → 242 across 5a/b/c/d/e). Ruff
+  clean throughout. One new data migration (`0008`).
+
 ## Hand-off for the next session (post-compact)
 
 **Posture (Matej 2026-06-12):**
@@ -981,20 +1076,32 @@
 
 ## Next
 
-1. **Local walkthrough by Matej.** All 14 screens land in
-   docker (`make up` → http://localhost/). Matej steps
-   through every screen with realistic data and feeds back
-   fixes / ideology changes.
-2. **Quality-of-life:** branch-code rename guard (lock after
-   first dodák per
-   [`0008`](./decisions/0008-dodaci-list-numbering.md)),
-   admin `is_internal` filter on Customer/Supplier so
-   Míchárna doesn't clutter the picker.
-4. **Local-only validation.** Once 13 + 14 land, run the full
-   compose stack locally (db service with the ICU locale
-   landed in 0038) and walk through every screen by hand
-   before Matej takes over for feedback iteration.
-5. **(Deferred until Matej says go.)** Provision the Hetzner
+1. **Open decisions blocking further code:**
+   - **Overdraw policy** (V2/M3 from 2026-06-12 walkthrough):
+     when a worker tries `výdej > stock`, current behaviour
+     is hard-refuse. Matej said "sometimes we'll need to do
+     it". Pending decision: tier between (a) refuse always,
+     (b) refuse obsluha + vlastník can "force with reason",
+     (c) always allow with red flag. Default proposal: **b**.
+     Land as `0042-overdraw-policy.md` before any code.
+   - **Historie redesign** (H1/H2): make it more than a
+     log — entry point to actions / split by kind. No draft
+     decision yet; needs Matej's product input.
+
+2. **Local walkthrough by Matej** against the running docker
+   stack (`make up` → http://localhost/`). All 14 screens +
+   Pass 5 CRUD are in. Matej feeds back fixes / ideology
+   changes screen by screen.
+
+3. **Quality-of-life backlog** (small, can land any time):
+   - History column should surface the `[STAV]` prefix (per
+     0041 § Forward references — soft sentinel for future
+     filter / split).
+   - Customer / Supplier inline "+ Nový" affordance on
+     příjem / výdej forms so workers don't have to leave
+     the create-movement flow.
+
+4. **(Deferred until Matej says go.)** Provision the Hetzner
    box per
    [`infra/RUNBOOK.md`](../infra/RUNBOOK.md) → 14-day shadow
    run per

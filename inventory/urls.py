@@ -41,6 +41,11 @@ urlpatterns = [
         views.stock_adjust_edit,
         name="stock_adjust_edit",
     ),
+    path(
+        "katalog/inventura/<str:code>/",
+        views.inventura_edit,
+        name="inventura_edit",
+    ),
     path("michani/", views.mixing_job_index, name="mixing_job_index"),
     path("michani/novy/", views.mixing_job_create, name="mixing_job_create"),
     path("michani/<int:pk>/", views.mixing_job_detail, name="mixing_job_detail"),

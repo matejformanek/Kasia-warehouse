@@ -1875,3 +1875,99 @@ def stock_adjust_edit(request, pk: int):
             "branch_rows": branch_rows,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Pass 5e — Bulk stock editor (inventura), per decision 0041
+#
+# /katalog/inventura/<code>/ — vlastník picks a branch, walks through every
+# product, edits the quantities inline, hits "Uložit všechny změny". Each
+# non-zero delta becomes one synthetic Movement (apply_stock_adjustment),
+# sharing the same batch reason. Zero-delta rows are skipped.
+# ---------------------------------------------------------------------------
+
+
+def inventura_edit(request, code: str):
+    _require_vlastnik(request)
+    branch = get_object_or_404(Branch, code=code.upper(), is_active=True)
+
+    products = list(
+        Product.objects.filter(is_active=True).order_by("name_cs")
+    )
+    stocks_by_product = {
+        s.product_id: s.quantity
+        for s in Stock.objects.filter(branch=branch).select_related("product")
+    }
+
+    if request.method == "POST":
+        reason = (request.POST.get("reason") or "").strip()
+        if not reason:
+            messages.error(
+                request, "Důvod úpravy (popis inventury) je povinný."
+            )
+        else:
+            written = 0
+            errors: list[str] = []
+            for p in products:
+                raw = request.POST.get(f"qty_{p.pk}", "").strip()
+                if not raw:
+                    continue
+                try:
+                    new_qty = Decimal(raw)
+                except (InvalidOperation, ValueError):
+                    errors.append(
+                        f"{p.name_cs}: neplatné číslo: {raw}"
+                    )
+                    continue
+                current = stocks_by_product.get(p.pk, Decimal("0.000"))
+                if new_qty == current:
+                    continue
+                try:
+                    mv = apply_stock_adjustment(
+                        product=p,
+                        branch=branch,
+                        new_quantity=new_qty,
+                        reason=reason,
+                        user=request.user,
+                    )
+                except ValidationError as exc:
+                    errors.append(
+                        f"{p.name_cs}: "
+                        + ("; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
+                    )
+                    continue
+                if mv is not None:
+                    written += 1
+            if errors:
+                for err in errors:
+                    messages.error(request, err)
+            if written:
+                messages.success(
+                    request,
+                    f"Inventura: zaevidováno {written} pohyb"
+                    f"{'' if written == 1 else 'y' if 2 <= written <= 4 else 'ů'} "
+                    f"na pobočce {branch.code}.",
+                )
+            elif not errors:
+                messages.info(request, "Žádné změny — nic se nezapsalo.")
+            if not errors:
+                return redirect(
+                    f"/katalog/?branch={branch.code}"
+                )
+
+    rows = [
+        {
+            "product": p,
+            "current": stocks_by_product.get(p.pk, Decimal("0.000")),
+        }
+        for p in products
+    ]
+    return render(
+        request,
+        "inventory/inventura_edit.html",
+        {
+            "branch": branch,
+            "rows": rows,
+            "all_branches": Branch.objects.filter(is_active=True).order_by("code"),
+        },
+    )

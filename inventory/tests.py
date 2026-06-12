@@ -3933,3 +3933,148 @@ def test_stock_adjust_movement_appears_in_history_with_stav_prefix(
     assert b"Inventura" in response.content
     mv = Movement.objects.filter(branch=tyn).order_by("-id").first()
     assert mv.note.startswith("[STAV] ")
+
+
+# ---------------------------------------------------------------------------
+# Pass 5e — Bulk inventura editor (per decision 0041)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_edit_requires_login() -> None:
+    response = Client().get("/katalog/inventura/TYN/")
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_edit_forbidden_for_obsluha(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/katalog/inventura/TYN/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_edit_renders_for_vlastnik(
+    user_vlastnik, tyn, pepper, paprika
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("5.500"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/katalog/inventura/TYN/")
+    assert response.status_code == 200
+    body = response.content
+    assert b"Inventura \xe2\x80\x94 TYN" in body  # "Inventura — TYN"
+    assert pepper.name_cs.encode() in body
+    assert b"10.000" in body
+    assert b"5.500" in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_edit_writes_movements_for_changed_rows_only(
+    user_vlastnik, tyn, pepper, paprika
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("5.500"))
+
+    before = Movement.objects.count()
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/katalog/inventura/TYN/",
+        {
+            "reason": "inventura 2026-06-12",
+            f"qty_{pepper.pk}": "10.000",   # unchanged → skip
+            f"qty_{paprika.pk}": "6.000",  # +0.500 → write
+        },
+    )
+    assert response.status_code == 302
+    after = Movement.objects.count()
+    assert after == before + 1  # only paprika changed
+    paprika_stock = Stock.objects.get(product=paprika, branch=tyn)
+    assert paprika_stock.quantity == Decimal("6.000")
+    pepper_stock = Stock.objects.get(product=pepper, branch=tyn)
+    assert pepper_stock.quantity == Decimal("10.000")
+    # The synthetic Movement carries the batch reason in note (with [STAV] prefix).
+    mv = Movement.objects.order_by("-id").first()
+    assert mv.note.startswith("[STAV] ")
+    assert "inventura 2026-06-12" in mv.note
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_edit_requires_reason(
+    user_vlastnik, tyn, pepper
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    before = Movement.objects.count()
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/katalog/inventura/TYN/",
+        {"reason": "", f"qty_{pepper.pk}": "12.000"},
+    )
+    # Form re-renders with error; no movements written.
+    assert response.status_code == 200
+    assert Movement.objects.count() == before
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_edit_handles_multiple_changes_atomically(
+    user_vlastnik, tyn, pepper, paprika
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("5.500"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/katalog/inventura/TYN/",
+        {
+            "reason": "inventura — víc změn najednou",
+            f"qty_{pepper.pk}": "11.500",   # +1.500
+            f"qty_{paprika.pk}": "4.000",  # -1.500
+        },
+    )
+    assert response.status_code == 302
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("11.500")
+    assert Stock.objects.get(product=paprika, branch=tyn).quantity == Decimal("4.000")
+    # Two movements: one prijem (pepper +) and one vydej (paprika -).
+    new_movements = list(Movement.objects.order_by("-id")[:2])
+    kinds = {mv.kind for mv in new_movements}
+    assert kinds == {Movement.Kind.PRIJEM, Movement.Kind.VYDEJ}
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_button_appears_when_branch_selected(
+    user_vlastnik, tyn
+) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    # Without ?branch — no inventura button.
+    response_no = client.get("/katalog/")
+    assert response_no.status_code == 200
+    assert b"Inventura TYN" not in response_no.content
+    # With ?branch=TYN — button present.
+    response_yes = client.get("/katalog/?branch=TYN")
+    assert response_yes.status_code == 200
+    assert b"Inventura TYN" in response_yes.content
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_button_hidden_for_obsluha(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    # Obsluha is auto-scoped — branch dropdown isn't even shown but
+    # the catalog page renders all products. The Inventura button
+    # must not appear for obsluha regardless of any URL params.
+    response = client.get("/katalog/")
+    assert response.status_code == 200
+    assert b"Inventura" not in response.content

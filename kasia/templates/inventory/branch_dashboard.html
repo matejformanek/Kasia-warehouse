@@ -98,5 +98,8 @@
   {% else %}
     <p style="color:var(--fg-soft);">Zatím žádné pohyby.</p>
   {% endif %}
+  <p>
+    <a class="secondary" href="{% url 'inventory:movement_history' %}">Celá historie</a>
+  </p>
 </div>
 {% endblock %}

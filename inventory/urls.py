@@ -19,6 +19,7 @@ urlpatterns = [
         views.stock_warn_partial,
         name="stock_warn_partial",
     ),
+    path("pohyby/", views.movement_history, name="movement_history"),
     path("pohyby/<int:pk>/", views.movement_saved, name="movement_saved"),
     path("pohyby/<int:pk>/upravit/", views.movement_edit, name="movement_edit"),
     path("dodaky/", views.dodaci_list_index, name="dodaci_list_index"),

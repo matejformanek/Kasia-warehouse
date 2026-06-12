@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Historie pohybů — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Historie pohybů
+  {% if branch_locked %} — pobočka {{ branch_locked.code }}{% endif %}
+</h1>
+
+<form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+  {% if not branch_locked %}
+    <div class="field" style="margin-bottom:0;">
+      <label for="id_filter_branch">Pobočka</label>
+      <select name="branch" id="id_filter_branch">
+        <option value="">— vše —</option>
+        {% for b in branches %}
+          <option value="{{ b.pk }}" {% if filter_branch == b.pk|stringformat:"s" %}selected{% endif %}>
+            {{ b.code }} — {{ b.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  {% endif %}
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_kind">Druh</label>
+    <select name="kind" id="id_filter_kind">
+      <option value="">— vše —</option>
+      <option value="prijem" {% if filter_kind == "prijem" %}selected{% endif %}>příjem</option>
+      <option value="vydej" {% if filter_kind == "vydej" %}selected{% endif %}>výdej</option>
+    </select>
+  </div>
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_date_from">Od</label>
+    <input type="date" name="date_from" id="id_filter_date_from" value="{{ filter_date_from }}">
+  </div>
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_date_to">Do</label>
+    <input type="date" name="date_to" id="id_filter_date_to" value="{{ filter_date_to }}">
+  </div>
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_q">Hledat</label>
+    <input type="search" name="q" id="id_filter_q" value="{{ filter_q }}"
+           placeholder="produkt, protistrana, poznámka…" style="min-width:240px;">
+  </div>
+  <div class="field" style="margin-bottom:0;">
+    <label style="font-weight:400;">
+      <input type="checkbox" name="edited" value="1" {% if filter_edited %}checked{% endif %}>
+      Pouze editované
+    </label>
+  </div>
+  <div>
+    <button class="primary" type="submit">Filtrovat</button>
+    <a class="secondary" href="{% url 'inventory:movement_history' %}">Vymazat filtry</a>
+  </div>
+</form>
+
+<p style="color:var(--fg-soft);">
+  Nalezeno: {{ count }} pohybů
+  {% if count == 200 %}(omezeno na 200 nejnovějších){% endif %}.
+</p>
+
+{% if movements %}
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Datum</th>
+        <th>Druh</th>
+        <th>Pobočka</th>
+        <th>Položky</th>
+        <th>Protistrana</th>
+        <th>Operátor</th>
+        <th>Editováno</th>
+        <th>Dodací list</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for mv in movements %}
+        {% with first_line=mv.lines.first lines_count=mv.lines.count %}
+        <tr>
+          <td>
+            <a href="{% url 'inventory:movement_edit' pk=mv.pk %}">
+              {{ mv.date_issued|date:"d. m. Y" }}
+            </a>
+          </td>
+          <td>
+            {% if mv.kind == "prijem" %}
+              <span style="color:var(--ok);">{{ mv.get_kind_display }}</span>
+            {% else %}
+              <span style="color:var(--accent);">{{ mv.get_kind_display }}</span>
+            {% endif %}
+          </td>
+          <td>{{ mv.branch.code }}</td>
+          <td>
+            {% if first_line %}
+              {{ first_line.product.name_cs }}
+              {% if lines_count > 1 %}
+                <span style="color:var(--fg-soft);">+{{ lines_count|add:"-1" }} dalších</span>
+              {% endif %}
+            {% endif %}
+          </td>
+          <td>
+            {% if mv.kind == "vydej" %}{{ mv.odberatel.name }}{% else %}{{ mv.dodavatel.name }}{% endif %}
+          </td>
+          <td style="color:var(--fg-soft);">{{ mv.created_by.email }}</td>
+          <td>
+            {% if mv.audit_entries.count %}
+              <span style="color:var(--warn);">editováno ({{ mv.audit_entries.count }}×)</span>
+            {% endif %}
+          </td>
+          <td>
+            {% with dl=mv.dodaci_list %}
+              {% if dl %}
+                <a href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">{{ dl.cislo }}</a>
+              {% endif %}
+            {% endwith %}
+          </td>
+        </tr>
+        {% endwith %}
+      {% endfor %}
+    </tbody>
+  </table>
+{% elif filter_q or filter_kind or filter_date_from or filter_date_to or filter_edited or filter_branch %}
+  <p>Žádné pohyby neodpovídají filtrům.
+    <a href="{% url 'inventory:movement_history' %}">Vymazat filtry</a>
+  </p>
+{% else %}
+  <p style="color:var(--fg-soft);">Zatím žádné pohyby.</p>
+{% endif %}
+{% endblock %}

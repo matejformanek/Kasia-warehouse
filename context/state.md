@@ -628,11 +628,42 @@
   GET /pobocka/SEZ/ returns 403; vlastník login lands on owner
   dashboard with "K vyřešení" + "Dodací listy k revizi".
 
+- **2026-06-12** — Pass 3e (movement history, screen 10) landed.
+  New route `/pohyby/` (`movement_history`) — chronological list
+  of all movements with full filter strip:
+  - branch (vlastník-only; obsluha is silently scoped to their
+    own branch and the dropdown is not rendered);
+  - kind (`prijem` / `vydej`);
+  - date range (`date_from`, `date_to` — ISO format,
+    `__gte` / `__lte`);
+  - "Pouze editované" — `audit_entries__isnull=False`
+    distinct, the surrogate audit-log per the
+    `screens/README.md` reconciliation;
+  - free-text search across `odberatel.name`,
+    `dodavatel.name`, `lines.product.name_cs`, and `note` —
+    icontains, distinct.
+  Result table: date, kind (color-coded), branch code, line
+  summary (first product `+N dalších` for multi-line),
+  counterparty, operator, "editováno (N×)" marker, dodák
+  číslo (linked) for výdeje. Rows link to `movement_edit`.
+  Capped at 200 newest first; the count notes "(omezeno na 200
+  nejnovějších)" when the cap kicks in.
+  Nav extended with a "Historie" link; branch dashboard gains a
+  "Celá historie" link at the bottom of the recent-movements
+  block (per screen 03 spec). 10 new view tests: login gate;
+  empty state; lists movement with dodák číslo; obsluha strictly
+  scoped to own branch (SEZ movements invisible on TYN); kind /
+  branch / date-range / "Pouze editované" / search filters;
+  obsluha passing `?branch=` is silently ignored. Full suite:
+  **120 pytest tests green** (110 → 120); ruff clean; system
+  check clean.
+
 ## In progress
 
-_(nothing — operator-facing surface complete for both roles;
-the only remaining MVP work is operational: provision the
-Hetzner box and start the shadow run)_
+_(nothing — operator-facing surface now spans screens 02 + 03 +
+06 + 07 + 08 + 09 + 10 + 11. Remaining MVP code work is screen
+15 míchání — needs design decisions first (reserve-vs-consume,
+post-hoc recording). Otherwise just operational tasks.)_
 
 ## Next
 

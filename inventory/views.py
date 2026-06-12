@@ -18,6 +18,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
@@ -157,6 +158,96 @@ def movement_saved(request, pk: int):
         request,
         "inventory/movement_saved.html",
         {"movement": movement, "dodaci_list": dodaci_list},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Movement history (screen 10)
+# ---------------------------------------------------------------------------
+
+
+@require_GET
+def movement_history(request):
+    """Chronological filterable record of every movement.
+
+    Obsluha users are strictly scoped to their own branch; vlastník
+    users see both and can filter by branch via `?branch=<pk>`.
+    Other filters: kind (`prijem` / `vydej`), `date_from`, `date_to`,
+    `edited` (1 to show only movements with audit rows), `q` (free
+    text icontains across counterparty name + line product name +
+    note).
+    """
+    from datetime import date as _date
+
+    qs = (
+        Movement.objects.select_related(
+            "branch", "odberatel", "dodavatel", "created_by"
+        )
+        .prefetch_related("lines__product", "audit_entries")
+    )
+
+    # Branch scoping — obsluha forced to own branch.
+    if request.user.is_obsluha and request.user.branch_id:
+        qs = qs.filter(branch_id=request.user.branch_id)
+        branch_locked = request.user.branch
+    else:
+        branch_locked = None
+        branch_filter = request.GET.get("branch") or ""
+        if branch_filter:
+            qs = qs.filter(branch_id=branch_filter)
+
+    kind = request.GET.get("kind") or ""
+    if kind in (Movement.Kind.PRIJEM, Movement.Kind.VYDEJ):
+        qs = qs.filter(kind=kind)
+
+    date_from = request.GET.get("date_from") or ""
+    date_to = request.GET.get("date_to") or ""
+
+    def _parse(s: str):
+        try:
+            return _date.fromisoformat(s)
+        except ValueError:
+            return None
+
+    df, dt = _parse(date_from), _parse(date_to)
+    if df is not None:
+        qs = qs.filter(date_issued__gte=df)
+    if dt is not None:
+        qs = qs.filter(date_issued__lte=dt)
+
+    if request.GET.get("edited") == "1":
+        # "movement has any audit row" → join + distinct.
+        qs = qs.filter(audit_entries__isnull=False).distinct()
+
+    search = (request.GET.get("q") or "").strip()
+    if search:
+        qs = qs.filter(
+            Q(odberatel__name__icontains=search)
+            | Q(dodavatel__name__icontains=search)
+            | Q(lines__product__name_cs__icontains=search)
+            | Q(note__icontains=search)
+        ).distinct()
+
+    qs = qs.order_by("-date_issued", "-id")[:200]
+    movements = list(qs)
+
+    branches = list(Branch.objects.filter(is_active=True).order_by("code"))
+
+    return render(
+        request,
+        "inventory/movement_history.html",
+        {
+            "movements": movements,
+            "count": len(movements),
+            "branches": branches,
+            "branch_locked": branch_locked,
+            "filter_branch": request.GET.get("branch") or "",
+            "filter_kind": kind,
+            "filter_date_from": date_from,
+            "filter_date_to": date_to,
+            "filter_edited": request.GET.get("edited") == "1",
+            "filter_q": search,
+        },
     )
 
 

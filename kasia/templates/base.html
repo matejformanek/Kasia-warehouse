@@ -170,6 +170,7 @@
       <a href="{% url 'inventory:prijem_create' %}">Příjem</a>
       <a href="{% url 'inventory:vydej_create' %}">Výdej</a>
       <a href="{% url 'inventory:dodaci_list_index' %}">Dodací listy</a>
+      <a href="{% url 'inventory:movement_history' %}">Historie</a>
       <span class="who">{{ user.email }}</span>
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Odhlásit</button></form>
     {% endif %}

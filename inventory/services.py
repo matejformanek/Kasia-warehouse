@@ -16,6 +16,7 @@ for MVP at ~6 users (per .claude/rules/right-sized-for-small-business.md).
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -25,6 +26,7 @@ from django.db import IntegrityError, transaction
 from django.template.loader import render_to_string
 
 from .models import (
+    Branch,
     Customer,
     DodaciList,
     DodaciListEmailLog,
@@ -833,3 +835,96 @@ def record_completed_mixing_job(
         user=user,
         as_of=as_of,
     )
+
+
+# ---------------------------------------------------------------------------
+# Manual stock adjustment (Pass 5d, per decision 0041)
+# ---------------------------------------------------------------------------
+
+
+_ADJUSTMENT_COUNTERPARTY_NAME = "Inventura / ruční úprava"
+_ADJUSTMENT_NOTE_PREFIX = "[STAV] "
+
+
+def _adjustment_supplier() -> Supplier:
+    return Supplier.objects.get(
+        name=_ADJUSTMENT_COUNTERPARTY_NAME, is_internal=True
+    )
+
+
+def _adjustment_customer() -> Customer:
+    return Customer.objects.get(
+        name=_ADJUSTMENT_COUNTERPARTY_NAME, is_internal=True
+    )
+
+
+def apply_stock_adjustment(
+    *,
+    product: Product,
+    branch: Branch,
+    new_quantity: Decimal,
+    reason: str,
+    user,
+    as_of: date | None = None,
+) -> Movement | None:
+    """Bring `Stock(product, branch).quantity` to `new_quantity` by
+    writing one synthetic Movement.
+
+    Per [0041](../context/decisions/0041-manual-stock-adjustment.md):
+    every Stock delta goes through `apply_movement`, never raw
+    UPDATE. The delta determines the kind:
+        delta > 0 → prijem from internal "Inventura / ruční úprava"
+        delta < 0 → vydej to   internal "Inventura / ruční úprava"
+        delta = 0 → noop (returns None)
+    The Movement's note is `"[STAV] " + reason` so it shows up
+    cleanly in Historie and can be filtered out by a future
+    inventura-tab.
+
+    The internal counterparty has `is_internal=True` so the dodák
+    hook in apply_movement is skipped (no PDF, no e-mail).
+    """
+    from decimal import Decimal as _D
+    if not reason or not reason.strip():
+        raise ValidationError(
+            {"reason": "Důvod ruční úpravy stavu je povinný."}
+        )
+
+    new_quantity = _D(new_quantity)
+    if new_quantity < 0:
+        raise ValidationError(
+            {"new_quantity": "Stav nemůže být záporný."}
+        )
+
+    current = Stock.objects.filter(product=product, branch=branch).first()
+    current_qty = current.quantity if current else _D("0.000")
+    delta = new_quantity - current_qty
+    if delta == 0:
+        return None
+
+    issue_date = as_of or date.today()
+    clean_reason = reason.strip()
+    note = f"{_ADJUSTMENT_NOTE_PREFIX}{clean_reason}"
+
+    if delta > 0:
+        # Stock up: synthetic prijem from internal supplier.
+        movement = Movement(
+            branch=branch,
+            kind=Movement.Kind.PRIJEM,
+            dodavatel=_adjustment_supplier(),
+            date_issued=issue_date,
+            note=note,
+            created_by=user,
+        )
+    else:
+        # Stock down: synthetic vydej to internal customer.
+        movement = Movement(
+            branch=branch,
+            kind=Movement.Kind.VYDEJ,
+            odberatel=_adjustment_customer(),
+            date_issued=issue_date,
+            note=note,
+            created_by=user,
+        )
+
+    line = MovementLine(product=product, quantity_kg=abs(delta))
+    return apply_movement(movement=movement, lines=[line], user=user)

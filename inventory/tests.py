@@ -3220,7 +3220,7 @@ def test_supplier_archive(user_obsluha_tyn, supplier) -> None:
 def test_supplier_archive_internal_refused(user_vlastnik) -> None:
     from inventory.models import Supplier as Sup
 
-    micharna = Sup.objects.get(is_internal=True)
+    micharna = Sup.objects.get(name="Míchárna", is_internal=True)
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
@@ -3758,3 +3758,178 @@ def test_nav_pobocky_link_hidden_for_obsluha(user_obsluha_tyn) -> None:
     # The branch dashboard h1 might have "pobočka" — sanity check on
     # the /pobocky/ URL not appearing in the anchors.
     assert b'href="/pobocky/"' not in response.content
+
+
+# ---------------------------------------------------------------------------
+# Pass 5d — Manual stock adjustment (per decision 0041)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_adjust_requires_login(pepper) -> None:
+    response = Client().get(f"/katalog/{pepper.pk}/upravit-stav/")
+    assert response.status_code == 302
+    assert "/login/" in response["Location"]
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_adjust_forbidden_for_obsluha(user_obsluha_tyn, pepper) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get(f"/katalog/{pepper.pk}/upravit-stav/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_adjust_renders_for_vlastnik(user_vlastnik, pepper, tyn) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/katalog/{pepper.pk}/upravit-stav/")
+    assert response.status_code == 200
+    assert b"\xc3\x9aprava stavu" in response.content  # "Úprava stavu"
+    assert b"10.000" in response.content
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_adjust_positive_delta_writes_prijem(
+    user_vlastnik, pepper, tyn
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/katalog/{pepper.pk}/upravit-stav/",
+        {
+            "branch": str(tyn.pk),
+            "new_quantity": "12.500",
+            "reason": "inventura — naval o 2,5 kg víc",
+        },
+    )
+    assert response.status_code == 302
+    s = Stock.objects.get(product=pepper, branch=tyn)
+    assert s.quantity == Decimal("12.500")
+    mv = Movement.objects.filter(
+        branch=tyn, kind=Movement.Kind.PRIJEM
+    ).order_by("-id").first()
+    assert mv is not None
+    assert mv.note.startswith("[STAV] ")
+    assert "naval" in mv.note
+    assert mv.dodavatel.is_internal is True
+    assert mv.dodavatel.name == "Inventura / ruční úprava"
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_adjust_negative_delta_writes_vydej(
+    user_vlastnik, pepper, tyn
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/katalog/{pepper.pk}/upravit-stav/",
+        {
+            "branch": str(tyn.pk),
+            "new_quantity": "7.000",
+            "reason": "inventura — chybí 3 kg",
+        },
+    )
+    assert response.status_code == 302
+    s = Stock.objects.get(product=pepper, branch=tyn)
+    assert s.quantity == Decimal("7.000")
+    mv = Movement.objects.filter(
+        branch=tyn, kind=Movement.Kind.VYDEJ
+    ).order_by("-id").first()
+    assert mv is not None
+    assert mv.note.startswith("[STAV] ")
+    assert mv.odberatel.is_internal is True
+    assert mv.odberatel.name == "Inventura / ruční úprava"
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_adjust_zero_delta_noop(user_vlastnik, pepper, tyn) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    before = Movement.objects.count()
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/katalog/{pepper.pk}/upravit-stav/",
+        {
+            "branch": str(tyn.pk),
+            "new_quantity": "10.000",
+            "reason": "pro jistotu",
+        },
+    )
+    assert response.status_code == 302
+    after = Movement.objects.count()
+    assert after == before  # no movement written
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_adjust_requires_reason(user_vlastnik, pepper, tyn) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/katalog/{pepper.pk}/upravit-stav/",
+        {"branch": str(tyn.pk), "new_quantity": "12.000", "reason": ""},
+    )
+    assert response.status_code == 200  # form re-rendered with error
+    s = Stock.objects.get(product=pepper, branch=tyn)
+    assert s.quantity == Decimal("10.000")  # unchanged
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_adjust_creates_stock_row_when_missing(
+    user_vlastnik, paprika, tyn
+) -> None:
+    """Adjusting from 0 (no Stock row yet) creates the Stock row implicitly."""
+    assert not Stock.objects.filter(product=paprika, branch=tyn).exists()
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/katalog/{paprika.pk}/upravit-stav/",
+        {
+            "branch": str(tyn.pk),
+            "new_quantity": "5.000",
+            "reason": "počáteční stav",
+        },
+    )
+    assert response.status_code == 302
+    s = Stock.objects.get(product=paprika, branch=tyn)
+    assert s.quantity == Decimal("5.000")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_adjust_movement_appears_in_history_with_stav_prefix(
+    user_vlastnik, pepper, tyn
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    client.post(
+        f"/katalog/{pepper.pk}/upravit-stav/",
+        {
+            "branch": str(tyn.pk),
+            "new_quantity": "11.000",
+            "reason": "úprava",
+        },
+    )
+    response = client.get("/pohyby/")
+    assert response.status_code == 200
+    # Counterparty appears in the history Protistrana column.
+    # The [STAV] note prefix is in the DB (Movement.note) — future
+    # work surfaces it as a Historie filter; for now we only assert
+    # the synthetic movement made it into Historie.
+    assert b"Inventura" in response.content
+    mv = Movement.objects.filter(branch=tyn).order_by("-id").first()
+    assert mv.note.startswith("[STAV] ")

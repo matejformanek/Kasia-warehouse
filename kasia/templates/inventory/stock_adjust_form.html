@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Úprava stavu — {{ product.name_cs }} — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Úprava stavu — {{ product.name_cs }}</h1>
+
+<div class="card" style="background:#fbf3e0;border-left:3px solid var(--warn);">
+  <strong>Ruční úprava stavu.</strong>
+  Tento krok zapíše pohyb s prefixem <code>[STAV]</code> do Historie
+  (per rozhodnutí 0041). Není to nahrazení stávajícího pohybu —
+  pokud chcete opravit chybu v dříve zaznamenaném příjmu/výdeji,
+  použijte „Upravit pohyb" v Historii.
+</div>
+
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Aktuální stav</h2>
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Pobočka</th>
+        <th style="text-align:right;">Skladem (kg)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in branch_rows %}
+        <tr>
+          <td>{{ row.branch.code }} — {{ row.branch.name }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">
+            {{ row.quantity|floatformat:"3" }}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<p class="required-legend">povinné pole</p>
+
+<form method="post" class="card">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="non-form-errors">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="field">
+    <label class="field-required" for="{{ form.branch.id_for_label }}">{{ form.branch.label }}</label>
+    {{ form.branch }}
+    {{ form.branch.errors }}
+  </div>
+  <div class="field">
+    <label class="field-required" for="{{ form.new_quantity.id_for_label }}">{{ form.new_quantity.label }}</label>
+    {{ form.new_quantity }}
+    <small style="color:var(--fg-soft); display:block;">
+      Zapište požadovaný cílový stav (ne rozdíl). Systém spočítá rozdíl
+      proti aktuálnímu stavu a zapíše ho jako pohyb.
+    </small>
+    {{ form.new_quantity.errors }}
+  </div>
+  <div class="field">
+    <label class="field-required" for="{{ form.reason.id_for_label }}">{{ form.reason.label }}</label>
+    {{ form.reason }}
+    <small style="color:var(--fg-soft); display:block;">
+      Důvod úpravy se uloží do poznámky pohybu (např.
+      <code>inventura — vážil jsem 23 kg</code>).
+    </small>
+    {{ form.reason.errors }}
+  </div>
+
+  <button type="submit" class="primary">Uložit úpravu stavu</button>
+  <a class="secondary" href="{% url 'inventory:product_detail' pk=product.pk %}">Zrušit</a>
+</form>
+{% endblock %}

@@ -412,3 +412,35 @@ class BranchForm(forms.ModelForm):
 
     def clean_name(self) -> str:
         return (self.cleaned_data["name"] or "").strip()
+
+
+# ---------------------------------------------------------------------------
+# Manual stock adjustment (Pass 5d, per decision 0041)
+# ---------------------------------------------------------------------------
+
+
+class StockAdjustmentForm(forms.Form):
+    """One-shot form for changing the current stock of one product at one
+    branch. Writes a synthetic Movement per [0041]; never raw UPDATE.
+    """
+
+    branch = forms.ModelChoiceField(
+        label="Pobočka",
+        queryset=None,  # set in __init__
+        empty_label=None,
+    )
+    new_quantity = forms.DecimalField(
+        label="Nový stav (kg)",
+        max_digits=10,
+        decimal_places=3,
+        min_value=Decimal("0.000"),
+    )
+    reason = forms.CharField(
+        label="Důvod úpravy",
+        widget=forms.TextInput(attrs={"size": 60}),
+    )
+
+    def __init__(self, *args, product: Product, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.product = product
+        self.fields["branch"].queryset = Branch.objects.filter(is_active=True)

@@ -135,6 +135,19 @@ def _ensure_micharna_seed(db) -> None:
         is_internal=True,
         defaults={"address": "interní výroba směsí"},
     )
+    # Per 0041 — also re-seed the manual-stock-adjustment internal pair
+    # (migration 0008) so apply_stock_adjustment can look them up
+    # after a transactional flush.
+    Customer.objects.get_or_create(
+        name="Inventura / ruční úprava",
+        is_internal=True,
+        defaults={"address": "interní úprava stavu"},
+    )
+    Supplier.objects.get_or_create(
+        name="Inventura / ruční úprava",
+        is_internal=True,
+        defaults={"address": "interní úprava stavu"},
+    )
 
 
 @pytest.fixture(autouse=True)

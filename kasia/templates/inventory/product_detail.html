@@ -192,6 +192,9 @@
 
 <p>
   <a class="primary" href="{% url 'inventory:product_edit' pk=product.pk %}">Upravit produkt</a>
+  {% if user.is_vlastnik %}
+    <a class="secondary" href="{% url 'inventory:stock_adjust_edit' pk=product.pk %}">Upravit stav skladu</a>
+  {% endif %}
   <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Zpět na katalog</a>
 </p>
 {% endblock %}

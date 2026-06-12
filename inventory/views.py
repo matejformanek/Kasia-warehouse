@@ -36,6 +36,7 @@ from .forms import (
     RecipeComponentFormSet,
     SettingsForm,
     SmtpTestForm,
+    StockAdjustmentForm,
     SupplierForm,
     VydejEditForm,
     VydejForm,
@@ -59,6 +60,7 @@ from .models import (
 )
 from .services import (
     apply_movement,
+    apply_stock_adjustment,
     cancel_mixing_job,
     edit_movement,
     finish_mixing_job,
@@ -1784,3 +1786,92 @@ def branch_reactivate(request, code: str):
     branch.save(update_fields=["is_active"])
     messages.success(request, f"Pobočka {branch.code} aktivována.")
     return redirect("inventory:branch_index")
+
+
+# ---------------------------------------------------------------------------
+# Pass 5d — Manual stock adjustment (per decision 0041, vlastník-only)
+# ---------------------------------------------------------------------------
+
+
+def stock_adjust_edit(request, pk: int):
+    """Vlastník brings the current Stock(product, branch) to a new value.
+    Writes one synthetic Movement; never touches Stock.quantity directly.
+    """
+    _require_vlastnik(request)
+    product = get_object_or_404(Product, pk=pk)
+
+    if request.method == "POST":
+        form = StockAdjustmentForm(request.POST, product=product)
+        if form.is_valid():
+            try:
+                mv = apply_stock_adjustment(
+                    product=product,
+                    branch=form.cleaned_data["branch"],
+                    new_quantity=form.cleaned_data["new_quantity"],
+                    reason=form.cleaned_data["reason"],
+                    user=request.user,
+                )
+            except ValidationError as exc:
+                form.add_error(
+                    None,
+                    "; ".join(exc.messages)
+                    if hasattr(exc, "messages")
+                    else str(exc),
+                )
+            else:
+                if mv is None:
+                    messages.info(request, "Stav je beze změny — nic se nezapsalo.")
+                else:
+                    messages.success(
+                        request,
+                        f"Stav upraven (#{mv.pk}). Pohyb najdete v Historii.",
+                    )
+                return redirect("inventory:product_detail", pk=product.pk)
+    else:
+        # Pre-fill branch + current quantity for whichever branch the
+        # operator most recently looked at; default to first active branch.
+        current_stocks = list(
+            Stock.objects.filter(product=product)
+            .select_related("branch")
+            .order_by("branch__code")
+        )
+        default_branch = (
+            current_stocks[0].branch
+            if current_stocks
+            else Branch.objects.filter(is_active=True).first()
+        )
+        default_qty = (
+            current_stocks[0].quantity
+            if current_stocks
+            else Decimal("0.000")
+        )
+        form = StockAdjustmentForm(
+            product=product,
+            initial={
+                "branch": default_branch.pk if default_branch else None,
+                "new_quantity": default_qty,
+            },
+        )
+
+    # Current per-branch stock summary for context on the form page.
+    stocks_by_branch = {
+        s.branch_id: s.quantity
+        for s in Stock.objects.filter(product=product).select_related("branch")
+    }
+    branch_rows = [
+        {
+            "branch": b,
+            "quantity": stocks_by_branch.get(b.pk, Decimal("0.000")),
+        }
+        for b in Branch.objects.filter(is_active=True).order_by("code")
+    ]
+
+    return render(
+        request,
+        "inventory/stock_adjust_form.html",
+        {
+            "product": product,
+            "form": form,
+            "branch_rows": branch_rows,
+        },
+    )

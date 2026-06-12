@@ -1096,3 +1096,237 @@ def test_email_log_admin_is_readonly(admin_user) -> None:
     client.force_login(admin_user)
     response = client.get(reverse("admin:inventory_dodacilistemaillog_add"))
     assert response.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Pass 3a — HTMX views (auth, příjem, výdej, partials)
+# ---------------------------------------------------------------------------
+
+
+_VIEW_TEST_OVERRIDES = {
+    **_PLAIN_STATIC,
+    **_LOCMEM_EMAIL,
+}
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_anonymous_home_redirects_to_login() -> None:
+    response = Client().get("/")
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/login/")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_healthz_is_public() -> None:
+    # Healthz is decorated with @login_not_required.
+    response = Client().get("/healthz")
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_login_renders_czech() -> None:
+    response = Client().get("/login/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Přihlášení" in body
+    assert "E-mail" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_login_success_redirects_home(user_tyn) -> None:
+    user_tyn.set_password("zkouska123")
+    user_tyn.save()
+    client = Client()
+    response = client.post(
+        "/login/",
+        {"username": user_tyn.email, "password": "zkouska123"},
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/"
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_home_loads_for_authenticated_user(user_tyn) -> None:
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Nový příjem" in body
+    assert "Nový výdej" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_prijem_get_renders(user_tyn, supplier) -> None:
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/prijem/novy/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Nový příjem" in body
+    assert supplier.name in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_prijem_post_creates_movement_and_redirects(
+    user_tyn, tyn, supplier, pepper
+) -> None:
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.post(
+        "/prijem/novy/",
+        {
+            "branch": tyn.pk,
+            "dodavatel": supplier.pk,
+            "date_issued": "2026-06-12",
+            "note": "test",
+            "lines-TOTAL_FORMS": "1",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-product": pepper.pk,
+            "lines-0-quantity_kg": "3.250",
+        },
+    )
+    assert response.status_code == 302, response.content[:500]
+    assert response.headers["Location"].startswith("/pohyby/")
+    mv = Movement.objects.get()
+    assert mv.kind == Movement.Kind.PRIJEM
+    assert mv.lines.count() == 1
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("3.250")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_prijem_post_empty_lines_shows_error(user_tyn, tyn, supplier) -> None:
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.post(
+        "/prijem/novy/",
+        {
+            "branch": tyn.pk,
+            "dodavatel": supplier.pk,
+            "date_issued": "2026-06-12",
+            "lines-TOTAL_FORMS": "1",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+        },
+    )
+    assert response.status_code == 200
+    assert Movement.objects.count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_vydej_post_creates_dodaci_list_and_redirects(
+    user_tyn, tyn, ricany, pepper
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.post(
+        "/vydej/novy/",
+        {
+            "branch": tyn.pk,
+            "odberatel": ricany.pk,
+            "date_issued": "2026-06-12",
+            "lines-TOTAL_FORMS": "1",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-product": pepper.pk,
+            "lines-0-quantity_kg": "2.000",
+        },
+    )
+    assert response.status_code == 302, response.content[:500]
+    mv = Movement.objects.get()
+    assert mv.kind == Movement.Kind.VYDEJ
+    dl = DodaciList.objects.get(movement=mv)
+    assert dl.cislo == "TYN-2026-0001"
+    saved = client.get(f"/pohyby/{mv.pk}/")
+    assert saved.status_code == 200
+    assert b"TYN-2026-0001" in saved.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_vydej_post_overdraw_keeps_form(user_tyn, tyn, ricany, pepper) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.post(
+        "/vydej/novy/",
+        {
+            "branch": tyn.pk,
+            "odberatel": ricany.pk,
+            "date_issued": "2026-06-12",
+            "lines-TOTAL_FORMS": "1",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-product": pepper.pk,
+            "lines-0-quantity_kg": "5.000",
+        },
+    )
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "pod nulu" in body or "Skladová" in body
+    assert Movement.objects.count() == 0
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_line_row_partial(user_tyn) -> None:
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/_partials/line-row/?index=2")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert 'name="lines-2-product"' in body
+    assert 'name="lines-2-quantity_kg"' in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_warn_partial_over_and_under(user_tyn, tyn, pepper) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("3.000"))
+    client = Client()
+    client.force_login(user_tyn)
+    over = client.get(
+        f"/_partials/stock-warn/?branch={tyn.pk}&product={pepper.pk}&qty=5.000"
+    )
+    assert over.status_code == 200
+    body = over.content.decode("utf-8")
+    assert "překračuje" in body
+    under = client.get(
+        f"/_partials/stock-warn/?branch={tyn.pk}&product={pepper.pk}&qty=1.000"
+    )
+    assert under.status_code == 200
+    body = under.content.decode("utf-8")
+    assert "3,000" in body or "3.000" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_warn_partial_empty_on_missing_params(user_tyn) -> None:
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/_partials/stock-warn/")
+    assert response.status_code == 200
+    assert response.content == b""
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_partial_routes_require_login() -> None:
+    response = Client().get("/_partials/line-row/")
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/login/")

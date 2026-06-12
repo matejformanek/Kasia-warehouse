@@ -1,0 +1,188 @@
+{% load static %}<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Kasia vera — sklad{% endblock %}</title>
+<style>
+  :root {
+    --fg: #111;
+    --fg-soft: #555;
+    --bg: #fafafa;
+    --bg-card: #fff;
+    --border: #d0d0d0;
+    --accent: #2a5d8c;
+    --error: #a40000;
+    --ok: #1f6b3a;
+    --warn: #a45a00;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    font-family: system-ui, "Segoe UI", "DejaVu Sans", sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  header.top {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  header.top .brand {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: var(--accent);
+  }
+  header.top nav a, header.top nav button {
+    margin-left: 1rem;
+    color: var(--fg);
+    text-decoration: none;
+  }
+  header.top nav a:hover { text-decoration: underline; }
+  header.top nav .who { color: var(--fg-soft); margin-right: 1rem; }
+  header.top form { display: inline; }
+  header.top form button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    color: var(--fg);
+    padding: 0;
+  }
+  main {
+    max-width: 1100px;
+    margin: 1.5rem auto;
+    padding: 0 1.5rem;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 1rem; }
+  .messages { margin-bottom: 1rem; }
+  .messages .msg {
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+  }
+  .messages .msg.success { background: #e8f4ec; color: var(--ok); }
+  .messages .msg.error   { background: #fbe8e8; color: var(--error); }
+  .messages .msg.warning { background: #fbf3e0; color: var(--warn); }
+  .messages .msg.info    { background: #e8eef6; color: var(--accent); }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  form .field { margin-bottom: 0.75rem; }
+  form label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
+  form input[type=text],
+  form input[type=email],
+  form input[type=password],
+  form input[type=date],
+  form input[type=number],
+  form select,
+  form textarea {
+    font: inherit;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    width: 100%;
+    max-width: 320px;
+    background: white;
+  }
+  form textarea { max-width: 100%; }
+  form .errorlist {
+    list-style: none;
+    color: var(--error);
+    padding: 0;
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+  }
+  button.primary {
+    background: var(--accent);
+    color: white;
+    border: 0;
+    padding: 0.55rem 1.1rem;
+    border-radius: 4px;
+    font: inherit;
+    cursor: pointer;
+  }
+  button.primary:hover { filter: brightness(1.1); }
+  button.secondary, a.secondary {
+    background: white;
+    color: var(--fg);
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.9rem;
+    border-radius: 4px;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  table.lines {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0.75rem;
+  }
+  table.lines th, table.lines td {
+    padding: 0.4rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  table.lines th {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: var(--fg-soft);
+    text-align: left;
+  }
+  table.lines td input,
+  table.lines td select { max-width: 100%; }
+  .stock-warn { font-size: 0.9rem; color: var(--warn); margin-top: 0.2rem; }
+  .stock-warn.over { color: var(--error); font-weight: bold; }
+  .recipients {
+    background: #f3f6fa;
+    border-left: 3px solid var(--accent);
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+  .non-form-errors {
+    background: #fbe8e8;
+    color: var(--error);
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+  }
+</style>
+<script src="{% static 'vendor/htmx.min.js' %}" defer></script>
+</head>
+<body
+  hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+  hx-include="[name=csrfmiddlewaretoken]">
+<header class="top">
+  <div class="brand">Kasia vera · sklad</div>
+  <nav>
+    {% if user.is_authenticated %}
+      <a href="{% url 'inventory:prijem_create' %}">Příjem</a>
+      <a href="{% url 'inventory:vydej_create' %}">Výdej</a>
+      <span class="who">{{ user.email }}</span>
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Odhlásit</button></form>
+    {% endif %}
+  </nav>
+</header>
+<main>
+  {% if messages %}
+    <div class="messages">
+      {% for m in messages %}
+        <div class="msg {{ m.tags }}">{{ m }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

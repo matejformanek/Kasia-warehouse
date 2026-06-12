@@ -1,0 +1,43 @@
+{% comment %}
+Shared formset rendering block for příjem and výdej forms.
+
+Context:
+- formset: the bound or unbound MovementLineFormSet
+- show_stock_warn: True on výdej, False on příjem
+{% endcomment %}
+{{ formset.management_form }}
+
+{% if formset.non_form_errors %}
+  <div class="non-form-errors">
+    {% for err in formset.non_form_errors %}<div>{{ err }}</div>{% endfor %}
+  </div>
+{% endif %}
+
+<table class="lines" id="lines-table">
+  <thead>
+    <tr>
+      <th>Produkt</th>
+      <th>Množství (kg)</th>
+      <th>Šarže</th>
+      <th>Expirace</th>
+      <th>Poznámka</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="lines-body">
+    {% for line_form in formset.forms %}
+      {% include "inventory/_line_row.html" with line_form=line_form index=forloop.counter0 show_stock_warn=show_stock_warn %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<p>
+  <button type="button" class="secondary"
+          hx-get="{% url 'inventory:line_row_partial' %}"
+          hx-target="#lines-body"
+          hx-swap="beforeend"
+          hx-vals='js:{index: document.querySelectorAll("#lines-body tr").length}'
+          hx-on::after-request="document.querySelector('[name=lines-TOTAL_FORMS]').value = document.querySelectorAll('#lines-body tr').length">
+    Přidat řádek
+  </button>
+</p>

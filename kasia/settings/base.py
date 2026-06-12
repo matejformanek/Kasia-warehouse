@@ -43,10 +43,19 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Every view requires login unless decorated with @login_not_required
+    # (Django 5.1+). Per decision 0020 there is no public surface beyond
+    # /login/ and /healthz/.
+    "django.contrib.auth.middleware.LoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
 ]
+
+# --- Auth flow (per 0020) ---------------------------------------------------
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "inventory:home"
+LOGOUT_REDIRECT_URL = "login"
 
 ROOT_URLCONF = "kasia.urls"
 

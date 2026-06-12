@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Uloženo — Kasia vera{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1>
+    {% if movement.kind == "vydej" %}Výdej uložen{% else %}Příjem uložen{% endif %}
+  </h1>
+  <p>
+    Pohyb č. {{ movement.pk }} —
+    {{ movement.get_kind_display }},
+    pobočka {{ movement.branch.code }},
+    datum {{ movement.date_issued|date:"d. m. Y" }},
+    {{ movement.lines.count }} pol.
+  </p>
+  {% if dodaci_list %}
+    <p>
+      Dodací list: <strong>{{ dodaci_list.cislo }}</strong>
+      (verze {{ dodaci_list.current_version }}).
+    </p>
+  {% endif %}
+  <p>
+    <a class="secondary" href="{% url 'inventory:home' %}">Zpět</a>
+    {% if movement.kind == "vydej" %}
+      <a class="secondary" href="{% url 'inventory:vydej_create' %}">Nový výdej</a>
+    {% else %}
+      <a class="secondary" href="{% url 'inventory:prijem_create' %}">Nový příjem</a>
+    {% endif %}
+  </p>
+</div>
+{% endblock %}

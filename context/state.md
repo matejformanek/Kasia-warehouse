@@ -417,13 +417,68 @@
   pick up the recipient fixture transparently — no assertions
   weakened.
 
+- **2026-06-12** — Pass 3a (view layer foundation + screens 06 +
+  07) landed. Auth path: Django built-in `LoginView` +
+  `LogoutView` at `/login/` and `/logout/`; new
+  `LoginRequiredMiddleware` (Django 5.1+) makes every URL
+  protected by default — `healthz` opts out via
+  `@login_not_required`. `LOGIN_URL`, `LOGIN_REDIRECT_URL`,
+  `LOGOUT_REDIRECT_URL` set in `kasia/settings/base.py`.
+  URL conf: `inventory/urls.py` with `app_name = "inventory"`;
+  routes `/` (home), `/prijem/novy/`, `/vydej/novy/`,
+  `/pohyby/<pk>/` (saved confirmation), plus
+  `/_partials/line-row/` and `/_partials/stock-warn/` for HTMX
+  endpoints. `inventory/views.py` filled with `home`,
+  `prijem_create`, `vydej_create`, `movement_saved`,
+  `line_row_partial`, `stock_warn_partial`. `inventory/forms.py`
+  introduced: `PrijemForm`, `VydejForm`, `MovementLineForm` +
+  `formset_factory(min_num=1, validate_min=True, can_delete=True)`;
+  branch staff have their branch FK pre-filled + disabled, výdej
+  defaults to the `is_default_recipient=True` Customer (Říčany).
+  Templates under `kasia/templates/`: `base.html` (Czech header
+  nav, flash messages, htmx attribute defaults for CSRF), Czech
+  `registration/login.html`, `inventory/home.html`,
+  `inventory/movement_saved.html`, `inventory/prijem_form.html`,
+  `inventory/vydej_form.html`, `_movement_form_lines.html`
+  formset partial, `_line_row.html` (one row — `hx-get` stock
+  warn on výdej only), `_stock_warn.html` (HTMX swap target).
+  htmx 2.0.4 vendored at `kasia/static/vendor/htmx.min.js` per
+  [`0018`](./decisions/0018-frontend-htmx.md) +
+  `kasia/static/vendor/README.md` (source + licence).
+  Smoke-tested end to end against a local SQLite dev server:
+  anon `/` → 302 to login → POST → 302 home; příjem POST →
+  Movement #1 + Stock incremented + `/pohyby/1/` confirmation;
+  výdej POST → Movement #2 + `DodaciList(TYN-2026-0001)` +
+  e-mail queued + confirmation page renders the dodák číslo;
+  HTMX partials return correct fragments (add-row at index N,
+  stock-warn with on-hand from DB). 14 new tests in
+  `inventory/tests.py` (anon redirect, healthz public, login
+  Czech text + success redirect, home + prijem GETs, prijem
+  POST creates movement / empty lines error, vydej POST creates
+  dodák / overdraw keeps form, line-row partial echoes index,
+  stock-warn partial over+under cases, partial routes require
+  login). Full suite: **77 pytest tests green** (63 → 77); ruff
+  clean; system check clean; makemigrations --check clean.
+
 ## In progress
 
-_(nothing — Pass 2 landed; ready for view-layer plan or locale fix)_
+_(nothing — Pass 3a landed; ready for Pass 3b: dodák list +
+detail + edit screens)_
 
 ## Next
 
-1. **Make `cs_CZ.UTF-8` available in the `db` service** (planning
+1. **Pass 3b — screens 08 + 09 + 11.** Seznam dodacích listů
+   (list + filter by branch/year/edited), detail dodacího listu
+   (header + audit table + "stáhnout PDF" + "znovu odeslat" +
+   download link wired to `render_dodaci_list_pdf`), úprava
+   pohybu (calls `edit_movement` with mandatory reason — already
+   wires the [OPRAVA] re-send via the Pass 2 hook). Builds on
+   Pass 3a's base template + URL namespace.
+2. **Pass 3c — screen 02 dashboard.** "K vyřešení" rollup
+   (failed sends from `DodaciListEmailLog(status=failed)`,
+   recent corrections, low-stock peek). Lands once 3b ships
+   the data shapes the dashboard rolls up.
+3. **Make `cs_CZ.UTF-8` available in the `db` service** (planning
    needed). Surfaced 2026-06-10 after the compose volume-layout fix
    landed. Options to pick between:
    - extend `postgres:18-trixie` with `locales-all` (or just
@@ -438,14 +493,7 @@ _(nothing — Pass 2 landed; ready for view-layer plan or locale fix)_
    Pick one, write a numbered decision file, then implement. Until
    this lands, the compose stack only starts with a neutralised
    locale.
-2. **HTMX view layer for screens 02, 06, 07, 08, 09, 11**
-   (dashboard, příjem, výdej, seznam dodacích listů, detail
-   dodacího listu, úprava pohybu) + auth/URL namespacing. Pass 2
-   ships the admin surface for shadow-run; screens are the
-   operator-facing entry point. Models, services, templates,
-   admin all in place; remaining is view + URL + form work and
-   the screen 07 live-preview affordance.
-3. **Provision the Hetzner box** —
+4. **Provision the Hetzner box** —
    `cd infra/terraform && terraform apply` from Matej's
    workstation, populate `/srv/kasia/.env`, set GH Actions
    secrets (`SSH_HOST`, `SSH_USER`, `SSH_KEY`), push to `main` to

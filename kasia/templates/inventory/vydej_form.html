@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Nový výdej — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Nový výdej zboží</h1>
+
+<div class="recipients">
+  E-mail dodacího listu jde vždy na fixní dvojici příjemců z Nastavení
+  (Petr + Karolína). Výdej se neuloží, dokud obě adresy nebudou vyplněny.
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="card">
+    <div class="field">
+      <label for="id_branch">Pobočka</label>
+      {{ form.branch }}
+      {{ form.branch.errors }}
+    </div>
+    <div class="field">
+      <label for="id_odberatel">Odběratel</label>
+      {{ form.odberatel }}
+      {{ form.odberatel.errors }}
+    </div>
+    <div class="field">
+      <label for="id_date_issued">Datum vystavení</label>
+      {{ form.date_issued }}
+      {{ form.date_issued.errors }}
+    </div>
+    <div class="field">
+      <label for="id_note">Poznámka</label>
+      {{ form.note }}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:1.1rem;margin-top:0;">Položky</h2>
+    {% include "inventory/_movement_form_lines.html" with show_stock_warn=True %}
+  </div>
+
+  <p>
+    <button class="primary" type="submit">Vystavit dodací list a uložit výdej</button>
+    <a class="secondary" href="{% url 'inventory:home' %}">Zrušit</a>
+  </p>
+</form>
+{% endblock %}

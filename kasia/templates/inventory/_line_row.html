@@ -1,0 +1,58 @@
+{% comment %}
+One MovementLine row inside the formset. Rendered both from the
+parent form template (as `{% include %}` per form in `formset.forms`)
+and from the line_row_partial HTMX endpoint when the operator clicks
+"Přidat řádek".
+
+Context variables:
+- line_form: a bound or unbound MovementLineForm
+- index: numeric index of the row (matches the formset prefix)
+- show_stock_warn: optional, True only on the výdej form
+{% endcomment %}
+<tr class="line-row" data-index="{{ index }}">
+  <td>
+    <select name="lines-{{ index }}-product"
+            {% if show_stock_warn %}hx-get="{% url 'inventory:stock_warn_partial' %}"
+            hx-trigger="change"
+            hx-target="closest tr .stock-warn-cell"
+            hx-include="closest tr [name=lines-{{ index }}-quantity_kg], [name=branch]"
+            hx-vals='js:{branch: document.querySelector("[name=branch]").value, product: this.value, qty: document.querySelector("[name=lines-{{ index }}-quantity_kg]").value}'{% endif %}>
+      <option value="">— vyberte produkt —</option>
+      {% for product in line_form.fields.product.queryset %}
+        <option value="{{ product.pk }}"
+          {% if line_form.product.value|stringformat:"s" == product.pk|stringformat:"s" %}selected{% endif %}>
+          {{ product.name_cs }}
+        </option>
+      {% endfor %}
+    </select>
+    {% if line_form.product.errors %}<div class="errorlist">{{ line_form.product.errors }}</div>{% endif %}
+  </td>
+  <td>
+    <input type="number" step="0.001" min="0.001"
+           name="lines-{{ index }}-quantity_kg"
+           value="{{ line_form.quantity_kg.value|default_if_none:'' }}"
+           {% if show_stock_warn %}hx-get="{% url 'inventory:stock_warn_partial' %}"
+           hx-trigger="input changed delay:300ms"
+           hx-target="closest tr .stock-warn-cell"
+           hx-vals='js:{branch: document.querySelector("[name=branch]").value, product: document.querySelector("[name=lines-{{ index }}-product]").value, qty: this.value}'{% endif %}>
+    {% if line_form.quantity_kg.errors %}<div class="errorlist">{{ line_form.quantity_kg.errors }}</div>{% endif %}
+    {% if show_stock_warn %}<div class="stock-warn-cell"></div>{% endif %}
+  </td>
+  <td>
+    <input type="text" name="lines-{{ index }}-sarze"
+           value="{{ line_form.sarze.value|default_if_none:'' }}" maxlength="64">
+  </td>
+  <td>
+    <input type="date" name="lines-{{ index }}-expiry"
+           value="{{ line_form.expiry.value|default_if_none:'' }}">
+  </td>
+  <td>
+    <input type="text" name="lines-{{ index }}-note"
+           value="{{ line_form.note.value|default_if_none:'' }}" maxlength="256">
+  </td>
+  <td>
+    <label style="font-size:0.85rem;color:var(--fg-soft);">
+      <input type="checkbox" name="lines-{{ index }}-DELETE"> smazat
+    </label>
+  </td>
+</tr>

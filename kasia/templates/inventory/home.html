@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Sklad — domů{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1>Vítejte, {{ user.email }}</h1>
+  <p>Vyberte akci:</p>
+  <p>
+    <a class="secondary" href="{% url 'inventory:prijem_create' %}">Nový příjem</a>
+    <a class="secondary" href="{% url 'inventory:vydej_create' %}">Nový výdej</a>
+  </p>
+  <p style="color:var(--fg-soft);font-size:0.9rem;">
+    Souhrn aktivit a stavy skladu přibudou v dalším kroku.
+  </p>
+</div>
+{% endblock %}

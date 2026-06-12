@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Přihlášení — Kasia vera{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:420px;margin:2rem auto;">
+  <h1>Přihlášení</h1>
+  <form method="post">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="non-form-errors">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
+    <div class="field">
+      <label for="id_username">E-mail</label>
+      <input type="email" name="username" id="id_username" required autofocus
+             value="{{ form.username.value|default:'' }}">
+    </div>
+    <div class="field">
+      <label for="id_password">Heslo</label>
+      <input type="password" name="password" id="id_password" required>
+    </div>
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <button class="primary" type="submit">Přihlásit</button>
+  </form>
+</div>
+{% endblock %}

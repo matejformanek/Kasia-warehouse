@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Nový příjem — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Nový příjem zboží</h1>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="card">
+    <div class="field">
+      <label for="id_branch">Pobočka</label>
+      {{ form.branch }}
+      {{ form.branch.errors }}
+    </div>
+    <div class="field">
+      <label for="id_dodavatel">Dodavatel</label>
+      {{ form.dodavatel }}
+      {{ form.dodavatel.errors }}
+    </div>
+    <div class="field">
+      <label for="id_date_issued">Datum vystavení</label>
+      {{ form.date_issued }}
+      {{ form.date_issued.errors }}
+    </div>
+    <div class="field">
+      <label for="id_note">Poznámka</label>
+      {{ form.note }}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:1.1rem;margin-top:0;">Položky</h2>
+    {% include "inventory/_movement_form_lines.html" with show_stock_warn=False %}
+  </div>
+
+  <p>
+    <button class="primary" type="submit">Uložit příjem</button>
+    <a class="secondary" href="{% url 'inventory:home' %}">Zrušit</a>
+  </p>
+</form>
+{% endblock %}

@@ -202,9 +202,7 @@
 </style>
 <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
 </head>
-<body
-  hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-  hx-include="[name=csrfmiddlewaretoken]">
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 <header class="top">
   <a class="brand" href="{% url 'inventory:home' %}" style="text-decoration:none;">
     <img src="{% static 'brand/kasia-logo.jpg' %}" alt="Kasia">

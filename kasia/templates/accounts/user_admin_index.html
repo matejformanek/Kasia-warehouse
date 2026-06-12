@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Uživatelé — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Uživatelé</h1>
+
+<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+  <div>
+    <strong>Aktivních: {{ active_count }}</strong>
+    <span style="color:var(--fg-soft);">z přibližně {{ budget }} plánovaných</span>
+  </div>
+  <a class="secondary" href="{% url 'accounts:user_create' %}">+ Přidat uživatele</a>
+</div>
+
+<table class="lines">
+  <thead>
+    <tr>
+      <th>Jméno</th>
+      <th>E-mail</th>
+      <th>Role</th>
+      <th>Pobočka</th>
+      <th>Stav</th>
+      <th>Naposledy přihlášen</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+      <tr {% if not u.is_active %}style="opacity:0.55;"{% endif %}>
+        <td>
+          {{ u.first_name }} {{ u.last_name }}
+          {% if u == request.user %}<small style="color:var(--fg-soft);">(vy)</small>{% endif %}
+        </td>
+        <td>{{ u.email }}</td>
+        <td>
+          {% if u.is_superuser %}Superuser{% elif u.is_obsluha %}Obsluha pobočky{% else %}Vlastník / správce{% endif %}
+        </td>
+        <td>{% if u.branch %}{{ u.branch.code }} — {{ u.branch.name }}{% else %}—{% endif %}</td>
+        <td>
+          {% if u.is_active %}
+            <span style="color:var(--ok);">aktivní</span>
+          {% else %}
+            <span style="color:var(--fg-soft);">deaktivovaný</span>
+          {% endif %}
+        </td>
+        <td>{% if u.last_login %}{{ u.last_login|date:"d. m. Y H:i" }}{% else %}—{% endif %}</td>
+        <td style="white-space:nowrap;">
+          <a class="secondary" href="{% url 'accounts:user_edit' u.pk %}">Upravit</a>
+          {% if u.is_active %}
+            <form method="post" action="{% url 'accounts:user_password_reset' u.pk %}" style="display:inline;">
+              {% csrf_token %}
+              <button class="secondary" type="submit">Resetovat heslo</button>
+            </form>
+            <form method="post" action="{% url 'accounts:user_deactivate' u.pk %}" style="display:inline;"
+                  onsubmit="return confirm('Opravdu deaktivovat uživatele {{ u.email }}?');">
+              {% csrf_token %}
+              <button class="secondary" type="submit">Deaktivovat</button>
+            </form>
+          {% else %}
+            <form method="post" action="{% url 'accounts:user_reactivate' u.pk %}" style="display:inline;">
+              {% csrf_token %}
+              <button class="secondary" type="submit">Aktivovat</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" style="color:var(--fg-soft);">Zatím žádní uživatelé.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p style="color:var(--fg-soft); font-size:0.9rem; margin-top:1rem;">
+  Uživatelé se nemažou — pouze deaktivují. Tím se zachová historie pohybů.
+</p>
+{% endblock %}

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Nastavení — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Nastavení</h1>
+
+<form method="post" enctype="multipart/form-data" class="card">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="non-form-errors">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <h2 style="margin-top:0;">Společnost / hlavička dokumentu</h2>
+  {% for f in form %}
+    {% if f.name == "company_name" or f.name == "company_ico" or f.name == "company_dic" or f.name == "company_address" or f.name == "company_phone" or f.name == "company_email" or f.name == "logo" or f.name == "footer_text" %}
+      <div class="field">
+        <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+        {{ f }}
+        {% if f.name == "logo" and settings.logo %}
+          <small style="color:var(--fg-soft); display:block;">
+            Aktuální: <a href="{{ settings.logo.url }}" target="_blank">{{ settings.logo.name }}</a>
+          </small>
+        {% endif %}
+        {% if f.help_text %}<small style="color:var(--fg-soft); display:block;">{{ f.help_text }}</small>{% endif %}
+        {{ f.errors }}
+      </div>
+    {% endif %}
+  {% endfor %}
+
+  <h2>Odeslání dodacích listů — SMTP</h2>
+  {% for f in form %}
+    {% if f.name == "smtp_host" or f.name == "smtp_port" or f.name == "smtp_use_tls" or f.name == "smtp_user" or f.name == "smtp_password" or f.name == "email_from_address" or f.name == "email_from_name" %}
+      <div class="field">
+        <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+        {{ f }}
+        {% if f.name == "smtp_password" %}
+          <small style="color:var(--fg-soft); display:block;">
+            Heslo se nikdy nezobrazuje. Prázdný vstup ponechá uložené heslo beze změny.
+          </small>
+        {% endif %}
+        {{ f.errors }}
+      </div>
+    {% endif %}
+  {% endfor %}
+
+  <h2>Příjemci dodacího listu</h2>
+  <p style="color:var(--fg-soft); font-size:0.9rem;">
+    Každý dodací list se odesílá na obě adresy. Adresy odběratelů
+    nejsou nikdy v cestě e-mailu (rozhodnutí
+    <code>0031</code>).
+  </p>
+  {% for f in form %}
+    {% if f.name == "recipient_petr" or f.name == "recipient_karolina" %}
+      <div class="field">
+        <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+        {{ f }}
+        {{ f.errors }}
+      </div>
+    {% endif %}
+  {% endfor %}
+
+  <h2>Šablony e-mailů</h2>
+  <p style="color:var(--fg-soft); font-size:0.9rem;">
+    Zástupné značky: <code>&lt;číslo&gt;</code>, <code>&lt;datum&gt;</code>,
+    <code>&lt;text zdůvodnění od operátorky&gt;</code>. Systém je při
+    odeslání dosadí automaticky.
+  </p>
+  {% for f in form %}
+    {% if f.name == "template_initial_subject" or f.name == "template_initial_body" or f.name == "template_oprava_subject" or f.name == "template_oprava_body" %}
+      <div class="field">
+        <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+        {{ f }}
+        {{ f.errors }}
+      </div>
+    {% endif %}
+  {% endfor %}
+
+  <button type="submit" class="primary">Uložit nastavení</button>
+</form>
+
+<div class="card">
+  <h2 style="margin-top:0;">Otestovat odeslání</h2>
+  <p style="color:var(--fg-soft); font-size:0.9rem;">
+    Odešle krátký testovací e-mail přes výše uložené SMTP nastavení.
+    Pokud SMTP ještě nebylo uloženo, použijí se uložené hodnoty z databáze.
+  </p>
+  <form method="post" action="{% url 'inventory:settings_test_smtp' %}">
+    {% csrf_token %}
+    <div class="field">
+      <label for="{{ smtp_test_form.to_email.id_for_label }}">{{ smtp_test_form.to_email.label }}</label>
+      {{ smtp_test_form.to_email }}
+      {% if smtp_test_form.to_email.help_text %}
+        <small style="color:var(--fg-soft); display:block;">{{ smtp_test_form.to_email.help_text }}</small>
+      {% endif %}
+    </div>
+    <button type="submit" class="secondary">Odeslat testovací e-mail</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">Dodací list — formát</h2>
+  <p>
+    Číslování je pevně <code>&lt;BRANCH&gt;-&lt;YYYY&gt;-&lt;NNNN&gt;</code>
+    podle rozhodnutí
+    <code>0008</code>. Formát není uživatelsky konfigurovatelný — je součástí
+    schématu databáze.
+  </p>
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Pobočka</th>
+        <th>Rok</th>
+        <th>Poslední vystavený dodák</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in branch_counters %}
+        <tr>
+          <td>{{ row.branch.code }} — {{ row.branch.name }}</td>
+          <td>{{ row.year }}</td>
+          <td>
+            {% if row.last_counter %}
+              {{ row.preview }}
+            {% else %}
+              <span style="color:var(--fg-soft);">letos ještě nic</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">Pobočky</h2>
+  <p style="color:var(--fg-soft); font-size:0.9rem;">
+    Třípísmenný kód je stabilní po prvním vystavení dodacího listu —
+    editace identit poboček mimo název / adresu není v MVP.
+  </p>
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Kód</th>
+        <th>Název</th>
+        <th>Adresa</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in branches %}
+        <tr>
+          <td><strong>{{ b.code }}</strong></td>
+          <td>{{ b.name }}</td>
+          <td>{{ b.address|default:"—" }}</td>
+        </tr>
+      {% endfor %}
+      <tr style="color:var(--fg-soft);">
+        <td>—</td>
+        <td>Říčany</td>
+        <td>HQ; bez evidence skladu (výchozí odběratel na výdeji).</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p style="color:var(--fg-soft); font-size:0.85rem; text-align:center;">
+  Kasia vera — sklad · MVP
+</p>
+{% endblock %}

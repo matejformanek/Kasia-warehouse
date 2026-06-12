@@ -189,6 +189,10 @@
       <a href="{% url 'inventory:mixing_job_index' %}">Míchání</a>
       <a href="{% url 'inventory:dodaci_list_index' %}">Dodací listy</a>
       <a href="{% url 'inventory:movement_history' %}">Historie</a>
+      {% if user.is_vlastnik %}
+        <a href="{% url 'accounts:user_index' %}">Uživatelé</a>
+        <a href="{% url 'inventory:settings_edit' %}">Nastavení</a>
+      {% endif %}
       <span class="who">{{ user.email }}</span>
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Odhlásit</button></form>
     {% endif %}

@@ -13,7 +13,7 @@ from decimal import Decimal
 
 from django import forms
 
-from .models import Customer, Movement, Product, Supplier
+from .models import Customer, Movement, Product, Settings, Supplier
 
 
 class _MovementBaseForm(forms.Form):
@@ -169,3 +169,49 @@ class VydejEditForm(_MovementEditBaseForm):
         from .models import Branch
 
         self.fields["branch"].queryset = Branch.objects.filter(is_active=True)
+
+
+# ---------------------------------------------------------------------------
+# Settings (screen 14 — operator-facing Nastavení)
+# ---------------------------------------------------------------------------
+
+
+class SettingsForm(forms.ModelForm):
+    """Operator-facing form for the Settings singleton.
+
+    Mirrors `SettingsAdminForm`: write-only `smtp_password`, blank input
+    on edit keeps the existing value. `singleton_key` excluded (system-
+    managed, not part of the editable surface).
+    """
+
+    class Meta:
+        model = Settings
+        exclude = ("singleton_key",)
+        widgets = {
+            "smtp_password": forms.PasswordInput(render_value=False),
+            "company_address": forms.Textarea(attrs={"rows": 2}),
+            "footer_text": forms.Textarea(attrs={"rows": 2}),
+            "template_initial_body": forms.Textarea(attrs={"rows": 4}),
+            "template_oprava_body": forms.Textarea(attrs={"rows": 5}),
+        }
+
+    def clean_smtp_password(self) -> str:
+        new_value = self.cleaned_data.get("smtp_password", "")
+        if not new_value and self.instance and self.instance.pk:
+            return self.instance.smtp_password
+        return new_value
+
+    def clean_recipient_petr(self) -> str:
+        return self.cleaned_data["recipient_petr"].strip()
+
+    def clean_recipient_karolina(self) -> str:
+        return self.cleaned_data["recipient_karolina"].strip()
+
+
+class SmtpTestForm(forms.Form):
+    """Tiny one-field form for the 'Otestovat odeslání' button."""
+
+    to_email = forms.EmailField(
+        label="Otestovat odeslání na adresu",
+        help_text="Výchozí: vaše vlastní e-mailová adresa.",
+    )

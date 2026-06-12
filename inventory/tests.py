@@ -2906,3 +2906,203 @@ def test_mixing_preview_partial(user_vlastnik, tyn, pepper) -> None:
     body = response.content.decode("utf-8")
     assert "nedostatek" in body
     assert "5,000" in body or "5.000" in body
+
+
+# ---------------------------------------------------------------------------
+# Screen 14 — Nastavení (operator-facing Settings UI)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_edit_requires_login() -> None:
+    response = Client().get("/nastaveni/")
+    assert response.status_code == 302
+    assert "/login/" in response["Location"]
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_edit_forbidden_for_obsluha(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/nastaveni/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_edit_renders_for_vlastnik(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/nastaveni/")
+    assert response.status_code == 200
+    body = response.content
+    assert b"<h1>Nastaven\xc3\xad</h1>" in body
+    assert b"Spole\xc4\x8dnost" in body
+    assert b"SMTP" in body
+    assert b"P\xc5\x99\xc3\xadjemci dodac\xc3\xadho listu" in body
+    assert b"\xc5\xa0ablony e-mail\xc5\xaf" in body
+    assert b"Otestovat odesl\xc3\xa1n\xc3\xad" in body
+    assert b"Pobo\xc4\x8dky" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_edit_save_updates_company(user_vlastnik) -> None:
+    from inventory.models import Settings
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    initial = Settings.load()
+    data = {
+        "company_name": "Kasia vera s.r.o.",
+        "company_ico": "25756729",
+        "company_dic": "CZ25756729",
+        "company_address": "Říčany u Prahy",
+        "company_phone": "+420 123 456 789",
+        "company_email": "",
+        "footer_text": initial.footer_text,
+        "smtp_host": "smtp.example.cz",
+        "smtp_port": "587",
+        "smtp_use_tls": "on",
+        "smtp_user": "kasia",
+        "smtp_password": "",
+        "email_from_address": "no-reply@example.cz",
+        "email_from_name": "Kasia vera",
+        "recipient_petr": initial.recipient_petr,
+        "recipient_karolina": initial.recipient_karolina,
+        "template_initial_subject": initial.template_initial_subject,
+        "template_initial_body": initial.template_initial_body,
+        "template_oprava_subject": initial.template_oprava_subject,
+        "template_oprava_body": initial.template_oprava_body,
+    }
+    response = client.post("/nastaveni/", data)
+    assert response.status_code == 302
+    s = Settings.load()
+    assert s.company_dic == "CZ25756729"
+    assert s.smtp_host == "smtp.example.cz"
+    # singleton stays singleton.
+    assert Settings.objects.count() == 1
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_edit_empty_password_keeps_existing(user_vlastnik) -> None:
+    from inventory.models import Settings
+
+    s = Settings.load()
+    s.smtp_password = "old-secret"
+    s.save()
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    data = {
+        "company_name": s.company_name,
+        "company_ico": s.company_ico,
+        "company_dic": s.company_dic,
+        "company_address": s.company_address,
+        "company_phone": s.company_phone,
+        "company_email": s.company_email,
+        "footer_text": s.footer_text,
+        "smtp_host": s.smtp_host,
+        "smtp_port": s.smtp_port,
+        "smtp_use_tls": "on",
+        "smtp_user": s.smtp_user,
+        "smtp_password": "",  # blank → preserve
+        "email_from_address": s.email_from_address,
+        "email_from_name": s.email_from_name,
+        "recipient_petr": s.recipient_petr,
+        "recipient_karolina": s.recipient_karolina,
+        "template_initial_subject": s.template_initial_subject,
+        "template_initial_body": s.template_initial_body,
+        "template_oprava_subject": s.template_oprava_subject,
+        "template_oprava_body": s.template_oprava_body,
+    }
+    response = client.post("/nastaveni/", data)
+    assert response.status_code == 302
+    s2 = Settings.load()
+    assert s2.smtp_password == "old-secret"
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_test_smtp_sends_to_target(user_vlastnik) -> None:
+    from django.core import mail
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    outbox_before = len(mail.outbox)
+    response = client.post(
+        "/nastaveni/test-smtp/",
+        {"to_email": "petr@example.cz"},
+    )
+    assert response.status_code == 302
+    assert len(mail.outbox) == outbox_before + 1
+    msg = mail.outbox[-1]
+    assert "petr@example.cz" in msg.to
+    assert "Test" in msg.subject
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_test_smtp_forbidden_for_obsluha(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(
+        "/nastaveni/test-smtp/", {"to_email": "x@example.cz"}
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_test_smtp_rejects_invalid_email(user_vlastnik) -> None:
+    from django.core import mail
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    outbox_before = len(mail.outbox)
+    response = client.post(
+        "/nastaveni/test-smtp/", {"to_email": "not-an-email"}
+    )
+    assert response.status_code == 302
+    assert len(mail.outbox) == outbox_before
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_branch_counters_render(user_vlastnik, tyn) -> None:
+    from datetime import date
+
+    from inventory.models import DodaciListNumberSequence
+
+    DodaciListNumberSequence.objects.create(
+        branch=tyn, year=date.today().year, last_counter=42
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/nastaveni/")
+    assert response.status_code == 200
+    expected_cislo = f"TYN-{date.today().year}-0042"
+    assert expected_cislo.encode() in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_nav_nastaveni_link_shown_for_vlastnik(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert b"Nastaven\xc3\xad" in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_nav_nastaveni_link_hidden_for_obsluha(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/pobocka/TYN/")
+    assert response.status_code == 200
+    assert b"Nastaven\xc3\xad" not in response.content

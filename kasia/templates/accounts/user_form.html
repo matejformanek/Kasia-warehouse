@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "create" %}Nový uživatel{% else %}Úprava uživatele{% endif %} — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>
+  {% if mode == "create" %}
+    Nový uživatel
+  {% else %}
+    Úprava uživatele — {{ target.email }}
+  {% endif %}
+</h1>
+
+<form method="post" class="card">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="non-form-errors">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="field">
+    <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+    {{ form.first_name }}
+    {{ form.first_name.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+    {{ form.last_name }}
+    {{ form.last_name.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+    {{ form.email }}
+    {% if form.email.help_text %}
+      <small style="color:var(--fg-soft); display:block;">{{ form.email.help_text }}</small>
+    {% endif %}
+    {{ form.email.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.role.id_for_label }}">{{ form.role.label }}</label>
+    {{ form.role }}
+    {{ form.role.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.branch.id_for_label }}">{{ form.branch.label }}</label>
+    {{ form.branch }}
+    <small style="color:var(--fg-soft); display:block;">
+      Pobočka se vyžaduje pouze pro roli „Obsluha pobočky". Vlastníci vidí obě pobočky.
+    </small>
+    {{ form.branch.errors }}
+  </div>
+
+  {% if mode == "create" %}
+    <div class="field">
+      <label for="{{ form.password1.id_for_label }}">{{ form.password1.label }}</label>
+      {{ form.password1 }}
+      {{ form.password1.errors }}
+    </div>
+    <div class="field">
+      <label for="{{ form.password2.id_for_label }}">{{ form.password2.label }}</label>
+      {{ form.password2 }}
+      {{ form.password2.errors }}
+    </div>
+  {% endif %}
+
+  <button type="submit" class="primary">
+    {% if mode == "create" %}Přidat uživatele{% else %}Uložit změny{% endif %}
+  </button>
+  <a class="secondary" href="{% url 'accounts:user_index' %}">Zrušit</a>
+</form>
+{% endblock %}

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_not_required
 from django.http import HttpResponse
-from django.urls import include, path
+from django.urls import include, path, reverse_lazy
 
 
 @login_not_required
@@ -19,5 +19,49 @@ urlpatterns = [
         name="login",
     ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    # Password reset flow — public (the magic link arrives by e-mail). Used
+    # both by the operator "Resetovat heslo" admin action and for any future
+    # self-service reset surface.
+    path(
+        "reset-hesla/",
+        login_not_required(
+            auth_views.PasswordResetView.as_view(
+                template_name="registration/password_reset_form.html",
+                email_template_name="registration/password_reset_email.html",
+                subject_template_name="registration/password_reset_subject.txt",
+                success_url=reverse_lazy("password_reset_done"),
+            )
+        ),
+        name="password_reset",
+    ),
+    path(
+        "reset-hesla/odeslano/",
+        login_not_required(
+            auth_views.PasswordResetDoneView.as_view(
+                template_name="registration/password_reset_done.html",
+            )
+        ),
+        name="password_reset_done",
+    ),
+    path(
+        "reset-hesla/potvrzeni/<uidb64>/<token>/",
+        login_not_required(
+            auth_views.PasswordResetConfirmView.as_view(
+                template_name="registration/password_reset_confirm.html",
+                success_url=reverse_lazy("password_reset_complete"),
+            )
+        ),
+        name="password_reset_confirm",
+    ),
+    path(
+        "reset-hesla/hotovo/",
+        login_not_required(
+            auth_views.PasswordResetCompleteView.as_view(
+                template_name="registration/password_reset_complete.html",
+            )
+        ),
+        name="password_reset_complete",
+    ),
+    path("uzivatele/", include("accounts.urls", namespace="accounts")),
     path("", include("inventory.urls", namespace="inventory")),
 ]

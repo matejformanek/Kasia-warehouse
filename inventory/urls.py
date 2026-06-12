@@ -54,4 +54,10 @@ urlpatterns = [
         views.dodaci_list_resend,
         name="dodaci_list_resend",
     ),
+    path("nastaveni/", views.settings_edit, name="settings_edit"),
+    path(
+        "nastaveni/test-smtp/",
+        views.settings_test_smtp,
+        name="settings_test_smtp",
+    ),
 ]

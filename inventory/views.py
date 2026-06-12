@@ -24,6 +24,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .forms import (
+    CustomerForm,
     MovementEditLineFormSet,
     MovementLineForm,
     MovementLineFormSet,
@@ -31,12 +32,14 @@ from .forms import (
     PrijemForm,
     SettingsForm,
     SmtpTestForm,
+    SupplierForm,
     VydejEditForm,
     VydejForm,
     assert_no_future_date,
 )
 from .models import (
     Branch,
+    Customer,
     DodaciList,
     DodaciListEmailLog,
     DodaciListNumberSequence,
@@ -48,6 +51,7 @@ from .models import (
     RecipeComponent,
     Settings,
     Stock,
+    Supplier,
 )
 from .services import (
     apply_movement,
@@ -1330,3 +1334,176 @@ def settings_test_smtp(request):
 
     messages.success(request, f"Testovací e-mail odeslán na {to_email}.")
     return redirect("inventory:settings_edit")
+
+
+# ---------------------------------------------------------------------------
+# Pass 5 — Supplier CRUD (per decision 0040)
+#
+# Tier: all authenticated users (vlastník + obsluha).
+# Routes: /dodavatele/, /dodavatele/novy/, /dodavatele/<pk>/upravit/,
+#         /dodavatele/<pk>/archivovat/, /dodavatele/<pk>/aktivovat/.
+# ---------------------------------------------------------------------------
+
+
+@require_GET
+def supplier_index(request):
+    """List dodavatelů with filter: active / archived / all."""
+    status = request.GET.get("status") or "active"
+    qs = Supplier.objects.exclude(is_internal=True).order_by("name")
+    if status == "active":
+        qs = qs.filter(is_active=True)
+    elif status == "archived":
+        qs = qs.filter(is_active=False)
+    return render(
+        request,
+        "inventory/supplier_index.html",
+        {"suppliers": list(qs), "filter_status": status},
+    )
+
+
+def supplier_create(request):
+    if request.method == "POST":
+        form = SupplierForm(request.POST)
+        if form.is_valid():
+            sup = form.save()
+            messages.success(request, f"Dodavatel {sup.name} přidán.")
+            return redirect("inventory:supplier_index")
+    else:
+        form = SupplierForm(initial={"is_active": True})
+    return render(
+        request,
+        "inventory/supplier_form.html",
+        {"form": form, "mode": "create"},
+    )
+
+
+def supplier_edit(request, pk: int):
+    sup = get_object_or_404(Supplier, pk=pk)
+    if sup.is_internal:
+        messages.error(
+            request, "Interní dodavatele nelze upravovat z této obrazovky."
+        )
+        return redirect("inventory:supplier_index")
+    if request.method == "POST":
+        form = SupplierForm(request.POST, instance=sup)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Změny uloženy.")
+            return redirect("inventory:supplier_index")
+    else:
+        form = SupplierForm(instance=sup)
+    return render(
+        request,
+        "inventory/supplier_form.html",
+        {"form": form, "mode": "edit", "target": sup},
+    )
+
+
+@require_POST
+def supplier_archive(request, pk: int):
+    sup = get_object_or_404(Supplier, pk=pk)
+    if sup.is_internal:
+        messages.error(request, "Interní dodavatele nelze archivovat.")
+        return redirect("inventory:supplier_index")
+    sup.is_active = False
+    sup.save(update_fields=["is_active"])
+    messages.success(request, f"Dodavatel {sup.name} archivován.")
+    return redirect("inventory:supplier_index")
+
+
+@require_POST
+def supplier_reactivate(request, pk: int):
+    sup = get_object_or_404(Supplier, pk=pk)
+    sup.is_active = True
+    sup.save(update_fields=["is_active"])
+    messages.success(request, f"Dodavatel {sup.name} aktivován.")
+    return redirect("inventory:supplier_index")
+
+
+# ---------------------------------------------------------------------------
+# Pass 5 — Customer CRUD (per decision 0040)
+#
+# Tier: all authenticated users. `is_default_recipient` flag stays admin-only.
+# Routes: /odberatele/ + analogous to supplier.
+# ---------------------------------------------------------------------------
+
+
+@require_GET
+def customer_index(request):
+    status = request.GET.get("status") or "active"
+    qs = Customer.objects.exclude(is_internal=True).order_by("name")
+    if status == "active":
+        qs = qs.filter(is_active=True)
+    elif status == "archived":
+        qs = qs.filter(is_active=False)
+    return render(
+        request,
+        "inventory/customer_index.html",
+        {"customers": list(qs), "filter_status": status},
+    )
+
+
+def customer_create(request):
+    if request.method == "POST":
+        form = CustomerForm(request.POST)
+        if form.is_valid():
+            cust = form.save()
+            messages.success(request, f"Odběratel {cust.name} přidán.")
+            return redirect("inventory:customer_index")
+    else:
+        form = CustomerForm(initial={"is_active": True})
+    return render(
+        request,
+        "inventory/customer_form.html",
+        {"form": form, "mode": "create"},
+    )
+
+
+def customer_edit(request, pk: int):
+    cust = get_object_or_404(Customer, pk=pk)
+    if cust.is_internal:
+        messages.error(
+            request, "Interní odběratele nelze upravovat z této obrazovky."
+        )
+        return redirect("inventory:customer_index")
+    if request.method == "POST":
+        form = CustomerForm(request.POST, instance=cust)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Změny uloženy.")
+            return redirect("inventory:customer_index")
+    else:
+        form = CustomerForm(instance=cust)
+    return render(
+        request,
+        "inventory/customer_form.html",
+        {"form": form, "mode": "edit", "target": cust},
+    )
+
+
+@require_POST
+def customer_archive(request, pk: int):
+    cust = get_object_or_404(Customer, pk=pk)
+    if cust.is_internal:
+        messages.error(request, "Interní odběratele nelze archivovat.")
+        return redirect("inventory:customer_index")
+    if cust.is_default_recipient:
+        messages.error(
+            request,
+            "Výchozího odběratele (Říčany) nelze archivovat — "
+            "změna v administraci.",
+        )
+        return redirect("inventory:customer_index")
+    cust.is_active = False
+    cust.save(update_fields=["is_active"])
+    messages.success(request, f"Odběratel {cust.name} archivován.")
+    return redirect("inventory:customer_index")
+
+
+@require_POST
+def customer_reactivate(request, pk: int):
+    cust = get_object_or_404(Customer, pk=pk)
+    cust.is_active = True
+    cust.save(update_fields=["is_active"])
+    messages.success(request, f"Odběratel {cust.name} aktivován.")
+    return redirect("inventory:customer_index")

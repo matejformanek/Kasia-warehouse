@@ -214,6 +214,8 @@
   <nav>
     {% if user.is_authenticated %}
       <a href="{% url 'inventory:catalogue_index' %}">Katalog</a>
+      <a href="{% url 'inventory:supplier_index' %}">Dodavatelé</a>
+      <a href="{% url 'inventory:customer_index' %}">Odběratelé</a>
       <a href="{% url 'inventory:prijem_create' %}">Příjem</a>
       <a href="{% url 'inventory:vydej_create' %}">Výdej</a>
       <a href="{% url 'inventory:mixing_job_index' %}">Míchání</a>

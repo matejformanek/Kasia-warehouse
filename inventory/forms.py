@@ -215,3 +215,67 @@ class SmtpTestForm(forms.Form):
         label="Otestovat odeslání na adresu",
         help_text="Výchozí: vaše vlastní e-mailová adresa.",
     )
+
+
+# ---------------------------------------------------------------------------
+# Supplier + Customer CRUD (Pass 5, per decision 0040)
+# ---------------------------------------------------------------------------
+
+
+class SupplierForm(forms.ModelForm):
+    """Operator-facing form for adding/editing dodavatele.
+
+    Per [0040](../context/decisions/0040-operator-crud-tiering.md):
+    all authenticated users can create/edit/archive. `is_internal` is
+    excluded — workers don't (and shouldn't) flip the Míchárna pseudo-
+    supplier from this UI.
+    """
+
+    class Meta:
+        model = Supplier
+        fields = ("name", "ico", "address", "is_active")
+        widgets = {
+            "address": forms.Textarea(attrs={"rows": 2}),
+        }
+
+    def clean_name(self) -> str:
+        name = (self.cleaned_data["name"] or "").strip()
+        # Soft uniqueness check on active rows: don't let a worker
+        # create a second "Koření CZ s.r.o." by accident.
+        qs = Supplier.objects.filter(name__iexact=name, is_active=True)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(
+                "Aktivní dodavatel s tímto názvem už existuje."
+            )
+        return name
+
+
+class CustomerForm(forms.ModelForm):
+    """Operator-facing form for adding/editing odběratele.
+
+    Per [0040](../context/decisions/0040-operator-crud-tiering.md):
+    all authenticated users can create/edit/archive. `is_internal`
+    and `is_default_recipient` are excluded — both have semantic
+    invariants (interní Míchárna pair, single Říčany default per
+    0030) and changing them belongs in the admin / vlastník surface.
+    """
+
+    class Meta:
+        model = Customer
+        fields = ("name", "ico", "dic", "address", "email", "phone", "is_active")
+        widgets = {
+            "address": forms.Textarea(attrs={"rows": 2}),
+        }
+
+    def clean_name(self) -> str:
+        name = (self.cleaned_data["name"] or "").strip()
+        qs = Customer.objects.filter(name__iexact=name, is_active=True)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(
+                "Aktivní odběratel s tímto názvem už existuje."
+            )
+        return name

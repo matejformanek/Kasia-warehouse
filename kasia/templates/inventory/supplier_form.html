@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "create" %}Nový dodavatel{% else %}Úprava dodavatele{% endif %} — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>
+  {% if mode == "create" %}
+    Nový dodavatel
+  {% else %}
+    Úprava dodavatele — {{ target.name }}
+  {% endif %}
+</h1>
+
+<p class="required-legend">povinné pole</p>
+
+<form method="post" class="card">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="non-form-errors">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="field">
+    <label class="field-required" for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+    {{ form.name }}
+    {{ form.name.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.ico.id_for_label }}">{{ form.ico.label }}</label>
+    {{ form.ico }}
+    {{ form.ico.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.address.id_for_label }}">{{ form.address.label }}</label>
+    {{ form.address }}
+    {{ form.address.errors }}
+  </div>
+  <div class="field">
+    <label>
+      {{ form.is_active }} aktivní
+    </label>
+    {{ form.is_active.errors }}
+  </div>
+
+  <button type="submit" class="primary">
+    {% if mode == "create" %}Přidat dodavatele{% else %}Uložit změny{% endif %}
+  </button>
+  <a class="secondary" href="{% url 'inventory:supplier_index' %}">Zrušit</a>
+</form>
+{% endblock %}

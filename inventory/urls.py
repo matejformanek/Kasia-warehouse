@@ -60,4 +60,40 @@ urlpatterns = [
         views.settings_test_smtp,
         name="settings_test_smtp",
     ),
+    # Supplier CRUD (Pass 5, per 0040)
+    path("dodavatele/", views.supplier_index, name="supplier_index"),
+    path("dodavatele/novy/", views.supplier_create, name="supplier_create"),
+    path(
+        "dodavatele/<int:pk>/upravit/",
+        views.supplier_edit,
+        name="supplier_edit",
+    ),
+    path(
+        "dodavatele/<int:pk>/archivovat/",
+        views.supplier_archive,
+        name="supplier_archive",
+    ),
+    path(
+        "dodavatele/<int:pk>/aktivovat/",
+        views.supplier_reactivate,
+        name="supplier_reactivate",
+    ),
+    # Customer CRUD (Pass 5, per 0040)
+    path("odberatele/", views.customer_index, name="customer_index"),
+    path("odberatele/novy/", views.customer_create, name="customer_create"),
+    path(
+        "odberatele/<int:pk>/upravit/",
+        views.customer_edit,
+        name="customer_edit",
+    ),
+    path(
+        "odberatele/<int:pk>/archivovat/",
+        views.customer_archive,
+        name="customer_archive",
+    ),
+    path(
+        "odberatele/<int:pk>/aktivovat/",
+        views.customer_reactivate,
+        name="customer_reactivate",
+    ),
 ]

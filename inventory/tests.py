@@ -3106,3 +3106,233 @@ def test_nav_nastaveni_link_hidden_for_obsluha(user_obsluha_tyn) -> None:
     response = client.get("/pobocka/TYN/")
     assert response.status_code == 200
     assert b"Nastaven\xc3\xad" not in response.content
+
+
+# ---------------------------------------------------------------------------
+# Pass 5 — Supplier + Customer CRUD (per decision 0040)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_supplier_index_requires_login() -> None:
+    response = Client().get("/dodavatele/")
+    assert response.status_code == 302
+    assert "/login/" in response["Location"]
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_supplier_index_renders_for_obsluha(user_obsluha_tyn, supplier) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/dodavatele/")
+    assert response.status_code == 200
+    assert supplier.name.encode() in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_supplier_index_hides_internal(user_obsluha_tyn) -> None:
+    from inventory.models import Supplier as Sup
+
+    Sup.objects.create(name="Visible Dodavatel")
+    # The "Míchárna" internal supplier was seeded; verify it doesn't show.
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/dodavatele/")
+    assert b"Visible Dodavatel" in response.content
+    assert b"M\xc3\xadch\xc3\xa1rna" not in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_supplier_create_by_obsluha(user_obsluha_tyn) -> None:
+    from inventory.models import Supplier as Sup
+
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(
+        "/dodavatele/novy/",
+        {
+            "name": "Nový Dodavatel s.r.o.",
+            "ico": "12345678",
+            "address": "Praha 5",
+            "is_active": "on",
+        },
+    )
+    assert response.status_code == 302
+    sup = Sup.objects.get(name="Nový Dodavatel s.r.o.")
+    assert sup.ico == "12345678"
+    assert sup.is_active is True
+    assert sup.is_internal is False
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_supplier_create_rejects_duplicate_name(user_vlastnik, supplier) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/dodavatele/novy/",
+        {"name": supplier.name, "is_active": "on"},
+    )
+    assert response.status_code == 200
+    assert (
+        b"Aktivn\xc3\xad dodavatel s t\xc3\xadmto n\xc3\xa1zvem u\xc5\xbe existuje"
+        in response.content
+    )
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_supplier_edit_updates_fields(user_vlastnik, supplier) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/dodavatele/{supplier.pk}/upravit/",
+        {
+            "name": supplier.name,
+            "ico": "99887766",
+            "address": "Brno",
+            "is_active": "on",
+        },
+    )
+    assert response.status_code == 302
+    supplier.refresh_from_db()
+    assert supplier.ico == "99887766"
+    assert supplier.address == "Brno"
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_supplier_archive(user_obsluha_tyn, supplier) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(f"/dodavatele/{supplier.pk}/archivovat/")
+    assert response.status_code == 302
+    supplier.refresh_from_db()
+    assert supplier.is_active is False
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_supplier_archive_internal_refused(user_vlastnik) -> None:
+    from inventory.models import Supplier as Sup
+
+    micharna = Sup.objects.get(is_internal=True)
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/dodavatele/{micharna.pk}/archivovat/", follow=True
+    )
+    assert response.status_code == 200
+    micharna.refresh_from_db()
+    assert micharna.is_active is True
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_supplier_reactivate(user_obsluha_tyn) -> None:
+    from inventory.models import Supplier as Sup
+
+    sup = Sup.objects.create(name="Archivovaný", is_active=False)
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(f"/dodavatele/{sup.pk}/aktivovat/")
+    assert response.status_code == 302
+    sup.refresh_from_db()
+    assert sup.is_active is True
+
+
+# Customer ----------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_customer_index_requires_login() -> None:
+    response = Client().get("/odberatele/")
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_customer_index_renders_for_obsluha(user_obsluha_tyn, ricany) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/odberatele/")
+    assert response.status_code == 200
+    assert b"\xc5\x98\xc3\xad\xc4\x8dany" in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_customer_index_hides_internal(user_obsluha_tyn) -> None:
+    """Internal Míchárna customer is hidden from the operator list."""
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/odberatele/")
+    assert response.status_code == 200
+    assert b"M\xc3\xadch\xc3\xa1rna" not in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_customer_create_by_obsluha(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(
+        "/odberatele/novy/",
+        {
+            "name": "Hospůdka U Lípy",
+            "ico": "11223344",
+            "dic": "CZ11223344",
+            "address": "Hradec Králové",
+            "email": "ulipy@example.cz",
+            "phone": "+420 111 222 333",
+            "is_active": "on",
+        },
+    )
+    assert response.status_code == 302
+    cust = Customer.objects.get(name="Hospůdka U Lípy")
+    assert cust.email == "ulipy@example.cz"
+    assert cust.is_default_recipient is False  # not flipped by operator
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_customer_archive_refused_for_default_recipient(
+    user_vlastnik, ricany
+) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/odberatele/{ricany.pk}/archivovat/", follow=True
+    )
+    assert response.status_code == 200
+    ricany.refresh_from_db()
+    assert ricany.is_active is True
+    assert ricany.is_default_recipient is True
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_customer_archive(user_obsluha_tyn) -> None:
+    cust = Customer.objects.create(name="Půjčující odběratel")
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(f"/odberatele/{cust.pk}/archivovat/")
+    assert response.status_code == 302
+    cust.refresh_from_db()
+    assert cust.is_active is False
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_nav_supplier_customer_links_visible_to_all(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/pobocka/TYN/")
+    assert response.status_code == 200
+    assert b"Dodavatel" in response.content
+    assert b"Odb\xc4\x9bratel" in response.content

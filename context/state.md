@@ -550,30 +550,43 @@
   failed-send + editováno entries, both branch panels with top
   stocks, dodáky table with `v2` flag.
 
+- **2026-06-12** — DB locale gate closed. Decision
+  [`0038`](./decisions/0038-db-locale-icu.md) picks **ICU
+  (`cs-CZ`)** over an extended `locales-all` image, partially
+  superseding the LC_COLLATE/LC_CTYPE specifics of
+  [`0016`](./decisions/0016-database-postgres.md) (Czech-sort
+  intent preserved; mechanism is ICU instead of libc; 0016
+  banner added). `compose.yaml` `db` service updated:
+  `POSTGRES_INITDB_ARGS` switched to
+  `--locale-provider=icu --icu-locale=cs-CZ --locale=C.UTF-8 --encoding=UTF8`,
+  the standalone `LANG: cs_CZ.UTF-8` env var dropped. Image stays
+  stock `postgres:18-trixie` — no `Dockerfile.db`, no image to
+  manage. Verified directly via `docker run` with the new init
+  args:
+  - `initdb` reports `locale provider: icu`,
+    `default collation: cs-CZ`, `LC_*: C.UTF-8` and exits 0 (no
+    "invalid locale name" error);
+  - `psql … ORDER BY` on the catalogue-shaped sample
+    `[Skořice, Anýz, Česnek, Bazalka, Žampion, Šafrán, Řepík,
+    Pepř]` returns `Anýz, Bazalka, Česnek, Pepř, Řepík, Skořice,
+    Šafrán, Žampion` — correct Czech alphabetic order (Č after
+    C, Ř after R, Š after S, Ž after Z);
+  - `docker compose config` parses cleanly.
+  Operational note: existing `pgdata` volumes initialised under
+  the 2026-06-10 neutralised-locale workaround need
+  `docker compose down -v` once before the next `docker compose
+  up -d db` so the cluster is initialised with the new ICU
+  provider. No production cluster exists yet, so this is a
+  clean re-initialisation (0038 § Consequences).
+
 ## In progress
 
-_(nothing — Pass 3c landed; the operator-facing surface is now
-feature-complete for shadow-run per
-[`0034`](./decisions/0034-shadow-run-before-go-live.md))_
+_(nothing — locale gate closed; the compose stack is ready to
+bring up cleanly with the Czech ICU collation)_
 
 ## Next
 
-1. **Make `cs_CZ.UTF-8` available in the `db` service** (planning
-   needed). Surfaced 2026-06-10 after the compose volume-layout fix
-   landed. Options to pick between:
-   - extend `postgres:18-trixie` with `locales-all` (or just
-     `locales` + a one-line `localedef`) via a small db-side
-     Dockerfile — preserves [`0016`](./decisions/0016-database-postgres.md)
-     verbatim;
-   - switch to ICU locale provider (`--locale-provider=icu
-     --icu-locale=cs-CZ`) — supersedes the `LC_COLLATE`/`LC_CTYPE`
-     specifics of [`0016`](./decisions/0016-database-postgres.md);
-     PG18 supports this natively and the Czech sort order semantics
-     are very close.
-   Pick one, write a numbered decision file, then implement. Until
-   this lands, the compose stack only starts with a neutralised
-   locale.
-2. **Provision the Hetzner box** —
+1. **Provision the Hetzner box** —
    `cd infra/terraform && terraform apply` from Matej's
    workstation, populate `/srv/kasia/.env`, set GH Actions
    secrets (`SSH_HOST`, `SSH_USER`, `SSH_KEY`), push to `main` to

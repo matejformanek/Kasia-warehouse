@@ -1,5 +1,11 @@
 # 0016 — Database: PostgreSQL 18 + psycopg 3
 
+> The LC_COLLATE/LC_CTYPE specifics ("`cs_CZ.UTF-8`") below are
+> superseded by [`0038`](./0038-db-locale-icu.md): the locale
+> provider is ICU (`cs-CZ`) instead of libc, sourced from the
+> stock `postgres:18-trixie` image. The Czech-sort intent is
+> preserved; everything else in this file stands.
+
 ## Context
 
 With Python ([`0014`](./0014-language-python-uv.md)) and Django

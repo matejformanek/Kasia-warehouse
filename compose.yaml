@@ -31,8 +31,15 @@ services:
       POSTGRES_DB: kasia
       POSTGRES_USER: kasia
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_INITDB_ARGS: "--locale=cs_CZ.UTF-8 --encoding=UTF8"
-      LANG: cs_CZ.UTF-8
+      # ICU locale provider per context/decisions/0038-db-locale-icu.md.
+      # The stock postgres:18-trixie image ships ICU but does NOT
+      # generate the cs_CZ.UTF-8 libc locale; using libc here fails
+      # at initdb. ICU is the PG18-native answer and gives the same
+      # Czech sort order Karolína expects in the catalogue.
+      # --locale=C.UTF-8 covers the few libc-bound bits ICU doesn't
+      # (uppercase folding, regex char classes); --icu-locale=cs-CZ
+      # drives collation.
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=cs-CZ --locale=C.UTF-8 --encoding=UTF8"
     volumes:
       # Postgres 18+ requires the mount one level above `data` so the
       # image can manage major-version-specific cluster subdirectories

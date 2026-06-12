@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Dodací list {{ dodaci_list.cislo }} — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Dodací list {{ dodaci_list.cislo }}</h1>
+
+{% if dodaci_list.is_edited %}
+  <div class="msg warning" style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fbf3e0;color:var(--warn);border-radius:4px;">
+    Editováno — aktuální verze: <strong>v{{ dodaci_list.current_version }}</strong>.
+    Předchozí verze byla nahrazena `[OPRAVA]` e-mailem; trail níže.
+  </div>
+{% endif %}
+
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Metadata</h2>
+  <p>
+    <strong>Číslo:</strong> {{ dodaci_list.cislo }}<br>
+    <strong>Datum vystavení:</strong> {{ dodaci_list.date_issued|date:"d. m. Y" }}<br>
+    <strong>Pobočka:</strong> {{ dodaci_list.branch.code }} — {{ dodaci_list.branch.name }}<br>
+    <strong>Odběratel:</strong> {{ dodaci_list.odberatel.name }}
+    {% if dodaci_list.odberatel.ico %}(IČO {{ dodaci_list.odberatel.ico }}){% endif %}<br>
+    {% if dodaci_list.odberatel.address %}<span style="color:var(--fg-soft);">{{ dodaci_list.odberatel.address|linebreaksbr }}</span><br>{% endif %}
+    <strong>Vystavil:</strong> {{ dodaci_list.created_by.email }}<br>
+    <strong>Aktuální verze:</strong> {{ dodaci_list.current_version }}
+  </p>
+  <p>
+    <a class="secondary" href="{% url 'inventory:dodaci_list_pdf' cislo=dodaci_list.cislo %}">Stáhnout PDF</a>
+    <a class="secondary" href="{% url 'inventory:movement_edit' pk=movement.pk %}">Otevřít výdej</a>
+    <form method="post" action="{% url 'inventory:dodaci_list_resend' cislo=dodaci_list.cislo %}" style="display:inline;">
+      {% csrf_token %}
+      <button class="secondary" type="submit">Znovu odeslat</button>
+    </form>
+  </p>
+</div>
+
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Položky</h2>
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Pořadí</th>
+        <th>Produkt</th>
+        <th style="text-align:right;">Množství (kg)</th>
+        <th>Šarže</th>
+        <th>Poznámka</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+        <tr>
+          <td style="color:var(--fg-soft);">{{ forloop.counter }}.</td>
+          <td>{{ line.product.name_cs }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ line.quantity_kg }}</td>
+          <td>{{ line.sarze }}</td>
+          <td>{{ line.note }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Verze a odeslání</h2>
+  {% if email_logs %}
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Kdy</th>
+          <th>Verze</th>
+          <th>Stav</th>
+          <th>Příjemci</th>
+          <th>Důvod</th>
+          <th>Chyba</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in email_logs %}
+          <tr>
+            <td>{{ log.sent_at|date:"d. m. Y H:i" }}</td>
+            <td>v{{ log.version }}</td>
+            <td>
+              {% if log.status == "sent" %}
+                <span style="color:var(--ok);">odesláno</span>
+              {% else %}
+                <span style="color:var(--error);font-weight:bold;">SELHALO</span>
+              {% endif %}
+            </td>
+            <td style="color:var(--fg-soft);">{{ log.recipients }}</td>
+            <td>{{ log.trigger_reason }}</td>
+            <td style="color:var(--error);">{{ log.error_message }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="color:var(--fg-soft);">Žádné záznamy o odeslání zatím nejsou.</p>
+  {% endif %}
+</div>
+
+<p>
+  <a class="secondary" href="{% url 'inventory:dodaci_list_index' %}">Zpět na seznam</a>
+</p>
+{% endblock %}

@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Úprava pohybu č. {{ movement.pk }} — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>
+  Úprava {{ movement.get_kind_display }} — {{ movement.date_issued|date:"d. m. Y" }} — pobočka {{ movement.branch.code }}
+</h1>
+
+{% if is_vydej and dodaci_list %}
+  <div class="card" style="background:#fbf3e0;border-left:3px solid var(--warn);">
+    Tento výdej je svázán s dodacím listem <strong>{{ dodaci_list.cislo }}</strong>
+    (aktuální verze v{{ dodaci_list.current_version }}). Uložení úpravy automaticky
+    vygeneruje novou verzi PDF a odešle ji s předmětem
+    <code>[OPRAVA] …</code> na fixní dvojici příjemců (Petr + Karolína).
+    Důvod úpravy se připojí k textu e-mailu.
+    <br>
+    <a href="{% url 'inventory:dodaci_list_detail' cislo=dodaci_list.cislo %}">Otevřít dodací list</a>
+  </div>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <div class="card">
+    <div class="field">
+      <label for="id_reason">Důvod úpravy</label>
+      {{ form.reason }}
+      {{ form.reason.errors }}
+    </div>
+    <div class="field">
+      <label for="id_branch">Pobočka</label>
+      {{ form.branch }}
+      {{ form.branch.errors }}
+    </div>
+    {% if is_vydej %}
+      <div class="field">
+        <label for="id_odberatel">Odběratel</label>
+        {{ form.odberatel }}
+        {{ form.odberatel.errors }}
+      </div>
+    {% else %}
+      <div class="field">
+        <label for="id_dodavatel">Dodavatel</label>
+        {{ form.dodavatel }}
+        {{ form.dodavatel.errors }}
+      </div>
+    {% endif %}
+    <div class="field">
+      <label for="id_date_issued">Datum vystavení</label>
+      {{ form.date_issued }}
+      {{ form.date_issued.errors }}
+    </div>
+    <div class="field">
+      <label for="id_note">Poznámka</label>
+      {{ form.note }}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:1.05rem;margin-top:0;">Položky</h2>
+    {{ formset.management_form }}
+    {% if formset.non_form_errors %}
+      <div class="non-form-errors">
+        {% for err in formset.non_form_errors %}<div>{{ err }}</div>{% endfor %}
+      </div>
+    {% endif %}
+    <table class="lines" id="lines-table">
+      <thead>
+        <tr>
+          <th>Produkt</th>
+          <th>Množství (kg)</th>
+          <th>Šarže</th>
+          <th>Expirace</th>
+          <th>Poznámka</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="lines-body">
+        {% for line_form in formset.forms %}
+          <tr class="line-row">
+            <td>
+              {{ line_form.line_id.as_hidden }}
+              {{ line_form.product }}
+              {% if line_form.product.errors %}<div class="errorlist">{{ line_form.product.errors }}</div>{% endif %}
+            </td>
+            <td>
+              {{ line_form.quantity_kg }}
+              {% if line_form.quantity_kg.errors %}<div class="errorlist">{{ line_form.quantity_kg.errors }}</div>{% endif %}
+            </td>
+            <td>{{ line_form.sarze }}</td>
+            <td>{{ line_form.expiry }}</td>
+            <td>{{ line_form.note }}</td>
+            <td>
+              <label style="font-size:0.85rem;color:var(--fg-soft);">
+                {{ line_form.DELETE }} smazat
+              </label>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    <button class="primary" type="submit">Uložit změny</button>
+    {% if dodaci_list %}
+      <a class="secondary" href="{% url 'inventory:dodaci_list_detail' cislo=dodaci_list.cislo %}">Zrušit</a>
+    {% else %}
+      <a class="secondary" href="{% url 'inventory:home' %}">Zrušit</a>
+    {% endif %}
+  </p>
+</form>
+
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Záznamy úprav</h2>
+  {% if audit_rows %}
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Kdy</th>
+          <th>Kdo</th>
+          <th>Důvod</th>
+          <th>Cíl</th>
+          <th>Pole / událost</th>
+          <th>Z</th>
+          <th>Na</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in audit_rows %}
+          <tr>
+            <td>{{ row.edited_at|date:"d. m. Y H:i" }}</td>
+            <td>{{ row.edited_by.email }}</td>
+            <td>{{ row.reason }}</td>
+            <td>{{ row.get_target_kind_display }}{% if row.line_id %} #{{ row.line_id }}{% endif %}</td>
+            <td>{% if row.field %}{{ row.field }}{% else %}{{ row.get_event_display }}{% endif %}</td>
+            <td style="color:var(--fg-soft);">{{ row.old_value }}</td>
+            <td>{{ row.new_value }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="color:var(--fg-soft);">Pohyb dosud nebyl upraven.</p>
+  {% endif %}
+</div>
+{% endblock %}

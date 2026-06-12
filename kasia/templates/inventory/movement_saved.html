@@ -22,6 +22,7 @@
   {% endif %}
   <p>
     <a class="secondary" href="{% url 'inventory:home' %}">Zpět</a>
+    <a class="secondary" href="{% url 'inventory:movement_edit' pk=movement.pk %}">Upravit pohyb</a>
     {% if movement.kind == "vydej" %}
       <a class="secondary" href="{% url 'inventory:vydej_create' %}">Nový výdej</a>
     {% else %}

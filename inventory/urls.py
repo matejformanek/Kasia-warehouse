@@ -19,4 +19,17 @@ urlpatterns = [
         name="stock_warn_partial",
     ),
     path("pohyby/<int:pk>/", views.movement_saved, name="movement_saved"),
+    path("pohyby/<int:pk>/upravit/", views.movement_edit, name="movement_edit"),
+    path("dodaky/", views.dodaci_list_index, name="dodaci_list_index"),
+    path("dodaky/<str:cislo>/", views.dodaci_list_detail, name="dodaci_list_detail"),
+    path(
+        "dodaky/<str:cislo>/pdf/",
+        views.dodaci_list_pdf,
+        name="dodaci_list_pdf",
+    ),
+    path(
+        "dodaky/<str:cislo>/znovu-odeslat/",
+        views.dodaci_list_resend,
+        name="dodaci_list_resend",
+    ),
 ]

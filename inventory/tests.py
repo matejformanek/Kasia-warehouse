@@ -1330,3 +1330,309 @@ def test_partial_routes_require_login() -> None:
     response = Client().get("/_partials/line-row/")
     assert response.status_code == 302
     assert response.headers["Location"].startswith("/login/")
+
+
+# ---------------------------------------------------------------------------
+# Pass 3b — dodák list/detail/PDF/resend + movement edit
+# ---------------------------------------------------------------------------
+
+
+def _seed_vydej(user, tyn, ricany, pepper, qty="2.000", stock="5.000"):
+    """Create one výdej via apply_movement; return the Movement + DodaciList."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal(stock))
+    from inventory.services import apply_movement as _apply
+
+    mv = _apply(
+        movement=Movement(
+            branch=tyn,
+            kind=Movement.Kind.VYDEJ,
+            date_issued=date(2026, 6, 11),
+            odberatel=ricany,
+        ),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal(qty))],
+        user=user,
+    )
+    dl = DodaciList.objects.get(movement=mv)
+    return mv, dl
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dodaci_list_index_empty(user_tyn) -> None:
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/dodaky/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Dodací listy" in body
+    assert "Nalezeno: 0" in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dodaci_list_index_lists_dodak(user_tyn, tyn, ricany, pepper) -> None:
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/dodaky/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert dl.cislo in body
+    assert "Nalezeno: 1" in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dodaci_list_index_branch_filter(
+    user_tyn, tyn, sez, ricany, pepper
+) -> None:
+    mv, _dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    # Hit the filter via querystring (SEZ has no dodáky → list should be empty).
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get(f"/dodaky/?branch={sez.pk}")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Nalezeno: 0" in body
+    # Filtering for TYN keeps the row.
+    response = client.get(f"/dodaky/?branch={tyn.pk}")
+    body = response.content.decode("utf-8")
+    assert "Nalezeno: 1" in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dodaci_list_detail_renders(user_tyn, tyn, ricany, pepper) -> None:
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get(f"/dodaky/{dl.cislo}/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert dl.cislo in body
+    assert "Stáhnout PDF" in body
+    assert "Znovu odeslat" in body
+    assert "Otevřít výdej" in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dodaci_list_pdf_download(user_tyn, tyn, ricany, pepper) -> None:
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get(f"/dodaky/{dl.cislo}/pdf/")
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "application/pdf"
+    assert f'filename="{dl.cislo}.pdf"' in response.headers["Content-Disposition"]
+    assert response.content[:4] == b"%PDF"
+    assert len(response.content) > 1000
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dodaci_list_resend_writes_log(user_tyn, tyn, ricany, pepper) -> None:
+    from django.core import mail
+
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    outbox_before = len(mail.outbox)
+    logs_before = DodaciListEmailLog.objects.filter(dodaci_list=dl).count()
+
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.post(f"/dodaky/{dl.cislo}/znovu-odeslat/")
+    assert response.status_code == 302
+    assert response.headers["Location"] == f"/dodaky/{dl.cislo}/"
+
+    assert len(mail.outbox) == outbox_before + 1
+    log = (
+        DodaciListEmailLog.objects.filter(dodaci_list=dl)
+        .order_by("-sent_at", "-id")
+        .first()
+    )
+    assert log is not None
+    assert log.trigger_reason == "ruční opětovné odeslání"
+    assert (
+        DodaciListEmailLog.objects.filter(dodaci_list=dl).count() == logs_before + 1
+    )
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dodaci_list_routes_require_login() -> None:
+    for path in (
+        "/dodaky/",
+        "/dodaky/anything/",
+        "/dodaky/anything/pdf/",
+    ):
+        response = Client().get(path)
+        assert response.status_code == 302
+        assert response.headers["Location"].startswith("/login/")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dodaci_list_detail_404_for_unknown_cislo(user_tyn) -> None:
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/dodaky/TYN-2099-9999/")
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_movement_edit_get_renders(user_tyn, tyn, ricany, pepper) -> None:
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get(f"/pohyby/{mv.pk}/upravit/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Úprava" in body
+    assert "Důvod úpravy" in body
+    # Linked dodák warning visible.
+    assert dl.cislo in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_movement_edit_post_bumps_version_and_audits(
+    user_tyn, tyn, ricany, pepper
+) -> None:
+    from django.core import mail
+
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    line = mv.lines.get()
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.post(
+        f"/pohyby/{mv.pk}/upravit/",
+        {
+            "reason": "oprava hmotnosti",
+            "branch": tyn.pk,
+            "odberatel": ricany.pk,
+            "date_issued": "2026-06-11",
+            "note": "",
+            "lines-TOTAL_FORMS": "1",
+            "lines-INITIAL_FORMS": "1",
+            "lines-MIN_NUM_FORMS": "0",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-line_id": str(line.pk),
+            "lines-0-product": str(pepper.pk),
+            "lines-0-quantity_kg": "3.000",
+            "lines-0-sarze": "",
+            "lines-0-expiry": "",
+            "lines-0-note": "",
+        },
+    )
+    assert response.status_code == 302, response.content[:500]
+
+    dl.refresh_from_db()
+    assert dl.current_version == 2
+    # An OPRAVA send + log row landed via the edit hook.
+    assert any("[OPRAVA]" in m.subject for m in mail.outbox)
+    log = DodaciListEmailLog.objects.filter(dodaci_list=dl, version=2).get()
+    assert log.trigger_reason == "oprava: oprava hmotnosti"
+    # And the audit row exists.
+    assert MovementAudit.objects.filter(movement=mv).count() >= 1
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_movement_edit_no_changes_is_noop(user_tyn, tyn, ricany, pepper) -> None:
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    line = mv.lines.get()
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.post(
+        f"/pohyby/{mv.pk}/upravit/",
+        {
+            "reason": "kontrola",
+            "branch": tyn.pk,
+            "odberatel": ricany.pk,
+            "date_issued": "2026-06-11",
+            "note": "",
+            "lines-TOTAL_FORMS": "1",
+            "lines-INITIAL_FORMS": "1",
+            "lines-MIN_NUM_FORMS": "0",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-line_id": str(line.pk),
+            "lines-0-product": str(pepper.pk),
+            "lines-0-quantity_kg": str(line.quantity_kg),
+            "lines-0-sarze": "",
+            "lines-0-expiry": "",
+            "lines-0-note": "",
+        },
+    )
+    assert response.status_code == 302
+    dl.refresh_from_db()
+    assert dl.current_version == 1
+    assert MovementAudit.objects.count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_movement_edit_overdraw_keeps_form(user_tyn, tyn, ricany, pepper) -> None:
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper, qty="2.000", stock="5.000")
+    line = mv.lines.get()
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.post(
+        f"/pohyby/{mv.pk}/upravit/",
+        {
+            "reason": "pokus o předčerpání",
+            "branch": tyn.pk,
+            "odberatel": ricany.pk,
+            "date_issued": "2026-06-11",
+            "note": "",
+            "lines-TOTAL_FORMS": "1",
+            "lines-INITIAL_FORMS": "1",
+            "lines-MIN_NUM_FORMS": "0",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-line_id": str(line.pk),
+            "lines-0-product": str(pepper.pk),
+            "lines-0-quantity_kg": "99.000",
+            "lines-0-sarze": "",
+            "lines-0-expiry": "",
+            "lines-0-note": "",
+        },
+    )
+    assert response.status_code == 200, response.content[:300]
+    dl.refresh_from_db()
+    assert dl.current_version == 1
+    assert MovementAudit.objects.count() == 0
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_movement_edit_404_for_unknown_pk(user_tyn) -> None:
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/pohyby/99999/upravit/")
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_vydej_post_now_redirects_to_dodaci_list_detail(
+    user_tyn, tyn, ricany, pepper
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.post(
+        "/vydej/novy/",
+        {
+            "branch": tyn.pk,
+            "odberatel": ricany.pk,
+            "date_issued": "2026-06-12",
+            "lines-TOTAL_FORMS": "1",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-product": pepper.pk,
+            "lines-0-quantity_kg": "1.500",
+        },
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/dodaky/TYN-2026-0001/"

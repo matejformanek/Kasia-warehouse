@@ -115,3 +115,57 @@ def assert_no_future_date(value: date) -> None:
 
 def kind_label(kind: str) -> str:
     return Movement.Kind(kind).label
+
+
+# ---------------------------------------------------------------------------
+# Edit-mode forms (screen 11)
+# ---------------------------------------------------------------------------
+
+
+class MovementEditLineForm(MovementLineForm):
+    """Edit-mode line form. The hidden `line_id` carries the existing
+    MovementLine.pk; a blank value means "new line, add it"."""
+
+    line_id = forms.IntegerField(required=False, widget=forms.HiddenInput)
+
+
+MovementEditLineFormSet = forms.formset_factory(
+    MovementEditLineForm,
+    extra=1,
+    can_delete=True,
+)
+
+
+class _MovementEditBaseForm(_MovementBaseForm):
+    reason = forms.CharField(
+        label="Důvod úpravy",
+        widget=forms.TextInput(attrs={"size": 60}),
+    )
+
+
+class PrijemEditForm(_MovementEditBaseForm):
+    branch = forms.ModelChoiceField(label="Pobočka", queryset=None, empty_label=None)
+    dodavatel = forms.ModelChoiceField(
+        label="Dodavatel",
+        queryset=Supplier.objects.filter(is_active=True),
+    )
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        from .models import Branch
+
+        self.fields["branch"].queryset = Branch.objects.filter(is_active=True)
+
+
+class VydejEditForm(_MovementEditBaseForm):
+    branch = forms.ModelChoiceField(label="Pobočka", queryset=None, empty_label=None)
+    odberatel = forms.ModelChoiceField(
+        label="Odběratel",
+        queryset=Customer.objects.filter(is_active=True),
+    )
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        from .models import Branch
+
+        self.fields["branch"].queryset = Branch.objects.filter(is_active=True)

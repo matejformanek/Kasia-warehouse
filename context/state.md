@@ -460,21 +460,60 @@
   login). Full suite: **77 pytest tests green** (63 → 77); ruff
   clean; system check clean; makemigrations --check clean.
 
+- **2026-06-12** — Pass 3b (dodák list / detail / PDF / resend +
+  movement edit) landed. New URL routes under `inventory:`:
+  `/dodaky/` (`dodaci_list_index`), `/dodaky/<cislo>/`
+  (`dodaci_list_detail`), `/dodaky/<cislo>/pdf/`
+  (`dodaci_list_pdf`), `/dodaky/<cislo>/znovu-odeslat/`
+  (`dodaci_list_resend`, POST-only), `/pohyby/<pk>/upravit/`
+  (`movement_edit`). `vydej_create` now redirects to the dodák
+  detail per screen 07 spec ("Lands the user on Detail dodacího
+  listu"). Forms: `MovementEditLineForm` (subclass of
+  `MovementLineForm` adding a hidden `line_id` field for diffs),
+  `MovementEditLineFormSet` (extra=1, can_delete=True),
+  `PrijemEditForm` + `VydejEditForm` (share `_MovementEditBaseForm`
+  with mandatory `reason`). View logic: `_movement_field_changes`
+  + `_line_changes` diff the bound formset against the live
+  Movement and produce the `changes` / `line_changes` shape
+  `edit_movement` expects; service-layer
+  `ValidationError` (e.g. stock overdraw) surfaces as non-form
+  errors on the formset. Templates:
+  `inventory/dodaci_list_index.html` (filter strip — branch /
+  year / "Pouze editované" — and table with PDF quick-link),
+  `inventory/dodaci_list_detail.html` (metadata, lines, "Verze a
+  odeslání" audit table from `email_logs`, "Editováno" banner,
+  "Stáhnout PDF" + "Znovu odeslat" + "Otevřít výdej" controls),
+  `inventory/movement_edit.html` (header + linked-dodák
+  `[OPRAVA]` warning, edit form, full audit trail from
+  `MovementAudit`). Nav extended with "Dodací listy" link;
+  `movement_saved` page links to `movement_edit`. End-to-end
+  smoke against the dev server: výdej POST → 302 to
+  `/dodaky/TYN-2026-0001/`; detail page renders + links to PDF +
+  edit; PDF route returns `Content-Type: application/pdf` +
+  `Content-Disposition: inline; filename="TYN-2026-0001.pdf"` +
+  `%PDF-1.7` magic; edit POST with `reason=oprava hmotnosti`
+  bumped `current_version` 1 → 2, wrote a `MovementAudit` row,
+  and queued the `[OPRAVA]` send (logged as `version=2,
+  trigger_reason="oprava: oprava hmotnosti"`); Znovu odeslat POST
+  wrote a `trigger_reason="ruční opětovné odeslání"` row.
+  14 new tests in `inventory/tests.py` (dodák list empty / lists
+  dodák / branch filter, detail renders, PDF download header +
+  bytes, resend writes log row, login-required gate on
+  /dodaky/* routes, 404 for unknown číslo, movement_edit GET
+  renders + linked-dodák warning, POST bumps version + audits +
+  queues OPRAVA send, no-op edit writes no audit, overdraw keeps
+  form, 404 for unknown pk, vydej_create now redirects to dodák
+  detail). Full suite: **91 pytest tests green** (77 → 91);
+  ruff clean; system check clean; makemigrations --check clean.
+
 ## In progress
 
-_(nothing — Pass 3a landed; ready for Pass 3b: dodák list +
-detail + edit screens)_
+_(nothing — Pass 3b landed; ready for Pass 3c: screen 02
+dashboard)_
 
 ## Next
 
-1. **Pass 3b — screens 08 + 09 + 11.** Seznam dodacích listů
-   (list + filter by branch/year/edited), detail dodacího listu
-   (header + audit table + "stáhnout PDF" + "znovu odeslat" +
-   download link wired to `render_dodaci_list_pdf`), úprava
-   pohybu (calls `edit_movement` with mandatory reason — already
-   wires the [OPRAVA] re-send via the Pass 2 hook). Builds on
-   Pass 3a's base template + URL namespace.
-2. **Pass 3c — screen 02 dashboard.** "K vyřešení" rollup
+1. **Pass 3c — screen 02 dashboard.** "K vyřešení" rollup
    (failed sends from `DodaciListEmailLog(status=failed)`,
    recent corrections, low-stock peek). Lands once 3b ships
    the data shapes the dashboard rolls up.

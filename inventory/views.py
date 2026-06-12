@@ -552,8 +552,23 @@ def catalogue_index(request):
     # struct so the template doesn't need custom filters to index a
     # dict by primary key.
     stock_qs = Stock.objects.filter(product__in=products).select_related("branch")
+
+    # Branch filter — obsluha is forced to own branch; vlastník can
+    # pick TYN / SEZ / all via ?branch=<code>.
+    filter_branch_code = ""
+    selected_branch = None
     if request.user.is_obsluha and request.user.branch_id:
         stock_qs = stock_qs.filter(branch_id=request.user.branch_id)
+        selected_branch = request.user.branch
+    else:
+        filter_branch_code = (request.GET.get("branch") or "").strip().upper()
+        if filter_branch_code:
+            try:
+                selected_branch = Branch.objects.get(code=filter_branch_code)
+                stock_qs = stock_qs.filter(branch=selected_branch)
+            except Branch.DoesNotExist:
+                filter_branch_code = ""
+
     totals: dict[int, Decimal] = {}
     for s in stock_qs:
         totals[s.product_id] = totals.get(s.product_id, Decimal("0.000")) + s.quantity
@@ -582,6 +597,9 @@ def catalogue_index(request):
             "filter_q": search,
             "filter_kind": kind,
             "filter_status": status,
+            "filter_branch_code": filter_branch_code,
+            "selected_branch": selected_branch,
+            "branches": Branch.objects.filter(is_active=True).order_by("code"),
             "obsluha_branch": (
                 request.user.branch if request.user.is_obsluha else None
             ),

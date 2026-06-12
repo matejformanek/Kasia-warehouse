@@ -27,6 +27,19 @@
       <option value="all" {% if filter_status == "all" %}selected{% endif %}>vše</option>
     </select>
   </div>
+  {% if not obsluha_branch %}
+    <div class="field" style="margin-bottom:0;">
+      <label for="id_filter_branch">Pobočka</label>
+      <select name="branch" id="id_filter_branch">
+        <option value="">— obě —</option>
+        {% for b in branches %}
+          <option value="{{ b.code }}" {% if filter_branch_code == b.code %}selected{% endif %}>
+            {{ b.code }} — {{ b.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  {% endif %}
   <div>
     <button class="primary" type="submit">Filtrovat</button>
     <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Vymazat</a>
@@ -43,6 +56,8 @@
         <th>Typ</th>
         {% if obsluha_branch %}
           <th style="text-align:right;">Skladem v {{ obsluha_branch.code }} (kg)</th>
+        {% elif selected_branch %}
+          <th style="text-align:right;">Skladem v {{ selected_branch.code }} (kg)</th>
         {% else %}
           <th style="text-align:right;">Skladem celkem (kg)</th>
         {% endif %}
@@ -51,11 +66,9 @@
     </thead>
     <tbody>
       {% for row in rows %}
-        <tr>
+        <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=row.product.pk %}">
           <td>
-            <a href="{% url 'inventory:product_detail' pk=row.product.pk %}">
-              {{ row.product.name_cs }}
-            </a>
+            <strong>{{ row.product.name_cs }}</strong>
             {% if not row.product.is_active %}
               <span style="color:var(--fg-soft);font-size:0.85rem;">(archivováno)</span>
             {% endif %}

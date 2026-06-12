@@ -11,21 +11,23 @@
   (Petr + Karolína). Výdej se neuloží, dokud obě adresy nebudou vyplněny.
 </div>
 
+<p class="required-legend">povinné pole</p>
+
 <form method="post">
   {% csrf_token %}
   <div class="card">
     <div class="field">
-      <label for="id_branch">Pobočka</label>
+      <label class="field-required" for="id_branch">Pobočka</label>
       {{ form.branch }}
       {{ form.branch.errors }}
     </div>
     <div class="field">
-      <label for="id_odberatel">Odběratel</label>
+      <label class="field-required" for="id_odberatel">Odběratel</label>
       {{ form.odberatel }}
       {{ form.odberatel.errors }}
     </div>
     <div class="field">
-      <label for="id_date_issued">Datum vystavení</label>
+      <label class="field-required" for="id_date_issued">Datum vystavení</label>
       {{ form.date_issued }}
       {{ form.date_issued.errors }}
     </div>

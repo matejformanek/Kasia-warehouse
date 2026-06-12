@@ -17,8 +17,10 @@
     <div class="non-form-errors">{{ form.non_field_errors }}</div>
   {% endif %}
 
+  <p class="required-legend">povinné pole</p>
+
   <div class="field">
-    <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+    <label class="field-required" for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
     {{ form.first_name }}
     {{ form.first_name.errors }}
   </div>
@@ -28,7 +30,7 @@
     {{ form.last_name.errors }}
   </div>
   <div class="field">
-    <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+    <label class="field-required" for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
     {{ form.email }}
     {% if form.email.help_text %}
       <small style="color:var(--fg-soft); display:block;">{{ form.email.help_text }}</small>
@@ -36,7 +38,7 @@
     {{ form.email.errors }}
   </div>
   <div class="field">
-    <label for="{{ form.role.id_for_label }}">{{ form.role.label }}</label>
+    <label class="field-required" for="{{ form.role.id_for_label }}">{{ form.role.label }}</label>
     {{ form.role }}
     {{ form.role.errors }}
   </div>
@@ -51,12 +53,12 @@
 
   {% if mode == "create" %}
     <div class="field">
-      <label for="{{ form.password1.id_for_label }}">{{ form.password1.label }}</label>
+      <label class="field-required" for="{{ form.password1.id_for_label }}">{{ form.password1.label }}</label>
       {{ form.password1 }}
       {{ form.password1.errors }}
     </div>
     <div class="field">
-      <label for="{{ form.password2.id_for_label }}">{{ form.password2.label }}</label>
+      <label class="field-required" for="{{ form.password2.id_for_label }}">{{ form.password2.label }}</label>
       {{ form.password2 }}
       {{ form.password2.errors }}
     </div>

@@ -5,21 +5,23 @@
 {% block content %}
 <h1>Nový příjem zboží</h1>
 
+<p class="required-legend">povinné pole</p>
+
 <form method="post">
   {% csrf_token %}
   <div class="card">
     <div class="field">
-      <label for="id_branch">Pobočka</label>
+      <label class="field-required" for="id_branch">Pobočka</label>
       {{ form.branch }}
       {{ form.branch.errors }}
     </div>
     <div class="field">
-      <label for="id_dodavatel">Dodavatel</label>
+      <label class="field-required" for="id_dodavatel">Dodavatel</label>
       {{ form.dodavatel }}
       {{ form.dodavatel.errors }}
     </div>
     <div class="field">
-      <label for="id_date_issued">Datum vystavení</label>
+      <label class="field-required" for="id_date_issued">Datum vystavení</label>
       {{ form.date_issued }}
       {{ form.date_issued.errors }}
     </div>

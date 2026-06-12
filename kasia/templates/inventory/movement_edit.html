@@ -19,34 +19,36 @@
   </div>
 {% endif %}
 
+<p class="required-legend">povinné pole</p>
+
 <form method="post">
   {% csrf_token %}
   <div class="card">
     <div class="field">
-      <label for="id_reason">Důvod úpravy</label>
+      <label class="field-required" for="id_reason">Důvod úpravy</label>
       {{ form.reason }}
       {{ form.reason.errors }}
     </div>
     <div class="field">
-      <label for="id_branch">Pobočka</label>
+      <label class="field-required" for="id_branch">Pobočka</label>
       {{ form.branch }}
       {{ form.branch.errors }}
     </div>
     {% if is_vydej %}
       <div class="field">
-        <label for="id_odberatel">Odběratel</label>
+        <label class="field-required" for="id_odberatel">Odběratel</label>
         {{ form.odberatel }}
         {{ form.odberatel.errors }}
       </div>
     {% else %}
       <div class="field">
-        <label for="id_dodavatel">Dodavatel</label>
+        <label class="field-required" for="id_dodavatel">Dodavatel</label>
         {{ form.dodavatel }}
         {{ form.dodavatel.errors }}
       </div>
     {% endif %}
     <div class="field">
-      <label for="id_date_issued">Datum vystavení</label>
+      <label class="field-required" for="id_date_issued">Datum vystavení</label>
       {{ form.date_issued }}
       {{ form.date_issued.errors }}
     </div>
@@ -67,8 +69,8 @@
     <table class="lines" id="lines-table">
       <thead>
         <tr>
-          <th>Produkt</th>
-          <th>Množství (kg)</th>
+          <th class="field-required">Produkt</th>
+          <th class="field-required">Množství (kg)</th>
           <th>Šarže</th>
           <th>Expirace</th>
           <th>Poznámka</th>
@@ -77,7 +79,7 @@
       </thead>
       <tbody id="lines-body">
         {% for line_form in formset.forms %}
-          <tr class="line-row">
+          <tr class="line-row" data-index="{{ forloop.counter0 }}">
             <td>
               {{ line_form.line_id.as_hidden }}
               {{ line_form.product }}
@@ -91,9 +93,13 @@
             <td>{{ line_form.expiry }}</td>
             <td>{{ line_form.note }}</td>
             <td>
-              <label style="font-size:0.85rem;color:var(--fg-soft);">
-                {{ line_form.DELETE }} smazat
-              </label>
+              <input type="checkbox" name="{{ line_form.DELETE.html_name }}"
+                     id="{{ line_form.DELETE.id_for_label }}" hidden>
+              <button type="button" class="row-delete-btn"
+                      data-target="{{ line_form.DELETE.id_for_label }}"
+                      title="Označit řádek ke smazání (uloží se až s formulářem)">
+                × Smazat
+              </button>
             </td>
           </tr>
         {% endfor %}

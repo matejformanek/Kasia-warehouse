@@ -54,7 +54,7 @@
   {% for f in form %}
     {% if f.name == "recipient_petr" or f.name == "recipient_karolina" %}
       <div class="field">
-        <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+        <label class="field-required" for="{{ f.id_for_label }}">{{ f.label }}</label>
         {{ f }}
         {{ f.errors }}
       </div>

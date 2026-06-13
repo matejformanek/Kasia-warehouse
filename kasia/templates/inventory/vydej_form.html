@@ -11,6 +11,60 @@
   (Petr + Karolína). Výdej se neuloží, dokud obě adresy nebudou vyplněny.
 </div>
 
+{% if overdraw_warnings %}
+  <div class="card" style="background:#fbe8e8;border-left:3px solid var(--error);">
+    <h2 style="font-size:1.05rem;margin-top:0;color:var(--error);">
+      Nedostatek na skladě — výdej nelze uložit
+    </h2>
+    <p style="font-size:0.95rem;">
+      Vypadá to, že systémový stav neodpovídá realitě. Před uložením
+      výdeje opravte skladové množství u následujících položek
+      {% if user.is_vlastnik %}(tlačítko otevře úpravu stavu v novém okně){% else %}— stav skladu upraví jen vlastník, kontaktujte Karolínu/Petra{% endif %}:
+    </p>
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Produkt</th>
+          <th style="text-align:right;">Aktuálně skladem</th>
+          <th style="text-align:right;">Požadováno</th>
+          <th style="text-align:right;">Chybí</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for w in overdraw_warnings %}
+          <tr>
+            <td><strong>{{ w.product.name_cs }}</strong></td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">
+              {{ w.current|stringformat:".3f" }} kg
+            </td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">
+              {{ w.requested|stringformat:".3f" }} kg
+            </td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--error);font-weight:bold;">
+              −{{ w.shortfall|stringformat:".3f" }} kg
+            </td>
+            <td>
+              {% if user.is_vlastnik %}
+                <a class="secondary" target="_blank"
+                   href="{% url 'inventory:stock_adjust_edit' pk=w.product.pk %}">
+                  Upravit stav skladu ↗
+                </a>
+              {% else %}
+                <span style="color:var(--fg-soft);font-size:0.85rem;">jen vlastník</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p style="color:var(--fg-soft); font-size:0.9rem; margin-top:0.5rem;">
+      Po úpravě stavu se vraťte sem a znovu klikněte „Vystavit dodací
+      list a uložit výdej". Vyplněné položky zůstanou.
+    </p>
+  </div>
+{% endif %}
+
 <p class="required-legend">povinné pole</p>
 
 <form method="post">

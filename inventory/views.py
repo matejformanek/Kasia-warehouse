@@ -383,6 +383,7 @@ def prijem_create(request):
 
 @require_http_methods(["GET", "POST"])
 def vydej_create(request):
+    overdraw_warnings: list[dict] = []
     if request.method == "POST":
         form = VydejForm(request.POST, user=request.user)
         formset = MovementLineFormSet(request.POST, prefix="lines")
@@ -398,31 +399,38 @@ def vydej_create(request):
                         ["Pohyb musí mít alespoň jednu položku."]
                     )
                 else:
-                    movement = Movement(
-                        branch=form.cleaned_data["branch"],
-                        kind=Movement.Kind.VYDEJ,
-                        date_issued=form.cleaned_data["date_issued"],
-                        odberatel=form.cleaned_data["odberatel"],
-                        note=form.cleaned_data.get("note", ""),
-                    )
-                    try:
-                        mv = apply_movement(
-                            movement=movement, lines=lines, user=request.user
-                        )
-                    except ValidationError as exc:
-                        _push_validation_error_to_formset(exc, formset)
+                    branch = form.cleaned_data["branch"]
+                    overdraw_warnings = _compute_overdraw(branch, lines)
+                    if overdraw_warnings:
+                        # Pre-check refusal: re-render with structured
+                        # warning card per decision 0042. No service call.
+                        pass
                     else:
-                        dl = DodaciList.objects.filter(movement=mv).first()
-                        messages.success(
-                            request,
-                            f"Výdej byl uložen ({mv.lines.count()} pol.) — "
-                            f"dodací list {dl.cislo if dl else ''}.",
+                        movement = Movement(
+                            branch=branch,
+                            kind=Movement.Kind.VYDEJ,
+                            date_issued=form.cleaned_data["date_issued"],
+                            odberatel=form.cleaned_data["odberatel"],
+                            note=form.cleaned_data.get("note", ""),
                         )
-                        if dl is not None:
-                            return redirect(
-                                "inventory:dodaci_list_detail", cislo=dl.cislo
+                        try:
+                            mv = apply_movement(
+                                movement=movement, lines=lines, user=request.user
                             )
-                        return redirect("inventory:movement_saved", pk=mv.pk)
+                        except ValidationError as exc:
+                            _push_validation_error_to_formset(exc, formset)
+                        else:
+                            dl = DodaciList.objects.filter(movement=mv).first()
+                            messages.success(
+                                request,
+                                f"Výdej byl uložen ({mv.lines.count()} pol.) — "
+                                f"dodací list {dl.cislo if dl else ''}.",
+                            )
+                            if dl is not None:
+                                return redirect(
+                                    "inventory:dodaci_list_detail", cislo=dl.cislo
+                                )
+                            return redirect("inventory:movement_saved", pk=mv.pk)
     else:
         form = VydejForm(user=request.user)
         formset = MovementLineFormSet(prefix="lines")
@@ -430,7 +438,11 @@ def vydej_create(request):
     return render(
         request,
         "inventory/vydej_form.html",
-        {"form": form, "formset": formset},
+        {
+            "form": form,
+            "formset": formset,
+            "overdraw_warnings": overdraw_warnings,
+        },
     )
 
 
@@ -524,6 +536,58 @@ def _push_validation_error_to_formset(exc: ValidationError, formset) -> None:
     else:
         msgs.extend(exc.messages)
     formset._non_form_errors = formset.error_class(msgs)
+
+
+def _compute_overdraw(branch: Branch, lines: list[MovementLine]) -> list[dict]:
+    """Per decision 0042 — return all insufficient-stock lines for a
+    výdej, so the operator can be prompted to correct the count with
+    a direct link instead of just refused.
+
+    For each line where requested > current stock at this branch,
+    yields a dict:
+        {product, branch, requested, current, shortfall}
+    The list is empty when every line fits.
+
+    Aggregates multiple lines of the same product within the same
+    submission (a výdej can have two rows for the same product with
+    different šarže) so the warning matches actual cumulative draw.
+    """
+    if not lines:
+        return []
+    requested_by_product: dict[int, Decimal] = {}
+    products_by_id: dict[int, Product] = {}
+    for ln in lines:
+        if ln.product is None or ln.quantity_kg in (None, ""):
+            continue
+        requested_by_product[ln.product.pk] = (
+            requested_by_product.get(ln.product.pk, Decimal("0.000"))
+            + Decimal(ln.quantity_kg)
+        )
+        products_by_id[ln.product.pk] = ln.product
+
+    stocks = {
+        s.product_id: s.quantity
+        for s in Stock.objects.filter(
+            branch=branch, product_id__in=requested_by_product.keys()
+        )
+    }
+
+    warnings: list[dict] = []
+    for product_id, requested in requested_by_product.items():
+        current = stocks.get(product_id, Decimal("0.000"))
+        if requested > current:
+            warnings.append(
+                {
+                    "product": products_by_id[product_id],
+                    "branch": branch,
+                    "requested": requested,
+                    "current": current,
+                    "shortfall": requested - current,
+                }
+            )
+    # Stable ordering by product name for predictable UI.
+    warnings.sort(key=lambda w: w["product"].name_cs)
+    return warnings
 
 
 # ---------------------------------------------------------------------------

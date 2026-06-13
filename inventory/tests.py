@@ -1279,7 +1279,9 @@ def test_vydej_post_overdraw_keeps_form(user_tyn, tyn, ricany, pepper) -> None:
     )
     assert response.status_code == 200
     body = response.content.decode("utf-8")
-    assert "pod nulu" in body or "Skladová" in body
+    # Per decision 0042 — overdraw surfaces as the structured warning
+    # card, not the old "pod nulu" service error.
+    assert "Nedostatek na sklad" in body
     assert Movement.objects.count() == 0
 
 
@@ -4078,3 +4080,222 @@ def test_inventura_button_hidden_for_obsluha(user_obsluha_tyn) -> None:
     response = client.get("/katalog/")
     assert response.status_code == 200
     assert b"Inventura" not in response.content
+
+
+# ---------------------------------------------------------------------------
+# Pass 5f — Guided overdraw correction (per decision 0042)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_overdraw_warning_card_shows_with_correction_button_for_vlastnik(
+    user_vlastnik, tyn, pepper
+) -> None:
+    """Vlastník submitting an overdraw výdej sees the structured
+    warning card with an "Upravit stav skladu" button per row."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/vydej/novy/",
+        {
+            "branch": str(tyn.pk),
+            "odberatel": str(
+                Customer.objects.get(is_default_recipient=True).pk
+            ),
+            "date_issued": date.today().isoformat(),
+            "note": "",
+            "lines-TOTAL_FORMS": "1",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-product": str(pepper.pk),
+            "lines-0-quantity_kg": "12.000",  # 7 kg shortfall
+            "lines-0-sarze": "",
+            "lines-0-expiry": "",
+            "lines-0-note": "",
+        },
+    )
+    assert response.status_code == 200
+    body = response.content
+    assert b"Nedostatek na skladu" in body or b"Nedostatek na sklad" in body
+    assert b"12.000" in body
+    assert b"5.000" in body
+    assert b"7.000" in body  # shortfall
+    assert b"Upravit stav skladu" in body
+    # Movement should NOT have been created.
+    assert not Movement.objects.filter(
+        kind=Movement.Kind.VYDEJ, branch=tyn
+    ).exists()
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_overdraw_warning_card_hides_button_for_obsluha(
+    user_obsluha_tyn, tyn, pepper
+) -> None:
+    """Obsluha sees the structured warning but no correction button
+    (stock direct edit is vlastník-only per 0040)."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(
+        "/vydej/novy/",
+        {
+            "branch": str(tyn.pk),
+            "odberatel": str(
+                Customer.objects.get(is_default_recipient=True).pk
+            ),
+            "date_issued": date.today().isoformat(),
+            "note": "",
+            "lines-TOTAL_FORMS": "1",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-product": str(pepper.pk),
+            "lines-0-quantity_kg": "10.000",
+            "lines-0-sarze": "",
+            "lines-0-expiry": "",
+            "lines-0-note": "",
+        },
+    )
+    assert response.status_code == 200
+    body = response.content
+    assert b"jen vlastn\xc3\xadk" in body  # "jen vlastník"
+    assert b"Upravit stav skladu" not in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_overdraw_warning_lists_all_insufficient_lines(
+    user_vlastnik, tyn, pepper, paprika
+) -> None:
+    """Multi-line overdraw shows ALL the short items, not just the first."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("3.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/vydej/novy/",
+        {
+            "branch": str(tyn.pk),
+            "odberatel": str(
+                Customer.objects.get(is_default_recipient=True).pk
+            ),
+            "date_issued": date.today().isoformat(),
+            "note": "",
+            "lines-TOTAL_FORMS": "2",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-product": str(pepper.pk),
+            "lines-0-quantity_kg": "8.000",  # 3 short
+            "lines-0-sarze": "",
+            "lines-0-expiry": "",
+            "lines-0-note": "",
+            "lines-1-product": str(paprika.pk),
+            "lines-1-quantity_kg": "10.000",  # 7 short
+            "lines-1-sarze": "",
+            "lines-1-expiry": "",
+            "lines-1-note": "",
+        },
+    )
+    assert response.status_code == 200
+    body = response.content
+    assert pepper.name_cs.encode() in body
+    assert paprika.name_cs.encode() in body
+    # Both shortfalls appear.
+    assert b"3.000" in body
+    assert b"7.000" in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_overdraw_aggregates_multiple_lines_of_same_product(
+    user_vlastnik, tyn, pepper
+) -> None:
+    """Two formset rows for the same product (different šarže) sum up
+    against stock for the overdraw check."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/vydej/novy/",
+        {
+            "branch": str(tyn.pk),
+            "odberatel": str(
+                Customer.objects.get(is_default_recipient=True).pk
+            ),
+            "date_issued": date.today().isoformat(),
+            "note": "",
+            "lines-TOTAL_FORMS": "2",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-product": str(pepper.pk),
+            "lines-0-quantity_kg": "6.000",
+            "lines-0-sarze": "A",
+            "lines-0-expiry": "",
+            "lines-0-note": "",
+            "lines-1-product": str(pepper.pk),
+            "lines-1-quantity_kg": "6.000",  # combined 12 > 10
+            "lines-1-sarze": "B",
+            "lines-1-expiry": "",
+            "lines-1-note": "",
+        },
+    )
+    assert response.status_code == 200
+    assert b"Nedostatek na sklad" in response.content
+    assert b"12.000" in response.content  # combined requested
+    assert b"2.000" in response.content  # shortfall
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_overdraw_clears_after_stock_correction(
+    user_vlastnik, tyn, pepper
+) -> None:
+    """After vlastník bumps Stock via apply_stock_adjustment the same
+    výdej submit goes through."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    ricany_pk = Customer.objects.get(is_default_recipient=True).pk
+    client = Client()
+    client.force_login(user_vlastnik)
+    payload = {
+        "branch": str(tyn.pk),
+        "odberatel": str(ricany_pk),
+        "date_issued": date.today().isoformat(),
+        "note": "",
+        "lines-TOTAL_FORMS": "1",
+        "lines-INITIAL_FORMS": "0",
+        "lines-MIN_NUM_FORMS": "1",
+        "lines-MAX_NUM_FORMS": "1000",
+        "lines-0-product": str(pepper.pk),
+        "lines-0-quantity_kg": "8.000",
+        "lines-0-sarze": "",
+        "lines-0-expiry": "",
+        "lines-0-note": "",
+    }
+    # 1st attempt — overdraw, form re-rendered.
+    r1 = client.post("/vydej/novy/", payload)
+    assert r1.status_code == 200
+    assert not Movement.objects.filter(
+        kind=Movement.Kind.VYDEJ, branch=tyn
+    ).exists()
+    # Operator corrects stock via the helper service.
+    from inventory.services import apply_stock_adjustment
+
+    apply_stock_adjustment(
+        product=pepper,
+        branch=tyn,
+        new_quantity=Decimal("10.000"),
+        reason="inventura — opraveno",
+        user=user_vlastnik,
+    )
+    # 2nd attempt — same payload, now goes through.
+    r2 = client.post("/vydej/novy/", payload)
+    assert r2.status_code == 302
+    assert Movement.objects.filter(
+        kind=Movement.Kind.VYDEJ, branch=tyn
+    ).exists()

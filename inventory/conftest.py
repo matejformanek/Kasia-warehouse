@@ -125,6 +125,14 @@ def _ensure_micharna_seed(db) -> None:
     """
     from inventory.models import Customer, Supplier
 
+    # Re-seed Říčany (system-managed default odběratel per 0030) so
+    # transaction=True tests that look it up by is_default_recipient
+    # find it. Migration 0002 sets it but transactional flush wipes
+    # data without serialize_rollback.
+    Customer.objects.get_or_create(
+        is_default_recipient=True,
+        defaults={"name": "Říčany", "address": "Říčany u Prahy"},
+    )
     Customer.objects.get_or_create(
         name="Míchárna",
         is_internal=True,

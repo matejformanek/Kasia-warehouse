@@ -7,7 +7,23 @@
   {% if branch_locked %} — pobočka {{ branch_locked.code }}{% endif %}
 </h1>
 
+<div class="tab-chips" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+  {% for value, label, n in tabs %}
+    {% if value == active_tab %}
+      <span class="primary tab-chip active">
+        {{ label }} <small style="opacity:0.85;">({{ n }})</small>
+      </span>
+    {% else %}
+      <a class="secondary tab-chip"
+         href="?tab={{ value }}{% if filter_branch %}&branch={{ filter_branch }}{% endif %}{% if filter_date_from %}&date_from={{ filter_date_from }}{% endif %}{% if filter_date_to %}&date_to={{ filter_date_to }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}">
+        {{ label }} <small style="color:var(--fg-soft);">({{ n }})</small>
+      </a>
+    {% endif %}
+  {% endfor %}
+</div>
+
 <form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+  <input type="hidden" name="tab" value="{{ active_tab }}">
   {% if not branch_locked %}
     <div class="field" style="margin-bottom:0;">
       <label for="id_filter_branch">Pobočka</label>
@@ -22,14 +38,6 @@
     </div>
   {% endif %}
   <div class="field" style="margin-bottom:0;">
-    <label for="id_filter_kind">Druh</label>
-    <select name="kind" id="id_filter_kind">
-      <option value="">— vše —</option>
-      <option value="prijem" {% if filter_kind == "prijem" %}selected{% endif %}>příjem</option>
-      <option value="vydej" {% if filter_kind == "vydej" %}selected{% endif %}>výdej</option>
-    </select>
-  </div>
-  <div class="field" style="margin-bottom:0;">
     <label for="id_filter_date_from">Od</label>
     <input type="date" name="date_from" id="id_filter_date_from" value="{{ filter_date_from }}">
   </div>
@@ -41,12 +49,6 @@
     <label for="id_filter_q">Hledat</label>
     <input type="search" name="q" id="id_filter_q" value="{{ filter_q }}"
            placeholder="produkt, protistrana, poznámka…" style="min-width:240px;">
-  </div>
-  <div class="field" style="margin-bottom:0;">
-    <label style="font-weight:400;">
-      <input type="checkbox" name="edited" value="1" {% if filter_edited %}checked{% endif %}>
-      Pouze editované
-    </label>
   </div>
   <div>
     <button class="primary" type="submit">Filtrovat</button>
@@ -79,7 +81,11 @@
         <tr class="row-link" data-href="{% url 'inventory:movement_edit' pk=mv.pk %}">
           <td>{{ mv.date_issued|date:"d. m. Y" }}</td>
           <td>
-            {% if mv.kind == "prijem" %}
+            {% if mv.note|slice:":7" == "[STAV] " %}
+              <span style="color:var(--warn);" title="Ruční úprava stavu (per rozhodnutí 0041)">
+                inventura
+              </span>
+            {% elif mv.kind == "prijem" %}
               <span style="color:var(--ok);">{{ mv.get_kind_display }}</span>
             {% else %}
               <span style="color:var(--accent);">{{ mv.get_kind_display }}</span>

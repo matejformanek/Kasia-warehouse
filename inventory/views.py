@@ -195,16 +195,22 @@ def movement_saved(request, pk: int):
 def movement_history(request):
     """Chronological filterable record of every movement.
 
-    Obsluha users are strictly scoped to their own branch; vlastník
-    users see both and can filter by branch via `?branch=<pk>`.
-    Other filters: kind (`prijem` / `vydej`), `date_from`, `date_to`,
-    `edited` (1 to show only movements with audit rows), `q` (free
-    text icontains across counterparty name + line product name +
-    note).
+    Layout (per Pass 5g redesign):
+    - **Tab chips** at top: Vše / Příjmy / Výdeje / Inventura / Editováno.
+      `?tab=<name>` is the shorthand the chips use; counts per tab
+      are computed against the same branch-scoped + date/q-filtered
+      base qs so the chip badges always tell the truth for the
+      current view.
+    - **Filter card** below tabs: branch (vlastník only — obsluha is
+      auto-scoped), date from/to, free-text q.
+    - **Table** at the bottom — same as before, capped at 200.
+
+    Legacy `?kind=` and `?edited=` URL params still work for
+    bookmarked links; new `?tab=` is the operator-facing shorthand.
     """
     from datetime import date as _date
 
-    qs = (
+    base_qs = (
         Movement.objects.select_related(
             "branch", "odberatel", "dodavatel", "created_by"
         )
@@ -213,17 +219,13 @@ def movement_history(request):
 
     # Branch scoping — obsluha forced to own branch.
     if request.user.is_obsluha and request.user.branch_id:
-        qs = qs.filter(branch_id=request.user.branch_id)
+        base_qs = base_qs.filter(branch_id=request.user.branch_id)
         branch_locked = request.user.branch
     else:
         branch_locked = None
         branch_filter = request.GET.get("branch") or ""
         if branch_filter:
-            qs = qs.filter(branch_id=branch_filter)
-
-    kind = request.GET.get("kind") or ""
-    if kind in (Movement.Kind.PRIJEM, Movement.Kind.VYDEJ):
-        qs = qs.filter(kind=kind)
+            base_qs = base_qs.filter(branch_id=branch_filter)
 
     date_from = request.GET.get("date_from") or ""
     date_to = request.GET.get("date_to") or ""
@@ -236,27 +238,66 @@ def movement_history(request):
 
     df, dt = _parse(date_from), _parse(date_to)
     if df is not None:
-        qs = qs.filter(date_issued__gte=df)
+        base_qs = base_qs.filter(date_issued__gte=df)
     if dt is not None:
-        qs = qs.filter(date_issued__lte=dt)
-
-    if request.GET.get("edited") == "1":
-        # "movement has any audit row" → join + distinct.
-        qs = qs.filter(audit_entries__isnull=False).distinct()
+        base_qs = base_qs.filter(date_issued__lte=dt)
 
     search = (request.GET.get("q") or "").strip()
     if search:
-        qs = qs.filter(
+        base_qs = base_qs.filter(
             Q(odberatel__name__icontains=search)
             | Q(dodavatel__name__icontains=search)
             | Q(lines__product__name_cs__icontains=search)
             | Q(note__icontains=search)
         ).distinct()
 
+    # Compute counts per tab against base (post-branch + post-date + post-q
+    # so the chips reflect the current filter context).
+    inventura_filter = Q(note__startswith="[STAV] ")
+    tab_counts = {
+        "all": base_qs.count(),
+        "prijem": base_qs.filter(kind=Movement.Kind.PRIJEM).count(),
+        "vydej": base_qs.filter(kind=Movement.Kind.VYDEJ).count(),
+        "inventura": base_qs.filter(inventura_filter).count(),
+        "edited": base_qs.filter(audit_entries__isnull=False).distinct().count(),
+    }
+
+    # Resolve the active tab. Legacy `?kind=` / `?edited=1` map onto
+    # the new tab system so bookmarked links keep their behaviour.
+    tab = request.GET.get("tab") or ""
+    legacy_kind = request.GET.get("kind") or ""
+    legacy_edited = request.GET.get("edited") == "1"
+    if not tab:
+        if legacy_kind in (Movement.Kind.PRIJEM, Movement.Kind.VYDEJ):
+            tab = legacy_kind
+        elif legacy_edited:
+            tab = "edited"
+        else:
+            tab = "all"
+
+    qs = base_qs
+    if tab == Movement.Kind.PRIJEM:
+        qs = qs.filter(kind=Movement.Kind.PRIJEM)
+    elif tab == Movement.Kind.VYDEJ:
+        qs = qs.filter(kind=Movement.Kind.VYDEJ)
+    elif tab == "inventura":
+        qs = qs.filter(inventura_filter)
+    elif tab == "edited":
+        qs = qs.filter(audit_entries__isnull=False).distinct()
+    # tab == "all" → no extra filter.
+
     qs = qs.order_by("-date_issued", "-id")[:200]
     movements = list(qs)
 
     branches = list(Branch.objects.filter(is_active=True).order_by("code"))
+
+    tabs = [
+        ("all", "Vše", tab_counts["all"]),
+        (Movement.Kind.PRIJEM, "Příjmy", tab_counts["prijem"]),
+        (Movement.Kind.VYDEJ, "Výdeje", tab_counts["vydej"]),
+        ("inventura", "Inventura / úprava stavu", tab_counts["inventura"]),
+        ("edited", "Editováno", tab_counts["edited"]),
+    ]
 
     return render(
         request,
@@ -267,11 +308,13 @@ def movement_history(request):
             "branches": branches,
             "branch_locked": branch_locked,
             "filter_branch": request.GET.get("branch") or "",
-            "filter_kind": kind,
+            "filter_kind": legacy_kind,  # back-compat for any external link
             "filter_date_from": date_from,
             "filter_date_to": date_to,
-            "filter_edited": request.GET.get("edited") == "1",
+            "filter_edited": legacy_edited,
             "filter_q": search,
+            "active_tab": tab,
+            "tabs": tabs,
         },
     )
 

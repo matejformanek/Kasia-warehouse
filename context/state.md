@@ -1023,6 +1023,47 @@
   (200 → 213 → 225 → 234 → 242 across 5a/b/c/d/e). Ruff
   clean throughout. One new data migration (`0008`).
 
+- **2026-06-13** — Pass 5f — overdraw guided correction
+  (per new decision
+  [`0042`](./decisions/0042-overdraw-guided-correction.md)).
+  Matej's answer to the open overdraw question: prompt the
+  operator to fix stock, don't just refuse. `vydej_create`
+  now pre-checks all lines against current Stock before
+  calling `apply_movement` and surfaces a structured
+  "Nedostatek na skladě" card listing every short item with
+  current / requested / shortfall + a per-row
+  "Upravit stav skladu ↗" button (vlastník-only — opens
+  `/katalog/<pk>/upravit-stav/` in new tab). Obsluha sees
+  the same warning without the button ("jen vlastník"
+  marker). Multi-row same-product entries are aggregated so
+  two 6 kg rows of Pepř against 10 kg stock surface a single
+  2 kg shortfall. After running `apply_stock_adjustment` (or
+  bulk inventura) the same výdej payload goes through on the
+  next submit. `conftest._ensure_micharna_seed` extended to
+  also re-seed the Říčany default-recipient Customer after a
+  transactional flush (broke once Pass 5f tests started
+  looking it up by `is_default_recipient=True` without
+  naming `ricany` as a fixture argument). 247 pytest tests
+  green (242 → 247).
+
+- **2026-06-13** — Pass 5g — Historie redesign (judgment call,
+  per Matej's "dle preferencí co ti budou dávat smysl").
+  `/pohyby/` gets a row of **tab chips** above the filter
+  card: **Vše / Příjmy / Výdeje / Inventura / úprava stavu /
+  Editováno**. Each chip carries a live count badge against
+  the current branch + date + q filter so the operator can
+  see at-a-glance how many of each kind are in the current
+  scope. Active chip styled with `.primary` color. Free-text
+  q + date + branch filters still work and combine with the
+  chip (the chip narrows kind). Legacy `?kind=` and
+  `?edited=1` URL params still resolve to the right tab so
+  bookmarked links keep working. `[STAV]` movements in the
+  table get a dedicated "inventura" badge in the Druh column
+  (orange, replacing the generic prijem badge) so they're
+  visually distinct from regular příjmy/výdeje. The
+  "Pouze editované" checkbox was removed — it's now the
+  "Editováno" tab. 252 pytest tests green (247 → 252).
+
 ## Hand-off for the next session (post-compact)
 
 **Posture (Matej 2026-06-12):**
@@ -1076,22 +1117,11 @@
 
 ## Next
 
-1. **Open decisions blocking further code:**
-   - **Overdraw policy** (V2/M3 from 2026-06-12 walkthrough):
-     when a worker tries `výdej > stock`, current behaviour
-     is hard-refuse. Matej said "sometimes we'll need to do
-     it". Pending decision: tier between (a) refuse always,
-     (b) refuse obsluha + vlastník can "force with reason",
-     (c) always allow with red flag. Default proposal: **b**.
-     Land as `0042-overdraw-policy.md` before any code.
-   - **Historie redesign** (H1/H2): make it more than a
-     log — entry point to actions / split by kind. No draft
-     decision yet; needs Matej's product input.
-
-2. **Local walkthrough by Matej** against the running docker
+1. **Local walkthrough by Matej** against the running docker
    stack (`make up` → http://localhost/`). All 14 screens +
-   Pass 5 CRUD are in. Matej feeds back fixes / ideology
-   changes screen by screen.
+   Pass 5 CRUD (5a–5g) are in, both blocking decisions
+   (0040, 0041, 0042) merged. Matej feeds back fixes /
+   ideology changes screen by screen.
 
 3. **Quality-of-life backlog** (small, can land any time):
    - History column should surface the `[STAV]` prefix (per

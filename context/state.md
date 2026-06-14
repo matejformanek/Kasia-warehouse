@@ -1066,54 +1066,116 @@
 
 ## Hand-off for the next session (post-compact)
 
-**Posture (Matej 2026-06-12):**
-- Keep building all screens locally; **no Hetzner deploy yet**.
-  Hetzner provisioning + the shadow run come *after* the full
-  surface is built and Matej has tested it locally.
-- Test only against the local dev server (`uv run python
-  manage.py runserver`) + the local compose stack. The deploy
-  workflow on `origin/main` will keep failing on the SSH step
-  ("missing server host") — that is the expected pre-Hetzner
-  state.
-- Matej will open the local app and feed back fixes /
-  ideology changes screen by screen once everything is built.
+**Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main
+and origin/main are in sync.
 
-**MVP code surface — all 14 screens now in:**
-- Built: 01 login (Django built-in), 02 owner dashboard,
-  03 branch dashboard, 04 catalogue, 05 product detail,
-  06 příjem, 07 výdej, 08 dodáky list, 09 dodák detail,
-  10 movement history, 11 movement edit, 13 správa uživatelů,
-  **14 nastavení**, 15 míchání.
-- **Operator-facing MVP surface is complete.** Next step is
-  Matej's local walkthrough → feedback iteration → Hetzner
-  provisioning + shadow run.
+**Operating posture (Matej 2026-06-12, still active):**
+- Keep building locally; **no Hetzner deploy yet**. Hetzner
+  provisioning + the shadow run come *after* the full surface
+  is built and Matej has tested it locally.
+- All local testing happens in the **full docker compose
+  stack** (`make up` → http://localhost/), not
+  `manage.py runserver`. Same image we ship to Hetzner. See
+  the `Makefile` targets and [[feedback-docker-full-stack]].
+- The `deploy.yml` workflow on `origin/main` keeps failing on
+  the SSH step ("missing server host"). That is the **expected
+  pre-Hetzner state**, not a regression. Don't try to fix it.
+- Matej drives feedback. He'll open the local stack, walk
+  through screens, and feed back fixes / ideology changes;
+  do **not** start a new feature pass without his go-ahead.
+
+**Code surface — operator-facing MVP is COMPLETE:**
+
+14 design screens, all built. Plus the full Pass 5 operator
+CRUD on top so nothing operationally important is admin-only
+anymore.
+
+- **Original 14 screens:** 01 login (Django built-in),
+  02 owner dashboard, 03 branch dashboard, 04 catalogue,
+  05 product detail, 06 příjem, 07 výdej, 08 dodáky list,
+  09 dodák detail, 10 movement history, 11 movement edit,
+  13 správa uživatelů, 14 nastavení, 15 míchání.
+- **Pass 5 operator CRUD** (per
+  [`0040`](./decisions/0040-operator-crud-tiering.md) +
+  [`0041`](./decisions/0041-manual-stock-adjustment.md) +
+  [`0042`](./decisions/0042-overdraw-guided-correction.md)):
+  - 5a — Supplier + Customer CRUD (`/dodavatele/`,
+    `/odberatele/`) for all users.
+  - 5b — Product + Recipe CRUD (`/katalog/novy/`,
+    `/katalog/<pk>/upravit/`). Fields = all; recipe + archive
+    = vlastník-only.
+  - 5c — Branch CRUD (`/pobocky/`), vlastník-only, code locks
+    after first dodák per 0008.
+  - 5d — Per-product stock direct edit
+    (`/katalog/<pk>/upravit-stav/`) via synthetic Movement
+    with `[STAV] ` note prefix (internal
+    "Inventura / ruční úprava" counterparty pair seeded by
+    migration 0008). Vlastník-only.
+  - 5e — Bulk inventura editor
+    (`/katalog/inventura/<code>/`) — vlastník walks every
+    product at one branch, types new quantities, saves all
+    at once. Each non-zero delta = one synthetic Movement.
+  - 5f — Guided overdraw correction on výdej: pre-checks all
+    lines against stock, renders structured "Nedostatek na
+    skladě" card with per-row "Upravit stav skladu ↗" button
+    (vlastník) so the operator fixes the count and retries.
+  - 5g — Historie redesign: tab chips
+    (Vše / Příjmy / Výdeje / Inventura / Editováno) with
+    live count badges above the existing filter card;
+    `[STAV]` movements get an "inventura" badge in the Druh
+    column.
 
 **Verification of where each screen lives:**
 - URL conf: `inventory/urls.py` (and `kasia/urls.py` for
-  /login/ /logout/ /admin/).
+  /login/ /logout/ /admin/ + password-reset chain).
 - Views: `inventory/views.py` — function-based, grouped by
-  screen with `# --- ###` headers.
+  screen with `# --- ###` section headers.
 - Templates: `kasia/templates/inventory/*.html` extending
-  `base.html`; the dodák PDF is `inventory/dodaci_list.html`
-  with embedded CSS Paged Media; the registration template is
-  `registration/login.html`.
+  `base.html`; dodák PDF is `inventory/dodaci_list.html`
+  with embedded CSS Paged Media; registration in
+  `registration/login.html` + password-reset chain.
 - Services (single write path): `inventory/services.py` —
   `apply_movement` / `edit_movement` /
+  `apply_stock_adjustment` (5d/0041) /
   `start_mixing_job` / `finish_mixing_job` /
   `cancel_mixing_job` / `record_completed_mixing_job` /
   `render_dodaci_list_pdf` / `send_dodaci_list_email`.
 
+**Decisions landed this session (2026-06-12 → 2026-06-13):**
+- [`0040`](./decisions/0040-operator-crud-tiering.md) —
+  two-tier-per-entity operator CRUD gating.
+- [`0041`](./decisions/0041-manual-stock-adjustment.md) —
+  stock direct edits go through a synthetic Movement with
+  `[STAV] ` note prefix; internal Inventura counterparty
+  pair seeded by `inventory/0008_seed_adjustment_counterparty.py`.
+- [`0042`](./decisions/0042-overdraw-guided-correction.md) —
+  overdraw doesn't refuse silently; it prompts with the
+  insufficient items + an inline correction path for
+  vlastník.
+
 **Quality bar (do not weaken on later passes):**
-- `make test` (= `uv run pytest`) → all green (currently 184).
+- `make test` (= `uv run pytest`) → all green (currently 252).
 - `uv run ruff check` → clean.
 - `uv run python manage.py check` → clean.
 - `uv run python manage.py makemigrations --check --dry-run`
-  → "No changes detected" unless this pass adds models.
+  → "No changes detected" unless the pass adds models.
 - Every pass smoke-tested against the **full docker compose
-  stack** (`make up` → http://localhost/) — not
-  `manage.py runserver`. Same image we ship to Hetzner. See
-  the `Makefile` targets and
-  [[feedback-docker-full-stack]] memory.
+  stack** (`make up` → http://localhost/), not
+  `manage.py runserver`. Same image we ship to Hetzner.
+
+**Test accounts (seeded via `make seed`):**
+- `admin@kasia.local` / `heslo1234` — superuser
+- `karolina@kasia.local` / `heslo1234` — vlastník
+- `tyn@kasia.local` / `heslo1234` — obsluha TYN
+- `sez@kasia.local` / `heslo1234` — obsluha SEZ
+
+**Walkthrough docs:** `WALKTHROUGH.md` (Czech, per-page
+purpose + test cases) at repo root.
+
+**No open blocking decisions.** Both pre-compact opens
+(overdraw policy, Historie redesign) merged as 0042 + 5g.
+Matej's local walkthrough is the next signal; until he
+feeds back, hold position and respond to direct asks.
 
 ## Next
 

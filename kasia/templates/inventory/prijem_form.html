@@ -18,6 +18,11 @@
     <div class="field">
       <label class="field-required" for="id_dodavatel">Dodavatel</label>
       {{ form.dodavatel }}
+      <a class="secondary" href="{% url 'inventory:supplier_create' %}" target="_blank"
+         style="margin-left:0.5rem;font-size:0.85rem;padding:0.2rem 0.5rem;"
+         title="Otevře nového dodavatele v novém panelu — vyplněný formulář tu zůstane.">
+        + Nový dodavatel ↗
+      </a>
       {{ form.dodavatel.errors }}
     </div>
     <div class="field">

@@ -78,6 +78,11 @@
     <div class="field">
       <label class="field-required" for="id_odberatel">Odběratel</label>
       {{ form.odberatel }}
+      <a class="secondary" href="{% url 'inventory:customer_create' %}" target="_blank"
+         style="margin-left:0.5rem;font-size:0.85rem;padding:0.2rem 0.5rem;"
+         title="Otevře nového odběratele v novém panelu — vyplněný formulář tu zůstane.">
+        + Nový odběratel ↗
+      </a>
       {{ form.odberatel.errors }}
     </div>
     <div class="field">

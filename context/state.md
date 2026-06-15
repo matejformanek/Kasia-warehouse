@@ -1064,6 +1064,84 @@
   "Pouze editované" checkbox was removed — it's now the
   "Editováno" tab. 252 pytest tests green (247 → 252).
 
+- **2026-06-14** — Reorder threshold + reservations (planned mixing
+  + planned transfers) landed: decisions
+  [`0043`](./decisions/0043-reorder-threshold.md),
+  [`0044`](./decisions/0044-reservations-planned-states.md),
+  [`0045`](./decisions/0045-low-stock-summary-email.md). New
+  models: `inventory.Product.reorder_threshold_kg`,
+  `inventory.StockThresholdOverride` (per-branch override),
+  `inventory.MixingJob` extended with `PLANNED` state +
+  `planned_for` field, `inventory.PlannedTransfer` (one row per
+  scheduled branch↔branch transfer + `Movement.transfer` FK back),
+  `inventory.Settings` gains `template_low_stock_subject` +
+  `template_low_stock_body`. Two new migrations:
+  `inventory/0009_threshold_and_reservations.py` +
+  `inventory/0010_seed_transfer_counterparty.py` (seeds the
+  "Převod mezi pobočkami" `Customer`+`Supplier` pair with
+  `is_internal=False` — so the existing dodák auto-issue +
+  e-mail hook fires on the výdej leg per 0007/0030/0031).
+  Services: `threshold_for`, `reserved_kg`, `effective_kg`,
+  `low_stock_rows`, `plan_mixing_job`, `start_mixing_job(job=…)`
+  (PLANNED→RUNNING), `execute_planned_transfer`,
+  `cancel_planned_transfer`, `send_low_stock_summary`.
+  `cancel_mixing_job` extended to also accept PLANNED (no
+  consume_movement yet, just flip state). Views: owner dashboard
+  gains the "Dochází zboží" panel reading `low_stock_rows`;
+  branch dashboard gets threshold-aware badges (`prázdné`/`dochází`/normal)
+  replacing the hardcoded `< 1 kg` marker; product detail surfaces
+  per-branch reserved + effective vs threshold; product edit form
+  exposes `reorder_threshold_kg` + inline `ThresholdOverrideFormSet`
+  in a `{% if user.is_vlastnik %}` block (form drops the field
+  for non-vlastník so a worker POST doesn't null out the value).
+  New `/prevody/` CRUD surface (index, create, detail, execute,
+  cancel) — all authenticated users per Matej 2026-06-14. New
+  `/michani/planovat/` + `/michani/<pk>/spustit/` for the PLANNED
+  flow. Nav: "Převody" link added between Míchání and Dodací
+  listy. Management command
+  `inventory/management/commands/mail_low_stock_summary.py` +
+  `make mail-low-stock` target. Admin: `PlannedTransferAdmin`
+  (read-mostly) + `StockThresholdOverrideAdmin` (full CRUD).
+  Conftest re-seeds the "Převod mezi pobočkami" pair after
+  transactional flush. `seed_walkthrough_data` extended to create
+  one demo PlannedTransfer + one PLANNED MixingJob + 5 kg threshold
+  on Oregano (idempotent). 21 new tests appended in
+  `inventory/tests.py` covering threshold lookup, reservations
+  (planned/running/cancelled mixing + outgoing-only transfers),
+  effective_kg, low_stock_rows sort + skip-without-threshold,
+  plan_mixing_job no-stock-touch, PLANNED→RUNNING transition,
+  execute_planned_transfer dodák hook, refuse-non-planned,
+  cancel + no-stock-change, overdraw unchanged by reservations,
+  daily summary empty/populated, threshold field tier gating,
+  /prevody/ create + index, dashboard panel renders. Glossary:
+  new `objednací bod` headword; `rezervace` rewritten to point
+  at 0044. Screen 02 + 03 + 15 docs updated. 0039 banner added
+  (only permitted edit per append-only rule). Full suite
+  **273 pytest tests green** (252 → 273); ruff clean; system
+  check clean; makemigrations --check clean.
+
+- **2026-06-15** — Quality-of-life backlog landed (three small items
+  off the § Next list):
+  - **`[STAV]` reason surfaced in Historie** (per 0041 § Forward
+    references): the Položky column now renders an italic muted
+    `„<reason>` line for every `[STAV] …` movement so vlastník sees
+    *why* without clicking through to detail. The existing
+    "inventura" badge in the Druh column stays — this just adds the
+    `note`-after-prefix on the row inline.
+  - **Inline "+ Nový dodavatel" / "+ Nový odběratel" affordance** on
+    the příjem/výdej forms (`prijem_form.html` + `vydej_form.html`).
+    Opens `/dodavatele/novy/` or `/odberatele/novy/` in a new tab so
+    the worker doesn't lose the half-filled movement form.
+  - **`CLAUDE.md` (worktree root) refreshed** — previous version
+    still said *"No application code exists yet"*, which became
+    false at Pass 1. Rewritten to point at `context/state.md` +
+    `context/decisions/` first, document the locked stack
+    (0014–0027 + 0028–0034 + 0044), the `make up` posture, and that
+    the Hetzner box is not yet provisioned (the failing `deploy.yml`
+    SSH step is expected). Full suite **273 pytest tests green**
+    (unchanged — pure template + docs edits); ruff clean; system
+    check clean.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main
@@ -1185,13 +1263,9 @@ feeds back, hold position and respond to direct asks.
    (0040, 0041, 0042) merged. Matej feeds back fixes /
    ideology changes screen by screen.
 
-3. **Quality-of-life backlog** (small, can land any time):
-   - History column should surface the `[STAV]` prefix (per
-     0041 § Forward references — soft sentinel for future
-     filter / split).
-   - Customer / Supplier inline "+ Nový" affordance on
-     příjem / výdej forms so workers don't have to leave
-     the create-movement flow.
+3. **Quality-of-life backlog** — three items landed 2026-06-15;
+   nothing currently queued. Reopen as walkthrough surfaces
+   more.
 
 4. **(Deferred until Matej says go.)** Provision the Hetzner
    box per

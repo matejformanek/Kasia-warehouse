@@ -98,6 +98,11 @@
               {% if lines_count > 1 %}
                 <span style="color:var(--fg-soft);">+{{ lines_count|add:"-1" }} dalších</span>
               {% endif %}
+              {% if mv.note|slice:":7" == "[STAV] " %}
+                <div style="color:var(--fg-soft);font-size:0.85rem;font-style:italic;">
+                  „{{ mv.note|slice:"7:"|truncatechars:80 }}
+                </div>
+              {% endif %}
             {% endif %}
           </td>
           <td>

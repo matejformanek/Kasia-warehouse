@@ -59,37 +59,78 @@
 <p style="color:var(--fg-soft);">Nalezeno: {{ count }} produktů.</p>
 
 {% if rows %}
+  {% if obsluha_branch %}
+    {% with scope_label=obsluha_branch.code %}
+      <p style="color:var(--fg-soft);font-size:0.9rem;">
+        Stavy a rezervace zobrazené pro pobočku <strong>{{ scope_label }}</strong>.
+      </p>
+    {% endwith %}
+  {% elif selected_branch %}
+    <p style="color:var(--fg-soft);font-size:0.9rem;">
+      Stavy a rezervace zobrazené pro pobočku <strong>{{ selected_branch.code }}</strong>.
+      <a href="?{% if filter_q %}q={{ filter_q }}&{% endif %}{% if filter_kind %}kind={{ filter_kind }}&{% endif %}{% if filter_status and filter_status != 'active' %}status={{ filter_status }}{% endif %}">
+        Zobrazit obě pobočky
+      </a>
+    </p>
+  {% else %}
+    <p style="color:var(--fg-soft);font-size:0.9rem;">
+      Stavy a rezervace sečtené přes obě pobočky.
+      Pro per-branch pohled vyberte pobočku ve filtru výše.
+    </p>
+  {% endif %}
   <table class="lines">
     <thead>
       <tr>
         <th>Název</th>
         <th>Typ</th>
-        {% if obsluha_branch %}
-          <th style="text-align:right;">Skladem v {{ obsluha_branch.code }} (kg)</th>
-        {% elif selected_branch %}
-          <th style="text-align:right;">Skladem v {{ selected_branch.code }} (kg)</th>
-        {% else %}
-          <th style="text-align:right;">Skladem celkem (kg)</th>
-        {% endif %}
+        <th style="text-align:right;" title="Aktuální skladová zásoba">Na skladě</th>
+        <th style="text-align:right;" title="Plánované míchání a plánované převody (per 0044)">Rezerv.</th>
+        <th style="text-align:right;" title="Efektivně = na skladě − rezervováno">Efektivně</th>
+        <th style="text-align:right;" title="Objednací bod (per 0043). Pokud má produkt per-pobočkovou výjimku, zobrazuje se nejnižší nastavený práh.">Práh</th>
+        <th>Stav</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
       {% for row in rows %}
-        <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=row.product.pk %}">
+        <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=row.product.pk %}"
+            {% if row.is_low %}style="background:#fbf3e0;"{% endif %}>
           <td>
             <strong>{{ row.product.name_cs }}</strong>
             {% if not row.product.is_active %}
               <span style="color:var(--fg-soft);font-size:0.85rem;">(archivováno)</span>
+            {% endif %}
+            {% if row.product.kind == "mixture" and row.has_recipe %}
+              <br><span style="color:var(--accent);font-size:0.8rem;">má recepturu</span>
             {% endif %}
           </td>
           <td>{{ row.product.get_kind_display }}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">
             {{ row.total|floatformat:"3" }}
           </td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;color:{% if row.reserved > 0 %}var(--accent){% else %}var(--fg-soft){% endif %};">
+            {{ row.reserved|floatformat:"3" }}
+          </td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;{% if row.is_low %}color:var(--warn);font-weight:bold;{% endif %}">
+            {{ row.effective|floatformat:"3" }}
+          </td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">
+            {% if row.threshold is not None %}{{ row.threshold|floatformat:"3" }}{% else %}—{% endif %}
+          </td>
           <td>
-            {% if row.product.kind == "mixture" and row.has_recipe %}
-              <span style="color:var(--accent);">má recepturu</span>
+            {% if row.effective <= 0 and row.threshold is not None %}
+              <span style="color:var(--error);font-weight:bold;">prázdné</span>
+            {% elif row.is_low %}
+              <span class="tab-chip active" style="background:var(--warn);">dochází</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if user.is_vlastnik %}
+              <a href="{% url 'inventory:product_edit' pk=row.product.pk %}"
+                 style="font-size:0.85rem;"
+                 onclick="event.stopPropagation();">
+                upravit ↗
+              </a>
             {% endif %}
           </td>
         </tr>

@@ -17,20 +17,38 @@
 
 <div class="card">
   <h2 style="font-size:1.05rem;margin-top:0;">Stav skladu</h2>
-  {% if stocks %}
+  {% if product.reorder_threshold_kg is not None %}
+    <p style="color:var(--fg-soft);">
+      Objednací bod: <strong>{{ product.reorder_threshold_kg|floatformat:"3" }} kg</strong>
+      (výchozí pro produkt).
+    </p>
+  {% endif %}
+  {% if branch_rows %}
     <table class="lines">
       <thead>
         <tr>
           <th>Pobočka</th>
-          <th style="text-align:right;">Množství (kg)</th>
+          <th style="text-align:right;">Na skladě</th>
+          <th style="text-align:right;">Rezervováno</th>
+          <th style="text-align:right;">Efektivně</th>
+          <th style="text-align:right;">Práh</th>
         </tr>
       </thead>
       <tbody>
-        {% for s in stocks %}
-          <tr>
-            <td>{{ s.branch.code }} — {{ s.branch.name }}</td>
+        {% for r in branch_rows %}
+          <tr {% if r.is_low %}style="background:#fbf3e0;"{% endif %}>
+            <td>{{ r.branch.code }} — {{ r.branch.name }}</td>
             <td style="text-align:right;font-variant-numeric:tabular-nums;">
-              {{ s.quantity|floatformat:"3" }}
+              {{ r.on_hand|floatformat:"3" }}
+            </td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">
+              {{ r.reserved|floatformat:"3" }}
+            </td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;{% if r.is_low %}color:var(--warn);font-weight:bold;{% endif %}">
+              {{ r.effective|floatformat:"3" }}
+            </td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">
+              {% if r.threshold is not None %}{{ r.threshold|floatformat:"3" }}{% else %}—{% endif %}
             </td>
           </tr>
         {% endfor %}
@@ -39,6 +57,13 @@
           <td style="text-align:right;font-variant-numeric:tabular-nums;">
             <strong>{{ total_quantity|floatformat:"3" }}</strong>
           </td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">
+            <strong>{{ total_reserved|floatformat:"3" }}</strong>
+          </td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">
+            <strong>{{ total_effective|floatformat:"3" }}</strong>
+          </td>
+          <td></td>
         </tr>
       </tbody>
     </table>

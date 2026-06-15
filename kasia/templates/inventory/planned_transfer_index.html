@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Plánované převody — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Plánované převody mezi pobočkami</h1>
+
+<form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_state">Stav</label>
+    <select name="state" id="id_filter_state" onchange="this.form.submit()">
+      <option value="planned" {% if filter_state == "planned" %}selected{% endif %}>naplánováno</option>
+      <option value="done" {% if filter_state == "done" %}selected{% endif %}>provedeno</option>
+      <option value="cancelled" {% if filter_state == "cancelled" %}selected{% endif %}>zrušeno</option>
+    </select>
+  </div>
+  <div>
+    <a class="primary" href="{% url 'inventory:planned_transfer_create' %}">+ Nový převod</a>
+  </div>
+</form>
+
+<p style="color:var(--fg-soft);">Nalezeno: {{ count }} převodů.</p>
+
+{% if transfers %}
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Plánováno na</th>
+        <th>Z</th>
+        <th>Do</th>
+        <th>Produkt</th>
+        <th style="text-align:right;">Množství (kg)</th>
+        <th>Stav</th>
+        <th>Vytvořil</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in transfers %}
+        <tr class="row-link" data-href="{% url 'inventory:planned_transfer_detail' pk=t.pk %}">
+          <td>{{ t.scheduled_for|date:"d. m. Y" }}</td>
+          <td>{{ t.source_branch.code }}</td>
+          <td>{{ t.target_branch.code }}</td>
+          <td>{{ t.product.name_cs }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ t.quantity_kg|floatformat:"3" }}</td>
+          <td>
+            {% if t.state == "planned" %}
+              <span style="color:var(--accent);">naplánováno</span>
+            {% elif t.state == "done" %}
+              <span style="color:var(--ok);">provedeno</span>
+            {% else %}
+              <span style="color:var(--fg-soft);">zrušeno</span>
+            {% endif %}
+          </td>
+          <td>{{ t.created_by.email }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p style="color:var(--fg-soft);">Žádné převody v tomto filtru.</p>
+{% endif %}
+
+<p style="color:var(--fg-soft); font-size:0.9rem; margin-top:1rem;">
+  Plánované převody se započítávají jako rezervace u zdrojové pobočky až do provedení.
+  Provedením vznikne dvojice pohybů (výdej + příjem) a dodací list pro řidiče.
+</p>
+{% endblock %}

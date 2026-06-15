@@ -114,6 +114,18 @@ class Product(models.Model):
     kind = models.CharField("typ", max_length=16, choices=Kind.choices)
     is_active = models.BooleanField("aktivní", default=True)
     notes = models.TextField("poznámky", blank=True)
+    reorder_threshold_kg = models.DecimalField(
+        "objednací bod (kg)",
+        max_digits=10,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        help_text=(
+            "Hranice, pod kterou se produkt objeví na panelu „Dochází zboží"
+            " a v denním e-mailu Petrovi (per 0043). Prázdné = bez upozornění;"
+            " 0 znamená alert při skutečně nulovém efektivním stavu."
+        ),
+    )
 
     class Meta:
         verbose_name = "produkt"
@@ -129,6 +141,51 @@ class Product(models.Model):
 
     def __str__(self) -> str:
         return self.name_cs
+
+
+class StockThresholdOverride(models.Model):
+    """Per-(product, branch) override of `Product.reorder_threshold_kg`.
+
+    Per [0043](../context/decisions/0043-reorder-threshold.md): one row
+    per branch that needs a different threshold than the product default.
+    Looked up by `inventory.services.threshold_for(product, branch)`.
+    """
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="threshold_overrides",
+        verbose_name="produkt",
+    )
+    branch = models.ForeignKey(
+        "Branch",
+        on_delete=models.CASCADE,
+        related_name="threshold_overrides",
+        verbose_name="pobočka",
+    )
+    threshold_kg = models.DecimalField(
+        "objednací bod (kg)",
+        max_digits=10,
+        decimal_places=3,
+    )
+
+    class Meta:
+        verbose_name = "objednací bod (pobočka)"
+        verbose_name_plural = "objednací body (pobočky)"
+        ordering = ("product__name_cs", "branch__code")
+        constraints = [
+            UniqueConstraint(
+                fields=["product", "branch"],
+                name="unique_threshold_override_per_product_branch",
+            ),
+            CheckConstraint(
+                condition=Q(threshold_kg__gte=0),
+                name="threshold_override_nonneg",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.product} @ {self.branch.code}: {self.threshold_kg} kg"
 
 
 class Stock(models.Model):
@@ -265,6 +322,20 @@ class Movement(models.Model):
         on_delete=models.PROTECT,
         related_name="created_movements",
         verbose_name="vytvořil",
+    )
+    transfer = models.ForeignKey(
+        "PlannedTransfer",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="movements",
+        verbose_name="plánovaný převod",
+        help_text=(
+            "Set by `execute_planned_transfer` on both paired Movements"
+            " (the výdej at source + the příjem at target) so the audit"
+            " trail can link executed Movements back to their originating"
+            " PlannedTransfer. NULL on every other Movement."
+        ),
     )
 
     class Meta:
@@ -634,6 +705,18 @@ class Settings(models.Model):
             "nahrazuje předchozí. S pozdravem, Kasia vera s.r.o."
         ),
     )
+    template_low_stock_subject = models.CharField(
+        "předmět — dochází zboží",
+        max_length=256,
+        default="Dochází zboží — <datum>",
+    )
+    template_low_stock_body = models.TextField(
+        "tělo — dochází zboží",
+        default=(
+            "Dobrý den, dnes je pod hranicí těchto produktů: <seznam>. "
+            "S pozdravem, Kasia vera s.r.o."
+        ),
+    )
 
     class Meta:
         verbose_name = "nastavení"
@@ -669,6 +752,7 @@ class MixingJob(models.Model):
     """
 
     class State(models.TextChoices):
+        PLANNED = "planned", "naplánováno"
         RUNNING = "running", "probíhá"
         DONE = "done", "dokončeno"
         CANCELLED = "cancelled", "zrušeno"
@@ -702,6 +786,15 @@ class MixingJob(models.Model):
         max_length=16,
         choices=State.choices,
         default=State.RUNNING,
+    )
+    planned_for = models.DateField(
+        "plánováno na",
+        null=True,
+        blank=True,
+        help_text=(
+            "Pouze pro state=PLANNED — kdy operátor předpokládá fyzické míchání."
+            " Po přechodu na RUNNING už nemá smysl, pole zůstane jako historický záznam."
+        ),
     )
     started_at = models.DateTimeField("zahájeno", auto_now_add=True)
     finished_at = models.DateTimeField("ukončeno", null=True, blank=True)
@@ -832,3 +925,98 @@ class MixingJobLine(models.Model):
 
     def __str__(self) -> str:
         return f"{self.component_product} {self.actual_qty} kg"
+
+
+# ---------------------------------------------------------------------------
+# Planned inter-branch transfer (per decision 0044)
+# ---------------------------------------------------------------------------
+
+
+class PlannedTransfer(models.Model):
+    """One scheduled transfer of a product from one branch to another.
+
+    Per [0044](../context/decisions/0044-reservations-planned-states.md):
+    PLANNED rows count as reserved at `source_branch`. Execution writes
+    a pair of Movements via `execute_planned_transfer`: a výdej at the
+    source (to the seeded "Převod mezi pobočkami" Customer) and a
+    příjem at the target (from the seeded "Převod mezi pobočkami"
+    Supplier). The counterparty pair is `is_internal=False` so the
+    existing dodák auto-issue + e-mail hooks fire on the výdej leg —
+    the dodák is the physical paper for the driver.
+    """
+
+    class State(models.TextChoices):
+        PLANNED = "planned", "naplánováno"
+        DONE = "done", "provedeno"
+        CANCELLED = "cancelled", "zrušeno"
+
+    source_branch = models.ForeignKey(
+        Branch,
+        on_delete=models.PROTECT,
+        related_name="outgoing_planned_transfers",
+        verbose_name="zdrojová pobočka",
+    )
+    target_branch = models.ForeignKey(
+        Branch,
+        on_delete=models.PROTECT,
+        related_name="incoming_planned_transfers",
+        verbose_name="cílová pobočka",
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.PROTECT,
+        related_name="planned_transfers",
+        verbose_name="produkt",
+    )
+    quantity_kg = models.DecimalField(
+        "množství (kg)",
+        max_digits=10,
+        decimal_places=3,
+    )
+    scheduled_for = models.DateField("plánováno na")
+    state = models.CharField(
+        "stav",
+        max_length=16,
+        choices=State.choices,
+        default=State.PLANNED,
+    )
+    notes = models.TextField("poznámka", blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_planned_transfers",
+        verbose_name="vytvořil",
+    )
+    created_at = models.DateTimeField("vytvořeno", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "plánovaný převod"
+        verbose_name_plural = "plánované převody"
+        ordering = ("-scheduled_for", "-id")
+        constraints = [
+            CheckConstraint(
+                condition=~Q(source_branch=models.F("target_branch")),
+                name="planned_transfer_different_branches",
+            ),
+            CheckConstraint(
+                condition=Q(quantity_kg__gt=0),
+                name="planned_transfer_qty_positive",
+            ),
+        ]
+
+    def clean(self) -> None:
+        if (
+            self.source_branch_id
+            and self.target_branch_id
+            and self.source_branch_id == self.target_branch_id
+        ):
+            raise ValidationError(
+                {"target_branch": "Cílová pobočka se musí lišit od zdrojové."}
+            )
+
+    def __str__(self) -> str:
+        return (
+            f"{self.product} {self.quantity_kg} kg: "
+            f"{self.source_branch.code} → {self.target_branch.code} "
+            f"({self.scheduled_for.isoformat()})"
+        )

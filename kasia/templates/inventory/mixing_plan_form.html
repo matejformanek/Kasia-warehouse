@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Naplánovat dávku — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Naplánovat dávku míchání</h1>
+
+<p style="color:var(--fg-soft);">
+  Plánovaná dávka se neodečte ze skladu hned — zarezervuje jen suroviny
+  a objeví se na panelu „Dochází zboží jako rezervace. Stav se odečte až
+  ve chvíli, kdy operátor dávku <strong>spustí</strong>.
+</p>
+
+<p class="required-legend">povinné</p>
+
+<form method="post" class="card">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="non-form-errors">{{ form.non_field_errors }}</div>
+  {% endif %}
+  <div class="field">
+    <label for="{{ form.branch.id_for_label }}" class="field-required">{{ form.branch.label }}</label>
+    {{ form.branch }}
+    {{ form.branch.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.mixture.id_for_label }}" class="field-required">{{ form.mixture.label }}</label>
+    {{ form.mixture }}
+    {{ form.mixture.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.target_qty.id_for_label }}" class="field-required">{{ form.target_qty.label }}</label>
+    {{ form.target_qty }}
+    {{ form.target_qty.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.planned_for.id_for_label }}">{{ form.planned_for.label }}</label>
+    {{ form.planned_for }}
+    {{ form.planned_for.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.note.id_for_label }}">{{ form.note.label }}</label>
+    {{ form.note }}
+    {{ form.note.errors }}
+  </div>
+  <div style="display:flex;gap:0.75rem;">
+    <button type="submit" class="primary">Naplánovat</button>
+    <a class="secondary" href="{% url 'inventory:mixing_job_index' %}">Zpět</a>
+  </div>
+</form>
+{% endblock %}

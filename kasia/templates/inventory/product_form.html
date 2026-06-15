@@ -47,6 +47,70 @@
     {{ form.notes.errors }}
   </div>
 
+  {% if can_edit_threshold and form.reorder_threshold_kg %}
+    <h2 style="font-size:1.05rem;margin-top:1.5rem;">Objednací bod</h2>
+    <p style="color:var(--fg-soft); font-size:0.9rem;">
+      Hranice, pod kterou se produkt objeví v panelu „Dochází zboží
+      a v denním e-mailu Petrovi (per decision 0043). Prázdné = bez
+      upozornění; 0 = upozornit při skutečně nulovém efektivním stavu.
+    </p>
+    <div class="field">
+      <label for="{{ form.reorder_threshold_kg.id_for_label }}">
+        {{ form.reorder_threshold_kg.label }}
+      </label>
+      {{ form.reorder_threshold_kg }}
+      {{ form.reorder_threshold_kg.errors }}
+    </div>
+
+    {% if threshold_formset %}
+      <h3 style="font-size:0.95rem;margin-top:1rem;">
+        Pobočkové výjimky (volitelné)
+      </h3>
+      <p style="color:var(--fg-soft); font-size:0.9rem;">
+        Když chcete jinou hranici pro TYN než pro SEZ. Bez záznamu se použije
+        výchozí hodnota výše.
+      </p>
+
+      {{ threshold_formset.management_form }}
+      {% if threshold_formset.non_form_errors %}
+        <div class="non-form-errors">{{ threshold_formset.non_form_errors }}</div>
+      {% endif %}
+
+      <table class="lines">
+        <thead>
+          <tr>
+            <th>Pobočka</th>
+            <th style="text-align:right;">Práh (kg)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tf in threshold_formset.forms %}
+            <tr class="line-row">
+              <td>
+                {{ tf.id }}
+                {{ tf.branch }}
+                {{ tf.branch.errors }}
+              </td>
+              <td style="text-align:right;">
+                {{ tf.threshold_kg }}
+                {{ tf.threshold_kg.errors }}
+              </td>
+              <td>
+                <input type="checkbox" name="{{ tf.DELETE.html_name }}"
+                       id="{{ tf.DELETE.id_for_label }}" hidden>
+                <button type="button" class="row-delete-btn"
+                        data-target="{{ tf.DELETE.id_for_label }}">
+                  × Smazat
+                </button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  {% endif %}
+
   {% if recipe_formset %}
     <h2 style="font-size:1.05rem;margin-top:1.5rem;">Receptura</h2>
     <p style="color:var(--fg-soft); font-size:0.9rem;">

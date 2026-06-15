@@ -203,10 +203,32 @@ převody exist is tabled.
 ### rezervace
 
 **EN:** reservation / allocation.
-Earmarking stock for a pending issue. Not in MVP; included so future
-agents recognise the term. (Spelling note: glossary uses **rezervace**;
-the brief uses "reservace" — treat that as a typo and prefer
-"rezervace" as the standard Czech spelling.)
+Earmarking stock for a pending issue. **In MVP via
+[`decisions/0044-reservations-planned-states.md`](./decisions/0044-reservations-planned-states.md)**
+for two specific sources: PLANNED míchací dávka (a recipe queued to be
+mixed later — raw spices count as reserved at the source branch) and
+PLANNED *převod mezi pobočkami* (an inter-branch transfer scheduled for
+a future date — quantity counts as reserved at the source branch).
+Reservations are **outgoing-only**: incoming planned transfers do NOT
+add to the target branch's effective stock. They are informational —
+they surface in `effective_kg = Stock.quantity − reserved_kg` on the
+dashboard, product detail, and daily summary e-mail (per 0045), but
+do not gate the existing overdraw check on výdej. (Spelling note:
+glossary uses **rezervace**; the brief uses "reservace" — treat that as
+a typo and prefer "rezervace" as the standard Czech spelling.)
+
+### objednací bod
+
+**EN:** reorder point / reorder threshold.
+Per-product (and optionally per-branch) kilogram quantity below which
+the system flags the (product, branch) pair as "dochází" on the
+dashboard and on the daily summary e-mail to Petr. Stored on
+`Product.reorder_threshold_kg` with optional `StockThresholdOverride`
+rows for branch-specific values per
+[`decisions/0043-reorder-threshold.md`](./decisions/0043-reorder-threshold.md).
+`NULL` means "no threshold set, do not alert"; `0` means "alert at
+literal empty". Comparison is against *effective* stock, not raw
+`Stock.quantity` — see **rezervace** above.
 
 ## Stock-take and reconciliation
 

@@ -16,6 +16,7 @@ for MVP at ~6 users (per .claude/rules/right-sized-for-small-business.md).
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -36,10 +37,12 @@ from .models import (
     Movement,
     MovementAudit,
     MovementLine,
+    PlannedTransfer,
     Product,
     RecipeComponent,
     Settings,
     Stock,
+    StockThresholdOverride,
     Supplier,
 )
 
@@ -515,23 +518,102 @@ def _micharna_supplier() -> Supplier:
     return Supplier.objects.get(name="Míchárna", is_internal=True)
 
 
-def start_mixing_job(
+def plan_mixing_job(
     *,
     branch,
     mixture: Product,
     target_qty: Decimal,
     user,
+    planned_for=None,
+    note: str = "",
+) -> MixingJob:
+    """Create a PLANNED MixingJob without touching Stock.
+
+    Per [0044](../context/decisions/0044-reservations-planned-states.md):
+    PLANNED jobs reserve stock via `reserved_kg()` (their
+    `MixingJobLine.derived_qty` rows feed the reservation total) but
+    do not decrement `Stock.quantity`. The transition to RUNNING — via
+    `start_mixing_job(job=<planned>)` — is the moment stock is
+    actually consumed.
+
+    Snapshots the recipe at the moment of planning so a future recipe
+    edit doesn't retroactively change a planned job's reservation.
+    """
+    if mixture.kind != Product.Kind.MIXTURE:
+        raise ValidationError({"mixture": "Vybraný produkt není směs."})
+    if target_qty is None or target_qty <= 0:
+        raise ValidationError(
+            {"target_qty": "Cílové množství musí být větší než 0."}
+        )
+
+    recipe = list(
+        RecipeComponent.objects.filter(mixture_product=mixture)
+        .select_related("component_product")
+        .order_by("component_product__name_cs")
+    )
+    if not recipe:
+        raise ValidationError({"mixture": "Směs nemá vyplněnou recepturu."})
+
+    with transaction.atomic():
+        job = MixingJob.objects.create(
+            branch=branch,
+            mixture=mixture,
+            target_qty=target_qty,
+            state=MixingJob.State.PLANNED,
+            planned_for=planned_for,
+            created_by=user,
+            note=note,
+        )
+        for rc in recipe:
+            derived = (target_qty * rc.ratio).quantize(Decimal("0.001"))
+            if derived <= 0:
+                raise ValidationError(
+                    {
+                        "target_qty": (
+                            f"Odvozené množství pro {rc.component_product} "
+                            f"je 0; zvolte větší cíl."
+                        )
+                    }
+                )
+            MixingJobLine.objects.create(
+                mixing_job=job,
+                component_product=rc.component_product,
+                ratio_at_start=rc.ratio,
+                derived_qty=derived,
+                actual_qty=derived,
+            )
+        return job
+
+
+def start_mixing_job(
+    *,
+    branch=None,
+    mixture: Product | None = None,
+    target_qty: Decimal | None = None,
+    user,
     as_of=None,
     note: str = "",
     sarze_by_component: dict | None = None,
+    job: MixingJob | None = None,
 ) -> MixingJob:
     """Snapshot the recipe at the current ratios, write the consume
     Movement (kind=vydej, odberatel=Míchárna internal) atomically, and
     return a running MixingJob.
 
+    Two entry shapes, per
+    [0044](../context/decisions/0044-reservations-planned-states.md):
+
+    - **Fresh start (one-shot):** caller passes branch, mixture,
+      target_qty. We create the RUNNING MixingJob + consume Movement
+      in one atomic block.
+    - **From a PLANNED job:** caller passes `job=<planned MixingJob>`.
+      We assert `job.state == PLANNED`, snapshot already exists on
+      `MixingJobLine` rows, transition state PLANNED → RUNNING, write
+      the consume Movement, link `consume_movement` to the job.
+
     Raises ValidationError on:
-    - mixture without recipe;
-    - target_qty <= 0;
+    - mixture without recipe (fresh-start);
+    - target_qty <= 0 (fresh-start);
     - any component's stock would go negative at this branch.
 
     Per 0039: ratios snapshotted at start; future recipe edits don't
@@ -540,6 +622,68 @@ def start_mixing_job(
     """
     from datetime import date as _date
 
+    sarze_by_component = sarze_by_component or {}
+    date_issued = as_of.date() if hasattr(as_of, "date") else (
+        as_of if as_of is not None else _date.today()
+    )
+
+    if job is not None:
+        # PLANNED → RUNNING path.
+        if job.state != MixingJob.State.PLANNED:
+            raise ValidationError(
+                {"state": "Spustit lze pouze plánovanou dávku."}
+            )
+        branch = job.branch
+        mixture = job.mixture
+        target_qty = job.target_qty
+        existing_lines = list(
+            job.lines.select_related("component_product").order_by(
+                "component_product__name_cs"
+            )
+        )
+        if not existing_lines:
+            raise ValidationError(
+                {"mixture": "Plánovaná dávka nemá žádné položky."}
+            )
+
+        with transaction.atomic():
+            consume_movement = Movement(
+                branch=branch,
+                kind=Movement.Kind.VYDEJ,
+                date_issued=date_issued,
+                odberatel=_micharna_customer(),
+                note=(
+                    f"Míchání směsi {mixture.name_cs} ({target_qty} kg). "
+                    f"{job.note or note}".strip()
+                ),
+            )
+            consume_lines = [
+                MovementLine(
+                    product=jl.component_product,
+                    quantity_kg=jl.derived_qty,
+                    sarze=sarze_by_component.get(jl.component_product_id, jl.sarze or ""),
+                )
+                for jl in existing_lines
+            ]
+            apply_movement(
+                movement=consume_movement, lines=consume_lines, user=user
+            )
+            # Mirror sarze input back onto the MixingJobLine rows.
+            for jl in existing_lines:
+                new_sarze = sarze_by_component.get(jl.component_product_id)
+                if new_sarze and new_sarze != jl.sarze:
+                    jl.sarze = new_sarze
+                    jl.save(update_fields=["sarze"])
+            job.state = MixingJob.State.RUNNING
+            job.consume_movement = consume_movement
+            job.save(update_fields=["state", "consume_movement"])
+            return job
+
+    # Fresh-start path.
+    if mixture is None or branch is None:
+        raise ValidationError(
+            {"mixture": "Pobočka a směs jsou povinné."}
+        )
     if mixture.kind != Product.Kind.MIXTURE:
         raise ValidationError(
             {"mixture": "Vybraný produkt není směs."}
@@ -558,11 +702,6 @@ def start_mixing_job(
         raise ValidationError(
             {"mixture": "Směs nemá vyplněnou recepturu."}
         )
-
-    sarze_by_component = sarze_by_component or {}
-    date_issued = as_of.date() if hasattr(as_of, "date") else (
-        as_of if as_of is not None else _date.today()
-    )
 
     with transaction.atomic():
         # Build the consume Movement (one vydej with N lines).
@@ -604,7 +743,7 @@ def start_mixing_job(
             movement=consume_movement, lines=consume_lines, user=user
         )
 
-        job = MixingJob.objects.create(
+        new_job = MixingJob.objects.create(
             branch=branch,
             mixture=mixture,
             target_qty=target_qty,
@@ -616,7 +755,7 @@ def start_mixing_job(
         MixingJobLine.objects.bulk_create(
             [
                 MixingJobLine(
-                    mixing_job=job,
+                    mixing_job=new_job,
                     component_product=component,
                     ratio_at_start=ratio,
                     derived_qty=derived,
@@ -626,7 +765,7 @@ def start_mixing_job(
                 for component, ratio, derived in snapshots
             ]
         )
-        return job
+        return new_job
 
 
 def finish_mixing_job(
@@ -755,12 +894,20 @@ def cancel_mixing_job(
     reason: str,
     user,
 ) -> MixingJob:
-    """Cancel a running job: zero each consume line via edit_movement
-    (returns consumed stock to the branch) and mark the job cancelled.
+    """Cancel a PLANNED or RUNNING job per
+    [0044](../context/decisions/0044-reservations-planned-states.md):
+
+    - PLANNED → CANCELLED: no consume_movement exists yet, nothing to
+      reverse. Just mark the state and finished_at.
+    - RUNNING → CANCELLED: zero each consume line via edit_movement
+      (returns consumed stock to the branch).
     """
-    if mixing_job.state != MixingJob.State.RUNNING:
+    if mixing_job.state not in {
+        MixingJob.State.PLANNED,
+        MixingJob.State.RUNNING,
+    }:
         raise ValidationError(
-            {"state": "Lze zrušit pouze probíhající dávku."}
+            {"state": "Lze zrušit pouze plánovanou nebo probíhající dávku."}
         )
     if not reason or not reason.strip():
         raise ValidationError(
@@ -768,22 +915,23 @@ def cancel_mixing_job(
         )
 
     with transaction.atomic():
-        consume_movement = mixing_job.consume_movement
-        # Remove every line of the consume Movement — edit_movement
-        # reverses the stock delta atomically and writes a LINE_REMOVED
-        # audit row per line.
-        line_changes = [
-            {"op": "remove", "line_id": ml.pk}
-            for ml in consume_movement.lines.all()
-        ]
-        if line_changes:
-            edit_movement(
-                movement=consume_movement,
-                changes={},
-                line_changes=line_changes,
-                reason=f"míchání zrušeno: {reason}",
-                user=user,
-            )
+        if mixing_job.state == MixingJob.State.RUNNING:
+            consume_movement = mixing_job.consume_movement
+            # Remove every line of the consume Movement — edit_movement
+            # reverses the stock delta atomically and writes a LINE_REMOVED
+            # audit row per line.
+            line_changes = [
+                {"op": "remove", "line_id": ml.pk}
+                for ml in consume_movement.lines.all()
+            ]
+            if line_changes:
+                edit_movement(
+                    movement=consume_movement,
+                    changes={},
+                    line_changes=line_changes,
+                    reason=f"míchání zrušeno: {reason}",
+                    user=user,
+                )
 
         mixing_job.state = MixingJob.State.CANCELLED
         mixing_job.cancel_reason = reason
@@ -928,3 +1076,308 @@ def apply_stock_adjustment(
 
     line = MovementLine(product=product, quantity_kg=abs(delta))
     return apply_movement(movement=movement, lines=[line], user=user)
+
+
+# ---------------------------------------------------------------------------
+# Reorder threshold + reservations + low-stock summary
+# (per decisions 0043 + 0044 + 0045)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class LowStockRow:
+    """One (product, branch) row below threshold for the dashboard panel
+    and the daily summary e-mail."""
+
+    product: Product
+    branch: Branch
+    on_hand: Decimal
+    reserved: Decimal
+    effective: Decimal
+    threshold: Decimal
+    deficit: Decimal
+
+
+def threshold_for(product: Product, branch: Branch) -> Decimal | None:
+    """Return the per-(product, branch) reorder threshold per 0043.
+
+    Lookup order: branch-specific override row, then the product
+    default, then None (no alert).
+    """
+    override = StockThresholdOverride.objects.filter(
+        product=product, branch=branch
+    ).first()
+    if override is not None:
+        return override.threshold_kg
+    return product.reorder_threshold_kg
+
+
+def reserved_kg(product: Product, branch: Branch) -> Decimal:
+    """Sum outgoing reservations at one branch for one product per 0044.
+
+    Two sources:
+    - PLANNED MixingJobLine.derived_qty where the job runs at `branch`
+      AND the line's component_product == `product`.
+    - PLANNED PlannedTransfer.quantity_kg where source_branch == `branch`
+      AND product == `product`.
+
+    Does NOT subtract incoming planned transfers — reservations are
+    outgoing-only in MVP. Returns Decimal("0.000") when nothing matches.
+    """
+    from django.db.models import Sum
+
+    mixing_total = (
+        MixingJobLine.objects.filter(
+            mixing_job__state=MixingJob.State.PLANNED,
+            mixing_job__branch=branch,
+            component_product=product,
+        ).aggregate(s=Sum("derived_qty"))["s"]
+        or Decimal("0.000")
+    )
+    transfer_total = (
+        PlannedTransfer.objects.filter(
+            state=PlannedTransfer.State.PLANNED,
+            source_branch=branch,
+            product=product,
+        ).aggregate(s=Sum("quantity_kg"))["s"]
+        or Decimal("0.000")
+    )
+    return (mixing_total + transfer_total).quantize(Decimal("0.001"))
+
+
+def effective_kg(product: Product, branch: Branch) -> Decimal:
+    """Stock.quantity − reserved_kg(product, branch) per 0043.
+
+    Returns Decimal("0.000") when no Stock row exists.
+    """
+    stock = Stock.objects.filter(product=product, branch=branch).first()
+    on_hand = stock.quantity if stock else Decimal("0.000")
+    return (on_hand - reserved_kg(product, branch)).quantize(Decimal("0.001"))
+
+
+def low_stock_rows() -> list[LowStockRow]:
+    """Every (product, branch) pair where a threshold is set and
+    effective < threshold. Sorted by deficit DESC.
+
+    Used by the owner dashboard panel, branch dashboard, product
+    detail page, AND the daily summary e-mail. One source of truth.
+    """
+    rows: list[LowStockRow] = []
+    branches = list(Branch.objects.filter(is_active=True).order_by("code"))
+    products = list(
+        Product.objects.filter(is_active=True).order_by("name_cs")
+    )
+    if not branches or not products:
+        return rows
+
+    # Pre-fetch stocks + overrides in two queries.
+    stocks_by_pair = {
+        (s.product_id, s.branch_id): s.quantity
+        for s in Stock.objects.filter(
+            product__in=products, branch__in=branches
+        )
+    }
+    overrides_by_pair = {
+        (o.product_id, o.branch_id): o.threshold_kg
+        for o in StockThresholdOverride.objects.filter(
+            product__in=products, branch__in=branches
+        )
+    }
+
+    for product in products:
+        for branch in branches:
+            threshold = overrides_by_pair.get((product.pk, branch.pk))
+            if threshold is None:
+                threshold = product.reorder_threshold_kg
+            if threshold is None:
+                continue
+            on_hand = stocks_by_pair.get(
+                (product.pk, branch.pk), Decimal("0.000")
+            )
+            reserved = reserved_kg(product, branch)
+            effective = (on_hand - reserved).quantize(Decimal("0.001"))
+            if effective < threshold:
+                rows.append(
+                    LowStockRow(
+                        product=product,
+                        branch=branch,
+                        on_hand=on_hand,
+                        reserved=reserved,
+                        effective=effective,
+                        threshold=threshold,
+                        deficit=(threshold - effective).quantize(Decimal("0.001")),
+                    )
+                )
+    rows.sort(key=lambda r: r.deficit, reverse=True)
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# PlannedTransfer execution + cancellation (per 0044)
+# ---------------------------------------------------------------------------
+
+
+_TRANSFER_COUNTERPARTY_NAME = "Převod mezi pobočkami"
+
+
+def _transfer_customer() -> Customer:
+    return Customer.objects.get(
+        name=_TRANSFER_COUNTERPARTY_NAME, is_internal=False
+    )
+
+
+def _transfer_supplier() -> Supplier:
+    return Supplier.objects.get(
+        name=_TRANSFER_COUNTERPARTY_NAME, is_internal=False
+    )
+
+
+def execute_planned_transfer(
+    transfer: PlannedTransfer,
+    *,
+    executed_by,
+    as_of: date | None = None,
+) -> tuple[Movement, Movement]:
+    """Run the výdej leg at source + the příjem leg at target atomically.
+
+    Per [0044](../context/decisions/0044-reservations-planned-states.md):
+    counterparty pair is `is_internal=False` so the existing dodák
+    auto-issue + e-mail hook fires on the výdej leg — the dodák is the
+    physical paper for the driver. Both Movements get a back-FK to
+    `transfer` so the audit trail can reconstruct the pairing.
+
+    Refuses if `transfer.state != PLANNED`.
+    """
+    if transfer.state != PlannedTransfer.State.PLANNED:
+        raise ValidationError(
+            {"state": "Provést lze pouze plánovaný převod."}
+        )
+
+    issue_date = as_of or transfer.scheduled_for or date.today()
+
+    with transaction.atomic():
+        # Source-leg výdej.
+        vydej = Movement(
+            branch=transfer.source_branch,
+            kind=Movement.Kind.VYDEJ,
+            date_issued=issue_date,
+            odberatel=_transfer_customer(),
+            note=(
+                f"Převod {transfer.product.name_cs} "
+                f"{transfer.quantity_kg} kg → "
+                f"{transfer.target_branch.code} "
+                f"(plán #{transfer.pk})."
+            ),
+            transfer=transfer,
+        )
+        vydej_line = MovementLine(
+            product=transfer.product,
+            quantity_kg=transfer.quantity_kg,
+        )
+        apply_movement(movement=vydej, lines=[vydej_line], user=executed_by)
+
+        # Target-leg příjem.
+        prijem = Movement(
+            branch=transfer.target_branch,
+            kind=Movement.Kind.PRIJEM,
+            date_issued=issue_date,
+            dodavatel=_transfer_supplier(),
+            note=(
+                f"Převod {transfer.product.name_cs} "
+                f"{transfer.quantity_kg} kg ← "
+                f"{transfer.source_branch.code} "
+                f"(plán #{transfer.pk})."
+            ),
+            transfer=transfer,
+        )
+        prijem_line = MovementLine(
+            product=transfer.product,
+            quantity_kg=transfer.quantity_kg,
+        )
+        apply_movement(movement=prijem, lines=[prijem_line], user=executed_by)
+
+        transfer.state = PlannedTransfer.State.DONE
+        transfer.save(update_fields=["state"])
+        return vydej, prijem
+
+
+def cancel_planned_transfer(
+    transfer: PlannedTransfer,
+    *,
+    cancelled_by,
+) -> None:
+    """Mark a PLANNED transfer as CANCELLED. No stock touched.
+
+    Per [0044](../context/decisions/0044-reservations-planned-states.md):
+    all authenticated users may cancel (Matej 2026-06-14 confirmation —
+    symmetric with create). No tier gate beyond LoginRequiredMiddleware.
+    The `cancelled_by` parameter is accepted for symmetry / future
+    audit; not persisted in MVP.
+    """
+    if transfer.state != PlannedTransfer.State.PLANNED:
+        raise ValidationError(
+            {"state": "Zrušit lze pouze plánovaný převod."}
+        )
+    transfer.state = PlannedTransfer.State.CANCELLED
+    transfer.save(update_fields=["state"])
+
+
+# ---------------------------------------------------------------------------
+# Daily low-stock summary e-mail (per 0045)
+# ---------------------------------------------------------------------------
+
+
+def _format_low_stock_list(rows: list[LowStockRow]) -> str:
+    """Render the multi-line `<seznam>` placeholder body."""
+    lines = []
+    for r in rows:
+        lines.append(
+            f"- {r.product.name_cs} @ {r.branch.code}: "
+            f"efektivně {r.effective} kg / práh {r.threshold} kg"
+        )
+    return "\n".join(lines)
+
+
+def send_low_stock_summary() -> int | None:
+    """Build the low-stock list, render templates, send to Petr per 0045.
+
+    Returns the number of rows on success; None if nothing to send.
+    Recipient is `Settings.recipient_petr`. If the recipient is blank,
+    no e-mail is sent and None is returned (matches the
+    `_assert_recipients_set` posture without raising).
+    """
+    rows = low_stock_rows()
+    if not rows:
+        return None
+
+    s = Settings.load()
+    if not s.recipient_petr:
+        return None
+
+    today = date.today().strftime("%d. %m. %Y")
+    seznam = _format_low_stock_list(rows)
+    subject = (
+        s.template_low_stock_subject
+        .replace("<datum>", today)
+        .replace("<seznam>", seznam)
+    )
+    body = (
+        s.template_low_stock_body
+        .replace("<datum>", today)
+        .replace("<seznam>", seznam)
+    )
+
+    from_email = (
+        f"{s.email_from_name} <{s.email_from_address}>"
+        if s.email_from_name and s.email_from_address
+        else (s.email_from_address or None)
+    )
+
+    msg = EmailMessage(
+        subject=subject,
+        body=body,
+        from_email=from_email,
+        to=[s.recipient_petr],
+    )
+    msg.send(fail_silently=False)
+    return len(rows)

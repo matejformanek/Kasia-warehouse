@@ -156,6 +156,19 @@ def _ensure_micharna_seed(db) -> None:
         is_internal=True,
         defaults={"address": "interní úprava stavu"},
     )
+    # Per 0044 — re-seed the "Převod mezi pobočkami" counterparty pair
+    # (migration 0010). is_internal=False so the existing dodák auto-
+    # issue + e-mail hook fires on the výdej leg.
+    Customer.objects.get_or_create(
+        name="Převod mezi pobočkami",
+        is_internal=False,
+        defaults={"address": "interní převod mezi pobočkami"},
+    )
+    Supplier.objects.get_or_create(
+        name="Převod mezi pobočkami",
+        is_internal=False,
+        defaults={"address": "interní převod mezi pobočkami"},
+    )
 
 
 @pytest.fixture(autouse=True)

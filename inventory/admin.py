@@ -11,10 +11,12 @@ from .models import (
     Movement,
     MovementAudit,
     MovementLine,
+    PlannedTransfer,
     Product,
     RecipeComponent,
     Settings,
     Stock,
+    StockThresholdOverride,
     Supplier,
 )
 from .services import (
@@ -490,3 +492,55 @@ class MixingJobLineAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None) -> bool:
         return False
+
+
+# ---------------------------------------------------------------------------
+# PlannedTransfer + StockThresholdOverride (per 0043 + 0044)
+# ---------------------------------------------------------------------------
+
+
+@admin.register(PlannedTransfer)
+class PlannedTransferAdmin(admin.ModelAdmin):
+    """Read-mostly admin per 0044 — created + executed via the operator
+    surface at /prevody/. Admin can view / cancel but not edit fields."""
+
+    list_display = (
+        "pk",
+        "scheduled_for",
+        "source_branch",
+        "target_branch",
+        "product",
+        "quantity_kg",
+        "state",
+        "created_by",
+    )
+    list_filter = ("state", "source_branch", "target_branch")
+    search_fields = ("product__name_cs", "notes")
+    readonly_fields = (
+        "source_branch",
+        "target_branch",
+        "product",
+        "quantity_kg",
+        "scheduled_for",
+        "state",
+        "notes",
+        "created_by",
+        "created_at",
+    )
+
+    def has_add_permission(self, request) -> bool:
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        return False
+
+
+@admin.register(StockThresholdOverride)
+class StockThresholdOverrideAdmin(admin.ModelAdmin):
+    """Full CRUD per 0043 — vlastník-only in the operator app, but admin
+    is unrestricted (standard pattern, matches RecipeComponentAdmin)."""
+
+    list_display = ("product", "branch", "threshold_kg")
+    list_filter = ("branch",)
+    search_fields = ("product__name_cs",)
+    autocomplete_fields = ("product",)

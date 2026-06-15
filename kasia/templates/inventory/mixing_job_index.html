@@ -6,6 +6,7 @@
 <h1>Míchací dávky</h1>
 <p>
   <a class="primary" href="{% url 'inventory:mixing_job_create' %}">+ Nová dávka</a>
+  <a class="secondary" href="{% url 'inventory:mixing_plan_create' %}">Naplánovat dávku</a>
 </p>
 
 <p style="color:var(--fg-soft);">Nalezeno: {{ count }} dávek.</p>
@@ -38,7 +39,9 @@
             {% if j.actual_produced_qty is not None %}{{ j.actual_produced_qty|floatformat:"3" }}{% endif %}
           </td>
           <td>
-            {% if j.state == "running" %}
+            {% if j.state == "planned" %}
+              <span style="color:var(--warn);">{{ j.get_state_display }}</span>
+            {% elif j.state == "running" %}
               <span style="color:var(--accent);">{{ j.get_state_display }}</span>
             {% elif j.state == "done" %}
               <span style="color:var(--ok);">{{ j.get_state_display }}</span>

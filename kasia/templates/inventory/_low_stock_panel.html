@@ -1,0 +1,34 @@
+{% if low_stock_rows %}
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Dochází zboží</h2>
+  <p style="color:var(--fg-soft);margin-top:0;">
+    Pod hranicí objednacího bodu (efektivně = stav − rezervováno).
+  </p>
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Produkt</th>
+        <th>Pobočka</th>
+        <th style="text-align:right;">Na skladě</th>
+        <th style="text-align:right;">Rezervováno</th>
+        <th style="text-align:right;">Efektivně</th>
+        <th style="text-align:right;">Práh</th>
+        <th style="text-align:right;">Schodek</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in low_stock_rows %}
+        <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=r.product.pk %}">
+          <td>{{ r.product.name_cs }}</td>
+          <td>{{ r.branch.code }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.on_hand|floatformat:"3" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.reserved|floatformat:"3" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.effective|floatformat:"3" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.threshold|floatformat:"3" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--warn);">{{ r.deficit|floatformat:"3" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}

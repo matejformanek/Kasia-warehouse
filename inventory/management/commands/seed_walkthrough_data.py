@@ -28,14 +28,16 @@ from django.core.management.base import BaseCommand, CommandError
 from inventory.models import (
     Branch,
     Customer,
+    MixingJob,
     Movement,
     MovementLine,
+    PlannedTransfer,
     Product,
     RecipeComponent,
     Settings,
     Supplier,
 )
-from inventory.services import apply_movement, edit_movement
+from inventory.services import apply_movement, edit_movement, plan_mixing_job
 
 User = get_user_model()
 
@@ -130,6 +132,61 @@ class Command(BaseCommand):
                 defaults={"ratio": ratio},
             )
         self.stdout.write("• Products + recipe seeded.")
+
+        # --- Reservations + threshold demo (per 0043 + 0044) ----------
+        # Runs unconditionally — each item has its own .exists() guard
+        # so re-runs are no-ops. Lifted above the movement-seed early-
+        # return so it shows up on already-seeded DBs.
+        today_for_reservations = date.today()
+        if not PlannedTransfer.objects.exists():
+            pt = PlannedTransfer.objects.create(
+                source_branch=tyn,
+                target_branch=sez,
+                product=spices["Pepř černý mletý"],
+                quantity_kg=Decimal("2.000"),
+                scheduled_for=today_for_reservations + timedelta(days=2),
+                notes="ukázkový plánovaný převod",
+                created_by=karolina,
+            )
+            self.stdout.write(
+                f"• Plánovaný převod #{pt.pk} naplánován "
+                f"({pt.source_branch.code} → {pt.target_branch.code}, "
+                f"{pt.product.name_cs}, {pt.quantity_kg} kg)"
+            )
+
+        if not MixingJob.objects.filter(state=MixingJob.State.PLANNED).exists():
+            try:
+                job = plan_mixing_job(
+                    branch=tyn,
+                    mixture=mix,
+                    target_qty=Decimal("3.000"),
+                    user=karolina,
+                    planned_for=today_for_reservations + timedelta(days=1),
+                    note="ukázková plánovaná dávka",
+                )
+                self.stdout.write(
+                    f"• Plánovaná míchací dávka #{job.pk} ({job.mixture.name_cs}, "
+                    f"{job.target_qty} kg) vytvořena."
+                )
+            except Exception as exc:  # noqa: BLE001 — seed demo, skip on failure
+                self.stdout.write(
+                    f"• (plan_mixing_job přeskočeno: {exc})"
+                )
+
+        oregano = spices.get("Oregano")
+        if oregano and oregano.reorder_threshold_kg is None:
+            oregano.reorder_threshold_kg = Decimal("5.000")
+            oregano.save(update_fields=["reorder_threshold_kg"])
+            self.stdout.write(
+                "• Objednací bod 5,000 kg nastaven pro Oregano (demo)."
+            )
+        pepper_default = spices.get("Pepř černý mletý")
+        if pepper_default and pepper_default.reorder_threshold_kg is None:
+            pepper_default.reorder_threshold_kg = Decimal("8.000")
+            pepper_default.save(update_fields=["reorder_threshold_kg"])
+            self.stdout.write(
+                "• Objednací bod 8,000 kg nastaven pro Pepř černý mletý (demo)."
+            )
 
         # --- Movement-based seeding -----------------------------------
         # Gate on dodáky, not on raw Movement count: the user might have

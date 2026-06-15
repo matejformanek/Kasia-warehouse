@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Nový převod — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Naplánovat převod mezi pobočkami</h1>
+
+<p class="required-legend">povinné</p>
+
+<form method="post" class="card">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="non-form-errors">
+      {{ form.non_field_errors }}
+    </div>
+  {% endif %}
+
+  <div class="field">
+    <label for="{{ form.source_branch.id_for_label }}" class="field-required">{{ form.source_branch.label }}</label>
+    {{ form.source_branch }}
+    {{ form.source_branch.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.target_branch.id_for_label }}" class="field-required">{{ form.target_branch.label }}</label>
+    {{ form.target_branch }}
+    {{ form.target_branch.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.product.id_for_label }}" class="field-required">{{ form.product.label }}</label>
+    {{ form.product }}
+    {{ form.product.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.quantity_kg.id_for_label }}" class="field-required">{{ form.quantity_kg.label }}</label>
+    {{ form.quantity_kg }}
+    {{ form.quantity_kg.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.scheduled_for.id_for_label }}" class="field-required">{{ form.scheduled_for.label }}</label>
+    {{ form.scheduled_for }}
+    {{ form.scheduled_for.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+    {{ form.notes }}
+    {{ form.notes.errors }}
+  </div>
+
+  <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+    <button type="submit" class="primary">Naplánovat převod</button>
+    <a class="secondary" href="{% url 'inventory:planned_transfer_index' %}">Zpět</a>
+  </div>
+</form>
+{% endblock %}

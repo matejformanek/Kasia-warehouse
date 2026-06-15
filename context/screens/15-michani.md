@@ -7,6 +7,13 @@
 > yield surfaces as the implicit delta between target and actual,
 > no separate column. The full text below remains the canonical
 > screen spec.
+>
+> [`../decisions/0044-reservations-planned-states.md`](../decisions/0044-reservations-planned-states.md)
+> adds a **PLANNED** state before RUNNING. A planned job does not
+> touch stock; its `MixingJobLine.derived_qty` rows feed
+> `reserved_kg()` so they surface on the dashboard before
+> physical mixing begins. "Spustit teď" remains as a one-shot
+> wrapper that plans + starts in one transaction.
 
 **In MVP** per
 [`../decisions/0032-mixing-in-mvp.md`](../decisions/0032-mixing-in-mvp.md)

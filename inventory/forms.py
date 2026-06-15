@@ -299,7 +299,7 @@ class ProductForm(forms.ModelForm):
 
     class Meta:
         model = Product
-        fields = ("name_cs", "kind", "notes")
+        fields = ("name_cs", "kind", "notes", "reorder_threshold_kg")
         widgets = {
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
@@ -307,15 +307,27 @@ class ProductForm(forms.ModelForm):
             "name_cs": "Název (česky)",
             "kind": "Typ",
             "notes": "Poznámka",
+            "reorder_threshold_kg": "Objednací bod (kg) — kdy upozornit",
         }
 
-    def __init__(self, *args, lock_kind: bool = False, **kwargs) -> None:
+    def __init__(
+        self,
+        *args,
+        lock_kind: bool = False,
+        can_edit_threshold: bool = True,
+        **kwargs,
+    ) -> None:
         super().__init__(*args, **kwargs)
         if lock_kind:
             # Once stock or recipe references exist, flipping
             # surovina↔směs would orphan data. The view passes
             # lock_kind=True in those cases.
             self.fields["kind"].disabled = True
+        if not can_edit_threshold:
+            # Per 0043: editing the reorder threshold is vlastník-only.
+            # Drop the field entirely so a non-vlastník POST doesn't
+            # null out the value an admin set.
+            self.fields.pop("reorder_threshold_kg", None)
 
     def clean_name_cs(self) -> str:
         name = (self.cleaned_data["name_cs"] or "").strip()
@@ -444,3 +456,125 @@ class StockAdjustmentForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.product = product
         self.fields["branch"].queryset = Branch.objects.filter(is_active=True)
+
+
+# ---------------------------------------------------------------------------
+# Threshold override + PlannedTransfer + MixingPlan (per decisions 0043 + 0044)
+# ---------------------------------------------------------------------------
+
+
+from .models import PlannedTransfer, StockThresholdOverride  # noqa: E402
+
+
+class ThresholdOverrideForm(forms.ModelForm):
+    """One per-branch override row on the product edit page (vlastník-only)."""
+
+    class Meta:
+        model = StockThresholdOverride
+        fields = ("branch", "threshold_kg")
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["branch"].queryset = Branch.objects.filter(is_active=True)
+
+
+ThresholdOverrideFormSet = forms.modelformset_factory(
+    StockThresholdOverride,
+    form=ThresholdOverrideForm,
+    extra=0,
+    can_delete=True,
+)
+
+
+class PlannedTransferForm(forms.ModelForm):
+    """Operator-facing form for /prevody/novy/ + /prevody/<pk>/upravit/.
+
+    Per [0044](../context/decisions/0044-reservations-planned-states.md):
+    all authenticated users may create + execute + cancel. No tier gate
+    beyond login.
+    """
+
+    class Meta:
+        model = PlannedTransfer
+        fields = (
+            "source_branch",
+            "target_branch",
+            "product",
+            "quantity_kg",
+            "scheduled_for",
+            "notes",
+        )
+        widgets = {
+            "scheduled_for": forms.DateInput(attrs={"type": "date"}),
+            "notes": forms.Textarea(attrs={"rows": 2}),
+            "quantity_kg": forms.NumberInput(attrs={"step": "0.001"}),
+        }
+        labels = {
+            "source_branch": "Zdrojová pobočka",
+            "target_branch": "Cílová pobočka",
+            "product": "Produkt",
+            "quantity_kg": "Množství (kg)",
+            "scheduled_for": "Plánováno na",
+            "notes": "Poznámka",
+        }
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["source_branch"].queryset = Branch.objects.filter(is_active=True)
+        self.fields["target_branch"].queryset = Branch.objects.filter(is_active=True)
+        self.fields["product"].queryset = Product.objects.filter(
+            is_active=True
+        ).order_by("name_cs")
+
+    def clean(self):
+        cleaned = super().clean()
+        source = cleaned.get("source_branch")
+        target = cleaned.get("target_branch")
+        if source and target and source == target:
+            raise forms.ValidationError(
+                "Cílová pobočka se musí lišit od zdrojové."
+            )
+        return cleaned
+
+
+class MixingPlanForm(forms.Form):
+    """One-shot form for /michani/planovat/ — plans a PLANNED MixingJob.
+
+    Per [0044](../context/decisions/0044-reservations-planned-states.md):
+    creates the job (with derived MixingJobLine rows) without touching
+    Stock. Operator then opens the job detail and clicks "Spustit teď"
+    to consume stock.
+    """
+
+    branch = forms.ModelChoiceField(
+        label="Pobočka",
+        queryset=None,
+        empty_label=None,
+    )
+    mixture = forms.ModelChoiceField(
+        label="Směs",
+        queryset=Product.objects.filter(kind=Product.Kind.MIXTURE, is_active=True),
+    )
+    target_qty = forms.DecimalField(
+        label="Cílové množství (kg)",
+        max_digits=10,
+        decimal_places=3,
+        min_value=Decimal("0.001"),
+    )
+    planned_for = forms.DateField(
+        label="Plánováno na",
+        widget=forms.DateInput(attrs={"type": "date"}),
+        required=False,
+    )
+    note = forms.CharField(
+        label="Poznámka",
+        widget=forms.Textarea(attrs={"rows": 2}),
+        required=False,
+    )
+
+    def __init__(self, *args, user=None, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["branch"].queryset = Branch.objects.filter(is_active=True)
+        if user is not None and getattr(user, "branch_id", None):
+            self.fields["branch"].initial = user.branch_id
+            self.fields["branch"].disabled = True

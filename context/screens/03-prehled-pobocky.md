@@ -23,8 +23,15 @@ performs all day — record a příjem, record a výdej, look up a product.
   - Product name (Czech).
   - On-hand mass in kg per
     [`decisions/0003-primary-unit-kg-decimals.md`](../decisions/0003-primary-unit-kg-decimals.md).
-  - A visual marker on products whose mass is at or near zero (so a
-    depleted product is not silently invisible).
+  - A **threshold-aware status badge** per
+    [`../decisions/0043-reorder-threshold.md`](../decisions/0043-reorder-threshold.md)
+    + [`../decisions/0044-reservations-planned-states.md`](../decisions/0044-reservations-planned-states.md):
+    three states — `prázdné` (effective stock ≤ 0), `dochází` (effective
+    stock < per-(product, branch) threshold), normal (no badge).
+    *Effective* = `Stock.quantity − reserved_kg` where `reserved_kg`
+    sums PLANNED mixing job consumption and PLANNED outgoing transfers
+    from this branch. Replaces the original hardcoded "near-zero"
+    marker.
   - A search box to filter the list by product name.
 - A **recent movements** strip for this branch, latest first, with
   type (příjem / výdej), date, item, quantity in kg, counterparty

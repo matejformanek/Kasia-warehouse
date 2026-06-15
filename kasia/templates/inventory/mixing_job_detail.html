@@ -14,13 +14,18 @@
   <h2 style="font-size:1.05rem;margin-top:0;">Stav</h2>
   <p>
     <strong>Stav:</strong>
-    {% if job.state == "running" %}
+    {% if job.state == "planned" %}
+      <span style="color:var(--warn);">{{ job.get_state_display }}</span>
+    {% elif job.state == "running" %}
       <span style="color:var(--accent);">{{ job.get_state_display }}</span>
     {% elif job.state == "done" %}
       <span style="color:var(--ok);">{{ job.get_state_display }}</span>
     {% else %}
       <span style="color:var(--fg-soft);">{{ job.get_state_display }}</span>
     {% endif %}<br>
+    {% if job.planned_for and job.state == "planned" %}
+      <strong>Plánováno na:</strong> {{ job.planned_for|date:"d. m. Y" }}<br>
+    {% endif %}
     <strong>Cíl:</strong> {{ job.target_qty|floatformat:"3" }} kg<br>
     {% if job.actual_produced_qty is not None %}
       <strong>Vyrobeno:</strong> {{ job.actual_produced_qty|floatformat:"3" }} kg
@@ -54,7 +59,45 @@
   </p>
 </div>
 
-{% if job.state == "running" %}
+{% if job.state == "planned" %}
+<div class="card">
+  <h2 style="font-size:1.05rem;margin-top:0;">Položky (rezervováno)</h2>
+  <p style="color:var(--fg-soft);">
+    Plánovaná dávka — stav skladu se odečte až po spuštění.
+  </p>
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Surovina</th>
+        <th style="text-align:right;">Odvozeno (kg)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+        <tr>
+          <td>{{ line.component_product.name_cs }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ line.derived_qty|floatformat:"3" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="display:flex;gap:0.75rem;margin-top:0.75rem;">
+    <form method="post" action="{% url 'inventory:mixing_job_start' pk=job.pk %}"
+          onsubmit="return confirm('Spustit dávku? Stav skladu se odečte.');">
+      {% csrf_token %}
+      <button type="submit" class="primary">Spustit teď</button>
+    </form>
+    <form method="post" action="{% url 'inventory:mixing_job_cancel' pk=job.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="reason" value="zrušení plánu">
+      <button type="submit" class="secondary"
+              onclick="return confirm('Opravdu zrušit plánovanou dávku?');">
+        Zrušit plán
+      </button>
+    </form>
+  </div>
+</div>
+{% elif job.state == "running" %}
 <form method="post" action="{% url 'inventory:mixing_job_finish' pk=job.pk %}">
   {% csrf_token %}
   <div class="card">

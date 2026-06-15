@@ -32,25 +32,29 @@
     {% endif %}
   </form>
 
-  {% if stocks %}
+  {% if stock_rows %}
     <table class="lines">
       <thead>
         <tr>
           <th>Produkt</th>
-          <th style="text-align:right;">Množství (kg)</th>
+          <th style="text-align:right;">Na skladě (kg)</th>
+          <th style="text-align:right;">Rezerv.</th>
+          <th style="text-align:right;">Efektivně</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        {% for s in stocks %}
+        {% for row in stock_rows %}
           <tr>
-            <td>{{ s.product.name_cs }}</td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ s.quantity|floatformat:"3" }}</td>
+            <td>{{ row.stock.product.name_cs }}</td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.stock.quantity|floatformat:"3" }}</td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.reserved|floatformat:"3" }}</td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.effective|floatformat:"3" }}</td>
             <td>
-              {% if s.quantity <= 0 %}
+              {% if row.status == "prazdne" %}
                 <span style="color:var(--error);font-weight:bold;">prázdné</span>
-              {% elif s.quantity < 1 %}
-                <span style="color:var(--warn);">nízký stav</span>
+              {% elif row.status == "dochazi" %}
+                <span class="tab-chip active" style="background:var(--warn);">dochází</span>
               {% endif %}
             </td>
           </tr>

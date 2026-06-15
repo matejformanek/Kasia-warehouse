@@ -26,9 +26,11 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from .forms import (
     BranchForm,
     CustomerForm,
+    MixingPlanForm,
     MovementEditLineFormSet,
     MovementLineForm,
     MovementLineFormSet,
+    PlannedTransferForm,
     PrijemEditForm,
     PrijemForm,
     ProductForm,
@@ -38,6 +40,7 @@ from .forms import (
     SmtpTestForm,
     StockAdjustmentForm,
     SupplierForm,
+    ThresholdOverrideFormSet,
     VydejEditForm,
     VydejForm,
     assert_no_future_date,
@@ -52,22 +55,30 @@ from .models import (
     Movement,
     MovementAudit,
     MovementLine,
+    PlannedTransfer,
     Product,
     RecipeComponent,
     Settings,
     Stock,
+    StockThresholdOverride,
     Supplier,
 )
 from .services import (
     apply_movement,
     apply_stock_adjustment,
     cancel_mixing_job,
+    cancel_planned_transfer,
     edit_movement,
+    execute_planned_transfer,
     finish_mixing_job,
+    low_stock_rows,
+    plan_mixing_job,
     record_completed_mixing_job,
     render_dodaci_list_pdf,
+    reserved_kg,
     send_dodaci_list_email,
     start_mixing_job,
+    threshold_for,
 )
 
 
@@ -158,6 +169,10 @@ def home(request):
         .order_by("-id")[:5]
     )
 
+    # "Dochází zboží" panel per 0043 + 0044 — reads the same
+    # low_stock_rows() that feeds the daily summary e-mail.
+    low_stock = low_stock_rows()
+
     return render(
         request,
         "inventory/home.html",
@@ -166,6 +181,7 @@ def home(request):
             "recent_dodaky": recent_dodaky,
             "failed_dodaky": failed_dodaky,
             "edited_dodaky": edited_dodaky,
+            "low_stock_rows": low_stock,
             "to_resolve_count": len(failed_dodaky) + len(edited_dodaky),
         },
     )
@@ -349,6 +365,29 @@ def branch_dashboard(request, code: str):
     if search:
         stocks_qs = stocks_qs.filter(product__name_cs__icontains=search)
     stocks = list(stocks_qs)
+    # Threshold-aware status per 0043 + 0044. Replaces the old hardcoded
+    # `< 1 kg` near-empty marker.
+    stock_rows = []
+    for s in stocks:
+        threshold = threshold_for(s.product, branch)
+        reserved = reserved_kg(s.product, branch)
+        effective = (s.quantity - reserved).quantize(Decimal("0.001"))
+        if effective <= 0:
+            status = "prazdne"
+        elif threshold is not None and effective < threshold:
+            status = "dochazi"
+        else:
+            status = ""
+        stock_rows.append(
+            {
+                "stock": s,
+                "reserved": reserved,
+                "effective": effective,
+                "threshold": threshold,
+                "status": status,
+            }
+        )
+
     recent_movements = list(
         Movement.objects.filter(branch=branch)
         .select_related("odberatel", "dodavatel", "created_by")
@@ -361,6 +400,7 @@ def branch_dashboard(request, code: str):
         {
             "branch": branch,
             "stocks": stocks,
+            "stock_rows": stock_rows,
             "recent_movements": recent_movements,
             "search": search,
         },
@@ -696,14 +736,49 @@ def catalogue_index(request):
         .distinct()
     )
 
-    rows = [
-        {
-            "product": p,
-            "total": totals.get(p.pk, Decimal("0.000")),
-            "has_recipe": p.pk in has_recipe,
-        }
-        for p in products
-    ]
+    # Reserved + threshold per row, per 0043 + 0044. Scope: the branch
+    # in selected_branch (if any) — else aggregate across active branches.
+    # The same `reserved_kg` helper that feeds the dashboard panel keeps
+    # the numbers consistent.
+    reserved_branches = (
+        [selected_branch]
+        if selected_branch is not None
+        else list(Branch.objects.filter(is_active=True))
+    )
+
+    rows = []
+    for p in products:
+        reserved = Decimal("0.000")
+        effective_total = Decimal("0.000")
+        threshold_min: Decimal | None = None
+        is_low = False
+        for b in reserved_branches:
+            r = reserved_kg(p, b)
+            reserved += r
+            on_hand = (
+                Stock.objects.filter(product=p, branch=b)
+                .values_list("quantity", flat=True)
+                .first()
+                or Decimal("0.000")
+            )
+            eff_b = on_hand - r
+            effective_total += eff_b
+            t = threshold_for(p, b)
+            if t is not None:
+                threshold_min = t if threshold_min is None else min(threshold_min, t)
+                if eff_b < t:
+                    is_low = True
+        rows.append(
+            {
+                "product": p,
+                "total": totals.get(p.pk, Decimal("0.000")),
+                "reserved": reserved.quantize(Decimal("0.001")),
+                "effective": effective_total.quantize(Decimal("0.001")),
+                "threshold": threshold_min,
+                "is_low": is_low,
+                "has_recipe": p.pk in has_recipe,
+            }
+        )
 
     return render(
         request,
@@ -735,6 +810,37 @@ def product_detail(request, pk: int):
         stock_qs = stock_qs.filter(branch_id=request.user.branch_id)
     stocks = list(stock_qs.order_by("branch__code"))
     total = sum((s.quantity for s in stocks), start=Decimal("0.000"))
+
+    # Per-branch reserved/effective breakdown per 0043 + 0044.
+    branches_for_stock = (
+        [request.user.branch]
+        if (request.user.is_obsluha and request.user.branch_id)
+        else list(Branch.objects.filter(is_active=True).order_by("code"))
+    )
+    stocks_by_branch_id = {s.branch_id: s for s in stocks}
+    branch_rows = []
+    total_reserved = Decimal("0.000")
+    total_effective = Decimal("0.000")
+    for b in branches_for_stock:
+        s = stocks_by_branch_id.get(b.pk)
+        on_hand = s.quantity if s else Decimal("0.000")
+        reserved = reserved_kg(product, b)
+        effective = (on_hand - reserved).quantize(Decimal("0.001"))
+        threshold = threshold_for(product, b)
+        branch_rows.append(
+            {
+                "branch": b,
+                "on_hand": on_hand,
+                "reserved": reserved,
+                "effective": effective,
+                "threshold": threshold,
+                "is_low": (
+                    threshold is not None and effective < threshold
+                ),
+            }
+        )
+        total_reserved += reserved
+        total_effective += effective
 
     recipe = []
     if product.kind == Product.Kind.MIXTURE:
@@ -771,6 +877,9 @@ def product_detail(request, pk: int):
             "product": product,
             "stocks": stocks,
             "total_quantity": total,
+            "total_reserved": total_reserved,
+            "total_effective": total_effective,
+            "branch_rows": branch_rows,
             "recipe": recipe,
             "used_in": used_in,
             "recent_movements": recent_movements,
@@ -1638,8 +1747,9 @@ def product_create(request):
     Recipe is not editable here; for a new mixture, create it first
     then edit it to add components. Keeps the create form small.
     """
+    can_edit_threshold = request.user.is_vlastnik
     if request.method == "POST":
-        form = ProductForm(request.POST)
+        form = ProductForm(request.POST, can_edit_threshold=can_edit_threshold)
         if form.is_valid():
             product = form.save()
             messages.success(request, f"Produkt {product.name_cs} přidán.")
@@ -1651,11 +1761,17 @@ def product_create(request):
                 return redirect("inventory:product_edit", pk=product.pk)
             return redirect("inventory:product_detail", pk=product.pk)
     else:
-        form = ProductForm()
+        form = ProductForm(can_edit_threshold=can_edit_threshold)
     return render(
         request,
         "inventory/product_form.html",
-        {"form": form, "mode": "create", "recipe_formset": None},
+        {
+            "form": form,
+            "mode": "create",
+            "recipe_formset": None,
+            "threshold_formset": None,
+            "can_edit_threshold": can_edit_threshold,
+        },
     )
 
 
@@ -1669,6 +1785,7 @@ def product_edit(request, pk: int):
     product = get_object_or_404(Product, pk=pk)
     is_mixture = product.kind == Product.Kind.MIXTURE
     can_edit_recipe = is_mixture and request.user.is_vlastnik
+    can_edit_threshold = request.user.is_vlastnik
 
     kind_locked = (
         Stock.objects.filter(product=product).exists()
@@ -1680,9 +1797,17 @@ def product_edit(request, pk: int):
     recipe_qs = RecipeComponent.objects.filter(
         mixture_product=product
     ).order_by("component_product__name_cs")
+    override_qs = StockThresholdOverride.objects.filter(
+        product=product
+    ).order_by("branch__code")
 
     if request.method == "POST":
-        form = ProductForm(request.POST, instance=product, lock_kind=kind_locked)
+        form = ProductForm(
+            request.POST,
+            instance=product,
+            lock_kind=kind_locked,
+            can_edit_threshold=can_edit_threshold,
+        )
 
         recipe_formset = None
         if can_edit_recipe:
@@ -1693,9 +1818,19 @@ def product_edit(request, pk: int):
                 form_kwargs={"mixture": product},
             )
 
+        threshold_formset = None
+        if can_edit_threshold:
+            threshold_formset = ThresholdOverrideFormSet(
+                request.POST,
+                queryset=override_qs,
+                prefix="threshold",
+            )
+
         forms_valid = form.is_valid()
         if recipe_formset is not None:
             forms_valid = recipe_formset.is_valid() and forms_valid
+        if threshold_formset is not None:
+            forms_valid = threshold_formset.is_valid() and forms_valid
 
         if forms_valid:
             form.save()
@@ -1706,10 +1841,21 @@ def product_edit(request, pk: int):
                     inst.save()
                 for deleted in recipe_formset.deleted_objects:
                     deleted.delete()
+            if threshold_formset is not None:
+                instances = threshold_formset.save(commit=False)
+                for inst in instances:
+                    inst.product = product
+                    inst.save()
+                for deleted in threshold_formset.deleted_objects:
+                    deleted.delete()
             messages.success(request, "Změny uloženy.")
             return redirect("inventory:product_detail", pk=product.pk)
     else:
-        form = ProductForm(instance=product, lock_kind=kind_locked)
+        form = ProductForm(
+            instance=product,
+            lock_kind=kind_locked,
+            can_edit_threshold=can_edit_threshold,
+        )
         recipe_formset = (
             RecipeComponentFormSet(
                 queryset=recipe_qs,
@@ -1717,6 +1863,13 @@ def product_edit(request, pk: int):
                 form_kwargs={"mixture": product},
             )
             if can_edit_recipe
+            else None
+        )
+        threshold_formset = (
+            ThresholdOverrideFormSet(
+                queryset=override_qs, prefix="threshold"
+            )
+            if can_edit_threshold
             else None
         )
 
@@ -1733,8 +1886,10 @@ def product_edit(request, pk: int):
             "target": product,
             "recipe_formset": recipe_formset,
             "new_recipe_row": new_recipe_row,
+            "threshold_formset": threshold_formset,
             "kind_locked": kind_locked,
             "can_edit_recipe": can_edit_recipe,
+            "can_edit_threshold": can_edit_threshold,
         },
     )
 
@@ -2078,3 +2233,200 @@ def inventura_edit(request, code: str):
             "all_branches": Branch.objects.filter(is_active=True).order_by("code"),
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# PlannedTransfer + plánované míchání (Pass 6, per decision 0044).
+#
+# All authenticated users (Matej 2026-06-14 confirmation). No tier gate
+# beyond LoginRequiredMiddleware.
+# ---------------------------------------------------------------------------
+
+
+@require_GET
+def planned_transfer_index(request):
+    """List of plánované převody. Default: PLANNED only."""
+    state = request.GET.get("state") or PlannedTransfer.State.PLANNED
+    qs = (
+        PlannedTransfer.objects.select_related(
+            "source_branch", "target_branch", "product", "created_by"
+        )
+        .order_by("-scheduled_for", "-id")
+    )
+    if state in {s.value for s in PlannedTransfer.State}:
+        qs = qs.filter(state=state)
+    if request.user.is_obsluha and request.user.branch_id:
+        qs = qs.filter(
+            Q(source_branch_id=request.user.branch_id)
+            | Q(target_branch_id=request.user.branch_id)
+        )
+    transfers = list(qs[:200])
+    return render(
+        request,
+        "inventory/planned_transfer_index.html",
+        {
+            "transfers": transfers,
+            "count": len(transfers),
+            "filter_state": state,
+        },
+    )
+
+
+def planned_transfer_create(request):
+    if request.method == "POST":
+        form = PlannedTransferForm(request.POST)
+        if form.is_valid():
+            transfer = form.save(commit=False)
+            transfer.created_by = request.user
+            transfer.save()
+            messages.success(
+                request,
+                f"Převod {transfer.product.name_cs} "
+                f"{transfer.quantity_kg} kg naplánován.",
+            )
+            return redirect(
+                "inventory:planned_transfer_detail", pk=transfer.pk
+            )
+    else:
+        initial = {}
+        if request.user.is_obsluha and request.user.branch_id:
+            initial["source_branch"] = request.user.branch_id
+        form = PlannedTransferForm(initial=initial)
+    return render(
+        request,
+        "inventory/planned_transfer_form.html",
+        {"form": form, "mode": "create"},
+    )
+
+
+@require_GET
+def planned_transfer_detail(request, pk: int):
+    transfer = get_object_or_404(
+        PlannedTransfer.objects.select_related(
+            "source_branch", "target_branch", "product", "created_by"
+        ).prefetch_related("movements__branch"),
+        pk=pk,
+    )
+    paired_movements = list(
+        transfer.movements.select_related("branch").order_by("kind", "id")
+    )
+    return render(
+        request,
+        "inventory/planned_transfer_detail.html",
+        {
+            "transfer": transfer,
+            "paired_movements": paired_movements,
+        },
+    )
+
+
+@require_POST
+def planned_transfer_execute(request, pk: int):
+    transfer = get_object_or_404(PlannedTransfer, pk=pk)
+    try:
+        execute_planned_transfer(transfer, executed_by=request.user)
+    except ValidationError as exc:
+        messages.error(
+            request,
+            "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc),
+        )
+        return redirect("inventory:planned_transfer_detail", pk=transfer.pk)
+    messages.success(
+        request,
+        f"Převod proveden ({transfer.product.name_cs} "
+        f"{transfer.quantity_kg} kg "
+        f"{transfer.source_branch.code} → {transfer.target_branch.code}).",
+    )
+    return redirect("inventory:planned_transfer_detail", pk=transfer.pk)
+
+
+@require_POST
+def planned_transfer_cancel(request, pk: int):
+    transfer = get_object_or_404(PlannedTransfer, pk=pk)
+    try:
+        cancel_planned_transfer(transfer, cancelled_by=request.user)
+    except ValidationError as exc:
+        messages.error(
+            request,
+            "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc),
+        )
+        return redirect("inventory:planned_transfer_detail", pk=transfer.pk)
+    messages.success(request, "Plánovaný převod zrušen.")
+    return redirect("inventory:planned_transfer_detail", pk=transfer.pk)
+
+
+# ---------------------------------------------------------------------------
+# Plánované míchání (per 0044). Wraps plan_mixing_job.
+# ---------------------------------------------------------------------------
+
+
+def mixing_plan_create(request):
+    """Create a PLANNED MixingJob — no stock consumed. Operator clicks
+    "Spustit teď" on the detail page to transition to RUNNING."""
+    if request.method == "POST":
+        form = MixingPlanForm(request.POST, user=request.user)
+        if form.is_valid():
+            branch = form.cleaned_data["branch"]
+            if (
+                request.user.is_obsluha
+                and request.user.branch_id != branch.pk
+            ):
+                form.add_error(
+                    "branch", "Nemáte oprávnění pro tuto pobočku."
+                )
+            else:
+                try:
+                    job = plan_mixing_job(
+                        branch=branch,
+                        mixture=form.cleaned_data["mixture"],
+                        target_qty=form.cleaned_data["target_qty"],
+                        user=request.user,
+                        planned_for=form.cleaned_data.get("planned_for"),
+                        note=form.cleaned_data.get("note", ""),
+                    )
+                except ValidationError as exc:
+                    form.add_error(
+                        None,
+                        "; ".join(exc.messages)
+                        if hasattr(exc, "messages")
+                        else str(exc),
+                    )
+                else:
+                    messages.success(
+                        request,
+                        f"Plánovaná dávka {job.mixture.name_cs} "
+                        f"{job.target_qty} kg vytvořena.",
+                    )
+                    return redirect("inventory:mixing_job_detail", pk=job.pk)
+    else:
+        form = MixingPlanForm(user=request.user)
+    return render(
+        request,
+        "inventory/mixing_plan_form.html",
+        {"form": form},
+    )
+
+
+@require_POST
+def mixing_job_start(request, pk: int):
+    """Transition a PLANNED MixingJob to RUNNING (consumes stock)."""
+    job = get_object_or_404(MixingJob, pk=pk)
+    if (
+        request.user.is_obsluha
+        and request.user.branch_id != job.branch_id
+    ):
+        return HttpResponse(
+            "Nemáte oprávnění upravit tuto dávku.",
+            content_type="text/plain; charset=utf-8",
+            status=403,
+        )
+    try:
+        start_mixing_job(job=job, user=request.user)
+    except ValidationError as exc:
+        messages.error(
+            request,
+            "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc),
+        )
+        return redirect("inventory:mixing_job_detail", pk=job.pk)
+    messages.success(request, "Dávka spuštěna — stav skladu byl odečten.")
+    return redirect("inventory:mixing_job_detail", pk=job.pk)

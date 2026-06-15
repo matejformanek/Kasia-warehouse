@@ -36,6 +36,19 @@ Branch staff do not see this screen — they land on
   across both branches, with date, customer, branch, total, and a link
   to [Detail dodacího listu](09-detail-dodaciho-listu.md). The owner
   reads this section to know what went out.
+- A **"Dochází zboží"** panel per
+  [`../decisions/0043-reorder-threshold.md`](../decisions/0043-reorder-threshold.md)
+  + [`../decisions/0044-reservations-planned-states.md`](../decisions/0044-reservations-planned-states.md).
+  Lists every (product, branch) pair where the per-branch *effective*
+  stock (= `Stock.quantity − reserved_kg`) has fallen below the
+  configured threshold. Columns: produkt, pobočka, na skladě
+  (raw), rezervováno (planned mixing + planned transfers, source-side
+  only), efektivně, práh, schodek. Sorted by `schodek DESC` so the
+  most-urgent rows appear first. Empty list → panel is hidden (no
+  "vše v pořádku" placeholder). The same rows feed the daily
+  `mail_low_stock_summary` e-mail per
+  [`../decisions/0045-low-stock-summary-email.md`](../decisions/0045-low-stock-summary-email.md);
+  the panel and the e-mail always agree.
 - A **"K vyřešení"** (things flagged for owner attention) section,
   surfaced from elsewhere in the system. Examples that belong here:
   - Movements that were edited recently and may need a follow-up

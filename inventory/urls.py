@@ -118,6 +118,39 @@ urlpatterns = [
         views.branch_reactivate,
         name="branch_reactivate",
     ),
+    # PlannedTransfer (Pass 6, per 0044) — all authenticated users.
+    path("prevody/", views.planned_transfer_index, name="planned_transfer_index"),
+    path(
+        "prevody/novy/",
+        views.planned_transfer_create,
+        name="planned_transfer_create",
+    ),
+    path(
+        "prevody/<int:pk>/",
+        views.planned_transfer_detail,
+        name="planned_transfer_detail",
+    ),
+    path(
+        "prevody/<int:pk>/provest/",
+        views.planned_transfer_execute,
+        name="planned_transfer_execute",
+    ),
+    path(
+        "prevody/<int:pk>/zrusit/",
+        views.planned_transfer_cancel,
+        name="planned_transfer_cancel",
+    ),
+    # Plánované míchání (Pass 6, per 0044).
+    path(
+        "michani/planovat/",
+        views.mixing_plan_create,
+        name="mixing_plan_create",
+    ),
+    path(
+        "michani/<int:pk>/spustit/",
+        views.mixing_job_start,
+        name="mixing_job_start",
+    ),
     # Customer CRUD (Pass 5, per 0040)
     path("odberatele/", views.customer_index, name="customer_index"),
     path("odberatele/novy/", views.customer_create, name="customer_create"),

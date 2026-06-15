@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Převod #{{ transfer.pk }} — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>
+  Plánovaný převod #{{ transfer.pk }}
+  {% if transfer.state == "planned" %}
+    <span class="tab-chip active" style="background:var(--accent);">naplánováno</span>
+  {% elif transfer.state == "done" %}
+    <span class="tab-chip active" style="background:var(--ok);">provedeno</span>
+  {% else %}
+    <span class="tab-chip" style="background:#eee;color:var(--fg-soft);">zrušeno</span>
+  {% endif %}
+</h1>
+
+<div class="card">
+  <table class="lines">
+    <tbody>
+      <tr><th style="width:200px;">Z (zdrojová pobočka)</th><td>{{ transfer.source_branch.code }} — {{ transfer.source_branch.name }}</td></tr>
+      <tr><th>Do (cílová pobočka)</th><td>{{ transfer.target_branch.code }} — {{ transfer.target_branch.name }}</td></tr>
+      <tr><th>Produkt</th><td><a href="{% url 'inventory:product_detail' pk=transfer.product.pk %}">{{ transfer.product.name_cs }}</a></td></tr>
+      <tr><th>Množství</th><td style="font-variant-numeric:tabular-nums;">{{ transfer.quantity_kg|floatformat:"3" }} kg</td></tr>
+      <tr><th>Plánováno na</th><td>{{ transfer.scheduled_for|date:"d. m. Y" }}</td></tr>
+      <tr><th>Poznámka</th><td>{{ transfer.notes|linebreaksbr|default:"—" }}</td></tr>
+      <tr><th>Vytvořil</th><td>{{ transfer.created_by.email }} ({{ transfer.created_at|date:"d. m. Y H:i" }})</td></tr>
+    </tbody>
+  </table>
+</div>
+
+{% if transfer.state == "planned" %}
+  <div class="card">
+    <h2 style="margin-top:0;font-size:1.05rem;">Akce</h2>
+    <div style="display:flex;gap:0.75rem;">
+      <form method="post" action="{% url 'inventory:planned_transfer_execute' pk=transfer.pk %}"
+            onsubmit="return confirm('Provést převod? Vznikne výdej na {{ transfer.source_branch.code }} (s dodacím listem) a příjem na {{ transfer.target_branch.code }}.');">
+        {% csrf_token %}
+        <button type="submit" class="primary">Provést teď</button>
+      </form>
+      <form method="post" action="{% url 'inventory:planned_transfer_cancel' pk=transfer.pk %}"
+            onsubmit="return confirm('Opravdu zrušit tento plánovaný převod?');">
+        {% csrf_token %}
+        <button type="submit" class="secondary">Zrušit plán</button>
+      </form>
+    </div>
+    <p style="color:var(--fg-soft);font-size:0.9rem;margin-top:0.5rem;">
+      Provedení vystaví dodací list (e-mail Petrovi+Karolíně) a odečte stav skladu.
+    </p>
+  </div>
+{% endif %}
+
+{% if paired_movements %}
+  <div class="card">
+    <h2 style="margin-top:0;font-size:1.05rem;">Spárované pohyby</h2>
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Druh</th>
+          <th>Pobočka</th>
+          <th>Datum</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mv in paired_movements %}
+          <tr class="row-link" data-href="{% url 'inventory:movement_edit' pk=mv.pk %}">
+            <td>{{ mv.get_kind_display }}</td>
+            <td>{{ mv.branch.code }}</td>
+            <td>{{ mv.date_issued|date:"d. m. Y" }}</td>
+            <td><a href="{% url 'inventory:movement_edit' pk=mv.pk %}">Otevřít pohyb</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+
+<p>
+  <a class="secondary" href="{% url 'inventory:planned_transfer_index' %}">Zpět na seznam</a>
+</p>
+{% endblock %}

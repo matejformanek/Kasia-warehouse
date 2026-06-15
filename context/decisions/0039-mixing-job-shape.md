@@ -1,5 +1,7 @@
 # 0039 — Mixing job shape: consume-at-start, snapshot recipe, yield as delta
 
+> *Superseded by [0044](./0044-reservations-planned-states.md) in part — see § (1) Reserve vs. consume at start. §§ (2) and (3) remain in force.*
+
 ## Context
 
 [`0032`](./0032-mixing-in-mvp.md) promoted míchání to MVP and

@@ -47,7 +47,7 @@ runcmd:
   # App checkout (clone is shallow; CI pulls images thereafter).
   - mkdir -p /srv/kasia
   - chown app:app /srv/kasia
-  - sudo -u app git clone --depth 1 https://github.com/REPLACE_ME/Kasia-warehouse.git /srv/kasia || true
+  - sudo -u app git clone --depth 1 https://github.com/matejformanek/Kasia-warehouse.git /srv/kasia || true
 
   # Local UFW belt-and-braces (Hetzner firewall is the real gate).
   - ufw default deny incoming

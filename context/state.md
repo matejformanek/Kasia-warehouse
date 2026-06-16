@@ -1142,6 +1142,16 @@
     (unchanged — pure template + docs edits); ruff clean; system
     check clean.
 
+- **2026-06-16** — Hetzner provisioning in progress (paused for
+  compact). Token has been revoked + reissued; Matej's pre-flight
+  checklist (token in `~/.zprofile`, SSH keypair, OpenTofu/Terraform
+  install) is being worked through. Detailed live handoff at
+  [`context/hetzner-provisioning-handoff.md`](./hetzner-provisioning-handoff.md)
+  — next session read that *after* this state.md.
+  `infra/terraform/cloud-init.yaml` `REPLACE_ME` placeholder fixed
+  to `matejformanek/Kasia-warehouse.git` (un-staged, will commit
+  with the rest of this pre-provisioning batch).
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

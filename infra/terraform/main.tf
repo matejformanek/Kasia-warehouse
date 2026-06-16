@@ -10,7 +10,7 @@ resource "hcloud_firewall" "kasia" {
     direction  = "in"
     protocol   = "tcp"
     port       = "22"
-    source_ips = [var.admin_ip]
+    source_ips = ["0.0.0.0/0", "::/0"]
   }
 
   rule {

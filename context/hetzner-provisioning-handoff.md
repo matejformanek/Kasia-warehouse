@@ -4,12 +4,14 @@
 > without losing the in-progress Hetzner provisioning state. Next
 > agent: read this first (after `state.md`), then resume at § Next.
 
-**Date:** 2026-06-16
-**Current state of code:** `main @ 871d062` pushed to
-`origin/main` (Pass 6 + polish). 273 pytest tests green, ruff clean,
-system check clean, makemigrations --check clean.
-**Current state of infra:** nothing on Hetzner yet. Local docker
-stack is live at http://localhost/ for walkthrough.
+**Date:** 2026-06-16 (provisioning § 1 done; § 2 partly done)
+**Current state of code:** `main @ 309e672` pushed to `origin/main`
+(Pass 6 + polish + this handoff doc + cloud-init hygiene). 273
+pytest tests green, ruff clean, system check clean.
+**Current state of infra:** Box **`91.98.47.1`** is live, cloud-init
+finished, `/srv/kasia/.env` populated, GH `SSH_KEY` secret set. **First
+deploy pending the next push to `main`.** Local docker stack is still
+live at http://localhost/.
 
 ---
 
@@ -28,21 +30,24 @@ Decisions + rules that gate this work:
   — no console clicks for app/infra state; everything through
   `infra/terraform/` + `compose.yaml` + `deploy.yml`.
 
-### Status checklist (verified 2026-06-16 post-setup)
+### Status checklist (verified 2026-06-16 post-provisioning)
 
-- [x] Hetzner account created
-- [x] `kasia-prod` project created in Hetzner Cloud Console
-- [x] First leaked token (chat paste) — **REVOKED**
-- [x] Second leaked token (agent Read tool pulled value into context) —
-  **REVOKED**
-- [x] Third (current) token generated + added to `~/.zprofile` (✅ live
-  in Matej's interactive shell; rtk redacts the value on display)
-- [x] Terraform installed: `Terraform v1.15.6` at
-  `/opt/homebrew/bin/terraform` (Hashicorp tap)
-- [x] `hcloud` CLI installed: `v1.65.0` at `/opt/homebrew/bin/hcloud`
-- [ ] **SSH keypair NOT yet generated** —
-  `ssh-keygen -t ed25519 -f ~/.ssh/kasia_prod -C kasia-prod`
-  is the last pre-flight step Matej owns
+- [x] Hetzner account + `kasia-prod` project
+- [x] HCLOUD token in `~/.zprofile` (third one — two prior leaks)
+- [x] Terraform v1.15.6 + hcloud v1.65.0 installed
+- [x] SSH keypair `~/.ssh/kasia_prod{,.pub}` generated
+- [x] **`terraform apply` complete — 4 resources created**
+- [x] Cloud-init finished (`status: done, degraded` — `sudo: false`
+  deprecation only, fixed in code now)
+- [x] **Repo flipped to public** (anonymous clone works on the box)
+- [x] `/srv/kasia/.env` populated server-side (secrets never touched
+  agent context)
+- [x] `app` user SSH authorized_keys seeded (deploy.yml SSHes as app)
+- [x] GH Actions `SSH_KEY` secret set
+- [ ] First deploy not yet triggered (this push triggers it)
+- [ ] Superuser not yet created
+- [ ] SMTP provider not chosen (e-mails silently no-op until then)
+- [ ] Storage Box BX11 not ordered (no backups yet)
 
 ### Known gotcha — agent shell does not inherit `~/.zprofile`
 

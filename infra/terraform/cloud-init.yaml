@@ -15,11 +15,14 @@ packages:
   - gnupg
   - ufw
 
+ssh_authorized_keys: []  # filled by hcloud_ssh_key for root; app inherits below
+
 users:
   - name: app
     groups: [docker]
     shell: /bin/bash
-    sudo: false
+    sudo: null
+    ssh_authorized_keys: []  # populated at runcmd time from root's keys
 
 write_files:
   - path: /etc/sysctl.d/99-kasia.conf
@@ -44,10 +47,18 @@ runcmd:
   - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl enable --now docker
 
-  # App checkout (clone is shallow; CI pulls images thereafter).
+  # Seed the app user's authorized_keys from root's (Hetzner only
+  # provisions the hcloud_ssh_key for root; deploy.yml SSHes as app).
+  - install -d -m 700 -o app -g app /home/app/.ssh
+  - cp /root/.ssh/authorized_keys /home/app/.ssh/authorized_keys
+  - chmod 600 /home/app/.ssh/authorized_keys
+  - chown app:app /home/app/.ssh/authorized_keys
+
+  # App checkout (shallow; CI pulls GHCR images thereafter). Repo is
+  # public per the 2026-06-16 provisioning decision; clone is anon.
   - mkdir -p /srv/kasia
   - chown app:app /srv/kasia
-  - sudo -u app git clone --depth 1 https://github.com/matejformanek/Kasia-warehouse.git /srv/kasia || true
+  - sudo -u app git clone --depth 1 https://github.com/matejformanek/Kasia-warehouse.git /srv/kasia
 
   # Local UFW belt-and-braces (Hetzner firewall is the real gate).
   - ufw default deny incoming

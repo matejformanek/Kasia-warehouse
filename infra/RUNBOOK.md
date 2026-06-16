@@ -70,11 +70,12 @@ In the GitHub repo settings → Secrets and variables → Actions:
 
 | Secret      | Value                                                  |
 |-------------|--------------------------------------------------------|
-| `SSH_HOST`  | `<server_ipv4>` from Terraform output                  |
-| `SSH_USER`  | `app`                                                  |
 | `SSH_KEY`   | contents of `~/.ssh/kasia_prod` (the private key)      |
 
-GHCR push is authenticated by the built-in `GITHUB_TOKEN`; no PAT.
+Host and user are hardcoded literals in `.github/workflows/deploy.yml`
+(`host: 91.98.47.1`, `username: app`) — non-secret. If the box is
+re-IP'd, edit the workflow rather than rotating a secret. GHCR push
+is authenticated by the built-in `GITHUB_TOKEN`; no PAT.
 
 ### 1.5 Trigger the first deploy
 
@@ -165,7 +166,9 @@ operation gives us shape.
 4. `docker compose up -d proxy` — Caddy auto-provisions a Let's
    Encrypt cert on first request to the hostname.
 5. Update `DJANGO_ALLOWED_HOSTS` in the on-box `.env`.
-6. Update GH Actions `SSH_HOST` if it was IP-only.
+6. Update `host:` literal in `.github/workflows/deploy.yml` if you
+   want it to be the hostname instead of the IP (cosmetic — the IP
+   still works since DNS just resolves to it).
 
 No code change. No decision file. The Caddyfile comment header
 documents the exact two-line diff.

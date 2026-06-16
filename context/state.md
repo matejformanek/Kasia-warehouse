@@ -1142,26 +1142,49 @@
     (unchanged — pure template + docs edits); ruff clean; system
     check clean.
 
-- **2026-06-16** — Hetzner provisioning in progress (paused for
-  compact). Pre-flight status:
-  - ✅ Hetzner account + `kasia-prod` project
-  - ✅ Three API tokens rotated (twice due to leaks: chat paste then
-    Read-tool context leak); third+current token in `~/.zprofile`
-  - ✅ Terraform v1.15.6 + hcloud v1.65.0 installed via brew
-  - ❌ SSH keypair `~/.ssh/kasia_prod{,.pub}` still to generate
-  - ❌ Box not yet provisioned (`terraform apply` blocked on Matej's
-    `go` signal)
+- **2026-06-16** — Hetzner provisioning **§ 1 complete**. Box is
+  live at **`91.98.47.1`** (IPv6 `2a01:4f8:c012:b651::1`),
+  CPX22 in `fsn1`, Ubuntu 24.04. Resources via `terraform apply`
+  (saved-plan flow): `hcloud_ssh_key.admin`, `hcloud_firewall.kasia`,
+  `hcloud_server.web`, `hcloud_firewall_attachment.web`.
+  - Repo flipped to **public** via `gh repo edit … --visibility public`
+    (no secrets in code per infra-as-code rule; cleaner than wiring
+    a deploy key on the box). Cloud-init clone now works anonymously.
+  - Cloud-init done (`status: done, degraded`). Recoverable warning
+    only: `sudo: false` deprecated → `null`. Now fixed in
+    `cloud-init.yaml` along with seeding `/home/app/.ssh/authorized_keys`
+    from root's (needed because deploy.yml SSHes as `app`).
+  - Firewall: SSH 22 **relaxed to 0.0.0.0/0** (key auth is sufficient
+    at the small-business shape; Matej moves networks too often to
+    pin source); 80, 443, ICMP open to world.
+  - `/srv/kasia/.env` populated on the box. Secrets generated
+    **server-side via `python3 -c "import secrets..." | sed`** —
+    never round-tripped through agent context.
+    - Filled: SECRET_KEY (86 chars), POSTGRES_PASSWORD (64 chars),
+      ALLOWED_HOSTS=91.98.47.1, DEBUG=0, DEFAULT_FROM_EMAIL.
+    - Blank pending decisions: SMTP block (no provider chosen yet),
+      RESTIC block (Storage Box not ordered).
+  - `deploy.yml` simplified: `SSH_HOST` + `SSH_USER` removed from
+    GH secrets (hardcoded `host: 91.98.47.1`, `username: app` as
+    literals — non-secret). **Only `SSH_KEY` is now a GH secret;
+    Matej has set it.** Re-IPing the box → edit the workflow, no
+    secret rotation.
+  - First terraform plan misread `185.63.99.81` as Cloudflare's
+    `104.28.x.x` via `ifconfig.me` → switched to `api.ipify.org`.
+    Worth knowing for future plans.
 
-  Known gotcha: Claude Bash tool spawns non-login shells so
-  `~/.zprofile` is not auto-sourced; § 1 of the handoff doc prefixes
-  every command with `source ~/.zprofile &&`. Alternative is moving
-  the export to `~/.zshenv`.
-
-  Detailed live handoff at
-  [`context/hetzner-provisioning-handoff.md`](./hetzner-provisioning-handoff.md)
-  — next session read that *after* this state.md.
-  `infra/terraform/cloud-init.yaml` `REPLACE_ME` placeholder fixed
-  to `matejformanek/Kasia-warehouse.git` (commit `79529b6`).
+  **Pending (§ 2 follow-ups):**
+  - Push these changes (cloud-init hygiene + deploy.yml literals +
+    RUNBOOK + state.md) → triggers first deploy. Build → push to
+    GHCR → SSH deploy as app → migrate → up -d.
+  - First superuser: `docker compose run --rm web python manage.py
+    createsuperuser --noinput` after deploy succeeds (Matej picks
+    the admin password — never enters agent context).
+  - SMTP provider decision (deferred). Without it, dodák e-mails
+    and the daily low-stock summary are silent no-ops.
+  - Hetzner Storage Box BX11 + restic backups (deferred).
+  - Cron entry for `mail_low_stock_summary` (deferred — needs cron
+    decision and a few days of real data anyway).
 
 ## Hand-off for the next session (post-compact)
 

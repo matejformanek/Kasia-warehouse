@@ -94,6 +94,10 @@ infra/terraform/.terraform/
 infra/terraform/*.tfstate
 infra/terraform/*.tfstate.*
 infra/terraform/.terraform.lock.hcl
+# Saved plan binaries embed TF_VAR_* values (including HCLOUD_TOKEN)
+# — never commit. Local-only convenience.
+infra/terraform/*.tfplan*
+infra/terraform/tfplan.bin
 
 # pipenv
 #   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.

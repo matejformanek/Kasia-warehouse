@@ -1,8 +1,9 @@
 name: deploy
 
 # Dormant until infra/RUNBOOK.md one-time bring-up is complete:
-# Hetzner box provisioned, /srv/kasia .env populated, GH Actions
-# secrets SSH_HOST / SSH_USER / SSH_KEY set. GHCR push uses the
+# Hetzner box provisioned, /srv/kasia .env populated, single GH
+# Actions secret SSH_KEY set (host + user are hardcoded literals
+# below — non-secret per 2026-06-16 decision). GHCR push uses the
 # built-in GITHUB_TOKEN — no PAT.
 
 on:
@@ -70,8 +71,8 @@ jobs:
       - name: SSH deploy
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
+          host: 91.98.47.1
+          username: app
           key: ${{ secrets.SSH_KEY }}
           script: |
             set -euo pipefail

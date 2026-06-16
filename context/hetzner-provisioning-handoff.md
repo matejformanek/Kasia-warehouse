@@ -28,27 +28,48 @@ Decisions + rules that gate this work:
   — no console clicks for app/infra state; everything through
   `infra/terraform/` + `compose.yaml` + `deploy.yml`.
 
-### Status checklist (tick what's done)
+### Status checklist (verified 2026-06-16 post-setup)
 
 - [x] Hetzner account created
 - [x] `kasia-prod` project created in Hetzner Cloud Console
-- [x] Old leaked API token (`oRYZ5asCq5RD…`) **REVOKED**
-- [x] New API token generated (Read & Write) — name
-  `terraform-matej-workstation`
-- [ ] New token added to `~/.zprofile` via:
-  ```bash
-  echo 'export HCLOUD_TOKEN="…"' >> ~/.zprofile
-  source ~/.zprofile
-  ```
-  Verify: `grep -c '^export HCLOUD_TOKEN=' ~/.zprofile` returns `1`.
-  ⚠️ **NEVER** put the token in the project `/Users/matej/Work/Kasia-warehouse/.env`
-  — that file ships into the running Django container.
-- [ ] SSH keypair generated:
+- [x] First leaked token (chat paste) — **REVOKED**
+- [x] Second leaked token (agent Read tool pulled value into context) —
+  **REVOKED**
+- [x] Third (current) token generated + added to `~/.zprofile` (✅ live
+  in Matej's interactive shell; rtk redacts the value on display)
+- [x] Terraform installed: `Terraform v1.15.6` at
+  `/opt/homebrew/bin/terraform` (Hashicorp tap)
+- [x] `hcloud` CLI installed: `v1.65.0` at `/opt/homebrew/bin/hcloud`
+- [ ] **SSH keypair NOT yet generated** —
   `ssh-keygen -t ed25519 -f ~/.ssh/kasia_prod -C kasia-prod`
-- [ ] Terraform OR OpenTofu installed locally
-  — `brew install opentofu` (recommended, BSL-free fork) **or**
-  `brew tap hashicorp/tap && brew install hashicorp/tap/terraform`
-- [ ] `hcloud` CLI installed locally — `brew install hcloud`
+  is the last pre-flight step Matej owns
+
+### Known gotcha — agent shell does not inherit `~/.zprofile`
+
+The Claude Code Bash tool spawns a non-login, non-interactive shell.
+`~/.zprofile` is only sourced by login shells, so my Bash environment
+**does not** see `HCLOUD_TOKEN` automatically.
+
+**Two valid workarounds** (Matej picks one):
+
+1. **Recommended (no changes by Matej):** every agent terraform
+   command starts with `source ~/.zprofile &&` to pull the token in
+   for that subprocess. The agent does this; Matej just confirms.
+
+2. **Alternative (one-time fix):** move the export to `~/.zshenv`,
+   which IS sourced by non-interactive shells:
+   ```bash
+   # In Matej's terminal:
+   mv ~/.zprofile ~/.zshenv     # if .zprofile only contains the HCLOUD_TOKEN export
+   # or move the line via editor if .zprofile has other content
+   ```
+   After this, every subsequent agent shell sees `HCLOUD_TOKEN` with
+   no per-command sourcing.
+
+Workaround 1 is captured in § 1 commands below.
+
+⚠️ **NEVER** put the token in the project `/Users/matej/Work/Kasia-warehouse/.env`
+— that file ships into the running Django container.
 
 ### One pre-flight fix already landed on `main`
 
@@ -60,36 +81,62 @@ URL. Fixed on 2026-06-16 to `matejformanek/Kasia-warehouse.git`
 
 ## 1. What the agent runs when Matej says "go"
 
-Once the four boxes above are ticked, Matej says `go` and the agent
-runs (from `/Users/matej/Work/Kasia-warehouse/infra/terraform`):
+Pre-flight: Matej confirms `~/.ssh/kasia_prod{,.pub}` exists. Then
+agent runs (every command starts with `source ~/.zprofile &&` per the
+zsh-non-login gotcha above):
 
 ```bash
-# Confirm token is reachable from the agent's Bash environment
-# (sourced from ~/.zprofile per the harness's shell init).
-source ~/.zprofile
-[ -n "$HCLOUD_TOKEN" ] && echo "token ok" || echo "missing"
+# Step 1 — verify token reachable in agent shell (masked output only).
+source ~/.zprofile && \
+  if [ -n "$HCLOUD_TOKEN" ]; then \
+    echo "ok ${HCLOUD_TOKEN:0:6}…${HCLOUD_TOKEN: -4}"; \
+  else echo "MISSING"; fi
 
-# These three env vars are what main.tf reads.
-export TF_VAR_hcloud_token="$HCLOUD_TOKEN"
-export TF_VAR_ssh_pub_key="$(cat ~/.ssh/kasia_prod.pub)"
-export TF_VAR_admin_ip="$(curl -s https://ifconfig.me)/32"
+# Step 2 — set TF_VAR_* from env + workstation IP.
+source ~/.zprofile && \
+  export TF_VAR_hcloud_token="$HCLOUD_TOKEN" && \
+  export TF_VAR_ssh_pub_key="$(cat ~/.ssh/kasia_prod.pub)" && \
+  export TF_VAR_admin_ip="$(curl -s https://ifconfig.me)/32" && \
+  echo "admin_ip=$TF_VAR_admin_ip"
 
-cd /Users/matej/Work/Kasia-warehouse/infra/terraform
+# Step 3 — terraform init.
+cd /Users/matej/Work/Kasia-warehouse/infra/terraform && \
+  source ~/.zprofile && \
+  export TF_VAR_hcloud_token="$HCLOUD_TOKEN" && \
+  export TF_VAR_ssh_pub_key="$(cat ~/.ssh/kasia_prod.pub)" && \
+  export TF_VAR_admin_ip="$(curl -s https://ifconfig.me)/32" && \
+  terraform init
 
-terraform init      # or tofu init
-terraform plan      # PASTE OUTPUT BACK TO MATEJ FOR REVIEW
-                    # Expected: 4 resources to be created
-                    #   - hcloud_ssh_key.admin
-                    #   - hcloud_firewall.kasia
-                    #   - hcloud_server.web
-                    #   - hcloud_firewall_attachment.web
-                    # No "destroy" / "update" actions.
+# Step 4 — terraform plan. PASTE OUTPUT BACK TO MATEJ FOR REVIEW.
+# Expected: 4 resources to be created
+#   - hcloud_ssh_key.admin
+#   - hcloud_firewall.kasia
+#   - hcloud_server.web
+#   - hcloud_firewall_attachment.web
+# No "destroy" / "update" actions.
+cd /Users/matej/Work/Kasia-warehouse/infra/terraform && \
+  source ~/.zprofile && \
+  export TF_VAR_hcloud_token="$HCLOUD_TOKEN" && \
+  export TF_VAR_ssh_pub_key="$(cat ~/.ssh/kasia_prod.pub)" && \
+  export TF_VAR_admin_ip="$(curl -s https://ifconfig.me)/32" && \
+  terraform plan
 
-# WAIT for explicit "apply" from Matej before this:
-terraform apply -auto-approve
+# Step 5 — WAIT for explicit "apply" from Matej before this:
+cd /Users/matej/Work/Kasia-warehouse/infra/terraform && \
+  source ~/.zprofile && \
+  export TF_VAR_hcloud_token="$HCLOUD_TOKEN" && \
+  export TF_VAR_ssh_pub_key="$(cat ~/.ssh/kasia_prod.pub)" && \
+  export TF_VAR_admin_ip="$(curl -s https://ifconfig.me)/32" && \
+  terraform apply -auto-approve
 
-terraform output server_ipv4   # capture the box IP
+# Step 6 — capture box IP.
+cd /Users/matej/Work/Kasia-warehouse/infra/terraform && \
+  terraform output server_ipv4
 ```
+
+> If Matej picks Workaround 2 above (move token to `~/.zshenv`), the
+> `source ~/.zprofile &&` prefix can be dropped from every command —
+> the env var will already be in the agent's shell.
 
 Then wait for cloud-init to finish on the box:
 
@@ -251,11 +298,43 @@ Then in the browser at `http://<server_ipv4>/uzivatele/`:
 
 ---
 
-## 6. How to resume
+## 6. How to resume after compact
 
-Next agent: read `context/state.md` § Done (most recent first) → read
-this doc → check § Pre-flight checklist → ask Matej which boxes are
-ticked. The action you're empowered to take is § 1 (terraform
-`init / plan / apply`) on Matej's explicit `go` — and only that.
-Anything in § 2 requires Matej to be at the keyboard with the
-credentials.
+Next agent (= future-Claude after the context window resets):
+
+1. Read `context/state.md` § Done bottom (most recent first).
+2. Read this doc fully.
+3. Run this single verification block before doing anything:
+
+   ```bash
+   # Verify environment is intact post-compact.
+   source ~/.zprofile && \
+     if [ -n "$HCLOUD_TOKEN" ]; then \
+       echo "token: ok ${HCLOUD_TOKEN:0:6}…${HCLOUD_TOKEN: -4}"; \
+     else echo "token: MISSING — ask Matej to reset ~/.zprofile"; fi; \
+     echo "---"; \
+     ls -la ~/.ssh/kasia_prod 2>/dev/null | awk '{print $1, $NF}' \
+       || echo "ssh key: MISSING — Matej runs ssh-keygen -t ed25519 -f ~/.ssh/kasia_prod -C kasia-prod"; \
+     echo "---"; \
+     terraform --version | head -1
+   ```
+
+4. If `terraform` was already run, `cd infra/terraform && ls .terraform*`
+   tells you whether `init` was done. If `terraform.tfstate` exists,
+   the box is already provisioned — go to § 2 (Matej-only steps after
+   first-boot) instead.
+5. Ask Matej for the `go` signal. **Don't run anything from § 1
+   without explicit go-ahead** — `terraform apply` creates a billable
+   Hetzner CPX22.
+6. Run § 1 commands in order. After `terraform plan`, paste the
+   output to Matej and **pause** until he confirms "apply".
+7. After `terraform apply`, capture `server_ipv4` and tell Matej.
+   Wait for cloud-init via the SSH command in § 1. Then hand off
+   to § 2.
+
+### Matej's one-liner to resume
+
+After compact, paste this to the new session:
+
+> Continuing Hetzner provisioning per `context/hetzner-provisioning-handoff.md`.
+> Run the verification block in § 6 step 3, then wait for my `go`.

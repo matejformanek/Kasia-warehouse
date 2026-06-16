@@ -1143,14 +1143,25 @@
     check clean.
 
 - **2026-06-16** — Hetzner provisioning in progress (paused for
-  compact). Token has been revoked + reissued; Matej's pre-flight
-  checklist (token in `~/.zprofile`, SSH keypair, OpenTofu/Terraform
-  install) is being worked through. Detailed live handoff at
+  compact). Pre-flight status:
+  - ✅ Hetzner account + `kasia-prod` project
+  - ✅ Three API tokens rotated (twice due to leaks: chat paste then
+    Read-tool context leak); third+current token in `~/.zprofile`
+  - ✅ Terraform v1.15.6 + hcloud v1.65.0 installed via brew
+  - ❌ SSH keypair `~/.ssh/kasia_prod{,.pub}` still to generate
+  - ❌ Box not yet provisioned (`terraform apply` blocked on Matej's
+    `go` signal)
+
+  Known gotcha: Claude Bash tool spawns non-login shells so
+  `~/.zprofile` is not auto-sourced; § 1 of the handoff doc prefixes
+  every command with `source ~/.zprofile &&`. Alternative is moving
+  the export to `~/.zshenv`.
+
+  Detailed live handoff at
   [`context/hetzner-provisioning-handoff.md`](./hetzner-provisioning-handoff.md)
   — next session read that *after* this state.md.
   `infra/terraform/cloud-init.yaml` `REPLACE_ME` placeholder fixed
-  to `matejformanek/Kasia-warehouse.git` (un-staged, will commit
-  with the rest of this pre-provisioning batch).
+  to `matejformanek/Kasia-warehouse.git` (commit `79529b6`).
 
 ## Hand-off for the next session (post-compact)
 

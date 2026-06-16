@@ -169,4 +169,11 @@ urlpatterns = [
         views.customer_reactivate,
         name="customer_reactivate",
     ),
+    # Podpora (Pass 7, per 0046).
+    path("podpora/", views.support_view, name="support"),
+    path(
+        "podpora/<int:pk>/vyresit/",
+        views.feedback_toggle_view,
+        name="feedback_toggle",
+    ),
 ]

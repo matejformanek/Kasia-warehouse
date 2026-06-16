@@ -215,6 +215,20 @@
   }
   .tab-chip.active { color: white; }
   a.tab-chip { text-decoration: none; }
+  details {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  details summary {
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  details summary:hover { text-decoration: underline; }
+  details[open] summary { margin-bottom: 0.75rem; }
 </style>
 <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
 </head>
@@ -235,6 +249,7 @@
       <a href="{% url 'inventory:planned_transfer_index' %}">Převody</a>
       <a href="{% url 'inventory:dodaci_list_index' %}">Dodací listy</a>
       <a href="{% url 'inventory:movement_history' %}">Historie</a>
+      <a href="{% url 'inventory:support' %}">Podpora</a>
       {% if user.is_vlastnik %}
         <a href="{% url 'inventory:branch_index' %}">Pobočky</a>
         <a href="{% url 'accounts:user_index' %}">Uživatelé</a>

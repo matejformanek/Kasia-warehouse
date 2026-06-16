@@ -21,11 +21,13 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .forms import (
     BranchForm,
     CustomerForm,
+    FeedbackForm,
     MixingPlanForm,
     MovementEditLineFormSet,
     MovementLineForm,
@@ -51,6 +53,7 @@ from .models import (
     DodaciList,
     DodaciListEmailLog,
     DodaciListNumberSequence,
+    Feedback,
     MixingJob,
     Movement,
     MovementAudit,
@@ -2430,3 +2433,57 @@ def mixing_job_start(request, pk: int):
         return redirect("inventory:mixing_job_detail", pk=job.pk)
     messages.success(request, "Dávka spuštěna — stav skladu byl odečten.")
     return redirect("inventory:mixing_job_detail", pk=job.pk)
+
+
+# ---------------------------------------------------------------------------
+# Podpora (in-app docs + feedback log, per decision 0046)
+# ---------------------------------------------------------------------------
+
+
+def support_view(request):
+    """Single-page Podpora: docs accordions + submit form + history.
+
+    All logged-in users can submit and see the full list. Vlastník-only
+    resolved toggle lives on `feedback_toggle_view`.
+    """
+    if request.method == "POST":
+        form = FeedbackForm(request.POST)
+        if form.is_valid():
+            f = form.save(commit=False)
+            f.created_by = request.user
+            f.save()
+            messages.success(
+                request, "Děkujeme — vaše hlášení bylo uloženo."
+            )
+            return redirect("inventory:support")
+    else:
+        form = FeedbackForm()
+    feedbacks = (
+        Feedback.objects.select_related("created_by", "resolved_by")
+        .order_by("-created_at")[:50]
+    )
+    return render(
+        request,
+        "inventory/support.html",
+        {"form": form, "feedbacks": feedbacks},
+    )
+
+
+@require_POST
+def feedback_toggle_view(request, pk: int):
+    """Vlastník-only: flip a Feedback row between open and resolved."""
+    if not request.user.is_vlastnik:
+        messages.error(
+            request,
+            "Pouze vlastník může označovat hlášení jako vyřešená.",
+        )
+        return redirect("inventory:support")
+    f = get_object_or_404(Feedback, pk=pk)
+    if f.is_open:
+        f.resolved_at = timezone.now()
+        f.resolved_by = request.user
+    else:
+        f.resolved_at = None
+        f.resolved_by = None
+    f.save(update_fields=["resolved_at", "resolved_by"])
+    return redirect("inventory:support")

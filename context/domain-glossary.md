@@ -248,6 +248,16 @@ Negative reconciliation: ledger says N, shelf has less than N.
 **EN:** surplus / overage.
 Positive reconciliation: ledger says N, shelf has more than N.
 
+### hlášení
+
+**EN:** feedback / report.
+A user-submitted report on the `/podpora/` support page —
+typically a bug, question, or feature wish. Stored as
+`inventory.Feedback` per
+[`decisions/0046-support-page.md`](./decisions/0046-support-page.md).
+Visible to all logged-in users; vlastník can mark resolved /
+re-open. Free-form Czech text with an optional `page_url` hint.
+
 ### odpis
 
 **EN:** write-off.

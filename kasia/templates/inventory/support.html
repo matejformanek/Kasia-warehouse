@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Podpora — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Podpora</h1>
+
+<p style="color:var(--fg-soft);">
+  Návod k použití, postupy a&nbsp;formulář pro hlášení chyb nebo požadavků.
+  Všechna hlášení vidí celý tým — vlastník je označí jako vyřešená,
+  jakmile je oprava nasazená.
+</p>
+
+<h2 style="margin-top:1.5rem;">Návod k použití</h2>
+
+<details>
+  <summary>Co kde najdu (stručný přehled obrazovek)</summary>
+  <ul>
+    <li><strong>Přehled (/)</strong> — domovská stránka. Vlastník vidí přehled obou poboček, panel „Dochází zboží“ a poslední pohyby. Obsluha vidí svoji pobočku.</li>
+    <li><strong>Pobočka (/pobocka/&lt;kód&gt;/)</strong> — stav zásob na jedné pobočce. Status každého produktu: prázdné / dochází / v pořádku. Tlačítka pro nový příjem a výdej.</li>
+    <li><strong>Katalog (/katalog/)</strong> — seznam všech produktů a směsí. Filtr podle typu, hledání podle názvu, sloupce „Na skladě“, „Rezerv.“, „Efektivně“, „Práh“. Zelený řádek = vše v pořádku, žlutý = pod prahem.</li>
+    <li><strong>Detail produktu</strong> — stav po pobočkách včetně šarží, receptura u směsí, ruční úprava stavu, archivace.</li>
+    <li><strong>Příjem (/prijem/novy/)</strong> — příjemka od dodavatele. Hmotnost, šarže, poznámka. Po uložení se zásoby zvýší a&nbsp;vznikne záznam v Historii.</li>
+    <li><strong>Výdej (/vydej/novy/)</strong> — výdejka odběrateli (výchozí Říčany). Po uložení se zásoby sníží, <strong>automaticky se vystaví dodací list a&nbsp;odešle e-mailem</strong> Petrovi a&nbsp;Karolíně.</li>
+    <li><strong>Dodací listy (/dodaky/)</strong> — přehled vystavených dodáků, filtr podle pobočky a&nbsp;období, znovuodeslání PDF e-mailem.</li>
+    <li><strong>Historie pohybů (/pohyby/)</strong> — kompletní log všech pohybů. Filtry podle druhu, pobočky, období; možnost vyfiltrovat jen editované záznamy.</li>
+    <li><strong>Plánované převody (/prevody/)</strong> — plánování přesunu zboží mezi pobočkami na konkrétní datum. Po fyzickém přesunu klikněte „Provést“ — vystaví se dodací list.</li>
+    <li><strong>Míchání (/michani/)</strong> — receptury směsí a&nbsp;dávky. Lze spustit hned, nebo naplánovat (suroviny se rezervují).</li>
+    <li><strong>Dodavatelé (/dodavatele/) · Odběratelé (/odberatele/)</strong> — seznam partnerů, přidávání, archivace, editace.</li>
+    <li><strong>Pobočky (/pobocky/)</strong> — vlastník: přidání a&nbsp;editace fyzických poboček.</li>
+    <li><strong>Uživatelé (/uzivatele/)</strong> — vlastník: správa účtů, rolí, pobočková příslušnost.</li>
+    <li><strong>Nastavení (/nastaveni/)</strong> — vlastník: adresa firmy, e-maily, šablony, dodací listy.</li>
+    <li><strong>Podpora (/podpora/)</strong> — tato stránka. Návod + hlášení.</li>
+  </ul>
+</details>
+
+<details>
+  <summary>Postupy (krok za krokem)</summary>
+
+  <h3 style="margin-top:0;">1. Příjem nové dodávky</h3>
+  <ol>
+    <li>Klikněte „Příjem“ v menu.</li>
+    <li>Vyberte dodavatele (nebo přidejte nového přímo z&nbsp;formuláře).</li>
+    <li>Vyplňte datum (výchozí dnes) a&nbsp;poznámku.</li>
+    <li>Pro každou položku: produkt, hmotnost (kg), šarže (pokud je na obalu).</li>
+    <li>Klikněte „Uložit příjem“. Zásoby se okamžitě navýší a&nbsp;vznikne záznam v&nbsp;Historii.</li>
+  </ol>
+
+  <h3>2. Výdej zboží (rozvoz nebo prodej)</h3>
+  <ol>
+    <li>Klikněte „Výdej“.</li>
+    <li>Odběratel: výchozí je <strong>Říčany</strong> (rozvoz do vlastní prodejny). Pro externího odběratele vyberte z&nbsp;rozbalovacího seznamu nebo přidejte nového.</li>
+    <li>Vyplňte položky stejně jako u&nbsp;příjmu.</li>
+    <li>Klikněte „Vystavit výdej“. Zásoby se sníží, vygeneruje se <strong>dodací list (PDF)</strong> a&nbsp;<strong>automaticky se odešle e-mailem</strong> Petrovi a&nbsp;Karolíně. Zákazník PDF e-mailem nedostává.</li>
+  </ol>
+
+  <h3>3. Plánovaný převod mezi pobočkami</h3>
+  <ol>
+    <li>Menu → „Převody“ → „Nový převod“.</li>
+    <li>Vyberte zdrojovou a&nbsp;cílovou pobočku, produkt, hmotnost a&nbsp;plánované datum.</li>
+    <li>Uložte. Suroviny se na zdrojové pobočce <strong>rezervují</strong> (jsou vidět ve sloupci „Rezerv.“ v&nbsp;Katalogu).</li>
+    <li>Až proběhne fyzický přesun, otevřete detail převodu a&nbsp;klikněte „Provést“. Vystaví se dodací list, zásoby se přepočítají na obou pobočkách.</li>
+  </ol>
+
+  <h3>4. Míchání směsi — plánované</h3>
+  <ol>
+    <li>Menu → „Míchání“ → „Naplánovat dávku“.</li>
+    <li>Vyberte recepturu a&nbsp;cílovou hmotnost směsi.</li>
+    <li>Uložte. Suroviny se rezervují — vidíte je v&nbsp;Katalogu.</li>
+    <li>Než začnete míchat, klikněte „Spustit teď“ — to skutečně ubere suroviny ze skladu.</li>
+    <li>Po fyzickém zamíchání klikněte „Dokončit“ a&nbsp;zadejte skutečně vyrobené množství. Mix se přidá na sklad.</li>
+  </ol>
+
+  <h3>5. Ruční úprava stavu (rychlá korekce, ne formální inventura)</h3>
+  <ol>
+    <li>V&nbsp;Katalogu otevřete detail produktu.</li>
+    <li>Klikněte „Upravit stav ručně“.</li>
+    <li>Zadejte novou hmotnost a&nbsp;důvod (ztráta, přepalování, kontrola — zaškrtněte typ).</li>
+    <li>Uložte. Vytvoří se synthetic záznam v&nbsp;Historii s&nbsp;předponou <strong>[STAV]</strong>, který nelze přehlédnout.</li>
+  </ol>
+  <p style="color:var(--fg-soft); font-size:0.9rem;">
+    <em>Poznámka:</em> Formální inventura (počítání + porovnání + srovnání rozdílu)
+    zatím není v&nbsp;aplikaci; tento postup je pro rychlou korekci po fyzickém
+    přepočítání. Podrobnosti v&nbsp;rozhodnutí 0041.
+  </p>
+
+  <h3>6. Oprava starší příjemky nebo výdejky</h3>
+  <ol>
+    <li>Menu → „Historie“.</li>
+    <li>Najděte chybný pohyb a&nbsp;klikněte na řádek.</li>
+    <li>V&nbsp;detailu klikněte „Upravit“ — otevře se formulář úpravy pohybu.</li>
+    <li>Změňte hodnoty. <strong>Důvod opravy je povinný.</strong></li>
+    <li>Uložte. Pohyb dostane novou verzi (v2, v3, …) a&nbsp;pokud šlo o&nbsp;výdej, dodací list se přegeneruje a&nbsp;přepošle e-mailem s&nbsp;předponou <strong>[OPRAVA]</strong>.</li>
+  </ol>
+</details>
+
+<details>
+  <summary>Tipy a triky</summary>
+  <ul>
+    <li><strong>Pobočku vybírá obsluha automaticky — sama svoji.</strong> Vlastník může přepnout, obsluha ne.</li>
+    <li><strong>Říčany jsou výchozí odběratel pro výdej.</strong> Pokud rozvážíte do vlastní prodejny, nemusíte nic přepínat.</li>
+    <li><strong>Dodací list jde automaticky Petrovi a&nbsp;Karolíně, ne zákazníkovi.</strong> Vy obvykle nemusíte řešit zaslání zvlášť.</li>
+    <li><strong>Šarže není povinná, ale doporučená</strong> — bez ní nelze trasovat původ při reklamaci.</li>
+    <li><strong>Editace pohybu vyžaduje důvod.</strong> Pohyb se nepřepisuje, jen se přidá další verze; původní zůstává v&nbsp;audit trailu.</li>
+    <li><strong>Editace výdeje znovu odešle dodák.</strong> Petr + Karolína dostanou novou verzi PDF e-mailem s&nbsp;předponou [OPRAVA] — počítejte s&nbsp;tím.</li>
+    <li><strong>Plánované rezervace zmenšují „Efektivní“ zásoby, ne „Na skladě“.</strong> Fyzicky kg ještě jsou, ale jsou slíbené.</li>
+    <li><strong>Ruční úprava stavu nepřepisuje pohyby</strong> — vznikne nový záznam [STAV], který srovná rozdíl. Historie zůstane neporušená.</li>
+    <li><strong>Pokud nevíte, kam co zapsat, zeptejte se přes formulář níže</strong> — všichni vidíme váš dotaz a&nbsp;vlastník odpoví.</li>
+    <li><strong>Stav „dochází“ znamená pod prahem objednacího bodu</strong>, ne že je úplně prázdno. Práh nastavuje vlastník v&nbsp;detailu produktu.</li>
+    <li><strong>Archivace produktu ho neodstraní z&nbsp;historie.</strong> Jen ho skryje z&nbsp;výchozího seznamu v&nbsp;Katalogu.</li>
+  </ul>
+</details>
+
+<h2 style="margin-top:2rem;">Nahlásit chybu nebo požadavek</h2>
+
+<div class="card">
+  <p style="color:var(--fg-soft); margin-top:0;">
+    Napište nám, co nefunguje, co chybí nebo čemu nerozumíte. Všichni
+    v&nbsp;týmu hlášení vidí. Vlastník je označí jako vyřešená, jakmile
+    je opraveno.
+  </p>
+  <form method="post" action="{% url 'inventory:support' %}">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="non-form-errors">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div class="field">
+      <label for="{{ form.page_url.id_for_label }}">{{ form.page_url.label }}</label>
+      {{ form.page_url }}
+      {% if form.page_url.errors %}<ul class="errorlist">{% for e in form.page_url.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    <div class="field">
+      <label for="{{ form.description.id_for_label }}" class="field-required">{{ form.description.label }}</label>
+      {{ form.description }}
+      {% if form.description.errors %}<ul class="errorlist">{% for e in form.description.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    <button class="primary" type="submit">Odeslat hlášení</button>
+  </form>
+</div>
+
+<h2 style="margin-top:2rem;">Historie hlášení</h2>
+
+{% if feedbacks %}
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Datum</th>
+        <th>Kdo</th>
+        <th>Stránka</th>
+        <th>Popis</th>
+        <th>Stav</th>
+        {% if user.is_vlastnik %}<th></th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in feedbacks %}
+        <tr>
+          <td style="white-space:nowrap;">{{ f.created_at|date:"d. m. Y H:i" }}</td>
+          <td>{{ f.created_by.email }}</td>
+          <td>{% if f.page_url %}<code>{{ f.page_url }}</code>{% else %}<span style="color:var(--fg-soft);">—</span>{% endif %}</td>
+          <td>{{ f.description|linebreaksbr }}</td>
+          <td style="white-space:nowrap;{% if not f.is_open %}opacity:0.6;text-decoration:line-through;{% endif %}">
+            {% if f.is_open %}
+              <span style="color:var(--warn);">● Otevřené</span>
+            {% else %}
+              <span style="color:var(--ok);">✓ Vyřešené</span>
+              {% if f.resolved_by %}<br><small style="color:var(--fg-soft);">{{ f.resolved_by.email }}<br>{{ f.resolved_at|date:"d. m. Y H:i" }}</small>{% endif %}
+            {% endif %}
+          </td>
+          {% if user.is_vlastnik %}
+            <td style="white-space:nowrap;">
+              <form method="post" action="{% url 'inventory:feedback_toggle' pk=f.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button class="secondary" type="submit">
+                  {% if f.is_open %}Vyřešit{% else %}Otevřít znovu{% endif %}
+                </button>
+              </form>
+            </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p style="color:var(--fg-soft);"><em>Zatím žádná hlášení.</em></p>
+{% endif %}
+{% endblock %}

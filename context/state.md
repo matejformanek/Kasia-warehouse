@@ -1186,6 +1186,19 @@
   - Cron entry for `mail_low_stock_summary` (deferred — needs cron
     decision and a few days of real data anyway).
 
+- **2026-06-16** — Podpora page landed (`/podpora/`). In-app docs
+  (per-screen reference + 6 workflows + 11 tips in `<details>`
+  accordions), feedback log model `inventory.Feedback`, vlastník-only
+  resolved toggle. Decision
+  [`0046`](./decisions/0046-support-page.md). Migration
+  `0011_feedback` (additive, no data seed). New screen doc
+  [`screens/16-podpora.md`](./screens/16-podpora.md); glossary entry
+  `hlášení` added; `base.html` got the new "Podpora" nav link plus
+  `<details>` accordion CSS. 9 new tests (anon redirect, GET +
+  POST + validation, optional page_url, vlastník toggle resolve +
+  re-open, obsluha rejection, all-users visibility). Full suite:
+  **282 pytest tests green**; ruff clean; system check clean.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

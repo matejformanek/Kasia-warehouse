@@ -69,6 +69,11 @@ Every screen uses the structure laid out in [`_template.md`](_template.md):
 - [15 — Míchání směsi / Mixing job](15-michani.md) — in MVP per
   [`../decisions/0032-mixing-in-mvp.md`](../decisions/0032-mixing-in-mvp.md).
 
+### Support & help
+
+- [16 — Podpora / Support](16-podpora.md) — in-app docs + feedback
+  log per [`../decisions/0046-support-page.md`](../decisions/0046-support-page.md).
+
 ### Future (documented, not in MVP)
 
 - [Future — Export pro účetní / Accountant export](future-export-uctarne.md)

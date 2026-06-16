@@ -13,7 +13,7 @@ from decimal import Decimal
 
 from django import forms
 
-from .models import Customer, Movement, Product, Settings, Supplier
+from .models import Customer, Feedback, Movement, Product, Settings, Supplier
 
 
 class _MovementBaseForm(forms.Form):
@@ -578,3 +578,29 @@ class MixingPlanForm(forms.Form):
         if user is not None and getattr(user, "branch_id", None):
             self.fields["branch"].initial = user.branch_id
             self.fields["branch"].disabled = True
+
+
+# ---------------------------------------------------------------------------
+# Feedback (Pass 7, per decision 0046)
+# ---------------------------------------------------------------------------
+
+
+class FeedbackForm(forms.ModelForm):
+    """Operator-facing form for submitting one feedback row on /podpora/."""
+
+    class Meta:
+        model = Feedback
+        fields = ("page_url", "description")
+        widgets = {
+            "page_url": forms.TextInput(
+                attrs={
+                    "placeholder": "/katalog/ — volitelné",
+                    "size": 40,
+                }
+            ),
+            "description": forms.Textarea(attrs={"rows": 5}),
+        }
+        labels = {
+            "page_url": "Stránka, které se hlášení týká (volitelné)",
+            "description": "Popis problému, dotazu nebo nápadu",
+        }

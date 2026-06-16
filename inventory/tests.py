@@ -14,6 +14,7 @@ from inventory.models import (
     DodaciList,
     DodaciListEmailLog,
     DodaciListNumberSequence,
+    Feedback,
     MixingJob,
     Movement,
     MovementAudit,
@@ -4935,3 +4936,155 @@ def test_low_stock_panel_appears_on_owner_dashboard(
     response = client.get("/")
     assert response.status_code == 200
     assert b"Doch\xc3\xa1z\xc3\xad zbo\xc5\xbe\xc3\xad" in response.content
+
+
+# ---------------------------------------------------------------------------
+# Pass 7 — Podpora (in-app docs + feedback log, per decision 0046)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_support_anonymous_redirects_to_login() -> None:
+    response = Client().get("/podpora/")
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/login/")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_support_get_renders_form_and_list_for_logged_in_user(
+    user_vlastnik,
+) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/podpora/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Podpora" in body
+    assert "Nahlásit chybu nebo požadavek" in body
+    assert "Historie hlášení" in body
+    assert "Zatím žádná hlášení" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_support_post_creates_feedback_and_redirects(
+    user_vlastnik,
+) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/podpora/",
+        {"page_url": "/katalog/", "description": "Chybí mi sloupec X."},
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/podpora/"
+    f = Feedback.objects.get()
+    assert f.description == "Chybí mi sloupec X."
+    assert f.page_url == "/katalog/"
+    assert f.created_by_id == user_vlastnik.pk
+    assert f.resolved_at is None
+    assert f.is_open
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_support_post_without_description_fails_validation(
+    user_vlastnik,
+) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/podpora/",
+        {"page_url": "/katalog/", "description": ""},
+    )
+    assert response.status_code == 200
+    assert Feedback.objects.count() == 0
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_support_post_with_optional_page_url(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/podpora/",
+        {"page_url": "", "description": "Obecný nápad bez konkrétní stránky."},
+    )
+    assert response.status_code == 302
+    f = Feedback.objects.get()
+    assert f.page_url == ""
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_feedback_toggle_marks_resolved_as_vlastnik(user_vlastnik) -> None:
+    f = Feedback.objects.create(
+        created_by=user_vlastnik, description="test"
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(f"/podpora/{f.pk}/vyresit/")
+    assert response.status_code == 302
+    f.refresh_from_db()
+    assert f.resolved_at is not None
+    assert f.resolved_by_id == user_vlastnik.pk
+    assert not f.is_open
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_feedback_toggle_reopens_already_resolved_as_vlastnik(
+    user_vlastnik,
+) -> None:
+    f = Feedback.objects.create(
+        created_by=user_vlastnik, description="test"
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    client.post(f"/podpora/{f.pk}/vyresit/")
+    client.post(f"/podpora/{f.pk}/vyresit/")
+    f.refresh_from_db()
+    assert f.resolved_at is None
+    assert f.resolved_by is None
+    assert f.is_open
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_feedback_toggle_rejected_for_obsluha_with_message_redirect(
+    user_obsluha_tyn, user_vlastnik,
+) -> None:
+    f = Feedback.objects.create(
+        created_by=user_vlastnik, description="test"
+    )
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(f"/podpora/{f.pk}/vyresit/")
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/podpora/"
+    f.refresh_from_db()
+    assert f.resolved_at is None
+    assert f.is_open
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_feedback_visible_to_all_users_not_just_creator(
+    user_vlastnik, user_obsluha_tyn,
+) -> None:
+    Feedback.objects.create(
+        created_by=user_vlastnik, description="Hlášení od vlastníka"
+    )
+    Feedback.objects.create(
+        created_by=user_obsluha_tyn, description="Hlášení od obsluhy"
+    )
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/podpora/")
+    body = response.content.decode("utf-8")
+    assert "Hlášení od vlastníka" in body
+    assert "Hlášení od obsluhy" in body
+    # Obsluha must NOT see the toggle button.
+    assert "Vyřešit" not in body

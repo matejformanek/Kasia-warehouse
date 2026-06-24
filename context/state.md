@@ -1199,6 +1199,47 @@
   re-open, obsluha rejection, all-users visibility). Full suite:
   **282 pytest tests green**; ruff clean; system check clean.
 
+- **2026-06-24** — XLS recipe importer landed
+  (`/katalog/import-xls/`). Vlastník-only upload → editable review
+  → atomic confirm; auto-creates missing raw-spice Products
+  (casefold dedupe against existing catalogue). Parser handles
+  `.xls` (xlrd, in-memory) + `.xlsx` (openpyxl, `data_only=True,
+  read_only=True`, in-memory). Ratios computed from kg and
+  normalised so the sum is exactly `Decimal("1.000000")`; rejects
+  zero-ratio edge cases with a Czech message naming the offender.
+  Decision [`0047`](./decisions/0047-xls-recipe-importer.md).
+  Screen doc [`screens/17-xls-import.md`](./screens/17-xls-import.md).
+  New deps `openpyxl` + `xlrd` (both pure-Python). 14 new tests
+  (4 parser, 3 view-permission, 1 upload-renders-review, 1 confirm
+  creates, 1 casefold-dedupe, 1 duplicate-mixture refusal, 1
+  zero-ratio rejection, 2 catalogue-button visibility); full suite
+  green. Fixture `inventory/tests/fixtures/touzimsky.xls` (Petr's
+  real Toužimský knedlík recipe, ~33 KB).
+
+- **2026-06-24** — In-app password change wired
+  (`/accounts/zmena-hesla/` → `PasswordChangeView`,
+  `/accounts/zmena-hesla/hotovo/` → `PasswordChangeDoneView`).
+  Mounted in `kasia/urls.py` (NOT `django.contrib.auth.urls`
+  wholesale — would collide with the custom `/login/` + `/logout/`).
+  New templates under `kasia/templates/registration/`. "Změnit
+  heslo" nav link added to `base.html`. 2 new tests (anon redirect,
+  vlastník POST updates password). Unblocks the three real
+  operators changing their initial out-of-band passwords without
+  needing SMTP (which is still deferred — Matej will check
+  whether the kasia.cz mail host gives SMTP creds; see
+  [`0019`](./decisions/0019-email-smtp-sync.md)).
+
+- **2026-06-24 (pending operator step, out of code scope)** — Real
+  prod users to be added by Matej + Karolína: Karolína (vlastník,
+  `karolina@kasia.cz`), Týniště obsluha
+  (`objednavky@koreni-gastro.cz`), Sezimák obsluha
+  (`obchod@cervenkajiri.cz`). Initial passwords handed
+  out-of-band; users self-service via `/accounts/zmena-hesla/`.
+  `Settings.recipient_petr` = `petr@kasia.cz`,
+  `Settings.recipient_karolina` = `karolina@kasia.cz` (needed
+  before any real customer výdej, per the `_assert_recipients_set`
+  guard in `inventory/services.py`).
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

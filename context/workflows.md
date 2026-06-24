@@ -162,6 +162,15 @@ and produces mixture stock on the mixture product's
 `(product, branch)` row in kg per
 [`decisions/0028-mass-only-supersedes-0006.md`](./decisions/0028-mass-only-supersedes-0006.md).
 
+**Recipe creation:** a mixture's recipe (the RecipeComponent rows
+that govern míchání consumption) can be created two ways:
+manually at `/katalog/novy/` + inline recipe editor on the product
+form, **or** by uploading an Excel recipe at `/katalog/import-xls/`
+per [`decisions/0047-xls-recipe-importer.md`](./decisions/0047-xls-recipe-importer.md)
+([`screens/17-xls-import.md`](./screens/17-xls-import.md)). The
+XLS importer is vlastník-only and writes the new mixture Product
+plus its components in one atomic transaction.
+
 ## Not in MVP, but documented for the future
 
 - **Accountant export.** Periodic export of dodací listy and/or

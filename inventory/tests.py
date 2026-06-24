@@ -5088,3 +5088,303 @@ def test_feedback_visible_to_all_users_not_just_creator(
     assert "Hlášení od obsluhy" in body
     # Obsluha must NOT see the toggle button.
     assert "Vyřešit" not in body
+
+
+# ---------------------------------------------------------------------------
+# XLS recipe importer (Pass 8, per decision 0047)
+# ---------------------------------------------------------------------------
+
+
+_FIXTURE_XLS = "inventory/tests/fixtures/touzimsky.xls"
+
+
+def _load_fixture_xls() -> bytes:
+    with open(_FIXTURE_XLS, "rb") as f:
+        return f.read()
+
+
+def _xls_upload(name: str = "touzimsky.xls"):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    return SimpleUploadedFile(
+        name,
+        _load_fixture_xls(),
+        content_type="application/vnd.ms-excel",
+    )
+
+
+def test_parse_recipe_xls_sample() -> None:
+    from inventory.services import parse_recipe_xls
+
+    with open(_FIXTURE_XLS, "rb") as f:
+        parsed = parse_recipe_xls(f, "touzimsky.xls")
+
+    assert parsed.mixture_name == "Toužimský Knedlík"
+    assert parsed.total_kg == Decimal("800.8")
+    assert len(parsed.lines) == 5
+    names = [line.name_cs for line in parsed.lines]
+    assert "Krupička" in names
+    assert "Škrob" in names
+    assert "Sůl" in names
+    assert "Kurkuma" in names
+    # Notes capture the post-CELKEM rows.
+    assert "BALIT" in parsed.notes
+    assert "CELKOVÁ DOBA MÍCHÁNÍ" in parsed.notes
+    assert parsed.warnings == []
+
+
+def test_parse_recipe_xls_ratios_sum_to_one() -> None:
+    from inventory.services import parse_recipe_xls
+
+    with open(_FIXTURE_XLS, "rb") as f:
+        parsed = parse_recipe_xls(f, "touzimsky.xls")
+
+    total = sum((line.ratio for line in parsed.lines), Decimal("0"))
+    assert total == Decimal("1.000000")
+    for line in parsed.lines:
+        assert line.ratio > 0
+
+
+def test_parse_recipe_xls_title_cases_names() -> None:
+    from inventory.services import parse_recipe_xls
+
+    with open(_FIXTURE_XLS, "rb") as f:
+        parsed = parse_recipe_xls(f, "touzimsky.xls")
+
+    # Source XLS has "KRUPIČKA" (all caps) — must come back Title-Cased.
+    assert "KRUPIČKA" not in [line.name_cs for line in parsed.lines]
+    assert "Krupička" in [line.name_cs for line in parsed.lines]
+
+
+def test_parse_recipe_xls_empty_file_raises_czech() -> None:
+    import io
+
+    from inventory.services import parse_recipe_xls
+
+    # A 1-byte file is invalid XLS — both xlrd and openpyxl raise.
+    # Our wrapper coerces all to ValueError with a Czech message
+    # only for the "unknown extension" path; xlrd/openpyxl errors
+    # bubble. Check that ValueError surfaces for the no-extension path.
+    with pytest.raises(ValueError, match=".xls"):
+        parse_recipe_xls(io.BytesIO(b"x"), "foo.txt")
+
+
+@pytest.mark.django_db
+def test_xls_import_upload_requires_login() -> None:
+    response = Client().get("/katalog/import-xls/")
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith("/login/")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_xls_import_upload_obsluha_forbidden(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/katalog/import-xls/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_xls_import_upload_vlastnik_renders_form(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/katalog/import-xls/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "XLS" in body
+    assert "Načíst soubor" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_xls_import_upload_post_parses_renders_review(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/katalog/import-xls/",
+        {"xls_file": _xls_upload()},
+    )
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Toužimský" in body
+    assert "Krupička" in body
+    assert "Škrob" in body
+    # No raw spices were seeded → every ingredient must show as new.
+    assert "+ nová surovina" in body
+    # Review form must be present.
+    assert "Vytvořit směs" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_xls_import_confirm_creates_mixture_and_components(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    # First POST: upload → review. We need to use the formset's management
+    # form values that the review page rendered; easier to drive the service
+    # path directly via the confirm endpoint with synthetic data that matches
+    # what the review form would have posted.
+    payload = {
+        "name_cs": "Toužimský Knedlík",
+        "notes": "BALIT Á 5 KG\nCELKOVÁ DOBA MÍCHÁNÍ 12 MINUT",
+        "total_kg": "800.800",
+        "form-TOTAL_FORMS": "5",
+        "form-INITIAL_FORMS": "5",
+        "form-MIN_NUM_FORMS": "0",
+        "form-MAX_NUM_FORMS": "1000",
+        "form-0-name_cs": "Krupička",
+        "form-0-qty_kg": "317.000",
+        "form-0-existing_product_id": "",
+        "form-1-name_cs": "Škrob",
+        "form-1-qty_kg": "112.000",
+        "form-1-existing_product_id": "",
+        "form-2-name_cs": "Vločky PF 51",
+        "form-2-qty_kg": "355.000",
+        "form-2-existing_product_id": "",
+        "form-3-name_cs": "Sůl",
+        "form-3-qty_kg": "16.000",
+        "form-3-existing_product_id": "",
+        "form-4-name_cs": "Kurkuma",
+        "form-4-qty_kg": "0.800",
+        "form-4-existing_product_id": "",
+    }
+    response = client.post("/katalog/import-xls/potvrdit/", payload)
+    assert response.status_code == 302
+    mixture = Product.objects.get(name_cs="Toužimský Knedlík")
+    assert mixture.kind == Product.Kind.MIXTURE
+    components = list(
+        RecipeComponent.objects.filter(mixture_product=mixture)
+        .order_by("component_product__name_cs")
+    )
+    assert len(components) == 5
+    # Ratios sum to exactly 1.000000 — invariant from _normalize_ratios.
+    assert sum((c.ratio for c in components), Decimal("0")) == Decimal("1.000000")
+    # All five raw spices auto-created.
+    raw_names = {c.component_product.name_cs for c in components}
+    assert raw_names == {"Krupička", "Škrob", "Vločky PF 51", "Sůl", "Kurkuma"}
+    for c in components:
+        assert c.component_product.kind == Product.Kind.RAW_SPICE
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_xls_import_confirm_reuses_existing_raw_spice_case_insensitive(
+    user_vlastnik,
+) -> None:
+    """Seed "Krupička" in different case; import must reuse, not duplicate."""
+    existing = Product.objects.create(
+        name_cs="Krupička", kind=Product.Kind.RAW_SPICE
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    payload = {
+        "name_cs": "Test směs",
+        "notes": "",
+        "total_kg": "100.000",
+        "form-TOTAL_FORMS": "2",
+        "form-INITIAL_FORMS": "2",
+        "form-MIN_NUM_FORMS": "0",
+        "form-MAX_NUM_FORMS": "1000",
+        # All-caps to verify the casefold dedupe.
+        "form-0-name_cs": "KRUPIČKA",
+        "form-0-qty_kg": "80.000",
+        "form-0-existing_product_id": "",
+        "form-1-name_cs": "Pepř Nový",
+        "form-1-qty_kg": "20.000",
+        "form-1-existing_product_id": "",
+    }
+    response = client.post("/katalog/import-xls/potvrdit/", payload)
+    assert response.status_code == 302
+    # Only one "Krupička" exists — the existing one was reused.
+    assert Product.objects.filter(name_cs__iexact="Krupička").count() == 1
+    mixture = Product.objects.get(name_cs="Test směs")
+    components = list(
+        RecipeComponent.objects.filter(mixture_product=mixture)
+    )
+    assert any(c.component_product_id == existing.pk for c in components)
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_xls_import_confirm_refuses_duplicate_mixture_name(
+    user_vlastnik,
+) -> None:
+    Product.objects.create(
+        name_cs="Toužimský Knedlík", kind=Product.Kind.MIXTURE
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    payload = {
+        "name_cs": "Toužimský Knedlík",
+        "notes": "",
+        "total_kg": "10.000",
+        "form-TOTAL_FORMS": "1",
+        "form-INITIAL_FORMS": "1",
+        "form-MIN_NUM_FORMS": "0",
+        "form-MAX_NUM_FORMS": "1000",
+        "form-0-name_cs": "Krupička",
+        "form-0-qty_kg": "10.000",
+        "form-0-existing_product_id": "",
+    }
+    response = client.post("/katalog/import-xls/potvrdit/", payload)
+    assert response.status_code == 400
+    body = response.content.decode("utf-8")
+    assert "už v katalogu existuje" in body
+    # Mixture count unchanged.
+    assert Product.objects.filter(name_cs="Toužimský Knedlík").count() == 1
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_xls_import_confirm_rejects_zero_ratio(user_vlastnik) -> None:
+    """One ingredient too tiny to represent at 6 dp → Czech error.
+
+    Form qty_kg is decimal_places=3, smallest accepted = 0.001. For the
+    ratio to quantise to 0 at 6 dp we need 0.001 / total < 5e-7, i.e.
+    total > 2000. Using 0.001 / 9999.999 ≈ 1e-7 gives a reliable trip.
+    """
+    client = Client()
+    client.force_login(user_vlastnik)
+    payload = {
+        "name_cs": "Mikro směs",
+        "notes": "",
+        "total_kg": "10000.000",
+        "form-TOTAL_FORMS": "2",
+        "form-INITIAL_FORMS": "2",
+        "form-MIN_NUM_FORMS": "0",
+        "form-MAX_NUM_FORMS": "1000",
+        "form-0-name_cs": "Mouka",
+        "form-0-qty_kg": "9999.999",
+        "form-0-existing_product_id": "",
+        "form-1-name_cs": "Mikrokoření",
+        "form-1-qty_kg": "0.001",
+        "form-1-existing_product_id": "",
+    }
+    response = client.post("/katalog/import-xls/potvrdit/", payload)
+    assert response.status_code == 400
+    body = response.content.decode("utf-8")
+    assert "příliš malý poměr" in body
+    # No mixture committed.
+    assert not Product.objects.filter(name_cs="Mikro směs").exists()
+
+
+@pytest.mark.django_db
+def test_catalogue_index_shows_xls_import_button_for_vlastnik(user_vlastnik) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    with override_settings(**_VIEW_TEST_OVERRIDES):
+        response = client.get("/katalog/")
+    assert response.status_code == 200
+    assert "Importovat z XLS" in response.content.decode("utf-8")
+
+
+@pytest.mark.django_db
+def test_catalogue_index_hides_xls_import_button_for_obsluha(user_obsluha_tyn) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    with override_settings(**_VIEW_TEST_OVERRIDES):
+        response = client.get("/katalog/")
+    assert response.status_code == 200
+    assert "Importovat z XLS" not in response.content.decode("utf-8")

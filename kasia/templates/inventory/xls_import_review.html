@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Kontrola receptury — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Kontrola načtené receptury</h1>
+
+<p style="color:var(--fg-soft);max-width:46rem;">
+  Zkontrolujte načtené údaje a v případě potřeby upravte názvy
+  surovin nebo množství. Pokud surovina v katalogu zatím neexistuje,
+  bude při uložení automaticky založena jako nová surovina.
+  Receptura se uloží do katalogu až po stisku tlačítka
+  <strong>Vytvořit směs</strong>.
+</p>
+
+{% if warnings %}
+  <div class="warnings-banner">
+    <strong>Při načítání souboru bylo zjištěno:</strong>
+    <ul>
+      {% for w in warnings %}<li>{{ w }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<form method="post" action="{% url 'inventory:xls_import_confirm' %}">
+  {% csrf_token %}
+
+  {% if header.non_field_errors %}
+    <div class="non-form-errors">{{ header.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="card">
+    <h2 style="margin-top:0;">Směs</h2>
+    <div class="field">
+      <label for="id_name_cs" class="field-required">{{ header.name_cs.label }}</label>
+      {{ header.name_cs }}
+      {{ header.name_cs.errors }}
+    </div>
+    <div class="field">
+      <label for="id_total_kg">{{ header.total_kg.label }}</label>
+      {{ header.total_kg }}
+      {{ header.total_kg.errors }}
+    </div>
+    <div class="field">
+      <label for="id_notes">{{ header.notes.label }}</label>
+      {{ header.notes }}
+      {{ header.notes.errors }}
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0;">Suroviny</h2>
+
+    {{ formset.management_form }}
+    {% if formset.non_form_errors %}
+      <div class="non-form-errors">{{ formset.non_form_errors }}</div>
+    {% endif %}
+
+    <table class="lines">
+      <thead>
+        <tr>
+          <th class="field-required">Surovina</th>
+          <th class="field-required" style="text-align:right;">Množství (kg)</th>
+          <th>Stav v katalogu</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in formset.forms %}
+          <tr class="line-row" data-index="{{ forloop.counter0 }}">
+            <td>
+              {{ line.name_cs }}
+              {{ line.name_cs.errors }}
+              {{ line.existing_product_id }}
+            </td>
+            <td style="text-align:right;">
+              {{ line.qty_kg }}
+              {{ line.qty_kg.errors }}
+            </td>
+            <td>
+              {% if line.existing_product_id.value %}
+                <span style="font-size:0.85rem;color:var(--fg-soft);">v katalogu</span>
+              {% else %}
+                <span style="font-size:0.85rem;color:var(--ok);">+ nová surovina</span>
+              {% endif %}
+            </td>
+            <td>
+              <input type="checkbox" name="{{ line.DELETE.html_name }}"
+                     id="{{ line.DELETE.id_for_label }}" hidden>
+              <button type="button" class="row-delete-btn"
+                      data-target="{{ line.DELETE.id_for_label }}">
+                × Smazat
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div>
+    <button class="primary" type="submit">Vytvořit směs</button>
+    <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Zrušit</a>
+  </div>
+</form>
+{% endblock %}

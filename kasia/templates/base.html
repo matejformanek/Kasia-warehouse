@@ -171,6 +171,15 @@
     margin-bottom: 1rem;
     font-size: 0.9rem;
   }
+  .warnings-banner {
+    background: #fbf3e0;
+    border-left: 3px solid var(--warn);
+    color: var(--warn);
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+  .warnings-banner ul { margin: 0.25rem 0 0 1rem; padding: 0; }
   .non-form-errors {
     background: #fbe8e8;
     color: var(--error);
@@ -255,6 +264,7 @@
         <a href="{% url 'accounts:user_index' %}">Uživatelé</a>
         <a href="{% url 'inventory:settings_edit' %}">Nastavení</a>
       {% endif %}
+      <a href="{% url 'password_change' %}">Změnit heslo</a>
       <span class="who">{{ user.email }}</span>
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Odhlásit</button></form>
     {% endif %}

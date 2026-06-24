@@ -393,3 +393,33 @@ def test_nav_uzivatele_link_shown_for_vlastnik(vlastnik) -> None:
     response = client.get(reverse("inventory:home"))
     assert response.status_code == 200
     assert b"U\xc5\xbeivatel\xc3\xa9" in response.content
+
+
+# ---------------------------------------------------------------------------
+# In-app password change (PasswordChangeView / PasswordChangeDoneView)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_password_change_requires_login() -> None:
+    response = Client().get("/accounts/zmena-hesla/")
+    assert response.status_code == 302
+    assert "/login/" in response["Location"]
+
+
+@pytest.mark.django_db
+def test_password_change_post_updates_password(vlastnik) -> None:
+    client = Client()
+    client.force_login(vlastnik)
+    response = client.post(
+        "/accounts/zmena-hesla/",
+        {
+            "old_password": "x" * 12,
+            "new_password1": "novehesloABC.1",
+            "new_password2": "novehesloABC.1",
+        },
+    )
+    assert response.status_code == 302
+    assert response["Location"] == "/accounts/zmena-hesla/hotovo/"
+    vlastnik.refresh_from_db()
+    assert vlastnik.check_password("novehesloABC.1")

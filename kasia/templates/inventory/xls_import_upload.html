@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Import receptury z XLS — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Import receptury z XLS</h1>
+
+<p style="color:var(--fg-soft);max-width:46rem;">
+  Nahrajte XLS soubor s recepturou ve formátu, jaký používá Petr —
+  v prvním řádku název směsi, dále řádky surovin (název v prvním sloupci,
+  hmotnost v kg ve druhém), řádek <strong>CELKEM</strong> a níže
+  volitelné poznámky (postup míchání, balení…). V dalším kroku obsah
+  zkontrolujete a teprve potom uložíte do katalogu.
+</p>
+
+<form method="post" enctype="multipart/form-data" class="card" style="max-width:46rem;">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="non-form-errors">{{ form.non_field_errors }}</div>
+  {% endif %}
+  <div class="field">
+    <label for="id_xls_file" class="field-required">{{ form.xls_file.label }}</label>
+    {{ form.xls_file }}
+    <div style="font-size:0.85rem;color:var(--fg-soft);margin-top:0.25rem;">
+      {{ form.xls_file.help_text }}
+    </div>
+    {{ form.xls_file.errors }}
+  </div>
+  <div>
+    <button class="primary" type="submit">Načíst soubor</button>
+    <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Zrušit</a>
+  </div>
+</form>
+{% endblock %}

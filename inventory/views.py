@@ -45,6 +45,9 @@ from .forms import (
     ThresholdOverrideFormSet,
     VydejEditForm,
     VydejForm,
+    XLSImportReviewHeaderForm,
+    XLSImportReviewLineFormSet,
+    XLSImportUploadForm,
     assert_no_future_date,
 )
 from .models import (
@@ -71,10 +74,12 @@ from .services import (
     apply_stock_adjustment,
     cancel_mixing_job,
     cancel_planned_transfer,
+    create_mixture_from_review,
     edit_movement,
     execute_planned_transfer,
     finish_mixing_job,
     low_stock_rows,
+    parse_recipe_xls,
     plan_mixing_job,
     record_completed_mixing_job,
     render_dodaci_list_pdf,
@@ -2487,3 +2492,128 @@ def feedback_toggle_view(request, pk: int):
         f.resolved_by = None
     f.save(update_fields=["resolved_at", "resolved_by"])
     return redirect("inventory:support")
+
+
+# ---------------------------------------------------------------------------
+# XLS recipe importer (per decision 0048)
+# ---------------------------------------------------------------------------
+
+
+@require_http_methods(["GET", "POST"])
+def xls_import_upload(request):
+    """Upload a recipe XLS, then render the editable review page.
+
+    GET → render the upload form.
+    POST → parse the file; on success render the review page bound to the
+    parsed shape (header form + line formset). On parse failure, surface a
+    Czech error on the upload form.
+
+    Vlastník-only. Per decision 0048.
+    """
+    _require_vlastnik(request)
+
+    parsed = None
+    if request.method == "POST":
+        upload = XLSImportUploadForm(request.POST, request.FILES)
+        if upload.is_valid():
+            uploaded = upload.cleaned_data["xls_file"]
+            try:
+                parsed = parse_recipe_xls(uploaded, uploaded.name)
+            except (ValueError, ValidationError) as exc:
+                upload.add_error("xls_file", str(exc))
+                parsed = None
+    else:
+        upload = XLSImportUploadForm()
+
+    if parsed is None:
+        return render(
+            request, "inventory/xls_import_upload.html", {"form": upload}
+        )
+
+    # Pre-fetch active raw spices once and dedupe by casefold so "KRUPIČKA"
+    # / "Krupička" / "krupička" all resolve to the same row.
+    existing_by_key = {
+        p.name_cs.casefold(): p
+        for p in Product.objects.filter(
+            kind=Product.Kind.RAW_SPICE, is_active=True,
+        )
+    }
+    header = XLSImportReviewHeaderForm(
+        initial={
+            "name_cs": parsed.mixture_name,
+            "notes": parsed.notes,
+            "total_kg": parsed.total_kg,
+        }
+    )
+    lines_initial = []
+    for line in parsed.lines:
+        existing = existing_by_key.get(line.name_cs.casefold())
+        lines_initial.append(
+            {
+                "name_cs": line.name_cs,
+                "qty_kg": line.qty_kg,
+                "existing_product_id": existing.pk if existing else None,
+            }
+        )
+    formset = XLSImportReviewLineFormSet(initial=lines_initial)
+    return render(
+        request,
+        "inventory/xls_import_review.html",
+        {
+            "header": header,
+            "formset": formset,
+            "warnings": parsed.warnings,
+            "total_kg": parsed.total_kg,
+        },
+    )
+
+
+@require_POST
+def xls_import_confirm(request):
+    """Commit the operator-reviewed import as a single atomic write."""
+    _require_vlastnik(request)
+    header = XLSImportReviewHeaderForm(request.POST)
+    formset = XLSImportReviewLineFormSet(request.POST)
+
+    def _render_review_with_errors(status=400):
+        return render(
+            request,
+            "inventory/xls_import_review.html",
+            {
+                "header": header,
+                "formset": formset,
+                "warnings": [],
+                "total_kg": header.data.get("total_kg") or "",
+            },
+            status=status,
+        )
+
+    if not (header.is_valid() and formset.is_valid()):
+        return _render_review_with_errors()
+
+    line_data = [
+        f.cleaned_data
+        for f in formset.forms
+        if f.cleaned_data and not f.cleaned_data.get("DELETE")
+    ]
+    if not line_data:
+        formset._non_form_errors = formset.error_class(
+            ["Receptura musí mít alespoň jednu surovinu."]
+        )
+        return _render_review_with_errors()
+
+    try:
+        product = create_mixture_from_review(
+            header_data=header.cleaned_data,
+            line_data=line_data,
+            user=request.user,
+        )
+    except ValidationError as exc:
+        formset._non_form_errors = formset.error_class(exc.messages)
+        return _render_review_with_errors()
+
+    messages.success(
+        request,
+        f'Směs „{product.name_cs}" vytvořena včetně receptury.',
+    )
+    return redirect("inventory:product_detail", pk=product.pk)

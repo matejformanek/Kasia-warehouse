@@ -52,6 +52,9 @@
         Inventura {{ selected_branch.code }}
       </a>
     {% endif %}
+    {% if user.is_vlastnik %}
+      <a class="primary" href="{% url 'inventory:xls_import_upload' %}">Importovat z XLS</a>
+    {% endif %}
     <a class="primary" href="{% url 'inventory:product_create' %}">+ Nový produkt</a>
   </div>
 </form>

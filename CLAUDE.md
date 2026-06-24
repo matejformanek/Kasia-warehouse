@@ -2,10 +2,12 @@
 
 This repository is the warehouse management tool for **Kasia vera s.r.o.**,
 a Czech B2B spice distributor. The stack is locked, the operator-facing
-MVP is built (14 screens + Pass 5 operator CRUD + Pass 6 reorder
-threshold / reservations / low-stock summary), and the system runs
-locally via `make up` against the same Docker image we'll ship to the
-Hetzner box. Hetzner provisioning + the 14-day shadow run come last.
+MVP is built (15 screens + Pass 5 operator CRUD + Pass 6 reorder
+threshold / reservations / low-stock summary + Pass 7 Podpora +
+Pass 8 XLS recipe importer + in-app password change), and the system
+runs locally via `make up` against the same Docker image we'll ship
+to the Hetzner box. Hetzner provisioning + the 14-day shadow run come
+last.
 
 ## Read in this order
 

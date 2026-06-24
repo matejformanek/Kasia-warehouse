@@ -1,0 +1,343 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Návrhy vzhledu úvodní stránky — Kasia sklad</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<style>
+  :root {
+    --ink: #16181d;
+    --soft: #5b6068;
+    --line: #e4e2dd;
+    --bg: #f6f4ef;
+    --card: #ffffff;
+    --accent: #1f6b3a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  header.page {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 1.5rem;
+  }
+  header.page .logo {
+    height: 34px; width: auto; display: block; margin-bottom: 1.25rem;
+  }
+  h1 {
+    font-size: clamp(1.6rem, 3vw, 2.3rem);
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.01em;
+  }
+  header.page p.lede {
+    margin: 0;
+    max-width: 60ch;
+    color: var(--soft);
+    font-size: 1.05rem;
+  }
+  header.page p.note {
+    margin: 1rem 0 0;
+    max-width: 60ch;
+    color: var(--soft);
+    font-size: 0.9rem;
+    padding: 0.6rem 0.85rem;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+  }
+  main {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem 4rem;
+  }
+  h2.group {
+    font-size: 1.05rem;
+    letter-spacing: 0.01em;
+    margin: 2.5rem 0 0.35rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  h2.group:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  p.group-note { margin: 0 0 1.5rem; color: var(--soft); font-size: 0.9rem; max-width: 64ch; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 1.75rem;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow .18s ease, transform .18s ease;
+  }
+  .card:hover {
+    box-shadow: 0 12px 30px -12px rgba(0,0,0,.22);
+    transform: translateY(-2px);
+  }
+  /* Clipped, scaled live preview. The iframe is rendered at a wide logical
+     viewport and scaled down so the full desktop layout is visible. */
+  .thumb {
+    position: relative;
+    width: 100%;
+    height: 248px;
+    overflow: hidden;
+    border-bottom: 1px solid var(--line);
+    background: #fafafa;
+  }
+  .thumb iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1280px;
+    height: 1612px;            /* 1280 * (248/196.6) keeps top of page in view */
+    border: 0;
+    transform: scale(0.258);   /* 330px card / 1280 logical ≈ 0.258 */
+    transform-origin: top left;
+    pointer-events: none;       /* clicks go to the overlay link, not the iframe */
+  }
+  .thumb a.cover {
+    position: absolute; inset: 0; z-index: 2;
+    display: block;
+  }
+  .meta {
+    padding: 0.85rem 1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  .num { color: var(--soft); font-variant-numeric: tabular-nums; }
+  .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    align-self: flex-start;
+  }
+  .tag.min  { background: #eaf3ee; color: #1f6b3a; }
+  .tag.mod  { background: #eef0fb; color: #2f3aa3; }
+  .tag.old  { background: #f4ece0; color: #8a5a1c; }
+  .tag.svc  { background: #eceef0; color: #3b4250; }
+  .open {
+    font-size: 0.85rem;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .open:hover { text-decoration: underline; }
+  footer.page {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+    color: var(--soft);
+    font-size: 0.85rem;
+  }
+</style>
+
+<header class="page">
+  <img class="logo" src="assets/kasia-logo.jpg" alt="Kasia">
+  <h1>Návrhy vzhledu úvodní stránky</h1>
+  <p class="lede">Osmnáct variant vzhledu přehledové stránky (úvodní obrazovka po přihlášení).
+    Obsah je ve všech stejný — liší se jen vzhled. Vyberte, který se vám líbí.</p>
+  <p class="note"><strong>Poznámka:</strong> Jde o náhledy ke srovnání, ne o hotovou aplikaci.
+    Až vyberete směr, ten se zapracuje do skutečné aplikace. Náhledy ukazují reálné
+    rozložení s ukázkovými daty (pobočky Týniště a Sezimovo Ústí).</p>
+</header>
+
+<main>
+
+  <h2 class="group">První sada — vlastní směry</h2>
+  <p class="group-note">Šest minimalistických, dva moderní a dva klasické směry navržené od základu.</p>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="thumb"><iframe src="01-mono-minimal.html" title="Mono Minimal" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="01-mono-minimal.html" aria-label="Otevřít návrh 01 — Mono Minimal"></a></div>
+      <div class="meta">
+        <span class="tag min">minimalistický</span>
+        <span class="label"><span class="num">01</span> · Mono Minimal</span>
+        <a class="open" href="01-mono-minimal.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="02-swiss-grid.html" title="Swiss Grid" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="02-swiss-grid.html" aria-label="Otevřít návrh 02 — Swiss Grid"></a></div>
+      <div class="meta">
+        <span class="tag min">minimalistický</span>
+        <span class="label"><span class="num">02</span> · Swiss Grid</span>
+        <a class="open" href="02-swiss-grid.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="03-warm-minimal.html" title="Warm Minimal" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="03-warm-minimal.html" aria-label="Otevřít návrh 03 — Warm Minimal"></a></div>
+      <div class="meta">
+        <span class="tag min">minimalistický</span>
+        <span class="label"><span class="num">03</span> · Warm Minimal</span>
+        <a class="open" href="03-warm-minimal.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="04-green-brand.html" title="Green Brand-forward" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="04-green-brand.html" aria-label="Otevřít návrh 04 — Green Brand-forward"></a></div>
+      <div class="meta">
+        <span class="tag min">minimalistický</span>
+        <span class="label"><span class="num">04</span> · Green Brand-forward</span>
+        <a class="open" href="04-green-brand.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="05-dark-minimal.html" title="Dark Minimal" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="05-dark-minimal.html" aria-label="Otevřít návrh 05 — Dark Minimal"></a></div>
+      <div class="meta">
+        <span class="tag min">minimalistický</span>
+        <span class="label"><span class="num">05</span> · Dark Minimal</span>
+        <a class="open" href="05-dark-minimal.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="06-airy-editorial.html" title="Airy Editorial" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="06-airy-editorial.html" aria-label="Otevřít návrh 06 — Airy Editorial"></a></div>
+      <div class="meta">
+        <span class="tag min">minimalistický</span>
+        <span class="label"><span class="num">06</span> · Airy Editorial</span>
+        <a class="open" href="06-airy-editorial.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="07-soft-cards.html" title="Soft Cards" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="07-soft-cards.html" aria-label="Otevřít návrh 07 — Soft Cards"></a></div>
+      <div class="meta">
+        <span class="tag mod">moderní</span>
+        <span class="label"><span class="num">07</span> · Soft Cards</span>
+        <a class="open" href="07-soft-cards.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="08-editorial-type.html" title="Editorial / Typographic" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="08-editorial-type.html" aria-label="Otevřít návrh 08 — Editorial / Typographic"></a></div>
+      <div class="meta">
+        <span class="tag mod">moderní</span>
+        <span class="label"><span class="num">08</span> · Editorial / Typographic</span>
+        <a class="open" href="08-editorial-type.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="09-classic-serif.html" title="Classic Serif Business" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="09-classic-serif.html" aria-label="Otevřít návrh 09 — Classic Serif Business"></a></div>
+      <div class="meta">
+        <span class="tag old">klasický</span>
+        <span class="label"><span class="num">09</span> · Classic Serif Business</span>
+        <a class="open" href="09-classic-serif.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="10-bordered-erp.html" title="Bordered ERP" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="10-bordered-erp.html" aria-label="Otevřít návrh 10 — Bordered ERP"></a></div>
+      <div class="meta">
+        <span class="tag old">klasický</span>
+        <span class="label"><span class="num">10</span> · Bordered ERP</span>
+        <a class="open" href="10-bordered-erp.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+  </div>
+
+  <h2 class="group">Druhá sada — inspirováno známými službami</h2>
+  <p class="group-note">Každá varianta čerpá ze vzhledu populárního produktu, který možná znáte.
+    Stejná data, jiný „rukopis".</p>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="thumb"><iframe src="11-linear.html" title="Linear" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="11-linear.html" aria-label="Otevřít návrh 11 — Linear"></a></div>
+      <div class="meta">
+        <span class="tag svc">podle Linearu</span>
+        <span class="label"><span class="num">11</span> · Linear</span>
+        <a class="open" href="11-linear.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="12-stripe.html" title="Stripe" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="12-stripe.html" aria-label="Otevřít návrh 12 — Stripe"></a></div>
+      <div class="meta">
+        <span class="tag svc">podle Stripe</span>
+        <span class="label"><span class="num">12</span> · Stripe</span>
+        <a class="open" href="12-stripe.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="13-notion.html" title="Notion" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="13-notion.html" aria-label="Otevřít návrh 13 — Notion"></a></div>
+      <div class="meta">
+        <span class="tag svc">podle Notionu</span>
+        <span class="label"><span class="num">13</span> · Notion</span>
+        <a class="open" href="13-notion.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="14-vercel.html" title="Vercel" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="14-vercel.html" aria-label="Otevřít návrh 14 — Vercel"></a></div>
+      <div class="meta">
+        <span class="tag svc">podle Vercelu</span>
+        <span class="label"><span class="num">14</span> · Vercel</span>
+        <a class="open" href="14-vercel.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="15-shopify.html" title="Shopify" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="15-shopify.html" aria-label="Otevřít návrh 15 — Shopify"></a></div>
+      <div class="meta">
+        <span class="tag svc">podle Shopify</span>
+        <span class="label"><span class="num">15</span> · Shopify</span>
+        <a class="open" href="15-shopify.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="16-apple.html" title="Apple" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="16-apple.html" aria-label="Otevřít návrh 16 — Apple"></a></div>
+      <div class="meta">
+        <span class="tag svc">podle Applu</span>
+        <span class="label"><span class="num">16</span> · Apple</span>
+        <a class="open" href="16-apple.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="17-github.html" title="GitHub" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="17-github.html" aria-label="Otevřít návrh 17 — GitHub"></a></div>
+      <div class="meta">
+        <span class="tag svc">podle GitHubu</span>
+        <span class="label"><span class="num">17</span> · GitHub</span>
+        <a class="open" href="17-github.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><iframe src="18-airbnb.html" title="Airbnb" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="18-airbnb.html" aria-label="Otevřít návrh 18 — Airbnb"></a></div>
+      <div class="meta">
+        <span class="tag svc">podle Airbnb</span>
+        <span class="label"><span class="num">18</span> · Airbnb</span>
+        <a class="open" href="18-airbnb.html">Otevřít celou stránku →</a>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer class="page">
+  Kasia vera s.r.o. — interní náhledy vzhledu · 18 variant ve dvou sadách
+</footer>

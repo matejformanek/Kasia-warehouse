@@ -107,7 +107,15 @@ USE_TZ = True
 # --- Static files (WhiteNoise compressed manifest, per 0018) ---------------
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "kasia" / "static"] if (BASE_DIR / "kasia" / "static").exists() else []
+STATICFILES_DIRS = []
+if (BASE_DIR / "kasia" / "static").exists():
+    STATICFILES_DIRS.append(BASE_DIR / "kasia" / "static")
+# Design-option mockups (top-level `design-options/`) are served publicly as
+# static files under /static/navrhy/ so Petr can review them on prod without
+# a login, per context/decisions/0047-design-review-gallery.md. They are
+# data-free HTML exploration artifacts, not part of the application.
+if (BASE_DIR / "design-options").exists():
+    STATICFILES_DIRS.append(("navrhy", BASE_DIR / "design-options"))
 
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},

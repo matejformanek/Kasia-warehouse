@@ -1,4 +1,4 @@
-# 0047 — XLS recipe importer
+# 0048 — XLS recipe importer
 
 **Date:** 2026-06-24
 **Decider:** Matej (2026-06-24, post-prod-bootstrap session — request

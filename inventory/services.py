@@ -1384,7 +1384,7 @@ def send_low_stock_summary() -> int | None:
 
 
 # ---------------------------------------------------------------------------
-# XLS recipe importer — per decision 0047
+# XLS recipe importer — per decision 0048
 # ---------------------------------------------------------------------------
 
 _RATIO_QUANT = Decimal("0.000001")  # 6 dp, matches RecipeComponent.ratio
@@ -1503,7 +1503,7 @@ def _cell_number(value: Any) -> Decimal | None:
 def parse_recipe_xls(file_obj, filename: str) -> ParsedRecipe:
     """Parse Petr's recipe XLS layout into a ParsedRecipe.
 
-    Expected layout (see decision 0047):
+    Expected layout (see decision 0048):
 
     - Row 0, col 0 → mixture name (free-text Czech).
     - Row 1 → header (``druh suroviny`` / ``množství kg`` / …); ignored.

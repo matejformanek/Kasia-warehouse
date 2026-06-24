@@ -7,7 +7,7 @@ směsi and re-burns whenever Petr tweaks a recipe. This screen lets
 the vlastník upload one XLS file, review the parsed result (name,
 ingredients, quantities, ratios, notes), and commit it as a new
 mixture Product plus its RecipeComponent rows in one atomic action.
-Per decision [`0047`](../decisions/0047-xls-recipe-importer.md).
+Per decision [`0048`](../decisions/0048-xls-recipe-importer.md).
 
 ## Who uses it
 Vlastník (Petr / Karolína) on desktop. Used at MVP load-time
@@ -117,4 +117,4 @@ a recipe. Obsluha does not see this screen — the catalogue's
 
 None. The flow is deliberately tight; deferred items live in the
 "Future considerations" section of decision
-[`0047`](../decisions/0047-xls-recipe-importer.md).
+[`0048`](../decisions/0048-xls-recipe-importer.md).

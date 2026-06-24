@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<title>Přehled — Kasia sklad</title>
+<style>
+  :root{
+    --chrome:#ece9d8;            /* classic luna chrome */
+    --chrome2:#d4d0c8;           /* older 9x gray */
+    --bevel-light:#ffffff;
+    --bevel-dark:#808080;
+    --bevel-darker:#404040;
+    --titlebar1:#0a246a;         /* classic blue title */
+    --titlebar2:#3a6ea5;
+    --field:#ffffff;
+    --line:#aca899;
+    --line-dk:#7f7f7f;
+    --ink:#202020;
+    --ink-mute:#555248;
+    --hdr-cell1:#f4f3ee;
+    --hdr-cell2:#dcd8cc;
+    --row-alt:#f5f4ef;
+    --sel:#316ac5;
+    --err:#a40000;
+    --err-bg:#fbe9e7;
+    --warn:#7a5a00;
+    --warn-bg:#fcf3da;
+    --ok:#2d6a2d;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:Tahoma, Verdana, "Segoe UI", sans-serif;
+    font-size:12px;
+    line-height:1.4;
+    color:var(--ink);
+    background:#b8b4a8;
+    padding:8px;
+  }
+  /* ---- the application window ---- */
+  .app{
+    max-width:1180px;
+    margin:0 auto;
+    background:var(--chrome);
+    border:1px solid var(--bevel-darker);
+    border-top-color:var(--bevel-light);
+    border-left-color:var(--bevel-light);
+    box-shadow:1px 1px 0 #6a6658;
+  }
+
+  /* ---- title bar ---- */
+  .titlebar{
+    display:flex;align-items:center;gap:8px;
+    background:linear-gradient(180deg,var(--titlebar2) 0%,var(--titlebar1) 100%);
+    color:#fff;
+    padding:4px 6px;
+    border-bottom:1px solid var(--bevel-darker);
+  }
+  .titlebar img{height:18px;display:block;border:1px solid #16306b;background:#fff;}
+  .titlebar .t-name{font-weight:bold;letter-spacing:.3px;text-shadow:1px 1px 0 #000a2c;}
+  .titlebar .t-sub{font-weight:normal;opacity:.85;font-size:11px;}
+  .titlebar .t-right{margin-left:auto;display:flex;align-items:center;gap:4px;}
+  .winbtn{
+    width:18px;height:16px;line-height:14px;text-align:center;font-size:11px;font-weight:bold;
+    color:#000;background:var(--chrome);
+    border:1px solid;border-color:var(--bevel-light) var(--bevel-darker) var(--bevel-darker) var(--bevel-light);
+  }
+
+  /* ---- menu / toolbar chrome ---- */
+  .menubar{
+    display:flex;flex-wrap:wrap;gap:2px;
+    padding:3px 4px;
+    background:var(--chrome);
+    border-bottom:1px solid var(--bevel-dark);
+  }
+  .menubar a{
+    text-decoration:none;color:var(--ink);
+    padding:3px 8px;border:1px solid transparent;white-space:nowrap;
+  }
+  .menubar a:hover{
+    border-color:var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+    background:#fffdf5;
+  }
+  .menubar .sep{width:1px;background:var(--bevel-dark);margin:2px 3px;border-right:1px solid var(--bevel-light);}
+
+  .userbar{
+    display:flex;align-items:center;gap:8px;
+    padding:3px 6px;
+    background:var(--chrome2);
+    border-bottom:1px solid var(--bevel-darker);
+    border-top:1px solid var(--bevel-light);
+    font-size:11px;color:var(--ink-mute);
+  }
+  .userbar .who{margin-left:auto;}
+  .userbar .who b{color:var(--ink);}
+  .btn{
+    display:inline-block;font-family:inherit;font-size:11px;cursor:pointer;
+    padding:2px 9px;color:#000;background:var(--chrome);
+    border:1px solid;border-color:var(--bevel-light) var(--bevel-darker) var(--bevel-darker) var(--bevel-light);
+    box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #b3afa3;
+    text-decoration:none;
+  }
+  .btn:active{
+    border-color:var(--bevel-darker) var(--bevel-light) var(--bevel-light) var(--bevel-darker);
+    box-shadow:inset 1px 1px 0 #b3afa3;
+  }
+  .btn-primary{font-weight:bold;}
+
+  /* ---- workspace ---- */
+  .work{padding:8px;}
+  h1.page{
+    font-size:13px;font-weight:bold;margin:0 0 8px 0;
+    padding:4px 8px;color:#fff;
+    background:linear-gradient(180deg,#5a82b5,#2f5c98);
+    border:1px solid var(--bevel-darker);
+    border-top-color:#7ea0cf;border-left-color:#7ea0cf;
+  }
+
+  /* ---- task bar (action strip) ---- */
+  .taskbar{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    padding:5px 8px;margin-bottom:8px;
+    background:var(--chrome2);
+    border:1px solid var(--line-dk);
+    border-top-color:var(--bevel-light);border-left-color:var(--bevel-light);
+  }
+  .badge-count{
+    display:inline-flex;align-items:center;gap:6px;font-weight:bold;
+  }
+  .badge-count .n{
+    display:inline-block;min-width:18px;text-align:center;
+    background:var(--err);color:#fff;padding:0 5px;
+    border:1px solid #6b0000;font-size:11px;
+  }
+  .taskbar .actions{margin-left:auto;display:flex;gap:6px;}
+
+  /* ---- panel / groupbox ---- */
+  .panel{
+    background:var(--chrome);
+    border:1px solid var(--line-dk);
+    border-top-color:var(--bevel-light);border-left-color:var(--bevel-light);
+    margin-bottom:8px;
+  }
+  .panel > .cap{
+    display:flex;align-items:center;gap:6px;
+    font-weight:bold;color:#fff;
+    padding:3px 7px;
+    background:linear-gradient(180deg,#7d7a6c,#5d5a4e);
+    border-bottom:1px solid var(--bevel-darker);
+  }
+  .panel > .cap .icon{
+    width:13px;height:13px;display:inline-block;background:#fff;border:1px solid #2c2c2c;
+  }
+  .panel > .cap.err{background:linear-gradient(180deg,#b04a40,#8d2f25);}
+  .panel > .body{padding:7px;}
+
+  /* ---- the ERP grid ---- */
+  table.grid{
+    width:100%;border-collapse:collapse;font-size:12px;
+    background:var(--field);
+    border:1px solid var(--line-dk);
+  }
+  table.grid th{
+    text-align:left;font-weight:bold;color:#222;
+    background:linear-gradient(180deg,var(--hdr-cell1),var(--hdr-cell2));
+    border:1px solid var(--line);
+    border-bottom-color:var(--line-dk);
+    padding:3px 6px;
+    white-space:nowrap;
+  }
+  table.grid td{
+    border:1px solid var(--line);
+    padding:2px 6px;
+    background:var(--field);
+  }
+  table.grid tbody tr:nth-child(even) td{background:var(--row-alt);}
+  table.grid tbody tr:hover td{background:#eaf1fb;}
+  .num{text-align:right;font-variant-numeric:tabular-nums;font-family:Tahoma,Verdana,sans-serif;}
+  th.num{text-align:right;}
+  .deficit{color:var(--err);font-weight:bold;}
+  .mono{font-family:"Lucida Console",Consolas,monospace;font-size:11px;}
+
+  .branch-tag{
+    display:inline-block;padding:0 5px;font-size:10px;font-weight:bold;
+    border:1px solid var(--line-dk);background:#eef0e6;color:#3a4a2c;
+  }
+
+  /* ---- to-resolve items ---- */
+  .resolve-group{margin-bottom:6px;}
+  .resolve-group:last-child{margin-bottom:0;}
+  .rg-cap{
+    font-weight:bold;padding:2px 6px;margin-bottom:3px;
+    border-left:4px solid;
+  }
+  .rg-cap.err{color:var(--err);background:var(--err-bg);border-left-color:var(--err);}
+  .rg-cap.warn{color:var(--warn);background:var(--warn-bg);border-left-color:#caa12e;}
+  .resolve-item{
+    padding:3px 6px;background:var(--field);
+    border:1px solid var(--line);
+    display:flex;gap:6px;flex-wrap:wrap;align-items:baseline;
+  }
+  .resolve-item .id{font-weight:bold;}
+  .resolve-item .meta{color:var(--ink-mute);}
+  .pill{
+    display:inline-block;font-size:10px;padding:0 5px;border:1px solid;
+  }
+  .pill.err{background:#fff;color:var(--err);border-color:var(--err);}
+  .pill.warn{background:#fff;color:var(--warn);border-color:#b3922a;}
+
+  /* ---- branch grid ---- */
+  .branch-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .summary-line{
+    font-size:11px;color:var(--ink-mute);margin:0 0 6px 0;padding:3px 6px;
+    background:#faf9f3;border:1px dotted var(--line-dk);
+  }
+  .summary-line .addr{display:block;color:#6a6658;}
+  .summary-line .tot{color:var(--ink);font-weight:bold;}
+  .subcap{
+    font-weight:bold;font-size:11px;margin:8px 0 3px 0;padding:2px 6px;
+    background:var(--hdr-cell2);border:1px solid var(--line);color:#33312a;
+  }
+  ul.moves{list-style:none;margin:0;padding:0;border:1px solid var(--line-dk);background:var(--field);}
+  ul.moves li{
+    display:flex;gap:6px;align-items:baseline;
+    padding:2px 6px;border-bottom:1px solid var(--line);font-size:11px;
+  }
+  ul.moves li:nth-child(even){background:var(--row-alt);}
+  ul.moves li:last-child{border-bottom:none;}
+  ul.moves .date{font-variant-numeric:tabular-nums;color:#555;min-width:48px;}
+  ul.moves .typ{font-weight:bold;min-width:48px;}
+  ul.moves .typ.in{color:var(--ok);}
+  ul.moves .typ.out{color:#8a4500;}
+  ul.moves .party{flex:1;}
+  ul.moves .pol{color:var(--ink-mute);font-variant-numeric:tabular-nums;}
+
+  .panel-foot{
+    text-align:right;padding:4px 7px;font-size:11px;
+    background:var(--chrome2);border-top:1px solid var(--bevel-light);
+  }
+  .panel-foot a{color:#0a246a;}
+
+  /* ---- status bar ---- */
+  .statusbar{
+    display:flex;align-items:center;gap:0;font-size:11px;color:var(--ink-mute);
+    background:var(--chrome);
+    border-top:1px solid var(--bevel-light);
+  }
+  .statusbar .cell{
+    padding:2px 8px;
+    border:1px solid;border-color:var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark);
+  }
+  .statusbar .grow{flex:1;border-left:none;border-right:none;}
+
+  @media (max-width:720px){
+    .branch-grid{grid-template-columns:1fr;}
+    .menubar{font-size:11px;}
+    .taskbar .actions{margin-left:0;width:100%;}
+    .userbar .who{margin-left:0;width:100%;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== TITLE BAR (window chrome) ===== -->
+  <div class="titlebar">
+    <img src="assets/kasia-logo.jpg" alt="Kasia">
+    <span class="t-name">KASIA</span>
+    <span class="t-sub">— sklad</span>
+    <span class="t-right">
+      <span class="winbtn">_</span>
+      <span class="winbtn">▢</span>
+      <span class="winbtn">×</span>
+    </span>
+  </div>
+
+  <!-- ===== MENU BAR (nav) ===== -->
+  <nav class="menubar">
+    <a href="#">Katalog</a>
+    <a href="#">Příjem</a>
+    <a href="#">Výdej</a>
+    <a href="#">Míchání</a>
+    <span class="sep"></span>
+    <a href="#">Dodací listy</a>
+    <a href="#">Historie</a>
+    <a href="#">Pobočky</a>
+    <span class="sep"></span>
+    <a href="#">Nastavení</a>
+  </nav>
+
+  <!-- ===== USER BAR ===== -->
+  <div class="userbar">
+    <span>Přihlášen jako:</span>
+    <span class="who"><b>petr@kasiavera.cz</b></span>
+    <a class="btn" href="#">Odhlásit</a>
+  </div>
+
+  <!-- ===== WORKSPACE ===== -->
+  <div class="work">
+
+    <h1 class="page">Přehled — petr@kasiavera.cz</h1>
+
+    <!-- TASK BAR -->
+    <div class="taskbar">
+      <span class="badge-count">K vyřešení: <span class="n">2</span></span>
+      <span class="actions">
+        <a class="btn btn-primary" href="#">Nový příjem</a>
+        <a class="btn btn-primary" href="#">Nový výdej</a>
+      </span>
+    </div>
+
+    <!-- DOCHÁZÍ ZBOŽÍ -->
+    <section class="panel">
+      <div class="cap"><span class="icon"></span>Dochází zboží</div>
+      <div class="body">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>Produkt</th>
+              <th>Pobočka</th>
+              <th class="num">Skladem (kg)</th>
+              <th class="num">Práh (kg)</th>
+              <th class="num">Deficit (kg)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Skořice mletá</td>
+              <td><span class="branch-tag">TYN</span></td>
+              <td class="num">2.400</td>
+              <td class="num">5.000</td>
+              <td class="num deficit">2.600</td>
+            </tr>
+            <tr>
+              <td>Bobkový list</td>
+              <td><span class="branch-tag">SEZ</span></td>
+              <td class="num">0.850</td>
+              <td class="num">3.000</td>
+              <td class="num deficit">2.150</td>
+            </tr>
+            <tr>
+              <td>Muškátový oříšek</td>
+              <td><span class="branch-tag">TYN</span></td>
+              <td class="num">1.200</td>
+              <td class="num">2.000</td>
+              <td class="num deficit">0.800</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- K VYŘEŠENÍ -->
+    <section class="panel">
+      <div class="cap err"><span class="icon"></span>K vyřešení</div>
+      <div class="body">
+        <div class="resolve-group">
+          <div class="rg-cap err">Nedoručené e-maily</div>
+          <div class="resolve-item">
+            <span class="id mono">DL-TYN-2026-0042</span>
+            <span>— Restaurace U Lípy s.r.o. —</span>
+            <span class="meta">naposledy selhalo 23. 06. 2026 17:42</span>
+            <span class="pill err">SMTP timeout</span>
+          </div>
+        </div>
+        <div class="resolve-group">
+          <div class="rg-cap warn">Nedávno editované dodáky</div>
+          <div class="resolve-item">
+            <span class="id mono">DL-SEZ-2026-0039</span>
+            <span>— Pekařství Novák a syn</span>
+            <span class="pill warn">v2</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BRANCH GRID -->
+    <div class="branch-grid">
+
+      <!-- PANEL 1: TYN -->
+      <section class="panel">
+        <div class="cap"><span class="icon"></span>TYN — Týniště nad Orlicí</div>
+        <div class="body">
+          <p class="summary-line">
+            <span class="addr">Mírové náměstí 90, Týniště nad Orlicí</span>
+            24 produktů skladem, celkem <span class="tot">1 248.560 kg</span>.
+          </p>
+          <table class="grid">
+            <thead>
+              <tr><th>Produkt</th><th class="num">Kg</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Paprika sladká mletá</td><td class="num">312.500</td></tr>
+              <tr><td>Pepř černý celý</td><td class="num">187.250</td></tr>
+              <tr><td>Kmín celý</td><td class="num">154.000</td></tr>
+              <tr><td>Majoránka</td><td class="num">98.750</td></tr>
+              <tr><td>Skořice mletá</td><td class="num deficit">2.400</td></tr>
+            </tbody>
+          </table>
+
+          <div class="subcap">Nedávné pohyby</div>
+          <ul class="moves">
+            <li><span class="date">23. 06.</span><span class="typ out">Výdej</span><span class="party">Restaurace U Lípy s.r.o.</span><span class="pol">4 pol.</span></li>
+            <li><span class="date">22. 06.</span><span class="typ in">Příjem</span><span class="party">Spice Trade Praha a.s.</span><span class="pol">7 pol.</span></li>
+            <li><span class="date">21. 06.</span><span class="typ out">Výdej</span><span class="party">Hotel Černý kůň</span><span class="pol">2 pol.</span></li>
+            <li><span class="date">20. 06.</span><span class="typ out">Výdej</span><span class="party">Říčany (HQ)</span><span class="pol">3 pol.</span></li>
+            <li><span class="date">19. 06.</span><span class="typ in">Příjem</span><span class="party">Worlée NaturProdukte</span><span class="pol">5 pol.</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- PANEL 2: SEZ -->
+      <section class="panel">
+        <div class="cap"><span class="icon"></span>SEZ — Sezimovo Ústí</div>
+        <div class="body">
+          <p class="summary-line">
+            <span class="addr">Průmyslová 1024, Sezimovo Ústí</span>
+            19 produktů skladem, celkem <span class="tot">876.300 kg</span>.
+          </p>
+          <table class="grid">
+            <thead>
+              <tr><th>Produkt</th><th class="num">Kg</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Pepř černý celý</td><td class="num">205.000</td></tr>
+              <tr><td>Paprika sladká mletá</td><td class="num">142.800</td></tr>
+              <tr><td>Muškátový oříšek</td><td class="num">64.500</td></tr>
+              <tr><td>Kmín celý</td><td class="num">47.250</td></tr>
+              <tr><td>Bobkový list</td><td class="num deficit">0.850</td></tr>
+            </tbody>
+          </table>
+
+          <div class="subcap">Nedávné pohyby</div>
+          <ul class="moves">
+            <li><span class="date">23. 06.</span><span class="typ in">Příjem</span><span class="party">Fuchs Gewürze</span><span class="pol">6 pol.</span></li>
+            <li><span class="date">22. 06.</span><span class="typ out">Výdej</span><span class="party">Pekařství Novák a syn</span><span class="pol">3 pol.</span></li>
+            <li><span class="date">21. 06.</span><span class="typ out">Výdej</span><span class="party">Jednota Tábor</span><span class="pol">5 pol.</span></li>
+            <li><span class="date">20. 06.</span><span class="typ out">Výdej</span><span class="party">Restaurace Na Růžku</span><span class="pol">2 pol.</span></li>
+            <li><span class="date">18. 06.</span><span class="typ in">Příjem</span><span class="party">Spice Trade Praha a.s.</span><span class="pol">4 pol.</span></li>
+          </ul>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- DODACÍ LISTY K REVIZI -->
+    <section class="panel">
+      <div class="cap"><span class="icon"></span>Dodací listy k revizi</div>
+      <div class="body" style="padding-bottom:0;">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>Číslo</th>
+              <th>Datum</th>
+              <th>Pobočka</th>
+              <th>Odběratel</th>
+              <th>Verze</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">DL-TYN-2026-0042</td>
+              <td class="num">23. 06. 2026</td>
+              <td><span class="branch-tag">TYN</span></td>
+              <td>Restaurace U Lípy s.r.o.</td>
+              <td>v1</td>
+            </tr>
+            <tr>
+              <td class="mono">DL-SEZ-2026-0039</td>
+              <td class="num">22. 06. 2026</td>
+              <td><span class="branch-tag">SEZ</span></td>
+              <td>Pekařství Novák a syn</td>
+              <td><span class="pill warn">v2</span></td>
+            </tr>
+            <tr>
+              <td class="mono">DL-TYN-2026-0041</td>
+              <td class="num">21. 06. 2026</td>
+              <td><span class="branch-tag">TYN</span></td>
+              <td>Hotel Černý kůň</td>
+              <td>v1</td>
+            </tr>
+            <tr>
+              <td class="mono">DL-SEZ-2026-0038</td>
+              <td class="num">21. 06. 2026</td>
+              <td><span class="branch-tag">SEZ</span></td>
+              <td>Jednota Tábor</td>
+              <td>v1</td>
+            </tr>
+            <tr>
+              <td class="mono">DL-TYN-2026-0040</td>
+              <td class="num">20. 06. 2026</td>
+              <td><span class="branch-tag">TYN</span></td>
+              <td>Říčany (HQ)</td>
+              <td>v1</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel-foot"><a href="#">Celý seznam &raquo;</a></div>
+    </section>
+
+  </div><!-- /work -->
+
+  <!-- ===== STATUS BAR ===== -->
+  <div class="statusbar">
+    <span class="cell">Připraveno</span>
+    <span class="cell">Pobočky: 2</span>
+    <span class="cell">K vyřešení: 2</span>
+    <span class="cell grow"></span>
+    <span class="cell">petr@kasiavera.cz</span>
+    <span class="cell">24. 06. 2026</span>
+  </div>
+
+</div><!-- /app -->
+</body>
+</html>

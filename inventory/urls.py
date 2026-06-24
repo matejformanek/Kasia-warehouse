@@ -24,7 +24,7 @@ urlpatterns = [
     path("pohyby/<int:pk>/upravit/", views.movement_edit, name="movement_edit"),
     path("katalog/", views.catalogue_index, name="catalogue_index"),
     path("katalog/novy/", views.product_create, name="product_create"),
-    # XLS recipe importer (per 0047) — vlastník-only upload→review→confirm.
+    # XLS recipe importer (per 0048) — vlastník-only upload→review→confirm.
     path(
         "katalog/import-xls/",
         views.xls_import_upload,

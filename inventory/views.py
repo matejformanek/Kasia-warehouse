@@ -2495,7 +2495,7 @@ def feedback_toggle_view(request, pk: int):
 
 
 # ---------------------------------------------------------------------------
-# XLS recipe importer (per decision 0047)
+# XLS recipe importer (per decision 0048)
 # ---------------------------------------------------------------------------
 
 
@@ -2508,7 +2508,7 @@ def xls_import_upload(request):
     parsed shape (header form + line formset). On parse failure, surface a
     Czech error on the upload form.
 
-    Vlastník-only. Per decision 0047.
+    Vlastník-only. Per decision 0048.
     """
     _require_vlastnik(request)
 

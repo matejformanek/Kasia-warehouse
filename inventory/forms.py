@@ -607,7 +607,7 @@ class FeedbackForm(forms.ModelForm):
 
 
 # ---------------------------------------------------------------------------
-# XLS recipe importer (per decision 0047)
+# XLS recipe importer (per decision 0048)
 # ---------------------------------------------------------------------------
 
 # Files larger than this are rejected at form level. The sample recipe is

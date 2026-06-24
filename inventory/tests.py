@@ -5091,7 +5091,7 @@ def test_feedback_visible_to_all_users_not_just_creator(
 
 
 # ---------------------------------------------------------------------------
-# XLS recipe importer (Pass 8, per decision 0047)
+# XLS recipe importer (Pass 8, per decision 0048)
 # ---------------------------------------------------------------------------
 
 

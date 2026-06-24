@@ -70,7 +70,7 @@ Every screen uses the structure laid out in [`_template.md`](_template.md):
   [`../decisions/0032-mixing-in-mvp.md`](../decisions/0032-mixing-in-mvp.md).
 - [17 — Import receptury z XLS / XLS recipe importer](17-xls-import.md) —
   vlastník-only upload→review→confirm flow per
-  [`../decisions/0047-xls-recipe-importer.md`](../decisions/0047-xls-recipe-importer.md).
+  [`../decisions/0048-xls-recipe-importer.md`](../decisions/0048-xls-recipe-importer.md).
 
 ### Support & help
 

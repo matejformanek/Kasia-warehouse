@@ -3,6 +3,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_not_required
 from django.http import HttpResponse
 from django.urls import include, path, reverse_lazy
+from django.views.generic.base import RedirectView
 
 
 @login_not_required
@@ -13,6 +14,17 @@ def healthz(_request):
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("healthz", healthz),
+    # Public, login-exempt shareable link to the design-review gallery, which
+    # is itself served as a static file under /static/navrhy/. Lets Petr open
+    # the mockups on prod without a Kasia account, per
+    # context/decisions/0047-design-review-gallery.md. Temporary review surface.
+    path(
+        "navrhy/",
+        login_not_required(
+            RedirectView.as_view(url="/static/navrhy/index.html", permanent=False)
+        ),
+        name="design_gallery",
+    ),
     path(
         "login/",
         auth_views.LoginView.as_view(template_name="registration/login.html"),

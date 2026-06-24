@@ -1,5 +1,7 @@
 # 0020 — Authentication: Django auth + groups, e-mail + password
 
+> **Amended by [0047](./0047-design-review-gallery.md)** — the "no public surface beyond /login/ and /healthz/" line is narrowed to *application* views and data; a static, data-free design-review gallery is intentionally public under `/static/navrhy/` (entry `/navrhy/`).
+
 ## Context
 
 R9 in [`../tech-options.md`](../tech-options.md): two roles —

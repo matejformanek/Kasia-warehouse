@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Přehled — Kasia sklad</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1714;
+    --paper: #f7f3ec;
+    --paper-2: #fffdf8;
+    --oxblood: #6e1423;
+    --oxblood-soft: #8c2333;
+    --rule: #d8cfc0;
+    --rule-strong: #b7ab97;
+    --muted: #7a7064;
+    --terra: #b5532c;
+    --ok: #2f5e3f;
+    --warn-bg: #f4e7cf;
+    --err-bg: #f3dcd9;
+    --display: "Fraunces", Georgia, "Times New Roman", serif;
+    --sans: "Inter", system-ui, -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 32px 96px;
+  }
+
+  /* ---------- kicker / eyelash ---------- */
+  .kicker {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--oxblood);
+    display: inline-block;
+    margin: 0 0 10px;
+  }
+
+  /* ---------- header ---------- */
+  header.site {
+    border-bottom: 2px solid var(--ink);
+    padding: 22px 32px 18px;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  .topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  .brand img {
+    height: 36px;
+    width: auto;
+    display: block;
+    align-self: center;
+  }
+  .brand .name {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+  .brand .sub {
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 18px;
+    color: var(--muted);
+  }
+  .brand .sub::before {
+    content: "·";
+    margin-right: 12px;
+    color: var(--rule-strong);
+    font-style: normal;
+  }
+  .account {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-size: 13.5px;
+  }
+  .account .who { color: var(--muted); }
+  .account .logout {
+    color: var(--oxblood);
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 1.5px solid var(--oxblood);
+    padding-bottom: 1px;
+  }
+  .account .logout:hover { color: var(--ink); border-color: var(--ink); }
+
+  nav.main {
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    font-family: var(--sans);
+  }
+  nav.main a {
+    text-decoration: none;
+    color: var(--ink);
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    padding: 4px 16px 4px 0;
+    margin-right: 16px;
+    position: relative;
+  }
+  nav.main a + a { }
+  nav.main a:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 12px;
+    width: 1px;
+    background: var(--rule-strong);
+  }
+  nav.main a:hover { color: var(--oxblood); }
+
+  /* ---------- H1 masthead ---------- */
+  .masthead {
+    padding: 56px 0 40px;
+    border-bottom: 1px solid var(--rule);
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(44px, 8vw, 92px);
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: var(--ink);
+  }
+  h1 .em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--oxblood);
+  }
+  h1 .addr {
+    display: block;
+    font-family: var(--sans);
+    font-size: clamp(15px, 2.2vw, 20px);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--muted);
+    margin-top: 18px;
+  }
+
+  /* ---------- task bar ---------- */
+  .taskbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 28px;
+    flex-wrap: wrap;
+    padding: 28px 0 40px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .counter {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  .counter .label {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    max-width: 120px;
+    line-height: 1.3;
+  }
+  .counter .num {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 86px;
+    line-height: 0.8;
+    color: var(--oxblood);
+    letter-spacing: -0.03em;
+  }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 13px 24px;
+    border: 1.5px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper-2);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .btn:hover { background: var(--oxblood); border-color: var(--oxblood); }
+  .btn.ghost {
+    background: transparent;
+    color: var(--ink);
+  }
+  .btn.ghost:hover { background: var(--ink); color: var(--paper-2); }
+
+  /* ---------- section ---------- */
+  section { padding: 56px 0 0; }
+  .sec-head { margin-bottom: 26px; }
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(28px, 4.5vw, 46px);
+    line-height: 1;
+    letter-spacing: -0.015em;
+    margin: 0;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--ink);
+  }
+  h2 .count {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+    margin-left: 12px;
+  }
+
+  /* ---------- tables ---------- */
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 0 16px 10px 0;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  tbody td {
+    padding: 14px 16px 14px 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: 15px;
+    vertical-align: baseline;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  .prod {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 17px;
+    letter-spacing: -0.005em;
+  }
+  .num-col {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+  th.num-col { text-align: right; padding-right: 0; }
+  td.num-col { padding-right: 0; }
+  .deficit { color: var(--oxblood); font-weight: 600; }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 3px 9px;
+    border: 1px solid var(--rule-strong);
+    color: var(--ink);
+    background: var(--paper-2);
+  }
+  .ver {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+  .ver.v2 { color: var(--terra); }
+  .docnum {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+  }
+
+  /* ---------- K vyřešení ---------- */
+  .resolve { display: grid; gap: 18px; margin-top: 4px; }
+  .issue {
+    border-left: 4px solid;
+    padding: 18px 22px;
+  }
+  .issue.err { border-color: var(--oxblood); background: var(--err-bg); }
+  .issue.warn { border-color: var(--terra); background: var(--warn-bg); }
+  .issue .grp {
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .issue.err .grp { color: var(--oxblood); }
+  .issue.warn .grp { color: var(--terra); }
+  .issue .body { font-size: 15.5px; line-height: 1.45; }
+  .issue .body .id {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 17px;
+  }
+  .issue .meta { color: var(--muted); font-size: 13.5px; }
+
+  /* ---------- branch grid ---------- */
+  .branches {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 56px;
+    margin-top: 8px;
+  }
+  .panel { padding-top: 8px; }
+  .panel + .panel {
+    border-left: 1px solid var(--rule);
+    padding-left: 56px;
+    margin-left: -56px;
+  }
+  .panel h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 30px;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+  }
+  .panel h3 .code { color: var(--oxblood); }
+  .panel .addr {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+    font-family: var(--display);
+  }
+  .panel .summary {
+    margin: 16px 0 22px;
+    padding: 14px 0;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--rule);
+    font-size: 15px;
+  }
+  .panel .summary b {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 17px;
+  }
+
+  .subhead {
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 28px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .moves { list-style: none; margin: 0; padding: 0; }
+  .moves li {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    gap: 12px;
+    align-items: baseline;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: 14px;
+  }
+  .moves li:last-child { border-bottom: none; }
+  .moves .date {
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .moves .kind {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .moves .kind.in { color: var(--ok); }
+  .moves .kind.out { color: var(--oxblood); }
+  .moves .party {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .moves .qty { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+  /* ---------- revize footer ---------- */
+  .seclink {
+    margin-top: 22px;
+    text-align: right;
+  }
+  .seclink a {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--oxblood);
+    text-decoration: none;
+    border-bottom: 1.5px solid var(--oxblood);
+    padding-bottom: 1px;
+  }
+  .seclink a:hover { color: var(--ink); border-color: var(--ink); }
+  .seclink a::after { content: " →"; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 720px) {
+    .wrap { padding: 0 18px 64px; }
+    header.site { padding: 18px; }
+    .branches { grid-template-columns: 1fr; gap: 0; }
+    .panel + .panel {
+      border-left: none;
+      padding-left: 0;
+      margin-left: 0;
+      border-top: 2px solid var(--ink);
+      padding-top: 36px;
+      margin-top: 36px;
+    }
+    .counter .num { font-size: 64px; }
+    .masthead { padding: 36px 0 28px; }
+    .moves li { grid-template-columns: auto 1fr; gap: 4px 10px; }
+    .moves .qty { grid-column: 2; }
+    nav.main a:not(:last-child)::after { display: none; }
+    nav.main a { margin-right: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header class="site">
+  <div class="topline">
+    <div class="brand">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="name">KASIA</span>
+      <span class="sub">sklad</span>
+    </div>
+    <div class="account">
+      <span class="who">petr@kasiavera.cz</span>
+      <a class="logout" href="#">Odhlásit</a>
+    </div>
+  </div>
+  <nav class="main">
+    <a href="#">Katalog</a>
+    <a href="#">Příjem</a>
+    <a href="#">Výdej</a>
+    <a href="#">Míchání</a>
+    <a href="#">Dodací listy</a>
+    <a href="#">Historie</a>
+    <a href="#">Pobočky</a>
+    <a href="#">Nastavení</a>
+  </nav>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ H1 ============ -->
+  <div class="masthead">
+    <span class="kicker">Vlastnický přehled</span>
+    <h1><span class="em">Přehled</span>
+      <span class="addr">petr@kasiavera.cz</span>
+    </h1>
+  </div>
+
+  <!-- ============ TASK BAR ============ -->
+  <div class="taskbar">
+    <div class="counter">
+      <span class="num">2</span>
+      <span class="label">Položky k&nbsp;vyřešení</span>
+    </div>
+    <div class="actions">
+      <a class="btn" href="#">Nový příjem</a>
+      <a class="btn ghost" href="#">Nový výdej</a>
+    </div>
+  </div>
+
+  <!-- ============ DOCHÁZÍ ZBOŽÍ ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="kicker">Pod prahem</span>
+      <h2>Dochází zboží</h2>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Produkt</th>
+          <th>Pobočka</th>
+          <th class="num-col">Skladem (kg)</th>
+          <th class="num-col">Práh (kg)</th>
+          <th class="num-col">Deficit (kg)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="prod">Skořice mletá</td>
+          <td><span class="tag">TYN</span></td>
+          <td class="num-col">2.400</td>
+          <td class="num-col">5.000</td>
+          <td class="num-col deficit">2.600</td>
+        </tr>
+        <tr>
+          <td class="prod">Bobkový list</td>
+          <td><span class="tag">SEZ</span></td>
+          <td class="num-col">0.850</td>
+          <td class="num-col">3.000</td>
+          <td class="num-col deficit">2.150</td>
+        </tr>
+        <tr>
+          <td class="prod">Muškátový oříšek</td>
+          <td><span class="tag">TYN</span></td>
+          <td class="num-col">1.200</td>
+          <td class="num-col">2.000</td>
+          <td class="num-col deficit">0.800</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ K VYŘEŠENÍ ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="kicker">Vyžaduje pozornost</span>
+      <h2>K vyřešení <span class="count">2 položky</span></h2>
+    </div>
+    <div class="resolve">
+      <div class="issue err">
+        <div class="grp">Nedoručené e-maily</div>
+        <div class="body">
+          <span class="id">DL-TYN-2026-0042</span> — Restaurace U Lípy s.r.o.
+          <span class="meta">— naposledy selhalo 23. 06. 2026 17:42 (SMTP timeout)</span>
+        </div>
+      </div>
+      <div class="issue warn">
+        <div class="grp">Nedávno editované dodáky</div>
+        <div class="body">
+          <span class="id">DL-SEZ-2026-0039</span> — Pekařství Novák a syn
+          <span class="meta">— v2</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BRANCH GRID ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="kicker">Stav poboček</span>
+      <h2>Pobočky</h2>
+    </div>
+    <div class="branches">
+
+      <!-- PANEL 1 -->
+      <div class="panel">
+        <h3><span class="code">TYN</span> — Týniště nad Orlicí</h3>
+        <div class="addr">Mírové náměstí 90, Týniště nad Orlicí</div>
+        <div class="summary"><b>24 produktů</b> skladem, celkem <b>1 248.560 kg</b>.</div>
+
+        <table>
+          <thead>
+            <tr><th>Produkt</th><th class="num-col">Kg</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="prod">Paprika sladká mletá</td><td class="num-col">312.500</td></tr>
+            <tr><td class="prod">Pepř černý celý</td><td class="num-col">187.250</td></tr>
+            <tr><td class="prod">Kmín celý</td><td class="num-col">154.000</td></tr>
+            <tr><td class="prod">Majoránka</td><td class="num-col">98.750</td></tr>
+            <tr><td class="prod">Skořice mletá</td><td class="num-col">2.400</td></tr>
+          </tbody>
+        </table>
+
+        <div class="subhead">Nedávné pohyby</div>
+        <ul class="moves">
+          <li><span class="date">23. 06.</span><span class="kind out">Výdej</span><span class="party">Restaurace U Lípy s.r.o.</span><span class="qty">4 pol.</span></li>
+          <li><span class="date">22. 06.</span><span class="kind in">Příjem</span><span class="party">Spice Trade Praha a.s.</span><span class="qty">7 pol.</span></li>
+          <li><span class="date">21. 06.</span><span class="kind out">Výdej</span><span class="party">Hotel Černý kůň</span><span class="qty">2 pol.</span></li>
+          <li><span class="date">20. 06.</span><span class="kind out">Výdej</span><span class="party">Říčany (HQ)</span><span class="qty">3 pol.</span></li>
+          <li><span class="date">19. 06.</span><span class="kind in">Příjem</span><span class="party">Worlée NaturProdukte</span><span class="qty">5 pol.</span></li>
+        </ul>
+      </div>
+
+      <!-- PANEL 2 -->
+      <div class="panel">
+        <h3><span class="code">SEZ</span> — Sezimovo Ústí</h3>
+        <div class="addr">Průmyslová 1024, Sezimovo Ústí</div>
+        <div class="summary"><b>19 produktů</b> skladem, celkem <b>876.300 kg</b>.</div>
+
+        <table>
+          <thead>
+            <tr><th>Produkt</th><th class="num-col">Kg</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="prod">Pepř černý celý</td><td class="num-col">205.000</td></tr>
+            <tr><td class="prod">Paprika sladká mletá</td><td class="num-col">142.800</td></tr>
+            <tr><td class="prod">Muškátový oříšek</td><td class="num-col">64.500</td></tr>
+            <tr><td class="prod">Kmín celý</td><td class="num-col">47.250</td></tr>
+            <tr><td class="prod">Bobkový list</td><td class="num-col">0.850</td></tr>
+          </tbody>
+        </table>
+
+        <div class="subhead">Nedávné pohyby</div>
+        <ul class="moves">
+          <li><span class="date">23. 06.</span><span class="kind in">Příjem</span><span class="party">Fuchs Gewürze</span><span class="qty">6 pol.</span></li>
+          <li><span class="date">22. 06.</span><span class="kind out">Výdej</span><span class="party">Pekařství Novák a syn</span><span class="qty">3 pol.</span></li>
+          <li><span class="date">21. 06.</span><span class="kind out">Výdej</span><span class="party">Jednota Tábor</span><span class="qty">5 pol.</span></li>
+          <li><span class="date">20. 06.</span><span class="kind out">Výdej</span><span class="party">Restaurace Na Růžku</span><span class="qty">2 pol.</span></li>
+          <li><span class="date">18. 06.</span><span class="kind in">Příjem</span><span class="party">Spice Trade Praha a.s.</span><span class="qty">4 pol.</span></li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ DODACÍ LISTY K REVIZI ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="kicker">Ke kontrole</span>
+      <h2>Dodací listy k revizi</h2>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Číslo</th>
+          <th>Datum</th>
+          <th>Pobočka</th>
+          <th>Odběratel</th>
+          <th>Verze</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="docnum">DL-TYN-2026-0042</td>
+          <td class="num-col" style="text-align:left">23. 06. 2026</td>
+          <td><span class="tag">TYN</span></td>
+          <td class="prod">Restaurace U Lípy s.r.o.</td>
+          <td><span class="ver">v1</span></td>
+        </tr>
+        <tr>
+          <td class="docnum">DL-SEZ-2026-0039</td>
+          <td class="num-col" style="text-align:left">22. 06. 2026</td>
+          <td><span class="tag">SEZ</span></td>
+          <td class="prod">Pekařství Novák a syn</td>
+          <td><span class="ver v2">v2</span></td>
+        </tr>
+        <tr>
+          <td class="docnum">DL-TYN-2026-0041</td>
+          <td class="num-col" style="text-align:left">21. 06. 2026</td>
+          <td><span class="tag">TYN</span></td>
+          <td class="prod">Hotel Černý kůň</td>
+          <td><span class="ver">v1</span></td>
+        </tr>
+        <tr>
+          <td class="docnum">DL-SEZ-2026-0038</td>
+          <td class="num-col" style="text-align:left">21. 06. 2026</td>
+          <td><span class="tag">SEZ</span></td>
+          <td class="prod">Jednota Tábor</td>
+          <td><span class="ver">v1</span></td>
+        </tr>
+        <tr>
+          <td class="docnum">DL-TYN-2026-0040</td>
+          <td class="num-col" style="text-align:left">20. 06. 2026</td>
+          <td><span class="tag">TYN</span></td>
+          <td class="prod">Říčany (HQ)</td>
+          <td><span class="ver">v1</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="seclink"><a href="#">Celý seznam</a></div>
+  </section>
+
+</div>
+</body>
+</html>

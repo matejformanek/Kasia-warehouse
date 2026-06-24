@@ -1199,6 +1199,37 @@
   re-open, obsluha rejection, all-users visibility). Full suite:
   **282 pytest tests green**; ruff clean; system check clean.
 
+- **2026-06-24** — Homepage visual exploration gallery built under
+  `design-options/` (exploration scratch — production `base.html` /
+  `home.html` untouched). **18** fully standalone HTML mockups of the owner
+  dashboard, all rendering identical realistic Czech sample data (TYN +
+  SEZ, real spice products, plausible odběratelé) so Petr compares
+  *style* not content. Set one (bespoke, 10): 6 minimalist (mono,
+  swiss-grid, warm, green-brand, dark, airy-editorial), 2 modern
+  (soft-cards, editorial-type), 2 old-school (classic-serif, bordered-erp).
+  Set two (inspired by popular products, 8): Linear, Stripe, Notion,
+  Vercel, Shopify, Apple, GitHub, Airbnb. Plus `index.html` two-group
+  live-thumbnail gallery, `README.md`, and self-contained `assets/`
+  (logo + favicon). Verified: all 20 routes 200 over `http.server`, no
+  Django tags, no external refs except Google Fonts, diacritics + sample
+  data consistent across all 18. Next: Petr picks a direction → log a
+  `decisions/NNNN-*.md` → separate port task into the real templates.
+
+- **2026-06-24** — Design-review gallery now served publicly on prod for
+  Petr's review, per
+  [`decisions/0047`](./decisions/0047-design-review-gallery.md) (amends
+  [`0020`](./decisions/0020-auth-django-builtin.md)). `design-options/`
+  added to `STATICFILES_DIRS` under the `navrhy` prefix → WhiteNoise serves
+  it at `/static/navrhy/` (public, pre-auth); `login_not_required` redirect
+  at `/navrhy/` is the shareable entry point. Source stays top-level
+  (versioned design history). Verified locally with DEBUG=False: `/navrhy/`
+  302→ gallery, static files 200 via WhiteNoise, real app pages still
+  302→login; `collectstatic` clean; ruff clean; **282 tests green**.
+  Reaches prod on next push to `main` (build runs `collectstatic`, image
+  already copies `design-options/`). Temporary surface — remove the
+  `navrhy` static entry + `/navrhy/` redirect when the chosen homepage
+  ports into real templates.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

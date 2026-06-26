@@ -1,0 +1,41 @@
+{% extends "web/base.html" %}
+
+{% block title %}Provozovny — {{ company.legal_name }}{% endblock %}
+{% block meta_description %}Provozovny {{ company.legal_name }}: sídlo v Říčanech u Prahy a provozní sklady v Týništi nad Orlicí a Sezimově Ústí.{% endblock %}
+
+{% block content %}
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Kde nás najdete</p>
+    <h1>Provozovny</h1>
+    <p class="lead" style="max-width:60ch;">
+      Sídlo firmy je v Říčanech u Prahy; zpracování a sklad zajišťují dvě
+      provozní pracoviště.
+    </p>
+
+    <div class="grid cols-3" style="margin-top:2rem;">
+      {% for p in provozovny %}
+        <div class="card">
+          <p class="eyebrow">{{ p.role }}</p>
+          <h3>{{ p.name }}</h3>
+          <p>
+            {% if p.street %}{{ p.street }}<br>{% endif %}
+            {% if p.postal_code %}{{ p.postal_code }} {% endif %}{{ p.city }}
+          </p>
+          {% if p.phone %}
+            <p>Telefon: <a href="tel:{{ p.phone|cut:' ' }}">{{ p.phone }}</a></p>
+          {% endif %}
+          <p>Otevírací doba: {{ p.hours }}</p>
+          {% if p.note %}
+            <p class="helptext">{{ p.note }}</p>
+          {% endif %}
+          <p>
+            <a href="https://www.google.com/maps/search/?api=1&amp;query={{ p.map_query|urlencode }}"
+               target="_blank" rel="noopener">Zobrazit na mapě →</a>
+          </p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

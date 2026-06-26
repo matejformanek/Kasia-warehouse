@@ -1,0 +1,84 @@
+{% extends "web/base.html" %}
+
+{% block title %}Kontakt — {{ company.legal_name }}{% endblock %}
+{% block meta_description %}Kontakt na {{ company.legal_name }}: {{ company.street }}, {{ company.city }}. Telefon {{ company.phone_primary }}, e-mail {{ company.email }}.{% endblock %}
+
+{% block content %}
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Kontakt</p>
+    <h1>Napište nám</h1>
+
+    <div class="grid cols-2" style="margin-top:1.5rem; align-items:start;">
+      {# --- Contact details --- #}
+      <div class="card">
+        <h3>{{ company.legal_name }}</h3>
+        <p>
+          {{ company.street }}<br>
+          {{ company.postal_code }} {{ company.city }}<br>
+          {{ company.country }}
+        </p>
+        <p>
+          Telefon: <a href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a>,
+          <a href="tel:{{ company.phone_secondary|cut:' ' }}">{{ company.phone_secondary }}</a><br>
+          E-mail: <a href="mailto:{{ company.email }}">{{ company.email }}</a><br>
+          Otevírací doba: {{ company.hours }}
+        </p>
+        <p class="helptext">
+          IČO: {{ company.ico }}{% if company.dic %} · DIČ: {{ company.dic }}{% endif %}<br>
+          Datová schránka: {{ company.datova_schranka }}
+        </p>
+        <p>
+          <a href="https://www.google.com/maps/search/?api=1&amp;query={{ company.street|add:', '|add:company.city|urlencode }}"
+             target="_blank" rel="noopener">Zobrazit sídlo na mapě →</a>
+        </p>
+      </div>
+
+      {# --- Poptávkový / kontaktní formulář (decision 0050) --- #}
+      <div class="card">
+        <h3>Poptávkový formulář</h3>
+        <p class="helptext">Pole označená * jsou povinná.</p>
+        <form method="post" action="{% url 'web:kontakt' %}" novalidate>
+          {% csrf_token %}
+          {% if form.non_field_errors %}
+            <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+          {% endif %}
+          <div class="field">
+            <label for="{{ form.name.id_for_label }}">Jméno *</label>
+            {{ form.name }}
+            {{ form.name.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ form.email.id_for_label }}">E-mail *</label>
+            {{ form.email }}
+            {{ form.email.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ form.phone.id_for_label }}">Telefon</label>
+            {{ form.phone }}
+            {{ form.phone.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ form.message.id_for_label }}">Zpráva *</label>
+            {{ form.message }}
+            {{ form.message.errors }}
+          </div>
+          <div class="field">
+            <label class="checkbox">
+              {{ form.consent }}
+              <span>{{ form.consent.label }} *</span>
+            </label>
+            {{ form.consent.errors }}
+          </div>
+          <button type="submit" class="btn btn-primary">Odeslat poptávku</button>
+        </form>
+        <p class="helptext" style="margin-top:1rem;">
+          Odesláním formuláře souhlasíte se zpracováním uvedených osobních údajů
+          výhradně za účelem vyřízení vaší poptávky. Údaje nepředáváme třetím
+          stranám.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

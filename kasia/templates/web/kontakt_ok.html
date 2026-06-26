@@ -1,0 +1,22 @@
+{% extends "web/base.html" %}
+
+{% block title %}Poptávka odeslána — {{ company.legal_name }}{% endblock %}
+{% block meta_description %}Děkujeme, vaši poptávku jsme přijali.{% endblock %}
+
+{% block content %}
+<section>
+  <div class="wrap" style="max-width:640px;">
+    <p class="eyebrow">Kontakt</p>
+    <h1>Děkujeme, poptávku jsme přijali</h1>
+    <p class="lead" style="max-width:none;">
+      Vaši zprávu jsme zaznamenali a ozveme se vám co nejdříve na uvedený
+      kontakt. Pokud spěcháte, zavolejte nám na
+      <a href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a>.
+    </p>
+    <p>
+      <a class="btn btn-primary" href="{% url 'web:home' %}">Zpět na úvod</a>
+      <a class="btn btn-outline" href="{% url 'web:provozovny' %}">Naše provozovny</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

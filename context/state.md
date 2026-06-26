@@ -1268,11 +1268,57 @@
   `karolina@kasia.cz`), Týniště obsluha
   (`objednavky@koreni-gastro.cz`), Sezimák obsluha
   (`obchod@cervenkajiri.cz`). Initial passwords handed
-  out-of-band; users self-service via `/accounts/zmena-hesla/`.
+  out-of-band; users self-service via `/sklad/zmena-hesla/`
+  (moved from `/accounts/zmena-hesla/` by 0049).
   `Settings.recipient_petr` = `petr@kasia.cz`,
   `Settings.recipient_karolina` = `karolina@kasia.cz` (needed
   before any real customer výdej, per the `_assert_recipients_set`
   guard in `inventory/services.py`).
+
+- **2026-06-26** — **Public marketing site at `/` + warehouse app moved
+  under `/sklad/`.** Decisions
+  [`0049`](./decisions/0049-public-site-and-sklad-split.md) (the split;
+  second amendment of [`0020`](./decisions/0020-auth-django-builtin.md),
+  extends [`0047`](./decisions/0047-design-review-gallery.md)) and
+  [`0050`](./decisions/0050-public-site-ia-and-content.md) (four-page IA +
+  `ContactInquiry` durability + SEO/GDPR essentials).
+  - **URL re-wire** (`kasia/urls.py`): inventory/accounts/auth/password-
+    reset/password-change all moved under `/sklad/` (login at
+    `/sklad/prihlaseni/`, logout `/sklad/odhlaseni/`, users
+    `/sklad/uzivatele/`, password change `/sklad/zmena-hesla/`). Names
+    unchanged → all `{% url %}` / `reverse()` / `LOGIN_URL` re-resolve.
+    Public `web` include mounted **last** at `""`. `/admin/`, `/healthz`,
+    `/navrhy/` unchanged. `LOGOUT_REDIRECT_URL` retargeted to `web:home`.
+  - **Test audit:** 226 hard-coded path literals rewritten to `/sklad/…`
+    (incl. `/_partials/*`, `/login/`→`/sklad/prihlaseni/`,
+    `/accounts/zmena-hesla/`→`/sklad/zmena-hesla/`) across
+    `inventory/tests.py` + `accounts/tests.py`. Template literal audit
+    clean — every operational path uses `{% url %}` (only `/admin/` is a
+    literal, correct).
+  - **New `web` app:** `ContactInquiry` model (durable poptávka store,
+    email-only string never linked to User; e-mail best-effort
+    try/except per 0019) + read-only `ContactInquiryAdmin`; views all
+    `@login_not_required`; curated content in `web/content.py` (decoupled
+    from warehouse DB). Migration `web/0001_initial`. Separate public
+    `kasia/templates/web/base.html` (no htmx; SEO + OG + JSON-LD
+    Organization; footer with contact/IČO/hours + Czech consent note +
+    discreet "Sklad / Přihlášení" link) + `home` / `o_nas` / `provozovny`
+    / `kontakt` / `kontakt_ok` + hand-rolled `robots.txt` + `sitemap.xml`.
+    TYN/SEZ addresses + phones are placeholders ("doplnit od Petra").
+  - **Stale-doc sweep:** 0020 preamble (2nd amendment banner), settings
+    comment, `right-sized-for-small-business.md` (one Django *project*),
+    `decision-log-discipline.md` (user-submitted-data models),
+    `CLAUDE.md`, `company-profile.md`, this file. New
+    [`context/public-site.md`](./public-site.md) + README pointer.
+  - **Verification:** full suite **316 pytest tests green** (282 → 316);
+    ruff clean; `manage.py check` clean; `makemigrations --check` clean
+    (only the new `web` migration). Production-like smoke (DEBUG off,
+    manifest static): public pages 200, `/sklad/*` 302→`/sklad/prihlaseni/`,
+    `/admin//healthz//navrhy/` intact, manifest `{% static %}` resolves.
+  - **Next (deferred, gated on Petr):** build `design-options/public/`
+    mockup gallery + SVG logo concepts → Petr picks → log a decision →
+    port the winner into the real `web/` templates. Add deferred pages
+    (Sortiment, Encyklopedie, …) as later passes.
 
 ## Hand-off for the next session (post-compact)
 
@@ -1390,10 +1436,22 @@ feeds back, hold position and respond to direct asks.
 ## Next
 
 1. **Local walkthrough by Matej** against the running docker
-   stack (`make up` → http://localhost/`). All 14 screens +
+   stack — public site at `make up` → http://localhost/ and the
+   warehouse app at http://localhost/sklad/. All 14 screens +
    Pass 5 CRUD (5a–5g) are in, both blocking decisions
    (0040, 0041, 0042) merged. Matej feeds back fixes /
    ideology changes screen by screen.
+
+2. **Public-site visual design** (per 0049/0050, parallel-friendly,
+   gated on Petr). Build `design-options/public/` standalone homepage
+   (+ one Kontakt) mockups rendering the same Czech sample content, an
+   `index.html` thumbnail gallery linked from `/navrhy/`, and 2–3
+   hand-authored SVG logo concepts. Petr picks a direction → log a
+   `decisions/NNNN-*.md` → port the winner into the real `web/`
+   templates. Then add the deferred public pages (Sortiment,
+   Encyklopedie koření, CSR, segmenty) as later passes. ⚠ Get TYN/SEZ
+   street addresses + per-branch phones (+ DIČ) from Petr to replace
+   the Provozovny/Kontakt placeholders.
 
 3. **Quality-of-life backlog** — three items landed 2026-06-15;
    nothing currently queued. Reopen as walkthrough surfaces

@@ -1,6 +1,8 @@
 # 0020 — Authentication: Django auth + groups, e-mail + password
 
 > **Amended by [0047](./0047-design-review-gallery.md)** — the "no public surface beyond /login/ and /healthz/" line is narrowed to *application* views and data; a static, data-free design-review gallery is intentionally public under `/static/navrhy/` (entry `/navrhy/`).
+>
+> **Second amendment by [0049](./0049-public-site-and-sklad-split.md)** — a public marketing site (real Django views) is now intentionally login-exempt at `/`; the entire warehouse app (every gated screen + the auth chain) moves under `/sklad/`. 0020's auth posture for all warehouse screens and data is unchanged — those simply live under `/sklad/` now.
 
 ## Context
 

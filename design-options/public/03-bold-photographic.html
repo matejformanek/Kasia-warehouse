@@ -1,0 +1,220 @@
+<!-- Public homepage mockup — direction 03: bold, photo-led (CSS gradient photo placeholders). -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kasia vera — koření a kulinářské produkty | návrh 03</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Archivo+Narrow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1411;
+    --soft: #6a5f57;
+    --paprika: #c23a18;
+    --turmeric: #e0a020;
+    --bg: #f4efe8;
+    --line: #ddd2c4;
+    --dark: #221a14;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Archivo Narrow", sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, .display { font-family: "Archivo", sans-serif; letter-spacing: -.02em; }
+  a { color: inherit; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 2rem; }
+  .skip { position: absolute; left: -999px; }
+  .skip:focus { left: 1rem; top: 1rem; background: #fff; padding: .6rem 1rem; z-index: 99; }
+
+  /* photo placeholder helper */
+  .photo { position: relative; overflow: hidden; }
+  .photo .cap { position: absolute; bottom: 12px; left: 14px; z-index: 3; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.92); background: rgba(0,0,0,.35); padding: .3rem .6rem; border-radius: 6px; backdrop-filter: blur(4px); }
+  .photo .cap::before { content: "◳ "; opacity: .8; }
+  .ph-paprika { background:
+      radial-gradient(circle at 25% 30%, rgba(255,180,80,.5), transparent 40%),
+      radial-gradient(circle at 75% 70%, rgba(120,20,10,.6), transparent 50%),
+      linear-gradient(135deg, #c23a18, #e0a020 60%, #8a2410); }
+  .ph-dark { background:
+      radial-gradient(circle at 70% 20%, rgba(224,160,32,.4), transparent 45%),
+      linear-gradient(160deg, #2a1d14, #4a2c16 70%, #c23a18); }
+  .ph-warm { background:
+      radial-gradient(circle at 30% 70%, rgba(255,200,120,.55), transparent 50%),
+      linear-gradient(120deg, #e0a020, #c23a18); }
+  .ph-herb { background:
+      radial-gradient(circle at 40% 40%, rgba(150,180,90,.5), transparent 45%),
+      linear-gradient(150deg, #5c6e2e, #8a7a28 60%, #c23a18); }
+
+  header.site { position: absolute; top: 0; left: 0; right: 0; z-index: 30; }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 84px; }
+  .brand { display: flex; align-items: center; gap: .65rem; text-decoration: none; }
+  .brand img { height: 34px; background: #fff; border-radius: 8px; padding: 3px; }
+  .brand b { font-family: "Archivo"; font-weight: 800; font-size: 1.2rem; color: #fff; }
+  nav.menu { display: flex; gap: 2rem; }
+  nav.menu a { text-decoration: none; font-size: 1rem; font-weight: 500; color: rgba(255,255,255,.85); }
+  nav.menu a:hover, nav.menu a[aria-current] { color: #fff; text-decoration: underline; text-underline-offset: 5px; }
+  .btn { display: inline-block; text-decoration: none; font-family: "Archivo"; font-weight: 700; font-size: .95rem; padding: .7rem 1.4rem; border-radius: 4px; transition: transform .15s; text-transform: uppercase; letter-spacing: .03em; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn-primary { background: var(--turmeric); color: var(--dark); }
+  .btn-light { background: #fff; color: var(--dark); }
+  .btn-dark { background: var(--dark); color: #fff; }
+  .btn-outline-light { border: 2px solid rgba(255,255,255,.7); color: #fff; }
+  .btn-outline-light:hover { background: #fff; color: var(--dark); }
+
+  /* hero = full-bleed photo */
+  .hero { position: relative; min-height: 640px; display: flex; align-items: flex-end; }
+  .hero .ph { position: absolute; inset: 0; }
+  .hero .ph::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(20,16,12,.85) 0%, rgba(20,16,12,.2) 55%, rgba(20,16,12,.4) 100%); }
+  .hero .cap { z-index: 4; }
+  .hero .wrap { position: relative; z-index: 5; padding-top: 6rem; padding-bottom: 4rem; }
+  .hero .eyebrow { color: var(--turmeric); font-family: "Archivo"; font-weight: 700; text-transform: uppercase; letter-spacing: .15em; font-size: .85rem; margin-bottom: 1rem; }
+  .hero h1 { color: #fff; font-size: clamp(2.8rem, 7vw, 5.6rem); line-height: .98; font-weight: 900; margin: 0 0 1.4rem; max-width: 18ch; }
+  .hero p.lede { color: rgba(255,255,255,.9); font-size: 1.25rem; max-width: 50ch; margin: 0 0 2rem; }
+  .hero .cta { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+  /* stat band over the fold */
+  .statband { background: var(--dark); color: #fff; }
+  .statband .wrap { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .statband .cell { padding: 2.4rem 1rem; text-align: center; border-right: 1px solid rgba(255,255,255,.12); }
+  .statband .cell:last-child { border-right: 0; }
+  .statband .num { font-family: "Archivo"; font-weight: 900; font-size: 3.4rem; color: var(--turmeric); line-height: 1; }
+  .statband .lbl { color: rgba(255,255,255,.75); text-transform: uppercase; letter-spacing: .08em; font-size: .85rem; margin-top: .4rem; }
+
+  /* split feature */
+  section.block { padding: 5.5rem 0; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 3.5rem; align-items: center; }
+  .split .ph { border-radius: 14px; aspect-ratio: 4/3; box-shadow: 0 30px 60px -30px rgba(0,0,0,.4); }
+  .split h2 { font-size: clamp(2rem, 4vw, 3rem); margin: 0 0 1.2rem; font-weight: 800; }
+  .split p { font-size: 1.15rem; color: var(--soft); margin: 0 0 1.4rem; }
+  .split .tags { display: flex; gap: .6rem; flex-wrap: wrap; }
+  .split .tags span { font-family: "Archivo"; font-weight: 600; font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; background: #fff; border: 1px solid var(--line); padding: .4rem .9rem; border-radius: 999px; }
+
+  /* teaser gallery */
+  .gallery-head { margin-bottom: 2.5rem; }
+  .gallery-head h2 { font-size: clamp(1.9rem, 3.5vw, 2.6rem); margin: 0 0 .6rem; font-weight: 800; }
+  .gallery-head p { color: var(--soft); font-size: 1.1rem; margin: 0; }
+  .gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+  .gcard { text-decoration: none; border-radius: 14px; overflow: hidden; background: #fff; border: 1px solid var(--line); transition: transform .18s, box-shadow .18s; display: block; }
+  .gcard:hover { transform: translateY(-5px); box-shadow: 0 26px 50px -28px rgba(0,0,0,.35); }
+  .gcard .ph { aspect-ratio: 16/10; }
+  .gcard .body { padding: 1.5rem 1.6rem 1.8rem; }
+  .gcard h3 { font-size: 1.5rem; margin: 0 0 .5rem; font-weight: 700; }
+  .gcard p { color: var(--soft); margin: 0; }
+  .gcard .arw { display: inline-block; margin-top: 1rem; color: var(--paprika); font-family: "Archivo"; font-weight: 700; }
+
+  footer.site { background: var(--dark); color: #fff; padding: 4rem 0 2rem; }
+  .foot-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 2.5rem; }
+  footer.site h4 { font-family: "Archivo"; font-size: 1rem; margin: 0 0 1rem; color: var(--turmeric); text-transform: uppercase; letter-spacing: .06em; }
+  footer.site p, footer.site a { color: rgba(255,255,255,.78); font-size: .95rem; text-decoration: none; line-height: 1.85; margin: 0; }
+  footer.site a:hover { color: #fff; }
+  footer.site .brandline { font-family: "Archivo"; font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: .5rem; }
+  .foot-bottom { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,.16); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: .82rem; color: rgba(255,255,255,.6); }
+  .foot-bottom a.sklad { color: rgba(255,255,255,.6); text-decoration: underline; }
+  .foot-bottom a.sklad:hover { color: var(--turmeric); }
+
+  @media (max-width: 880px) {
+    .statband .wrap { grid-template-columns: 1fr; }
+    .statband .cell { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .split { grid-template-columns: 1fr; }
+    .gallery { grid-template-columns: 1fr; }
+    .foot-grid { grid-template-columns: 1fr; }
+    nav.menu { display: none; }
+  }
+</style>
+
+<a class="skip" href="#main">Přeskočit na obsah</a>
+
+<header class="site">
+  <div class="wrap nav">
+    <a class="brand" href="#"><img src="assets/kasia-logo.jpg" alt=""><b>Kasia vera</b></a>
+    <nav class="menu" aria-label="Hlavní">
+      <a href="#" aria-current="page">Domů</a>
+      <a href="#">O nás</a>
+      <a href="#">Provozovny</a>
+      <a href="#">Kontakt</a>
+    </nav>
+    <a class="btn btn-light" href="#">Kontakt</a>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="ph photo ph-paprika"><span class="cap">zde foto koření</span></div>
+    <div class="wrap">
+      <p class="eyebrow">Rodinná firma od ledna 1993</p>
+      <h1>Koření, které dělá rozdíl.</h1>
+      <p class="lede">VERA GURMET — koření a kulinářské produkty pro velkoobchod a gastronomii. Dovážíme, zpracováváme, mícháme a balíme po celé České republice.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="#">Naše provozovny</a>
+        <a class="btn btn-outline-light" href="#">Napište nám</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="statband">
+    <div class="wrap">
+      <div class="cell"><div class="num">369</div><div class="lbl">druhů koření</div></div>
+      <div class="cell"><div class="num">236</div><div class="lbl">kulinářských produktů</div></div>
+      <div class="cell"><div class="num">1993</div><div class="lbl">rok založení</div></div>
+    </div>
+  </div>
+
+  <section class="block">
+    <div class="wrap split">
+      <div class="ph photo ph-dark"><span class="cap">zde foto provozu / mletí</span></div>
+      <div>
+        <h2>Od suroviny po hotovou směs.</h2>
+        <p>Koření pečlivě vybíráme, čistíme, třídíme a meleme. Mícháme vlastní receptury a balíme pod značkou VERA GURMET — tak, aby každá dodávka měla stejnou chuť i kvalitu, na kterou se vaše kuchyně spolehne.</p>
+        <div class="tags"><span>Velkoobchod</span><span>Gastronomie</span><span>B2B partner</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" style="padding-top:0">
+    <div class="wrap">
+      <div class="gallery-head">
+        <h2>Prozkoumejte Kasia vera</h2>
+        <p>Příběh firmy, naše provozovny a kontakt na jednom místě.</p>
+      </div>
+      <div class="gallery">
+        <a class="gcard" href="#">
+          <div class="ph photo ph-warm"><span class="cap">zde foto týmu / sídla</span></div>
+          <div class="body"><h3>O nás</h3><p>Rodinná firma z Říčan u Prahy, která koření rozumí přes tři desetiletí.</p><span class="arw">Poznejte nás →</span></div>
+        </a>
+        <a class="gcard" href="#">
+          <div class="ph photo ph-herb"><span class="cap">zde foto skladu</span></div>
+          <div class="body"><h3>Provozovny</h3><p>Sídlo v Říčanech u Prahy a sklady v Týništi nad Orlicí a Sezimově Ústí.</p><span class="arw">Kde nás najdete →</span></div>
+        </a>
+        <a class="gcard" href="#">
+          <div class="ph photo ph-paprika"><span class="cap">zde foto koření zblízka</span></div>
+          <div class="body"><h3>Kontakt</h3><p>Poptávka, ceník nebo dotaz? Rádi připravíme nabídku na míru.</p><span class="arw">Napište nám →</span></div>
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="brandline">Kasia vera s.r.o.</div>
+        <p>Koření a kulinářské produkty pod značkou VERA GURMET. Rodinná firma od ledna 1993.</p>
+      </div>
+      <div>
+        <h4>Kontakt</h4>
+        <p>Nádražní 1202/5<br>251 01 Říčany u Prahy</p>
+        <p><a href="tel:+420323601422">+420 323 601 422</a><br><a href="tel:+420323601424">+420 323 601 424</a></p>
+        <p><a href="mailto:info@kasia.cz">info@kasia.cz</a></p>
+      </div>
+      <div>
+        <h4>Firemní údaje</h4>
+        <p>IČO: 25756729</p>
+        <p>Datová schránka: emye9prc</p>
+        <p>Otevírací doba:<br>Po–Pá 7:00–15:00</p>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Kasia vera s.r.o. — všechna práva vyhrazena.</span>
+      <a class="sklad" href="#">Sklad / Přihlášení</a>
+    </div>
+  </div>
+</footer>

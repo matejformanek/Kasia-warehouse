@@ -117,7 +117,7 @@ def obsluha(db) -> User:
 def test_user_index_requires_login() -> None:
     response = Client().get(reverse("accounts:user_index"))
     assert response.status_code == 302
-    assert "/login/" in response["Location"]
+    assert "/sklad/prihlaseni/" in response["Location"]
 
 
 @pytest.mark.django_db
@@ -402,9 +402,9 @@ def test_nav_uzivatele_link_shown_for_vlastnik(vlastnik) -> None:
 
 @pytest.mark.django_db
 def test_password_change_requires_login() -> None:
-    response = Client().get("/accounts/zmena-hesla/")
+    response = Client().get("/sklad/zmena-hesla/")
     assert response.status_code == 302
-    assert "/login/" in response["Location"]
+    assert "/sklad/prihlaseni/" in response["Location"]
 
 
 @pytest.mark.django_db
@@ -412,7 +412,7 @@ def test_password_change_post_updates_password(vlastnik) -> None:
     client = Client()
     client.force_login(vlastnik)
     response = client.post(
-        "/accounts/zmena-hesla/",
+        "/sklad/zmena-hesla/",
         {
             "old_password": "x" * 12,
             "new_password1": "novehesloABC.1",
@@ -420,6 +420,6 @@ def test_password_change_post_updates_password(vlastnik) -> None:
         },
     )
     assert response.status_code == 302
-    assert response["Location"] == "/accounts/zmena-hesla/hotovo/"
+    assert response["Location"] == "/sklad/zmena-hesla/hotovo/"
     vlastnik.refresh_from_db()
     assert vlastnik.check_password("novehesloABC.1")

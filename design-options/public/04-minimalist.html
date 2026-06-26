@@ -1,0 +1,181 @@
+<!-- Public homepage mockup — direction 04: restrained minimalist, type-driven, whitespace. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kasia vera — koření a kulinářské produkty | návrh 04</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #16161a;
+    --soft: #6f6f76;
+    --faint: #9a9aa0;
+    --bg: #fbfbf9;
+    --line: #e6e6e2;
+    --accent: #1f6b3a;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "IBM Plex Sans", sans-serif; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  .serif { font-family: "Newsreader", Georgia, serif; }
+  .mono { font-family: "IBM Plex Mono", monospace; }
+  a { color: inherit; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 2rem; }
+  .skip { position: absolute; left: -999px; }
+  .skip:focus { left: 1rem; top: 1rem; background: #fff; padding: .6rem 1rem; z-index: 99; }
+
+  header.site { border-bottom: 1px solid var(--line); }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 80px; }
+  .brand { display: flex; align-items: center; gap: .6rem; text-decoration: none; }
+  .brand img { height: 28px; }
+  .brand b { font-weight: 600; font-size: 1.05rem; letter-spacing: -.01em; }
+  nav.menu { display: flex; gap: 2.2rem; }
+  nav.menu a { text-decoration: none; font-family: "IBM Plex Mono"; font-size: .82rem; text-transform: uppercase; letter-spacing: .08em; color: var(--soft); }
+  nav.menu a[aria-current] { color: var(--ink); }
+  nav.menu a:hover { color: var(--accent); }
+
+  /* hero */
+  .hero { padding: 7rem 0 5rem; }
+  .hero .meta { font-family: "IBM Plex Mono"; font-size: .8rem; text-transform: uppercase; letter-spacing: .12em; color: var(--accent); margin-bottom: 2rem; display: flex; gap: 1.2rem; flex-wrap: wrap; }
+  .hero h1 { font-family: "Newsreader"; font-weight: 400; font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 1.08; letter-spacing: -.015em; margin: 0 0 2rem; max-width: 16ch; }
+  .hero p.lede { font-size: 1.2rem; color: var(--soft); max-width: 52ch; margin: 0 0 2.5rem; }
+  .hero .cta { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; }
+  .link-cta { text-decoration: none; font-weight: 600; font-size: 1rem; border-bottom: 2px solid var(--accent); padding-bottom: 2px; color: var(--ink); transition: color .15s; }
+  .link-cta:hover { color: var(--accent); }
+  .link-quiet { text-decoration: none; color: var(--soft); font-size: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
+  .link-quiet:hover { color: var(--ink); border-color: var(--ink); }
+
+  /* stats — quiet inline numbers */
+  .stats { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 3rem 0; }
+  .stats .wrap { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem; }
+  .stat .n { font-family: "Newsreader"; font-size: 3.2rem; line-height: 1; font-weight: 500; }
+  .stat .l { font-family: "IBM Plex Mono"; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin-top: .7rem; }
+
+  /* prose section */
+  section.block { padding: 5rem 0; }
+  .prose { max-width: 60ch; }
+  .prose h2 { font-family: "Newsreader"; font-weight: 400; font-size: clamp(1.8rem, 3.5vw, 2.5rem); line-height: 1.2; margin: 0 0 1.4rem; letter-spacing: -.01em; }
+  .prose p { font-size: 1.12rem; color: var(--soft); margin: 0 0 1.3rem; }
+  .prose .who { font-family: "IBM Plex Mono"; font-size: .82rem; text-transform: uppercase; letter-spacing: .1em; color: var(--accent); }
+
+  /* index-style teaser list */
+  .index { border-top: 1px solid var(--line); }
+  .index a { display: grid; grid-template-columns: 4ch 1fr auto; gap: 2rem; align-items: baseline; padding: 2rem 0; border-bottom: 1px solid var(--line); text-decoration: none; transition: padding-left .2s, background .2s; }
+  .index a:hover { padding-left: .8rem; }
+  .index .ix { font-family: "IBM Plex Mono"; color: var(--faint); font-size: .9rem; }
+  .index .tx h3 { font-family: "Newsreader"; font-weight: 500; font-size: 1.7rem; margin: 0 0 .3rem; }
+  .index .tx p { margin: 0; color: var(--soft); }
+  .index .go { font-family: "IBM Plex Mono"; font-size: .85rem; color: var(--accent); white-space: nowrap; }
+
+  footer.site { border-top: 1px solid var(--line); padding: 4rem 0 2.5rem; margin-top: 2rem; }
+  .foot-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 2.5rem; }
+  footer.site h4 { font-family: "IBM Plex Mono"; font-size: .78rem; text-transform: uppercase; letter-spacing: .1em; color: var(--faint); margin: 0 0 1rem; font-weight: 500; }
+  footer.site p, footer.site a { color: var(--soft); font-size: .95rem; text-decoration: none; line-height: 1.9; margin: 0; }
+  footer.site a:hover { color: var(--accent); }
+  footer.site .brandline { font-family: "Newsreader"; font-size: 1.3rem; color: var(--ink); margin-bottom: .5rem; }
+  .foot-bottom { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-family: "IBM Plex Mono"; font-size: .78rem; color: var(--faint); }
+  .foot-bottom a.sklad { color: var(--faint); text-decoration: underline; }
+  .foot-bottom a.sklad:hover { color: var(--accent); }
+
+  @media (max-width: 760px) {
+    .stats .wrap { grid-template-columns: 1fr; gap: 2rem; }
+    .index a { grid-template-columns: 1fr; gap: .4rem; }
+    .foot-grid { grid-template-columns: 1fr; }
+    nav.menu { gap: 1.2rem; }
+  }
+</style>
+
+<a class="skip" href="#main">Přeskočit na obsah</a>
+
+<header class="site">
+  <div class="wrap nav">
+    <a class="brand" href="#"><img src="assets/kasia-logo.jpg" alt=""><b>Kasia vera</b></a>
+    <nav class="menu" aria-label="Hlavní">
+      <a href="#" aria-current="page">Domů</a>
+      <a href="#">O nás</a>
+      <a href="#">Provozovny</a>
+      <a href="#">Kontakt</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap">
+      <div class="meta"><span>Od ledna 1993</span><span>Říčany u Prahy</span><span>VERA GURMET</span></div>
+      <h1>Koření a kulinářské produkty.</h1>
+      <p class="lede">Rodinná firma, která dováží, čistí, mele a míchá koření pro velkoobchod a gastronomii po celé České republice.</p>
+      <div class="cta">
+        <a class="link-cta" href="#">Naše provozovny →</a>
+        <a class="link-quiet" href="#">Napište nám</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="stats">
+    <div class="wrap">
+      <div class="stat"><div class="n">369</div><div class="l">druhů koření</div></div>
+      <div class="stat"><div class="n">236</div><div class="l">kulinářských produktů</div></div>
+      <div class="stat"><div class="n">1993</div><div class="l">rok založení</div></div>
+    </div>
+  </div>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="prose">
+        <p class="who">Pro koho pracujeme</p>
+        <h2>Spolehlivý B2B partner pro velkoobchod a profesionální kuchyně.</h2>
+        <p>Suroviny pečlivě vybíráme, čistíme, třídíme a meleme. Mícháme vlastní receptury a balíme pod značkou VERA GURMET — aby koření mělo v každé dodávce stejnou chuť i kvalitu.</p>
+        <p>Tichá, soustavná práce od roku 1993, kterou poznáte na výsledku.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <nav class="index" aria-label="Sekce webu">
+      <a href="#">
+        <span class="ix">01</span>
+        <span class="tx"><h3>O nás</h3><p>Příběh rodinné firmy z Říčan u Prahy.</p></span>
+        <span class="go">Poznejte nás →</span>
+      </a>
+      <a href="#">
+        <span class="ix">02</span>
+        <span class="tx"><h3>Provozovny</h3><p>Sídlo v Říčanech a sklady v Týništi nad Orlicí a Sezimově Ústí.</p></span>
+        <span class="go">Kde nás najdete →</span>
+      </a>
+      <a href="#">
+        <span class="ix">03</span>
+        <span class="tx"><h3>Kontakt</h3><p>Poptávka, ceník nebo dotaz — ozvěte se nám.</p></span>
+        <span class="go">Napište nám →</span>
+      </a>
+    </nav>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="brandline serif">Kasia vera s.r.o.</div>
+        <p>Koření a kulinářské produkty pod značkou VERA GURMET. Rodinná firma od ledna 1993.</p>
+      </div>
+      <div>
+        <h4>Kontakt</h4>
+        <p>Nádražní 1202/5<br>251 01 Říčany u Prahy</p>
+        <p><a href="tel:+420323601422">+420 323 601 422</a><br><a href="tel:+420323601424">+420 323 601 424</a></p>
+        <p><a href="mailto:info@kasia.cz">info@kasia.cz</a></p>
+      </div>
+      <div>
+        <h4>Firemní údaje</h4>
+        <p>IČO: 25756729</p>
+        <p>Datová schránka: emye9prc</p>
+        <p>Po–Pá 7:00–15:00</p>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Kasia vera s.r.o.</span>
+      <a class="sklad" href="#">Sklad / Přihlášení</a>
+    </div>
+  </div>
+</footer>

@@ -1115,9 +1115,9 @@ _VIEW_TEST_OVERRIDES = {
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_anonymous_home_redirects_to_login() -> None:
-    response = Client().get("/")
+    response = Client().get("/sklad/")
     assert response.status_code == 302
-    assert response.headers["Location"].startswith("/login/")
+    assert response.headers["Location"].startswith("/sklad/prihlaseni/")
 
 
 @pytest.mark.django_db
@@ -1131,7 +1131,7 @@ def test_healthz_is_public() -> None:
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_login_renders_czech() -> None:
-    response = Client().get("/login/")
+    response = Client().get("/sklad/prihlaseni/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "Přihlášení" in body
@@ -1145,11 +1145,11 @@ def test_login_success_redirects_home(user_tyn) -> None:
     user_tyn.save()
     client = Client()
     response = client.post(
-        "/login/",
+        "/sklad/prihlaseni/",
         {"username": user_tyn.email, "password": "zkouska123"},
     )
     assert response.status_code == 302
-    assert response.headers["Location"] == "/"
+    assert response.headers["Location"] == "/sklad/"
 
 
 @pytest.mark.django_db
@@ -1157,7 +1157,7 @@ def test_login_success_redirects_home(user_tyn) -> None:
 def test_home_loads_for_authenticated_user(user_tyn) -> None:
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/")
+    response = client.get("/sklad/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "Nový příjem" in body
@@ -1169,7 +1169,7 @@ def test_home_loads_for_authenticated_user(user_tyn) -> None:
 def test_prijem_get_renders(user_tyn, supplier) -> None:
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/prijem/novy/")
+    response = client.get("/sklad/prijem/novy/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "Nový příjem" in body
@@ -1184,7 +1184,7 @@ def test_prijem_post_creates_movement_and_redirects(
     client = Client()
     client.force_login(user_tyn)
     response = client.post(
-        "/prijem/novy/",
+        "/sklad/prijem/novy/",
         {
             "branch": tyn.pk,
             "dodavatel": supplier.pk,
@@ -1199,7 +1199,7 @@ def test_prijem_post_creates_movement_and_redirects(
         },
     )
     assert response.status_code == 302, response.content[:500]
-    assert response.headers["Location"].startswith("/pohyby/")
+    assert response.headers["Location"].startswith("/sklad/pohyby/")
     mv = Movement.objects.get()
     assert mv.kind == Movement.Kind.PRIJEM
     assert mv.lines.count() == 1
@@ -1212,7 +1212,7 @@ def test_prijem_post_empty_lines_shows_error(user_tyn, tyn, supplier) -> None:
     client = Client()
     client.force_login(user_tyn)
     response = client.post(
-        "/prijem/novy/",
+        "/sklad/prijem/novy/",
         {
             "branch": tyn.pk,
             "dodavatel": supplier.pk,
@@ -1236,7 +1236,7 @@ def test_vydej_post_creates_dodaci_list_and_redirects(
     client = Client()
     client.force_login(user_tyn)
     response = client.post(
-        "/vydej/novy/",
+        "/sklad/vydej/novy/",
         {
             "branch": tyn.pk,
             "odberatel": ricany.pk,
@@ -1254,7 +1254,7 @@ def test_vydej_post_creates_dodaci_list_and_redirects(
     assert mv.kind == Movement.Kind.VYDEJ
     dl = DodaciList.objects.get(movement=mv)
     assert dl.cislo == "TYN-2026-0001"
-    saved = client.get(f"/pohyby/{mv.pk}/")
+    saved = client.get(f"/sklad/pohyby/{mv.pk}/")
     assert saved.status_code == 200
     assert b"TYN-2026-0001" in saved.content
 
@@ -1266,7 +1266,7 @@ def test_vydej_post_overdraw_keeps_form(user_tyn, tyn, ricany, pepper) -> None:
     client = Client()
     client.force_login(user_tyn)
     response = client.post(
-        "/vydej/novy/",
+        "/sklad/vydej/novy/",
         {
             "branch": tyn.pk,
             "odberatel": ricany.pk,
@@ -1292,7 +1292,7 @@ def test_vydej_post_overdraw_keeps_form(user_tyn, tyn, ricany, pepper) -> None:
 def test_line_row_partial(user_tyn) -> None:
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/_partials/line-row/?index=2")
+    response = client.get("/sklad/_partials/line-row/?index=2")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert 'name="lines-2-product"' in body
@@ -1306,13 +1306,13 @@ def test_stock_warn_partial_over_and_under(user_tyn, tyn, pepper) -> None:
     client = Client()
     client.force_login(user_tyn)
     over = client.get(
-        f"/_partials/stock-warn/?branch={tyn.pk}&product={pepper.pk}&qty=5.000"
+        f"/sklad/_partials/stock-warn/?branch={tyn.pk}&product={pepper.pk}&qty=5.000"
     )
     assert over.status_code == 200
     body = over.content.decode("utf-8")
     assert "překračuje" in body
     under = client.get(
-        f"/_partials/stock-warn/?branch={tyn.pk}&product={pepper.pk}&qty=1.000"
+        f"/sklad/_partials/stock-warn/?branch={tyn.pk}&product={pepper.pk}&qty=1.000"
     )
     assert under.status_code == 200
     body = under.content.decode("utf-8")
@@ -1324,7 +1324,7 @@ def test_stock_warn_partial_over_and_under(user_tyn, tyn, pepper) -> None:
 def test_stock_warn_partial_empty_on_missing_params(user_tyn) -> None:
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/_partials/stock-warn/")
+    response = client.get("/sklad/_partials/stock-warn/")
     assert response.status_code == 200
     assert response.content == b""
 
@@ -1332,9 +1332,9 @@ def test_stock_warn_partial_empty_on_missing_params(user_tyn) -> None:
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_partial_routes_require_login() -> None:
-    response = Client().get("/_partials/line-row/")
+    response = Client().get("/sklad/_partials/line-row/")
     assert response.status_code == 302
-    assert response.headers["Location"].startswith("/login/")
+    assert response.headers["Location"].startswith("/sklad/prihlaseni/")
 
 
 # ---------------------------------------------------------------------------
@@ -1366,7 +1366,7 @@ def _seed_vydej(user, tyn, ricany, pepper, qty="2.000", stock="5.000"):
 def test_dodaci_list_index_empty(user_tyn) -> None:
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/dodaky/")
+    response = client.get("/sklad/dodaky/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "Dodací listy" in body
@@ -1379,7 +1379,7 @@ def test_dodaci_list_index_lists_dodak(user_tyn, tyn, ricany, pepper) -> None:
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/dodaky/")
+    response = client.get("/sklad/dodaky/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert dl.cislo in body
@@ -1395,12 +1395,12 @@ def test_dodaci_list_index_branch_filter(
     # Hit the filter via querystring (SEZ has no dodáky → list should be empty).
     client = Client()
     client.force_login(user_tyn)
-    response = client.get(f"/dodaky/?branch={sez.pk}")
+    response = client.get(f"/sklad/dodaky/?branch={sez.pk}")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "Nalezeno: 0" in body
     # Filtering for TYN keeps the row.
-    response = client.get(f"/dodaky/?branch={tyn.pk}")
+    response = client.get(f"/sklad/dodaky/?branch={tyn.pk}")
     body = response.content.decode("utf-8")
     assert "Nalezeno: 1" in body
 
@@ -1411,7 +1411,7 @@ def test_dodaci_list_detail_renders(user_tyn, tyn, ricany, pepper) -> None:
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
     client = Client()
     client.force_login(user_tyn)
-    response = client.get(f"/dodaky/{dl.cislo}/")
+    response = client.get(f"/sklad/dodaky/{dl.cislo}/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert dl.cislo in body
@@ -1426,7 +1426,7 @@ def test_dodaci_list_pdf_download(user_tyn, tyn, ricany, pepper) -> None:
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
     client = Client()
     client.force_login(user_tyn)
-    response = client.get(f"/dodaky/{dl.cislo}/pdf/")
+    response = client.get(f"/sklad/dodaky/{dl.cislo}/pdf/")
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "application/pdf"
     assert f'filename="{dl.cislo}.pdf"' in response.headers["Content-Disposition"]
@@ -1445,9 +1445,9 @@ def test_dodaci_list_resend_writes_log(user_tyn, tyn, ricany, pepper) -> None:
 
     client = Client()
     client.force_login(user_tyn)
-    response = client.post(f"/dodaky/{dl.cislo}/znovu-odeslat/")
+    response = client.post(f"/sklad/dodaky/{dl.cislo}/znovu-odeslat/")
     assert response.status_code == 302
-    assert response.headers["Location"] == f"/dodaky/{dl.cislo}/"
+    assert response.headers["Location"] == f"/sklad/dodaky/{dl.cislo}/"
 
     assert len(mail.outbox) == outbox_before + 1
     log = (
@@ -1466,13 +1466,13 @@ def test_dodaci_list_resend_writes_log(user_tyn, tyn, ricany, pepper) -> None:
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_dodaci_list_routes_require_login() -> None:
     for path in (
-        "/dodaky/",
-        "/dodaky/anything/",
-        "/dodaky/anything/pdf/",
+        "/sklad/dodaky/",
+        "/sklad/dodaky/anything/",
+        "/sklad/dodaky/anything/pdf/",
     ):
         response = Client().get(path)
         assert response.status_code == 302
-        assert response.headers["Location"].startswith("/login/")
+        assert response.headers["Location"].startswith("/sklad/prihlaseni/")
 
 
 @pytest.mark.django_db
@@ -1480,7 +1480,7 @@ def test_dodaci_list_routes_require_login() -> None:
 def test_dodaci_list_detail_404_for_unknown_cislo(user_tyn) -> None:
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/dodaky/TYN-2099-9999/")
+    response = client.get("/sklad/dodaky/TYN-2099-9999/")
     assert response.status_code == 404
 
 
@@ -1490,7 +1490,7 @@ def test_movement_edit_get_renders(user_tyn, tyn, ricany, pepper) -> None:
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
     client = Client()
     client.force_login(user_tyn)
-    response = client.get(f"/pohyby/{mv.pk}/upravit/")
+    response = client.get(f"/sklad/pohyby/{mv.pk}/upravit/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "Úprava" in body
@@ -1511,7 +1511,7 @@ def test_movement_edit_post_bumps_version_and_audits(
     client = Client()
     client.force_login(user_tyn)
     response = client.post(
-        f"/pohyby/{mv.pk}/upravit/",
+        f"/sklad/pohyby/{mv.pk}/upravit/",
         {
             "reason": "oprava hmotnosti",
             "branch": tyn.pk,
@@ -1550,7 +1550,7 @@ def test_movement_edit_no_changes_is_noop(user_tyn, tyn, ricany, pepper) -> None
     client = Client()
     client.force_login(user_tyn)
     response = client.post(
-        f"/pohyby/{mv.pk}/upravit/",
+        f"/sklad/pohyby/{mv.pk}/upravit/",
         {
             "reason": "kontrola",
             "branch": tyn.pk,
@@ -1583,7 +1583,7 @@ def test_movement_edit_overdraw_keeps_form(user_tyn, tyn, ricany, pepper) -> Non
     client = Client()
     client.force_login(user_tyn)
     response = client.post(
-        f"/pohyby/{mv.pk}/upravit/",
+        f"/sklad/pohyby/{mv.pk}/upravit/",
         {
             "reason": "pokus o předčerpání",
             "branch": tyn.pk,
@@ -1613,7 +1613,7 @@ def test_movement_edit_overdraw_keeps_form(user_tyn, tyn, ricany, pepper) -> Non
 def test_movement_edit_404_for_unknown_pk(user_tyn) -> None:
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/pohyby/99999/upravit/")
+    response = client.get("/sklad/pohyby/99999/upravit/")
     assert response.status_code == 404
 
 
@@ -1626,7 +1626,7 @@ def test_vydej_post_now_redirects_to_dodaci_list_detail(
     client = Client()
     client.force_login(user_tyn)
     response = client.post(
-        "/vydej/novy/",
+        "/sklad/vydej/novy/",
         {
             "branch": tyn.pk,
             "odberatel": ricany.pk,
@@ -1640,7 +1640,7 @@ def test_vydej_post_now_redirects_to_dodaci_list_detail(
         },
     )
     assert response.status_code == 302
-    assert response.headers["Location"] == "/dodaky/TYN-2026-0001/"
+    assert response.headers["Location"] == "/sklad/dodaky/TYN-2026-0001/"
 
 
 # ---------------------------------------------------------------------------
@@ -1655,7 +1655,7 @@ def test_dashboard_clean_morning(user_tyn) -> None:
     K vyřešení says nothing to worry about today."""
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/")
+    response = client.get("/sklad/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "K vyřešení dnes nic není" in body
@@ -1672,7 +1672,7 @@ def test_dashboard_shows_branch_stock(user_tyn, tyn, sez, pepper, paprika) -> No
     Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("1.500"))
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/")
+    response = client.get("/sklad/")
     body = response.content.decode("utf-8")
     # TYN total = 11.000 kg with 2 products; SEZ total = 1.500 kg with 1
     # product. Both numbers should appear somewhere in the body.
@@ -1687,7 +1687,7 @@ def test_dashboard_lists_recent_dodaky(user_tyn, tyn, ricany, pepper) -> None:
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/")
+    response = client.get("/sklad/")
     body = response.content.decode("utf-8")
     assert "Dodací listy k revizi" in body
     assert dl.cislo in body
@@ -1711,7 +1711,7 @@ def test_dashboard_flags_edited_dodak(user_tyn, tyn, ricany, pepper) -> None:
     )
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/")
+    response = client.get("/sklad/")
     body = response.content.decode("utf-8")
     assert "Nedávno editované dodáky" in body
     # The edited dodák appears with its v2 marker.
@@ -1740,7 +1740,7 @@ def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch)
 
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/")
+    response = client.get("/sklad/")
     body = response.content.decode("utf-8")
     assert "Nedoručené e-maily" in body
     assert dl.cislo in body
@@ -1756,7 +1756,7 @@ def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch)
         trigger_reason="ruční opětovné odeslání",
         pdf_bytes=pdf,
     )
-    response2 = client.get("/")
+    response2 = client.get("/sklad/")
     body2 = response2.content.decode("utf-8")
     assert "Nedoručené e-maily" not in body2
 
@@ -1764,9 +1764,9 @@ def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch)
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_dashboard_requires_login() -> None:
-    response = Client().get("/")
+    response = Client().get("/sklad/")
     assert response.status_code == 302
-    assert response.headers["Location"].startswith("/login/")
+    assert response.headers["Location"].startswith("/sklad/prihlaseni/")
 
 
 # ---------------------------------------------------------------------------
@@ -1798,9 +1798,9 @@ def test_user_superuser_is_vlastnik(admin_user) -> None:
 def test_home_routes_obsluha_to_branch_dashboard(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/")
+    response = client.get("/sklad/")
     assert response.status_code == 302
-    assert response.headers["Location"] == "/pobocka/TYN/"
+    assert response.headers["Location"] == "/sklad/pobocka/TYN/"
 
 
 @pytest.mark.django_db
@@ -1808,7 +1808,7 @@ def test_home_routes_obsluha_to_branch_dashboard(user_obsluha_tyn) -> None:
 def test_home_owner_lands_on_owner_dashboard(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/")
+    response = client.get("/sklad/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     # Owner dashboard markers.
@@ -1820,7 +1820,7 @@ def test_home_owner_lands_on_owner_dashboard(user_vlastnik) -> None:
 def test_branch_dashboard_renders_for_obsluha(user_obsluha_tyn, tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/pobocka/TYN/")
+    response = client.get("/sklad/pobocka/TYN/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "TYN" in body and tyn.name in body
@@ -1839,7 +1839,7 @@ def test_branch_dashboard_lists_stock_for_branch(
     Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("99.000"))
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/pobocka/TYN/")
+    response = client.get("/sklad/pobocka/TYN/")
     body = response.content.decode("utf-8")
     assert pepper.name_cs in body
     assert paprika.name_cs in body
@@ -1856,7 +1856,7 @@ def test_branch_dashboard_search_filters_stock(
     Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("3.000"))
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get(f"/pobocka/TYN/?q={pepper.name_cs[:4]}")
+    response = client.get(f"/sklad/pobocka/TYN/?q={pepper.name_cs[:4]}")
     body = response.content.decode("utf-8")
     assert pepper.name_cs in body
     assert paprika.name_cs not in body
@@ -1869,7 +1869,7 @@ def test_branch_dashboard_obsluha_forbidden_on_other_branch(
 ) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/pobocka/SEZ/")
+    response = client.get("/sklad/pobocka/SEZ/")
     assert response.status_code == 403
     assert "Nemáte oprávnění" in response.content.decode("utf-8")
 
@@ -1880,7 +1880,7 @@ def test_branch_dashboard_vlastnik_can_view_either_branch(user_vlastnik) -> None
     client = Client()
     client.force_login(user_vlastnik)
     for code in ("TYN", "SEZ"):
-        response = client.get(f"/pobocka/{code}/")
+        response = client.get(f"/sklad/pobocka/{code}/")
         assert response.status_code == 200, code
         assert code in response.content.decode("utf-8")
 
@@ -1890,16 +1890,16 @@ def test_branch_dashboard_vlastnik_can_view_either_branch(user_vlastnik) -> None
 def test_branch_dashboard_404_for_unknown_code(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pobocka/ZZZ/")
+    response = client.get("/sklad/pobocka/ZZZ/")
     assert response.status_code == 404
 
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_branch_dashboard_requires_login() -> None:
-    response = Client().get("/pobocka/TYN/")
+    response = Client().get("/sklad/pobocka/TYN/")
     assert response.status_code == 302
-    assert response.headers["Location"].startswith("/login/")
+    assert response.headers["Location"].startswith("/sklad/prihlaseni/")
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1922,7 +1922,7 @@ def test_branch_dashboard_recent_movements(
     )
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/pobocka/TYN/")
+    response = client.get("/sklad/pobocka/TYN/")
     body = response.content.decode("utf-8")
     assert "Říčany" in body
     assert "výdej" in body
@@ -1936,9 +1936,9 @@ def test_branch_dashboard_recent_movements(
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_history_requires_login() -> None:
-    response = Client().get("/pohyby/")
+    response = Client().get("/sklad/pohyby/")
     assert response.status_code == 302
-    assert response.headers["Location"].startswith("/login/")
+    assert response.headers["Location"].startswith("/sklad/prihlaseni/")
 
 
 @pytest.mark.django_db
@@ -1946,7 +1946,7 @@ def test_history_requires_login() -> None:
 def test_history_empty(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pohyby/")
+    response = client.get("/sklad/pohyby/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "Historie pohybů" in body
@@ -1972,7 +1972,7 @@ def test_history_lists_movement(user_vlastnik, user_tyn, tyn, ricany, pepper) ->
     )
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pohyby/")
+    response = client.get("/sklad/pohyby/")
     body = response.content.decode("utf-8")
     assert "Nalezeno: 1" in body
     assert pepper.name_cs in body
@@ -2011,7 +2011,7 @@ def test_history_obsluha_scoped_to_own_branch(
     )
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/pohyby/")
+    response = client.get("/sklad/pohyby/")
     body = response.content.decode("utf-8")
     # obsluha-tyn sees only TYN row
     assert "Nalezeno: 1" in body
@@ -2047,7 +2047,7 @@ def test_history_kind_filter(user_vlastnik, user_tyn, tyn, ricany, supplier, pep
     )
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pohyby/?kind=vydej")
+    response = client.get("/sklad/pohyby/?kind=vydej")
     body = response.content.decode("utf-8")
     assert "Nalezeno: 1" in body
 
@@ -2078,7 +2078,7 @@ def test_history_branch_filter_for_vlastnik(
 
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get(f"/pohyby/?branch={tyn.pk}")
+    response = client.get(f"/sklad/pohyby/?branch={tyn.pk}")
     body = response.content.decode("utf-8")
     assert "Nalezeno: 1" in body
     assert pepper.name_cs in body
@@ -2105,7 +2105,7 @@ def test_history_date_range_filter(user_vlastnik, user_tyn, tyn, ricany, pepper)
 
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pohyby/?date_from=2026-06-08&date_to=2026-06-12")
+    response = client.get("/sklad/pohyby/?date_from=2026-06-08&date_to=2026-06-12")
     body = response.content.decode("utf-8")
     assert "Nalezeno: 1" in body
 
@@ -2152,7 +2152,7 @@ def test_history_edited_only_filter(
     )
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pohyby/?edited=1")
+    response = client.get("/sklad/pohyby/?edited=1")
     body = response.content.decode("utf-8")
     assert "Nalezeno: 1" in body
     # The edited movement appears.
@@ -2182,11 +2182,11 @@ def test_history_search_filter(user_vlastnik, user_tyn, tyn, ricany, pepper) -> 
     client = Client()
     client.force_login(user_vlastnik)
     # Search by note token.
-    response = client.get("/pohyby/?q=poznámka")
+    response = client.get("/sklad/pohyby/?q=poznámka")
     body = response.content.decode("utf-8")
     assert "Nalezeno: 1" in body
     # Negative case.
-    response = client.get("/pohyby/?q=neco-co-tam-neni")
+    response = client.get("/sklad/pohyby/?q=neco-co-tam-neni")
     body = response.content.decode("utf-8")
     assert "Nalezeno: 0" in body
     assert "neodpovídají filtrům" in body
@@ -2201,7 +2201,7 @@ def test_history_obsluha_branch_filter_param_ignored(
     branch (param silently ignored when scope is forced)."""
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get(f"/pohyby/?branch={sez.pk}")
+    response = client.get(f"/sklad/pohyby/?branch={sez.pk}")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     # obsluha gets a "pobočka TYN" badge in the header
@@ -2218,9 +2218,9 @@ def test_history_obsluha_branch_filter_param_ignored(
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_catalogue_requires_login() -> None:
-    response = Client().get("/katalog/")
+    response = Client().get("/sklad/katalog/")
     assert response.status_code == 302
-    assert response.headers["Location"].startswith("/login/")
+    assert response.headers["Location"].startswith("/sklad/prihlaseni/")
 
 
 @pytest.mark.django_db
@@ -2232,7 +2232,7 @@ def test_catalogue_lists_active_only_by_default(
     paprika.save()
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/katalog/")
+    response = client.get("/sklad/katalog/")
     body = response.content.decode("utf-8")
     assert pepper.name_cs in body
     assert paprika.name_cs not in body
@@ -2245,7 +2245,7 @@ def test_catalogue_archived_filter(user_vlastnik, pepper, paprika) -> None:
     paprika.save()
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/katalog/?status=archived")
+    response = client.get("/sklad/katalog/?status=archived")
     body = response.content.decode("utf-8")
     assert paprika.name_cs in body
     assert pepper.name_cs not in body
@@ -2256,7 +2256,7 @@ def test_catalogue_archived_filter(user_vlastnik, pepper, paprika) -> None:
 def test_catalogue_search_filter(user_vlastnik, pepper, paprika) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get(f"/katalog/?q={pepper.name_cs[:4]}")
+    response = client.get(f"/sklad/katalog/?q={pepper.name_cs[:4]}")
     body = response.content.decode("utf-8")
     assert pepper.name_cs in body
     assert paprika.name_cs not in body
@@ -2269,7 +2269,7 @@ def test_catalogue_kind_filter(user_vlastnik) -> None:
     Product.objects.create(name_cs="Směs", kind=Product.Kind.MIXTURE)
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/katalog/?kind=mixture")
+    response = client.get("/sklad/katalog/?kind=mixture")
     body = response.content.decode("utf-8")
     assert "Směs" in body
     assert "Surovina" not in body
@@ -2284,7 +2284,7 @@ def test_catalogue_shows_total_kg_for_vlastnik(
     Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("3.500"))
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/katalog/")
+    response = client.get("/sklad/katalog/")
     body = response.content.decode("utf-8")
     # 11.500 → Czech "11,500"
     assert "11,500" in body
@@ -2302,7 +2302,7 @@ def test_catalogue_shows_branch_kg_for_obsluha(
     Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("99.000"))
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/katalog/")
+    response = client.get("/sklad/katalog/")
     body = response.content.decode("utf-8")
     # Pass 6: scope hint replaces the column header for branch scoping.
     assert "pro pobočku" in body and "TYN" in body
@@ -2321,7 +2321,7 @@ def test_catalogue_marks_mixture_with_recipe(user_vlastnik, pepper) -> None:
     )
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/katalog/")
+    response = client.get("/sklad/katalog/")
     body = response.content.decode("utf-8")
     assert mixture.name_cs in body
     assert "má recepturu" in body
@@ -2336,7 +2336,7 @@ def test_product_detail_renders_for_raw_spice(
     Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("3.500"))
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get(f"/katalog/{pepper.pk}/")
+    response = client.get(f"/sklad/katalog/{pepper.pk}/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert pepper.name_cs in body
@@ -2363,7 +2363,7 @@ def test_product_detail_renders_recipe_for_mixture(
     )
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get(f"/katalog/{mixture.pk}/")
+    response = client.get(f"/sklad/katalog/{mixture.pk}/")
     body = response.content.decode("utf-8")
     assert "Receptura" in body
     assert pepper.name_cs in body
@@ -2383,7 +2383,7 @@ def test_product_detail_shows_used_in_for_raw_spice(
     )
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get(f"/katalog/{pepper.pk}/")
+    response = client.get(f"/sklad/katalog/{pepper.pk}/")
     body = response.content.decode("utf-8")
     assert "Použito v směsích" in body
     assert mixture.name_cs in body
@@ -2394,7 +2394,7 @@ def test_product_detail_shows_used_in_for_raw_spice(
 def test_product_detail_404_for_unknown(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/katalog/99999/")
+    response = client.get("/sklad/katalog/99999/")
     assert response.status_code == 404
 
 
@@ -2407,7 +2407,7 @@ def test_product_detail_obsluha_sees_only_own_branch_stock(
     Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("99.000"))
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get(f"/katalog/{pepper.pk}/")
+    response = client.get(f"/sklad/katalog/{pepper.pk}/")
     body = response.content.decode("utf-8")
     assert "8,000" in body
     assert "99,000" not in body and "99.000" not in body
@@ -2721,10 +2721,10 @@ def test_record_completed_mixing_job_one_shot(
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_mixing_routes_require_login() -> None:
-    for path in ("/michani/", "/michani/novy/", "/michani/1/"):
+    for path in ("/sklad/michani/", "/sklad/michani/novy/", "/sklad/michani/1/"):
         response = Client().get(path)
         assert response.status_code == 302
-        assert response.headers["Location"].startswith("/login/")
+        assert response.headers["Location"].startswith("/sklad/prihlaseni/")
 
 
 @pytest.mark.django_db
@@ -2732,7 +2732,7 @@ def test_mixing_routes_require_login() -> None:
 def test_mixing_index_empty(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/michani/")
+    response = client.get("/sklad/michani/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "Míchací dávky" in body
@@ -2748,7 +2748,7 @@ def test_mixing_create_get_lists_only_mixtures_with_recipe(
     Product.objects.create(name_cs="Bez receptury", kind=Product.Kind.MIXTURE)
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/michani/novy/")
+    response = client.get("/sklad/michani/novy/")
     body = response.content.decode("utf-8")
     assert with_recipe.name_cs in body
     assert "Bez receptury" not in body
@@ -2762,7 +2762,7 @@ def test_mixing_create_post_starts_job(user_vlastnik, tyn, pepper) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/michani/novy/",
+        "/sklad/michani/novy/",
         {
             "branch": tyn.pk,
             "mixture": mixture.pk,
@@ -2772,7 +2772,7 @@ def test_mixing_create_post_starts_job(user_vlastnik, tyn, pepper) -> None:
         },
     )
     assert response.status_code == 302, response.content[:500]
-    assert response.headers["Location"].startswith("/michani/")
+    assert response.headers["Location"].startswith("/sklad/michani/")
     job = MixingJob.objects.get()
     assert job.state == MixingJob.State.RUNNING
     assert job.target_qty == Decimal("2.000")
@@ -2786,7 +2786,7 @@ def test_mixing_create_post_record_mode(user_vlastnik, tyn, pepper) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/michani/novy/",
+        "/sklad/michani/novy/",
         {
             "branch": tyn.pk,
             "mixture": mixture.pk,
@@ -2811,7 +2811,7 @@ def test_mixing_create_overdraw_keeps_form(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/michani/novy/",
+        "/sklad/michani/novy/",
         {
             "branch": tyn.pk,
             "mixture": mixture.pk,
@@ -2839,7 +2839,7 @@ def test_mixing_finish_view(user_vlastnik, tyn, pepper) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        f"/michani/{job.pk}/dokoncit/",
+        f"/sklad/michani/{job.pk}/dokoncit/",
         {
             "actual_produced_qty": "1.900",
             f"line-{line.pk}-actual_qty": "2.000",
@@ -2865,12 +2865,12 @@ def test_mixing_cancel_view_requires_reason(
     )
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.post(f"/michani/{job.pk}/zrusit/", {"reason": "   "})
+    response = client.post(f"/sklad/michani/{job.pk}/zrusit/", {"reason": "   "})
     assert response.status_code == 302
     job.refresh_from_db()
     assert job.state == MixingJob.State.RUNNING
     response = client.post(
-        f"/michani/{job.pk}/zrusit/", {"reason": "vzal jsem špatnou recepturu"}
+        f"/sklad/michani/{job.pk}/zrusit/", {"reason": "vzal jsem špatnou recepturu"}
     )
     assert response.status_code == 302
     job.refresh_from_db()
@@ -2895,7 +2895,7 @@ def test_mixing_obsluha_forbidden_on_other_branch(
     )
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get(f"/michani/{job.pk}/")
+    response = client.get(f"/sklad/michani/{job.pk}/")
     assert response.status_code == 403
 
 
@@ -2907,7 +2907,7 @@ def test_mixing_preview_partial(user_vlastnik, tyn, pepper) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.get(
-        f"/_partials/mixing-preview/?branch={tyn.pk}&mixture={mixture.pk}&target_qty=5.000"
+        f"/sklad/_partials/mixing-preview/?branch={tyn.pk}&mixture={mixture.pk}&target_qty=5.000"
     )
     assert response.status_code == 200
     body = response.content.decode("utf-8")
@@ -2923,9 +2923,9 @@ def test_mixing_preview_partial(user_vlastnik, tyn, pepper) -> None:
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_settings_edit_requires_login() -> None:
-    response = Client().get("/nastaveni/")
+    response = Client().get("/sklad/nastaveni/")
     assert response.status_code == 302
-    assert "/login/" in response["Location"]
+    assert "/sklad/prihlaseni/" in response["Location"]
 
 
 @pytest.mark.django_db
@@ -2933,7 +2933,7 @@ def test_settings_edit_requires_login() -> None:
 def test_settings_edit_forbidden_for_obsluha(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/nastaveni/")
+    response = client.get("/sklad/nastaveni/")
     assert response.status_code == 403
 
 
@@ -2942,7 +2942,7 @@ def test_settings_edit_forbidden_for_obsluha(user_obsluha_tyn) -> None:
 def test_settings_edit_renders_for_vlastnik(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/nastaveni/")
+    response = client.get("/sklad/nastaveni/")
     assert response.status_code == 200
     body = response.content
     assert b"<h1>Nastaven\xc3\xad</h1>" in body
@@ -2986,7 +2986,7 @@ def test_settings_edit_save_updates_company(user_vlastnik) -> None:
         "template_low_stock_subject": initial.template_low_stock_subject,
         "template_low_stock_body": initial.template_low_stock_body,
     }
-    response = client.post("/nastaveni/", data)
+    response = client.post("/sklad/nastaveni/", data)
     assert response.status_code == 302
     s = Settings.load()
     assert s.company_dic == "CZ25756729"
@@ -3030,7 +3030,7 @@ def test_settings_edit_empty_password_keeps_existing(user_vlastnik) -> None:
         "template_low_stock_subject": s.template_low_stock_subject,
         "template_low_stock_body": s.template_low_stock_body,
     }
-    response = client.post("/nastaveni/", data)
+    response = client.post("/sklad/nastaveni/", data)
     assert response.status_code == 302
     s2 = Settings.load()
     assert s2.smtp_password == "old-secret"
@@ -3045,7 +3045,7 @@ def test_settings_test_smtp_sends_to_target(user_vlastnik) -> None:
     client.force_login(user_vlastnik)
     outbox_before = len(mail.outbox)
     response = client.post(
-        "/nastaveni/test-smtp/",
+        "/sklad/nastaveni/test-smtp/",
         {"to_email": "petr@example.cz"},
     )
     assert response.status_code == 302
@@ -3061,7 +3061,7 @@ def test_settings_test_smtp_forbidden_for_obsluha(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
     response = client.post(
-        "/nastaveni/test-smtp/", {"to_email": "x@example.cz"}
+        "/sklad/nastaveni/test-smtp/", {"to_email": "x@example.cz"}
     )
     assert response.status_code == 403
 
@@ -3075,7 +3075,7 @@ def test_settings_test_smtp_rejects_invalid_email(user_vlastnik) -> None:
     client.force_login(user_vlastnik)
     outbox_before = len(mail.outbox)
     response = client.post(
-        "/nastaveni/test-smtp/", {"to_email": "not-an-email"}
+        "/sklad/nastaveni/test-smtp/", {"to_email": "not-an-email"}
     )
     assert response.status_code == 302
     assert len(mail.outbox) == outbox_before
@@ -3093,7 +3093,7 @@ def test_settings_branch_counters_render(user_vlastnik, tyn) -> None:
     )
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/nastaveni/")
+    response = client.get("/sklad/nastaveni/")
     assert response.status_code == 200
     expected_cislo = f"TYN-{date.today().year}-0042"
     assert expected_cislo.encode() in response.content
@@ -3104,7 +3104,7 @@ def test_settings_branch_counters_render(user_vlastnik, tyn) -> None:
 def test_nav_nastaveni_link_shown_for_vlastnik(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/")
+    response = client.get("/sklad/")
     assert response.status_code == 200
     assert b"Nastaven\xc3\xad" in response.content
 
@@ -3114,7 +3114,7 @@ def test_nav_nastaveni_link_shown_for_vlastnik(user_vlastnik) -> None:
 def test_nav_nastaveni_link_hidden_for_obsluha(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/pobocka/TYN/")
+    response = client.get("/sklad/pobocka/TYN/")
     assert response.status_code == 200
     assert b"Nastaven\xc3\xad" not in response.content
 
@@ -3127,9 +3127,9 @@ def test_nav_nastaveni_link_hidden_for_obsluha(user_obsluha_tyn) -> None:
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_supplier_index_requires_login() -> None:
-    response = Client().get("/dodavatele/")
+    response = Client().get("/sklad/dodavatele/")
     assert response.status_code == 302
-    assert "/login/" in response["Location"]
+    assert "/sklad/prihlaseni/" in response["Location"]
 
 
 @pytest.mark.django_db
@@ -3137,7 +3137,7 @@ def test_supplier_index_requires_login() -> None:
 def test_supplier_index_renders_for_obsluha(user_obsluha_tyn, supplier) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/dodavatele/")
+    response = client.get("/sklad/dodavatele/")
     assert response.status_code == 200
     assert supplier.name.encode() in response.content
 
@@ -3151,7 +3151,7 @@ def test_supplier_index_hides_internal(user_obsluha_tyn) -> None:
     # The "Míchárna" internal supplier was seeded; verify it doesn't show.
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/dodavatele/")
+    response = client.get("/sklad/dodavatele/")
     assert b"Visible Dodavatel" in response.content
     assert b"M\xc3\xadch\xc3\xa1rna" not in response.content
 
@@ -3164,7 +3164,7 @@ def test_supplier_create_by_obsluha(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
     response = client.post(
-        "/dodavatele/novy/",
+        "/sklad/dodavatele/novy/",
         {
             "name": "Nový Dodavatel s.r.o.",
             "ico": "12345678",
@@ -3185,7 +3185,7 @@ def test_supplier_create_rejects_duplicate_name(user_vlastnik, supplier) -> None
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/dodavatele/novy/",
+        "/sklad/dodavatele/novy/",
         {"name": supplier.name, "is_active": "on"},
     )
     assert response.status_code == 200
@@ -3201,7 +3201,7 @@ def test_supplier_edit_updates_fields(user_vlastnik, supplier) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        f"/dodavatele/{supplier.pk}/upravit/",
+        f"/sklad/dodavatele/{supplier.pk}/upravit/",
         {
             "name": supplier.name,
             "ico": "99887766",
@@ -3220,7 +3220,7 @@ def test_supplier_edit_updates_fields(user_vlastnik, supplier) -> None:
 def test_supplier_archive(user_obsluha_tyn, supplier) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.post(f"/dodavatele/{supplier.pk}/archivovat/")
+    response = client.post(f"/sklad/dodavatele/{supplier.pk}/archivovat/")
     assert response.status_code == 302
     supplier.refresh_from_db()
     assert supplier.is_active is False
@@ -3235,7 +3235,7 @@ def test_supplier_archive_internal_refused(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        f"/dodavatele/{micharna.pk}/archivovat/", follow=True
+        f"/sklad/dodavatele/{micharna.pk}/archivovat/", follow=True
     )
     assert response.status_code == 200
     micharna.refresh_from_db()
@@ -3250,7 +3250,7 @@ def test_supplier_reactivate(user_obsluha_tyn) -> None:
     sup = Sup.objects.create(name="Archivovaný", is_active=False)
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.post(f"/dodavatele/{sup.pk}/aktivovat/")
+    response = client.post(f"/sklad/dodavatele/{sup.pk}/aktivovat/")
     assert response.status_code == 302
     sup.refresh_from_db()
     assert sup.is_active is True
@@ -3262,7 +3262,7 @@ def test_supplier_reactivate(user_obsluha_tyn) -> None:
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_customer_index_requires_login() -> None:
-    response = Client().get("/odberatele/")
+    response = Client().get("/sklad/odberatele/")
     assert response.status_code == 302
 
 
@@ -3271,7 +3271,7 @@ def test_customer_index_requires_login() -> None:
 def test_customer_index_renders_for_obsluha(user_obsluha_tyn, ricany) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/odberatele/")
+    response = client.get("/sklad/odberatele/")
     assert response.status_code == 200
     assert b"\xc5\x98\xc3\xad\xc4\x8dany" in response.content
 
@@ -3282,7 +3282,7 @@ def test_customer_index_hides_internal(user_obsluha_tyn) -> None:
     """Internal Míchárna customer is hidden from the operator list."""
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/odberatele/")
+    response = client.get("/sklad/odberatele/")
     assert response.status_code == 200
     assert b"M\xc3\xadch\xc3\xa1rna" not in response.content
 
@@ -3293,7 +3293,7 @@ def test_customer_create_by_obsluha(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
     response = client.post(
-        "/odberatele/novy/",
+        "/sklad/odberatele/novy/",
         {
             "name": "Hospůdka U Lípy",
             "ico": "11223344",
@@ -3318,7 +3318,7 @@ def test_customer_archive_refused_for_default_recipient(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        f"/odberatele/{ricany.pk}/archivovat/", follow=True
+        f"/sklad/odberatele/{ricany.pk}/archivovat/", follow=True
     )
     assert response.status_code == 200
     ricany.refresh_from_db()
@@ -3332,7 +3332,7 @@ def test_customer_archive(user_obsluha_tyn) -> None:
     cust = Customer.objects.create(name="Půjčující odběratel")
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.post(f"/odberatele/{cust.pk}/archivovat/")
+    response = client.post(f"/sklad/odberatele/{cust.pk}/archivovat/")
     assert response.status_code == 302
     cust.refresh_from_db()
     assert cust.is_active is False
@@ -3343,7 +3343,7 @@ def test_customer_archive(user_obsluha_tyn) -> None:
 def test_nav_supplier_customer_links_visible_to_all(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/pobocka/TYN/")
+    response = client.get("/sklad/pobocka/TYN/")
     assert response.status_code == 200
     assert b"Dodavatel" in response.content
     assert b"Odb\xc4\x9bratel" in response.content
@@ -3357,7 +3357,7 @@ def test_nav_supplier_customer_links_visible_to_all(user_obsluha_tyn) -> None:
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_product_create_requires_login() -> None:
-    response = Client().get("/katalog/novy/")
+    response = Client().get("/sklad/katalog/novy/")
     assert response.status_code == 302
 
 
@@ -3368,7 +3368,7 @@ def test_product_create_by_obsluha(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
     response = client.post(
-        "/katalog/novy/",
+        "/sklad/katalog/novy/",
         {
             "name_cs": "Tymián",
             "kind": "raw_spice",
@@ -3391,12 +3391,12 @@ def test_product_create_redirects_vlastnik_into_recipe_edit_for_mixtures(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/katalog/novy/",
+        "/sklad/katalog/novy/",
         {"name_cs": "Nová směs", "kind": "mixture"},
     )
     p = Product.objects.get(name_cs="Nová směs")
     assert response.status_code == 302
-    assert response["Location"].endswith(f"/katalog/{p.pk}/upravit/")
+    assert response["Location"].endswith(f"/sklad/katalog/{p.pk}/upravit/")
 
 
 @pytest.mark.django_db
@@ -3407,12 +3407,12 @@ def test_product_create_obsluha_mixture_lands_on_detail(user_obsluha_tyn) -> Non
     client = Client()
     client.force_login(user_obsluha_tyn)
     response = client.post(
-        "/katalog/novy/",
+        "/sklad/katalog/novy/",
         {"name_cs": "Směs B", "kind": "mixture"},
     )
     p = Product.objects.get(name_cs="Směs B")
     assert response.status_code == 302
-    assert response["Location"].endswith(f"/katalog/{p.pk}/")
+    assert response["Location"].endswith(f"/sklad/katalog/{p.pk}/")
 
 
 @pytest.mark.django_db
@@ -3421,7 +3421,7 @@ def test_product_create_rejects_duplicate_name(user_obsluha_tyn, pepper) -> None
     client = Client()
     client.force_login(user_obsluha_tyn)
     response = client.post(
-        "/katalog/novy/",
+        "/sklad/katalog/novy/",
         {"name_cs": pepper.name_cs, "kind": "raw_spice"},
     )
     assert response.status_code == 200
@@ -3437,7 +3437,7 @@ def test_product_edit_updates_name(user_obsluha_tyn, pepper) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
     response = client.post(
-        f"/katalog/{pepper.pk}/upravit/",
+        f"/sklad/katalog/{pepper.pk}/upravit/",
         {
             "name_cs": "Pepř (přejmenovaný)",
             "kind": "raw_spice",
@@ -3459,7 +3459,7 @@ def test_product_edit_locks_kind_when_stock_exists(
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get(f"/katalog/{pepper.pk}/upravit/")
+    response = client.get(f"/sklad/katalog/{pepper.pk}/upravit/")
     assert response.status_code == 200
     assert b"Typ produktu je zam\xc4\x8den\xc3\xbd" in response.content
 
@@ -3469,7 +3469,7 @@ def test_product_edit_locks_kind_when_stock_exists(
 def test_product_archive_vlastnik_only(user_obsluha_tyn, pepper) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.post(f"/katalog/{pepper.pk}/archivovat/")
+    response = client.post(f"/sklad/katalog/{pepper.pk}/archivovat/")
     assert response.status_code == 403
     pepper.refresh_from_db()
     assert pepper.is_active is True
@@ -3480,7 +3480,7 @@ def test_product_archive_vlastnik_only(user_obsluha_tyn, pepper) -> None:
 def test_product_archive_by_vlastnik(user_vlastnik, pepper) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.post(f"/katalog/{pepper.pk}/archivovat/")
+    response = client.post(f"/sklad/katalog/{pepper.pk}/archivovat/")
     assert response.status_code == 302
     pepper.refresh_from_db()
     assert pepper.is_active is False
@@ -3498,7 +3498,7 @@ def test_product_reactivate_blocks_name_collision(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        f"/katalog/{pepper.pk}/aktivovat/", follow=True
+        f"/sklad/katalog/{pepper.pk}/aktivovat/", follow=True
     )
     assert response.status_code == 200
     pepper.refresh_from_db()
@@ -3519,14 +3519,14 @@ def test_recipe_edit_visible_only_to_vlastnik(
     # As vlastník — should see recipe section.
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get(f"/katalog/{mixture.pk}/upravit/")
+    response = client.get(f"/sklad/katalog/{mixture.pk}/upravit/")
     assert response.status_code == 200
     assert b"Receptura" in response.content
     assert b"recipe-TOTAL_FORMS" in response.content
     # As obsluha — recipe section hidden (mixture's recipe is vlastník-only).
     client2 = Client()
     client2.force_login(user_obsluha_tyn)
-    response2 = client2.get(f"/katalog/{mixture.pk}/upravit/")
+    response2 = client2.get(f"/sklad/katalog/{mixture.pk}/upravit/")
     assert response2.status_code == 200
     assert b"recipe-TOTAL_FORMS" not in response2.content
 
@@ -3543,7 +3543,7 @@ def test_recipe_edit_saves_changes(user_vlastnik, pepper, paprika) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        f"/katalog/{mixture.pk}/upravit/",
+        f"/sklad/katalog/{mixture.pk}/upravit/",
         {
             "name_cs": mixture.name_cs,
             "kind": "mixture",
@@ -3571,7 +3571,7 @@ def test_recipe_edit_saves_changes(user_vlastnik, pepper, paprika) -> None:
 def test_catalogue_has_new_product_button(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/katalog/")
+    response = client.get("/sklad/katalog/")
     assert response.status_code == 200
     assert b"Nov\xc3\xbd produkt" in response.content
 
@@ -3584,7 +3584,7 @@ def test_catalogue_has_new_product_button(user_obsluha_tyn) -> None:
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_branch_index_requires_login() -> None:
-    response = Client().get("/pobocky/")
+    response = Client().get("/sklad/pobocky/")
     assert response.status_code == 302
 
 
@@ -3593,7 +3593,7 @@ def test_branch_index_requires_login() -> None:
 def test_branch_index_forbidden_for_obsluha(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/pobocky/")
+    response = client.get("/sklad/pobocky/")
     assert response.status_code == 403
 
 
@@ -3602,7 +3602,7 @@ def test_branch_index_forbidden_for_obsluha(user_obsluha_tyn) -> None:
 def test_branch_index_renders_for_vlastnik(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pobocky/")
+    response = client.get("/sklad/pobocky/")
     assert response.status_code == 200
     assert b"TYN" in response.content
     assert b"SEZ" in response.content
@@ -3616,7 +3616,7 @@ def test_branch_create_by_vlastnik(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/pobocky/novy/",
+        "/sklad/pobocky/novy/",
         {
             "code": "prh",  # lower-case input; clean_code uppercases
             "name": "Praha (sklad)",
@@ -3636,7 +3636,7 @@ def test_branch_create_rejects_invalid_code(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/pobocky/novy/",
+        "/sklad/pobocky/novy/",
         {"code": "TY", "name": "Test", "address": "", "is_active": "on"},
     )
     assert response.status_code == 200
@@ -3649,7 +3649,7 @@ def test_branch_create_rejects_duplicate_code(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/pobocky/novy/",
+        "/sklad/pobocky/novy/",
         {"code": "TYN", "name": "Dup", "address": "", "is_active": "on"},
     )
     assert response.status_code == 200
@@ -3696,7 +3696,7 @@ def test_branch_edit_locks_code_after_first_dodak(
 
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pobocky/TYN/upravit/")
+    response = client.get("/sklad/pobocky/TYN/upravit/")
     assert response.status_code == 200
     assert b"K\xc3\xb3d je zam\xc4\x8den\xc3\xbd" in response.content
 
@@ -3710,7 +3710,7 @@ def test_branch_archive_refuses_with_stock(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/pobocky/TYN/archivovat/", follow=True
+        "/sklad/pobocky/TYN/archivovat/", follow=True
     )
     assert response.status_code == 200
     tyn.refresh_from_db()
@@ -3730,7 +3730,7 @@ def test_branch_archive_refuses_with_active_users(
     )
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.post("/pobocky/SEZ/archivovat/", follow=True)
+    response = client.post("/sklad/pobocky/SEZ/archivovat/", follow=True)
     assert response.status_code == 200
     sez.refresh_from_db()
     assert sez.is_active is True
@@ -3745,7 +3745,7 @@ def test_branch_archive_succeeds_when_clean(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        f"/pobocky/{new_branch.code}/archivovat/", follow=True
+        f"/sklad/pobocky/{new_branch.code}/archivovat/", follow=True
     )
     assert response.status_code == 200
     new_branch.refresh_from_db()
@@ -3757,7 +3757,7 @@ def test_branch_archive_succeeds_when_clean(user_vlastnik) -> None:
 def test_nav_pobocky_link_visible_to_vlastnik(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/")
+    response = client.get("/sklad/")
     assert response.status_code == 200
     assert b"Pobo\xc4\x8dky" in response.content
 
@@ -3767,12 +3767,12 @@ def test_nav_pobocky_link_visible_to_vlastnik(user_vlastnik) -> None:
 def test_nav_pobocky_link_hidden_for_obsluha(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/pobocka/TYN/")
+    response = client.get("/sklad/pobocka/TYN/")
     assert response.status_code == 200
     # The text "Pobočky" must not appear as a nav anchor for obsluha.
     # The branch dashboard h1 might have "pobočka" — sanity check on
     # the /pobocky/ URL not appearing in the anchors.
-    assert b'href="/pobocky/"' not in response.content
+    assert b'href="/sklad/pobocky/"' not in response.content
 
 
 # ---------------------------------------------------------------------------
@@ -3783,9 +3783,9 @@ def test_nav_pobocky_link_hidden_for_obsluha(user_obsluha_tyn) -> None:
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_stock_adjust_requires_login(pepper) -> None:
-    response = Client().get(f"/katalog/{pepper.pk}/upravit-stav/")
+    response = Client().get(f"/sklad/katalog/{pepper.pk}/upravit-stav/")
     assert response.status_code == 302
-    assert "/login/" in response["Location"]
+    assert "/sklad/prihlaseni/" in response["Location"]
 
 
 @pytest.mark.django_db(transaction=True)
@@ -3793,7 +3793,7 @@ def test_stock_adjust_requires_login(pepper) -> None:
 def test_stock_adjust_forbidden_for_obsluha(user_obsluha_tyn, pepper) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get(f"/katalog/{pepper.pk}/upravit-stav/")
+    response = client.get(f"/sklad/katalog/{pepper.pk}/upravit-stav/")
     assert response.status_code == 403
 
 
@@ -3803,7 +3803,7 @@ def test_stock_adjust_renders_for_vlastnik(user_vlastnik, pepper, tyn) -> None:
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get(f"/katalog/{pepper.pk}/upravit-stav/")
+    response = client.get(f"/sklad/katalog/{pepper.pk}/upravit-stav/")
     assert response.status_code == 200
     assert b"\xc3\x9aprava stavu" in response.content  # "Úprava stavu"
     assert b"10.000" in response.content
@@ -3818,7 +3818,7 @@ def test_stock_adjust_positive_delta_writes_prijem(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        f"/katalog/{pepper.pk}/upravit-stav/",
+        f"/sklad/katalog/{pepper.pk}/upravit-stav/",
         {
             "branch": str(tyn.pk),
             "new_quantity": "12.500",
@@ -3847,7 +3847,7 @@ def test_stock_adjust_negative_delta_writes_vydej(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        f"/katalog/{pepper.pk}/upravit-stav/",
+        f"/sklad/katalog/{pepper.pk}/upravit-stav/",
         {
             "branch": str(tyn.pk),
             "new_quantity": "7.000",
@@ -3874,7 +3874,7 @@ def test_stock_adjust_zero_delta_noop(user_vlastnik, pepper, tyn) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        f"/katalog/{pepper.pk}/upravit-stav/",
+        f"/sklad/katalog/{pepper.pk}/upravit-stav/",
         {
             "branch": str(tyn.pk),
             "new_quantity": "10.000",
@@ -3893,7 +3893,7 @@ def test_stock_adjust_requires_reason(user_vlastnik, pepper, tyn) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        f"/katalog/{pepper.pk}/upravit-stav/",
+        f"/sklad/katalog/{pepper.pk}/upravit-stav/",
         {"branch": str(tyn.pk), "new_quantity": "12.000", "reason": ""},
     )
     assert response.status_code == 200  # form re-rendered with error
@@ -3911,7 +3911,7 @@ def test_stock_adjust_creates_stock_row_when_missing(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        f"/katalog/{paprika.pk}/upravit-stav/",
+        f"/sklad/katalog/{paprika.pk}/upravit-stav/",
         {
             "branch": str(tyn.pk),
             "new_quantity": "5.000",
@@ -3932,14 +3932,14 @@ def test_stock_adjust_movement_appears_in_history_with_stav_prefix(
     client = Client()
     client.force_login(user_vlastnik)
     client.post(
-        f"/katalog/{pepper.pk}/upravit-stav/",
+        f"/sklad/katalog/{pepper.pk}/upravit-stav/",
         {
             "branch": str(tyn.pk),
             "new_quantity": "11.000",
             "reason": "úprava",
         },
     )
-    response = client.get("/pohyby/")
+    response = client.get("/sklad/pohyby/")
     assert response.status_code == 200
     # Counterparty appears in the history Protistrana column.
     # The [STAV] note prefix is in the DB (Movement.note) — future
@@ -3958,7 +3958,7 @@ def test_stock_adjust_movement_appears_in_history_with_stav_prefix(
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_inventura_edit_requires_login() -> None:
-    response = Client().get("/katalog/inventura/TYN/")
+    response = Client().get("/sklad/katalog/inventura/TYN/")
     assert response.status_code == 302
 
 
@@ -3967,7 +3967,7 @@ def test_inventura_edit_requires_login() -> None:
 def test_inventura_edit_forbidden_for_obsluha(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/katalog/inventura/TYN/")
+    response = client.get("/sklad/katalog/inventura/TYN/")
     assert response.status_code == 403
 
 
@@ -3980,7 +3980,7 @@ def test_inventura_edit_renders_for_vlastnik(
     Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("5.500"))
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/katalog/inventura/TYN/")
+    response = client.get("/sklad/katalog/inventura/TYN/")
     assert response.status_code == 200
     body = response.content
     assert b"Inventura \xe2\x80\x94 TYN" in body  # "Inventura — TYN"
@@ -4001,7 +4001,7 @@ def test_inventura_edit_writes_movements_for_changed_rows_only(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/katalog/inventura/TYN/",
+        "/sklad/katalog/inventura/TYN/",
         {
             "reason": "inventura 2026-06-12",
             f"qty_{pepper.pk}": "10.000",   # unchanged → skip
@@ -4031,7 +4031,7 @@ def test_inventura_edit_requires_reason(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/katalog/inventura/TYN/",
+        "/sklad/katalog/inventura/TYN/",
         {"reason": "", f"qty_{pepper.pk}": "12.000"},
     )
     # Form re-renders with error; no movements written.
@@ -4049,7 +4049,7 @@ def test_inventura_edit_handles_multiple_changes_atomically(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/katalog/inventura/TYN/",
+        "/sklad/katalog/inventura/TYN/",
         {
             "reason": "inventura — víc změn najednou",
             f"qty_{pepper.pk}": "11.500",   # +1.500
@@ -4073,11 +4073,11 @@ def test_inventura_button_appears_when_branch_selected(
     client = Client()
     client.force_login(user_vlastnik)
     # Without ?branch — no inventura button.
-    response_no = client.get("/katalog/")
+    response_no = client.get("/sklad/katalog/")
     assert response_no.status_code == 200
     assert b"Inventura TYN" not in response_no.content
     # With ?branch=TYN — button present.
-    response_yes = client.get("/katalog/?branch=TYN")
+    response_yes = client.get("/sklad/katalog/?branch=TYN")
     assert response_yes.status_code == 200
     assert b"Inventura TYN" in response_yes.content
 
@@ -4090,7 +4090,7 @@ def test_inventura_button_hidden_for_obsluha(user_obsluha_tyn) -> None:
     # Obsluha is auto-scoped — branch dropdown isn't even shown but
     # the catalog page renders all products. The Inventura button
     # must not appear for obsluha regardless of any URL params.
-    response = client.get("/katalog/")
+    response = client.get("/sklad/katalog/")
     assert response.status_code == 200
     assert b"Inventura" not in response.content
 
@@ -4111,7 +4111,7 @@ def test_overdraw_warning_card_shows_with_correction_button_for_vlastnik(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/vydej/novy/",
+        "/sklad/vydej/novy/",
         {
             "branch": str(tyn.pk),
             "odberatel": str(
@@ -4154,7 +4154,7 @@ def test_overdraw_warning_card_hides_button_for_obsluha(
     client = Client()
     client.force_login(user_obsluha_tyn)
     response = client.post(
-        "/vydej/novy/",
+        "/sklad/vydej/novy/",
         {
             "branch": str(tyn.pk),
             "odberatel": str(
@@ -4190,7 +4190,7 @@ def test_overdraw_warning_lists_all_insufficient_lines(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/vydej/novy/",
+        "/sklad/vydej/novy/",
         {
             "branch": str(tyn.pk),
             "odberatel": str(
@@ -4234,7 +4234,7 @@ def test_overdraw_aggregates_multiple_lines_of_same_product(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/vydej/novy/",
+        "/sklad/vydej/novy/",
         {
             "branch": str(tyn.pk),
             "odberatel": str(
@@ -4291,7 +4291,7 @@ def test_overdraw_clears_after_stock_correction(
         "lines-0-note": "",
     }
     # 1st attempt — overdraw, form re-rendered.
-    r1 = client.post("/vydej/novy/", payload)
+    r1 = client.post("/sklad/vydej/novy/", payload)
     assert r1.status_code == 200
     assert not Movement.objects.filter(
         kind=Movement.Kind.VYDEJ, branch=tyn
@@ -4307,7 +4307,7 @@ def test_overdraw_clears_after_stock_correction(
         user=user_vlastnik,
     )
     # 2nd attempt — same payload, now goes through.
-    r2 = client.post("/vydej/novy/", payload)
+    r2 = client.post("/sklad/vydej/novy/", payload)
     assert r2.status_code == 302
     assert Movement.objects.filter(
         kind=Movement.Kind.VYDEJ, branch=tyn
@@ -4352,7 +4352,7 @@ def test_history_tab_chips_render(user_vlastnik, tyn, pepper, ricany) -> None:
 
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pohyby/")
+    response = client.get("/sklad/pohyby/")
     assert response.status_code == 200
     body = response.content
     assert b"V\xc5\xa1e" in body                                        # Vše
@@ -4388,7 +4388,7 @@ def test_history_tab_prijem_filters_to_prijem_only(
 
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pohyby/?tab=prijem")
+    response = client.get("/sklad/pohyby/?tab=prijem")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     # Only prijem rows; no vydej rows.
@@ -4425,7 +4425,7 @@ def test_history_tab_inventura_filters_to_stav_only(
 
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pohyby/?tab=inventura")
+    response = client.get("/sklad/pohyby/?tab=inventura")
     assert response.status_code == 200
     body = response.content
     # Only the inventura row should show. The inventura row uses the
@@ -4453,7 +4453,7 @@ def test_history_inventura_movements_get_inventura_label(
 
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pohyby/")
+    response = client.get("/sklad/pohyby/")
     assert response.status_code == 200
     body = response.content
     # The inventura label replaces the prijem badge for [STAV] rows.
@@ -4487,7 +4487,7 @@ def test_history_legacy_kind_param_maps_to_tab(
     )
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/pohyby/?kind=vydej")
+    response = client.get("/sklad/pohyby/?kind=vydej")
     assert response.status_code == 200
     body = response.content
     # Active tab should be Výdeje.
@@ -4866,7 +4866,7 @@ def test_threshold_field_hidden_for_obsluha(
     not rendered (vlastník-only per 0043)."""
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get(f"/katalog/{pepper.pk}/upravit/")
+    response = client.get(f"/sklad/katalog/{pepper.pk}/upravit/")
     assert response.status_code == 200
     # Czech header "Objednací bod" should not appear for obsluha.
     assert b"Objedna" not in response.content
@@ -4878,7 +4878,7 @@ def test_threshold_field_shown_for_vlastnik(user_vlastnik, pepper) -> None:
     """Vlastník sees the threshold field on the product edit page."""
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get(f"/katalog/{pepper.pk}/upravit/")
+    response = client.get(f"/sklad/katalog/{pepper.pk}/upravit/")
     assert response.status_code == 200
     assert b"Objedna" in response.content
 
@@ -4894,7 +4894,7 @@ def test_planned_transfer_create_view_creates_row(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/prevody/novy/",
+        "/sklad/prevody/novy/",
         {
             "source_branch": str(tyn.pk),
             "target_branch": str(sez.pk),
@@ -4916,7 +4916,7 @@ def test_planned_transfer_create_view_creates_row(
 def test_planned_transfer_index_renders(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/prevody/")
+    response = client.get("/sklad/prevody/")
     assert response.status_code == 200
 
 
@@ -4933,7 +4933,7 @@ def test_low_stock_panel_appears_on_owner_dashboard(
 
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/")
+    response = client.get("/sklad/")
     assert response.status_code == 200
     assert b"Doch\xc3\xa1z\xc3\xad zbo\xc5\xbe\xc3\xad" in response.content
 
@@ -4946,9 +4946,9 @@ def test_low_stock_panel_appears_on_owner_dashboard(
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_support_anonymous_redirects_to_login() -> None:
-    response = Client().get("/podpora/")
+    response = Client().get("/sklad/podpora/")
     assert response.status_code == 302
-    assert response.headers["Location"].startswith("/login/")
+    assert response.headers["Location"].startswith("/sklad/prihlaseni/")
 
 
 @pytest.mark.django_db
@@ -4958,7 +4958,7 @@ def test_support_get_renders_form_and_list_for_logged_in_user(
 ) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/podpora/")
+    response = client.get("/sklad/podpora/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "Podpora" in body
@@ -4975,14 +4975,14 @@ def test_support_post_creates_feedback_and_redirects(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/podpora/",
-        {"page_url": "/katalog/", "description": "Chybí mi sloupec X."},
+        "/sklad/podpora/",
+        {"page_url": "/sklad/katalog/", "description": "Chybí mi sloupec X."},
     )
     assert response.status_code == 302
-    assert response.headers["Location"] == "/podpora/"
+    assert response.headers["Location"] == "/sklad/podpora/"
     f = Feedback.objects.get()
     assert f.description == "Chybí mi sloupec X."
-    assert f.page_url == "/katalog/"
+    assert f.page_url == "/sklad/katalog/"
     assert f.created_by_id == user_vlastnik.pk
     assert f.resolved_at is None
     assert f.is_open
@@ -4996,8 +4996,8 @@ def test_support_post_without_description_fails_validation(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/podpora/",
-        {"page_url": "/katalog/", "description": ""},
+        "/sklad/podpora/",
+        {"page_url": "/sklad/katalog/", "description": ""},
     )
     assert response.status_code == 200
     assert Feedback.objects.count() == 0
@@ -5009,7 +5009,7 @@ def test_support_post_with_optional_page_url(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/podpora/",
+        "/sklad/podpora/",
         {"page_url": "", "description": "Obecný nápad bez konkrétní stránky."},
     )
     assert response.status_code == 302
@@ -5025,7 +5025,7 @@ def test_feedback_toggle_marks_resolved_as_vlastnik(user_vlastnik) -> None:
     )
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.post(f"/podpora/{f.pk}/vyresit/")
+    response = client.post(f"/sklad/podpora/{f.pk}/vyresit/")
     assert response.status_code == 302
     f.refresh_from_db()
     assert f.resolved_at is not None
@@ -5043,8 +5043,8 @@ def test_feedback_toggle_reopens_already_resolved_as_vlastnik(
     )
     client = Client()
     client.force_login(user_vlastnik)
-    client.post(f"/podpora/{f.pk}/vyresit/")
-    client.post(f"/podpora/{f.pk}/vyresit/")
+    client.post(f"/sklad/podpora/{f.pk}/vyresit/")
+    client.post(f"/sklad/podpora/{f.pk}/vyresit/")
     f.refresh_from_db()
     assert f.resolved_at is None
     assert f.resolved_by is None
@@ -5061,9 +5061,9 @@ def test_feedback_toggle_rejected_for_obsluha_with_message_redirect(
     )
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.post(f"/podpora/{f.pk}/vyresit/")
+    response = client.post(f"/sklad/podpora/{f.pk}/vyresit/")
     assert response.status_code == 302
-    assert response.headers["Location"] == "/podpora/"
+    assert response.headers["Location"] == "/sklad/podpora/"
     f.refresh_from_db()
     assert f.resolved_at is None
     assert f.is_open
@@ -5082,7 +5082,7 @@ def test_feedback_visible_to_all_users_not_just_creator(
     )
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/podpora/")
+    response = client.get("/sklad/podpora/")
     body = response.content.decode("utf-8")
     assert "Hlášení od vlastníka" in body
     assert "Hlášení od obsluhy" in body
@@ -5171,9 +5171,9 @@ def test_parse_recipe_xls_empty_file_raises_czech() -> None:
 
 @pytest.mark.django_db
 def test_xls_import_upload_requires_login() -> None:
-    response = Client().get("/katalog/import-xls/")
+    response = Client().get("/sklad/katalog/import-xls/")
     assert response.status_code == 302
-    assert response.headers["Location"].startswith("/login/")
+    assert response.headers["Location"].startswith("/sklad/prihlaseni/")
 
 
 @pytest.mark.django_db
@@ -5181,7 +5181,7 @@ def test_xls_import_upload_requires_login() -> None:
 def test_xls_import_upload_obsluha_forbidden(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    response = client.get("/katalog/import-xls/")
+    response = client.get("/sklad/katalog/import-xls/")
     assert response.status_code == 403
 
 
@@ -5190,7 +5190,7 @@ def test_xls_import_upload_obsluha_forbidden(user_obsluha_tyn) -> None:
 def test_xls_import_upload_vlastnik_renders_form(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
-    response = client.get("/katalog/import-xls/")
+    response = client.get("/sklad/katalog/import-xls/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "XLS" in body
@@ -5203,7 +5203,7 @@ def test_xls_import_upload_post_parses_renders_review(user_vlastnik) -> None:
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
-        "/katalog/import-xls/",
+        "/sklad/katalog/import-xls/",
         {"xls_file": _xls_upload()},
     )
     assert response.status_code == 200
@@ -5250,7 +5250,7 @@ def test_xls_import_confirm_creates_mixture_and_components(user_vlastnik) -> Non
         "form-4-qty_kg": "0.800",
         "form-4-existing_product_id": "",
     }
-    response = client.post("/katalog/import-xls/potvrdit/", payload)
+    response = client.post("/sklad/katalog/import-xls/potvrdit/", payload)
     assert response.status_code == 302
     mixture = Product.objects.get(name_cs="Toužimský Knedlík")
     assert mixture.kind == Product.Kind.MIXTURE
@@ -5295,7 +5295,7 @@ def test_xls_import_confirm_reuses_existing_raw_spice_case_insensitive(
         "form-1-qty_kg": "20.000",
         "form-1-existing_product_id": "",
     }
-    response = client.post("/katalog/import-xls/potvrdit/", payload)
+    response = client.post("/sklad/katalog/import-xls/potvrdit/", payload)
     assert response.status_code == 302
     # Only one "Krupička" exists — the existing one was reused.
     assert Product.objects.filter(name_cs__iexact="Krupička").count() == 1
@@ -5328,7 +5328,7 @@ def test_xls_import_confirm_refuses_duplicate_mixture_name(
         "form-0-qty_kg": "10.000",
         "form-0-existing_product_id": "",
     }
-    response = client.post("/katalog/import-xls/potvrdit/", payload)
+    response = client.post("/sklad/katalog/import-xls/potvrdit/", payload)
     assert response.status_code == 400
     body = response.content.decode("utf-8")
     assert "už v katalogu existuje" in body
@@ -5362,7 +5362,7 @@ def test_xls_import_confirm_rejects_zero_ratio(user_vlastnik) -> None:
         "form-1-qty_kg": "0.001",
         "form-1-existing_product_id": "",
     }
-    response = client.post("/katalog/import-xls/potvrdit/", payload)
+    response = client.post("/sklad/katalog/import-xls/potvrdit/", payload)
     assert response.status_code == 400
     body = response.content.decode("utf-8")
     assert "příliš malý poměr" in body
@@ -5375,7 +5375,7 @@ def test_catalogue_index_shows_xls_import_button_for_vlastnik(user_vlastnik) -> 
     client = Client()
     client.force_login(user_vlastnik)
     with override_settings(**_VIEW_TEST_OVERRIDES):
-        response = client.get("/katalog/")
+        response = client.get("/sklad/katalog/")
     assert response.status_code == 200
     assert "Importovat z XLS" in response.content.decode("utf-8")
 
@@ -5385,6 +5385,6 @@ def test_catalogue_index_hides_xls_import_button_for_obsluha(user_obsluha_tyn) -
     client = Client()
     client.force_login(user_obsluha_tyn)
     with override_settings(**_VIEW_TEST_OVERRIDES):
-        response = client.get("/katalog/")
+        response = client.get("/sklad/katalog/")
     assert response.status_code == 200
     assert "Importovat z XLS" not in response.content.decode("utf-8")

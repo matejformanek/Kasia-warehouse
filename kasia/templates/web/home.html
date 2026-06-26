@@ -1,0 +1,78 @@
+{% extends "web/base.html" %}
+
+{% block title %}{{ company.legal_name }} — koření a kulinářské produkty od roku {{ company.founded_year }}{% endblock %}
+
+{% block content %}
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Rodinná firma od roku {{ company.founded_year }}</p>
+    <h1>Koření, které dělá kuchyni</h1>
+    <p class="lead">
+      Dovážíme, zpracováváme a balíme koření už přes třicet let. Dodáváme
+      velkoobchodům, gastro provozům a obchodním řetězcům po celé České republice
+      pod značkou {{ company.brand }}.
+    </p>
+    <p style="margin:1.5rem 0;">
+      <span class="stat" style="font-size:1.3rem;">
+        Přes {{ company.spice_count }} druhů koření a {{ company.product_count }} kulinářských produktů.
+      </span>
+    </p>
+    <p>
+      <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Poptat spolupráci</a>
+      <a class="btn btn-outline" href="{% url 'web:provozovny' %}">Naše provozovny</a>
+    </p>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <h2>Komu dodáváme</h2>
+    <p class="lead" style="max-width:60ch;">
+      Jsme B2B dodavatel — naše koření a směsi najdete u velkoobchodů, ve
+      vývařovnách a v gastro provozech, ne na pultě v maloobchodě napřímo.
+    </p>
+    <div class="grid cols-3" style="margin-top:1.5rem;">
+      <div class="card">
+        <h3>Dovoz a kvalita</h3>
+        <p>Celé koření z původních zemí čistíme, třídíme a kontrolujeme,
+        než se dostane do výroby.</p>
+      </div>
+      <div class="card">
+        <h3>Zpracování a míchání</h3>
+        <p>Mleme, mícháme vlastní receptury a balíme do formátů od gastro
+        pytlů po menší balení pro provozy.</p>
+      </div>
+      <div class="card">
+        <h3>Spolehlivé dodávky</h3>
+        <p>Dvě provozní pracoviště a vlastní sklad zajišťují, že máte zboží
+        včas a ve stálé kvalitě.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="grid cols-3">
+      <div class="card">
+        <p class="eyebrow">O nás</p>
+        <h3>Příběh od roku {{ company.founded_year }}</h3>
+        <p>Rodinná firma se sídlem v Říčanech u Prahy. Kdo jsme a jak pracujeme.</p>
+        <p><a href="{% url 'web:o_nas' %}">Více o nás →</a></p>
+      </div>
+      <div class="card">
+        <p class="eyebrow">Provozovny</p>
+        <h3>Kde nás najdete</h3>
+        <p>Sídlo v Říčanech a provozní sklady v Týništi nad Orlicí a Sezimově Ústí.</p>
+        <p><a href="{% url 'web:provozovny' %}">Zobrazit provozovny →</a></p>
+      </div>
+      <div class="card">
+        <p class="eyebrow">Kontakt</p>
+        <h3>Napište nám</h3>
+        <p>Máte zájem o spolupráci nebo poptávku? Ozvěte se — rádi pomůžeme.</p>
+        <p><a href="{% url 'web:kontakt' %}">Kontaktovat →</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

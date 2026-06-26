@@ -1,0 +1,216 @@
+{% load static %}<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ company.legal_name }}{% endblock %}</title>
+<meta name="description" content="{% block meta_description %}{{ company.legal_name }} — dovoz, zpracování a balení koření od roku {{ company.founded_year }}. Přes {{ company.spice_count }} druhů koření a {{ company.product_count }} kulinářských produktů pro gastro a velkoobchod.{% endblock %}">
+{# --- Open Graph (decision 0050) --- #}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ company.legal_name }}">
+<meta property="og:title" content="{% block og_title %}{{ company.legal_name }} — koření a kulinářské produkty{% endblock %}">
+<meta property="og:description" content="{% block og_description %}{{ company.legal_name }} — koření, směsi a kulinářské produkty od roku {{ company.founded_year }}.{% endblock %}">
+<meta property="og:locale" content="cs_CZ">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/kasia-logo.jpg' %}">
+<meta name="twitter:card" content="summary">
+<link rel="icon" type="image/png" sizes="32x32" href="{% static 'brand/favicon-32.png' %}">
+<link rel="icon" type="image/png" sizes="192x192" href="{% static 'brand/favicon-192.png' %}">
+<link rel="apple-touch-icon" sizes="180x180" href="{% static 'brand/apple-touch-icon.png' %}">
+{# --- JSON-LD Organization / LocalBusiness (decision 0050) --- #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "{{ company.legal_name }}",
+  "url": "{{ request.scheme }}://{{ request.get_host }}/",
+  "logo": "{{ request.scheme }}://{{ request.get_host }}{% static 'brand/kasia-logo.jpg' %}",
+  "foundingDate": "{{ company.founded_year }}",
+  "email": "{{ company.email }}",
+  "telephone": "{{ company.phone_primary }}",
+  "vatID": "",
+  "taxID": "{{ company.ico }}",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "{{ company.street }}",
+    "addressLocality": "{{ company.city }}",
+    "postalCode": "{{ company.postal_code }}",
+    "addressCountry": "CZ"
+  }
+}
+</script>
+<style>
+  :root {
+    --green: #235c33;
+    --green-dark: #18421f;
+    --green-soft: #eef4ee;
+    --spice: #c2581c;
+    --fg: #1d211d;
+    --fg-soft: #5a615a;
+    --bg: #ffffff;
+    --bg-alt: #f6f5f1;
+    --border: #dcdcd4;
+    --maxw: 1080px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: system-ui, "Segoe UI", "DejaVu Sans", sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    font-size: 17px;
+    line-height: 1.6;
+  }
+  a { color: var(--green); }
+  h1, h2, h3 { line-height: 1.2; color: var(--green-dark); font-weight: 700; }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); margin: 0 0 1rem; }
+  h2 { font-size: clamp(1.4rem, 3vw, 2rem); margin: 0 0 0.75rem; }
+  p { margin: 0 0 1rem; }
+  img { max-width: 100%; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 1.25rem; }
+  .skip-link {
+    position: absolute; left: -999px; top: 0;
+    background: var(--green); color: #fff; padding: 0.5rem 1rem; z-index: 100;
+  }
+  .skip-link:focus { left: 0; }
+
+  /* Header */
+  header.site {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 50;
+  }
+  header.site .wrap {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; min-height: 68px;
+  }
+  .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+  .brand img { height: 38px; width: auto; display: block; }
+  .brand .name { font-weight: 800; color: var(--green-dark); font-size: 1.15rem; letter-spacing: 0.01em; }
+  nav.main { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+  nav.main a {
+    text-decoration: none; color: var(--fg); padding: 0.45rem 0.7rem;
+    border-radius: 6px; font-weight: 500;
+  }
+  nav.main a:hover { background: var(--green-soft); }
+  nav.main a.active { color: var(--green-dark); background: var(--green-soft); }
+  nav.main a.cta {
+    background: var(--green); color: #fff; padding: 0.5rem 1rem;
+  }
+  nav.main a.cta:hover { background: var(--green-dark); }
+
+  /* Buttons */
+  .btn {
+    display: inline-block; text-decoration: none; font-weight: 600;
+    padding: 0.7rem 1.4rem; border-radius: 8px; border: 2px solid transparent;
+    cursor: pointer; font: inherit; font-weight: 600;
+  }
+  .btn-primary { background: var(--green); color: #fff; }
+  .btn-primary:hover { background: var(--green-dark); color: #fff; }
+  .btn-outline { border-color: var(--green); color: var(--green); background: transparent; }
+  .btn-outline:hover { background: var(--green-soft); }
+
+  /* Sections */
+  main { display: block; }
+  section { padding: 3.5rem 0; }
+  section.alt { background: var(--bg-alt); }
+  .lead { font-size: 1.2rem; color: var(--fg-soft); max-width: 42ch; }
+  .grid { display: grid; gap: 1.5rem; }
+  @media (min-width: 720px) { .grid.cols-3 { grid-template-columns: repeat(3, 1fr); } .grid.cols-2 { grid-template-columns: repeat(2, 1fr); } }
+  .card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.5rem;
+  }
+  section.alt .card { background: var(--bg); }
+  .card h3 { margin-top: 0; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.8rem; font-weight: 700; color: var(--spice); margin: 0 0 0.5rem; }
+
+  /* Stat */
+  .stat { color: var(--green-dark); font-weight: 800; }
+
+  /* Forms */
+  form .field { margin-bottom: 1rem; }
+  form label { display: block; font-weight: 600; margin-bottom: 0.3rem; }
+  form input[type=text], form input[type=email], form input[type=tel], form textarea {
+    width: 100%; font: inherit; padding: 0.6rem 0.7rem;
+    border: 1px solid var(--border); border-radius: 8px; background: #fff;
+  }
+  form .checkbox { display: flex; gap: 0.6rem; align-items: flex-start; font-weight: 400; }
+  form .checkbox input { margin-top: 0.35rem; }
+  form .errorlist { list-style: none; padding: 0; margin: 0.3rem 0 0; color: #a40000; font-size: 0.95rem; }
+  .helptext { color: var(--fg-soft); font-size: 0.95rem; }
+
+  /* Footer */
+  footer.site { background: var(--green-dark); color: #e7efe7; padding: 3rem 0 1.5rem; }
+  footer.site a { color: #fff; }
+  footer.site h4 { color: #fff; margin: 0 0 0.75rem; font-size: 1rem; letter-spacing: 0.02em; }
+  footer.site .grid { gap: 2rem; }
+  @media (min-width: 720px) { footer.site .grid { grid-template-columns: 2fr 1fr 1fr; } }
+  footer.site .muted { color: #b9ccb9; font-size: 0.9rem; }
+  footer.site .legal {
+    border-top: 1px solid rgba(255,255,255,0.15); margin-top: 2rem;
+    padding-top: 1.25rem; font-size: 0.85rem; color: #b9ccb9;
+    display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between;
+  }
+  footer.site .sklad-link a { color: #cfe0cf; text-decoration: underline; }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#obsah">Přeskočit na obsah</a>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="{% url 'web:home' %}">
+      <img src="{% static 'brand/kasia-logo.jpg' %}" alt="{{ company.legal_name }}">
+      <span class="name">Kasia vera</span>
+    </a>
+    <nav class="main" aria-label="Hlavní navigace">
+      {% for item in nav %}
+        <a href="{% url item.url_name %}"{% if active == item.url_name %} class="active" aria-current="page"{% endif %}>{{ item.label }}</a>
+      {% endfor %}
+      <a class="cta" href="{% url 'web:kontakt' %}">Napište nám</a>
+    </nav>
+  </div>
+</header>
+
+<main id="obsah">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="grid">
+      <div>
+        <h4>{{ company.legal_name }}</h4>
+        <p class="muted">
+          Dovoz, zpracování a balení koření od roku {{ company.founded_year }}.<br>
+          Velkoobchod a gastro — značka {{ company.brand }}.
+        </p>
+      </div>
+      <div>
+        <h4>Kontakt</h4>
+        <p class="muted">
+          {{ company.street }}<br>
+          {{ company.postal_code }} {{ company.city }}<br>
+          <a href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a><br>
+          <a href="mailto:{{ company.email }}">{{ company.email }}</a><br>
+          {{ company.hours }}
+        </p>
+      </div>
+      <div>
+        <h4>Údaje</h4>
+        <p class="muted">
+          IČO: {{ company.ico }}<br>
+          {% if company.dic %}DIČ: {{ company.dic }}<br>{% endif %}
+          Datová schránka: {{ company.datova_schranka }}
+        </p>
+      </div>
+    </div>
+    <div class="legal">
+      <span>© {{ company.founded_year }}–2026 {{ company.legal_name }}. Všechna práva vyhrazena.</span>
+      <span>Tento web nepoužívá sledovací cookies. Údaje z kontaktního formuláře zpracováváme pouze za účelem vyřízení vaší poptávky.</span>
+      <span class="sklad-link"><a href="{% url 'inventory:home' %}">Sklad&nbsp;/&nbsp;Přihlášení</a></span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!-- Public Kontakt page mockup — clean-green direction (matches 02). Form is visual only. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kontakt — Kasia vera | návrh 05</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #1f7a44;
+    --green-deep: #14532b;
+    --green-bright: #2fa85f;
+    --green-tint: #eef6f0;
+    --green-tint2: #e0efe5;
+    --ink: #14211a;
+    --soft: #4f5f57;
+    --bg: #ffffff;
+    --line: #dfe8e2;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Public Sans", sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: "Sora", sans-serif; letter-spacing: -.02em; }
+  a { color: inherit; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+  .skip { position: absolute; left: -999px; }
+  .skip:focus { left: 1rem; top: 1rem; background: #fff; padding: .6rem 1rem; z-index: 99; }
+
+  header.site { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+  .brand { display: flex; align-items: center; gap: .65rem; text-decoration: none; }
+  .brand img { height: 32px; }
+  .brand b { font-family: "Sora"; font-weight: 700; font-size: 1.1rem; color: var(--green-deep); }
+  nav.menu { display: flex; gap: 2.2rem; }
+  nav.menu a { text-decoration: none; font-size: .95rem; font-weight: 500; color: var(--soft); position: relative; padding: .3rem 0; }
+  nav.menu a[aria-current], nav.menu a:hover { color: var(--green); }
+  nav.menu a[aria-current]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: var(--green); border-radius: 2px; }
+  .btn { display: inline-flex; align-items: center; gap: .4rem; text-decoration: none; font-weight: 600; font-size: .95rem; padding: .6rem 1.25rem; border-radius: 10px; transition: all .15s; cursor: pointer; border: 0; font-family: inherit; }
+  .btn-primary { background: var(--green); color: #fff; }
+  .btn-primary:hover { background: var(--green-deep); transform: translateY(-1px); }
+
+  /* page head */
+  .pagehead { background: linear-gradient(165deg, var(--green-tint) 0%, #fff 70%); padding: 4rem 0 3rem; border-bottom: 1px solid var(--line); }
+  .pagehead .crumb { font-size: .85rem; color: var(--soft); margin-bottom: 1rem; }
+  .pagehead .crumb a { text-decoration: none; color: var(--green); }
+  .pagehead h1 { font-size: clamp(2.2rem, 4.5vw, 3.4rem); margin: 0 0 .8rem; font-weight: 700; }
+  .pagehead p { font-size: 1.15rem; color: var(--soft); max-width: 56ch; margin: 0; }
+
+  /* layout */
+  .grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: 3rem; padding: 4rem 0; }
+
+  /* contact details card */
+  .details h2 { font-size: 1.5rem; margin: 0 0 1.5rem; font-weight: 600; }
+  .detail-list { list-style: none; margin: 0 0 2rem; padding: 0; }
+  .detail-list li { display: flex; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--line); }
+  .detail-list .k { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--soft); min-width: 9.5rem; padding-top: .15rem; }
+  .detail-list .v { font-weight: 500; }
+  .detail-list .v a { text-decoration: none; color: var(--green); }
+  .detail-list .v a:hover { text-decoration: underline; }
+  .detail-list .v small { display: block; color: var(--soft); font-weight: 400; font-size: .9rem; }
+
+  /* map placeholder */
+  .map { position: relative; height: 260px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line);
+    background:
+      linear-gradient(135deg, #e6efe8, #d6e6db),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.6) 0 1px, transparent 1px 44px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.6) 0 1px, transparent 1px 44px); }
+  .map .road { position: absolute; background: #c9d8ce; }
+  .map .road.h { left: 0; right: 0; top: 55%; height: 14px; }
+  .map .road.v { top: 0; bottom: 0; left: 38%; width: 12px; }
+  .map .pin { position: absolute; left: 38%; top: 55%; transform: translate(-50%, -100%); }
+  .map .pin .dot { width: 24px; height: 24px; background: var(--green); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 4px 10px rgba(20,83,43,.4); }
+  .map .pin .dot::after { content: ""; position: absolute; left: 7px; top: 7px; width: 10px; height: 10px; background: #fff; border-radius: 50%; }
+  .map .cap { position: absolute; bottom: 12px; left: 14px; font-size: .78rem; font-weight: 600; color: var(--green-deep); background: rgba(255,255,255,.85); padding: .35rem .7rem; border-radius: 6px; }
+  .map-link { display: inline-block; margin-top: .9rem; font-weight: 600; color: var(--green); text-decoration: none; font-size: .95rem; }
+  .map-link:hover { text-decoration: underline; }
+
+  /* form */
+  .formcard { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 2.4rem; box-shadow: 0 24px 50px -30px rgba(20,83,43,.28); }
+  .formcard h2 { font-size: 1.6rem; margin: 0 0 .5rem; font-weight: 700; }
+  .formcard .sub { color: var(--soft); margin: 0 0 1.8rem; }
+  .field { margin-bottom: 1.3rem; }
+  .field label { display: block; font-size: .9rem; font-weight: 600; margin-bottom: .45rem; }
+  .field label .req { color: var(--green); }
+  .field input, .field textarea { width: 100%; font-family: inherit; font-size: 1rem; padding: .8rem 1rem; border: 1.5px solid var(--line); border-radius: 10px; background: #fcfdfc; transition: border-color .15s, box-shadow .15s; }
+  .field input:focus, .field textarea:focus { outline: 0; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-tint2); }
+  .field textarea { min-height: 130px; resize: vertical; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .gdpr { display: flex; gap: .7rem; align-items: flex-start; margin: 1.3rem 0 1.8rem; font-size: .9rem; color: var(--soft); }
+  .gdpr input { margin-top: .25rem; width: 18px; height: 18px; accent-color: var(--green); flex-shrink: 0; }
+  .gdpr a { color: var(--green); }
+  .formcard button { width: 100%; justify-content: center; font-size: 1.02rem; padding: .85rem; }
+
+  footer.site { background: #fff; border-top: 1px solid var(--line); padding: 3.5rem 0 2rem; }
+  .foot-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 2.5rem; }
+  footer.site h4 { font-family: "Sora"; font-size: .95rem; margin: 0 0 1rem; color: var(--green-deep); font-weight: 600; }
+  footer.site p, footer.site a { color: var(--soft); font-size: .92rem; text-decoration: none; line-height: 1.85; margin: 0; }
+  footer.site a:hover { color: var(--green); }
+  footer.site .brandline { font-family: "Sora"; font-size: 1.2rem; color: var(--green-deep); font-weight: 700; margin-bottom: .5rem; }
+  .foot-bottom { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: .82rem; color: var(--soft); }
+  .foot-bottom a.sklad { color: var(--soft); text-decoration: underline; }
+  .foot-bottom a.sklad:hover { color: var(--green); }
+
+  @media (max-width: 880px) {
+    .grid { grid-template-columns: 1fr; }
+    .foot-grid { grid-template-columns: 1fr; }
+    .two { grid-template-columns: 1fr; }
+    nav.menu { display: none; }
+  }
+</style>
+
+<a class="skip" href="#main">Přeskočit na obsah</a>
+
+<header class="site">
+  <div class="wrap nav">
+    <a class="brand" href="#"><img src="assets/kasia-logo.jpg" alt=""><b>Kasia vera</b></a>
+    <nav class="menu" aria-label="Hlavní">
+      <a href="01-warm-editorial.html">Domů</a>
+      <a href="#">O nás</a>
+      <a href="#">Provozovny</a>
+      <a href="#" aria-current="page">Kontakt</a>
+    </nav>
+    <a class="btn btn-primary" href="#kontaktni-formular">Poslat poptávku</a>
+  </div>
+</header>
+
+<main id="main">
+  <section class="pagehead">
+    <div class="wrap">
+      <div class="crumb"><a href="01-warm-editorial.html">Domů</a> / Kontakt</div>
+      <h1>Kontakt</h1>
+      <p>Poptávka, ceník nebo dotaz? Napište nám — rádi připravíme nabídku na míru pro váš velkoobchod nebo provozovnu.</p>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <div class="grid">
+      <section class="details" aria-label="Kontaktní údaje">
+        <h2>Kde nás najdete</h2>
+        <ul class="detail-list">
+          <li><span class="k">Adresa sídla</span><span class="v">Nádražní 1202/5<br><small>251 01 Říčany u Prahy</small></span></li>
+          <li><span class="k">Telefon</span><span class="v"><a href="tel:+420323601422">+420 323 601 422</a><br><a href="tel:+420323601424">+420 323 601 424</a></span></li>
+          <li><span class="k">E-mail</span><span class="v"><a href="mailto:info@kasia.cz">info@kasia.cz</a></span></li>
+          <li><span class="k">Otevírací doba</span><span class="v">Po–Pá 7:00–15:00</span></li>
+          <li><span class="k">IČO</span><span class="v">25756729</span></li>
+          <li><span class="k">Datová schránka</span><span class="v">emye9prc</span></li>
+        </ul>
+
+        <div class="map" role="img" aria-label="Mapa — orientační umístění sídla v Říčanech u Prahy">
+          <div class="road h"></div>
+          <div class="road v"></div>
+          <div class="pin"><div class="dot"></div></div>
+          <span class="cap">Říčany u Prahy — Nádražní 1202/5</span>
+        </div>
+        <a class="map-link" href="#">Otevřít v mapě →</a>
+      </section>
+
+      <section class="formcard" id="kontaktni-formular" aria-label="Poptávkový formulář">
+        <h2>Poptávkový formulář</h2>
+        <p class="sub">Vyplňte formulář a my se vám co nejdříve ozveme.</p>
+        <form onsubmit="return false">
+          <div class="field">
+            <label for="jmeno">Jméno a příjmení <span class="req">*</span></label>
+            <input id="jmeno" name="jmeno" type="text" placeholder="Jan Novák" required>
+          </div>
+          <div class="two">
+            <div class="field">
+              <label for="email">E-mail <span class="req">*</span></label>
+              <input id="email" name="email" type="email" placeholder="jan@firma.cz" required>
+            </div>
+            <div class="field">
+              <label for="telefon">Telefon</label>
+              <input id="telefon" name="telefon" type="tel" placeholder="+420 …">
+            </div>
+          </div>
+          <div class="field">
+            <label for="zprava">Zpráva <span class="req">*</span></label>
+            <textarea id="zprava" name="zprava" placeholder="Napište nám, o jaké koření nebo produkty máte zájem…" required></textarea>
+          </div>
+          <label class="gdpr">
+            <input type="checkbox" required>
+            <span>Souhlasím se zpracováním osobních údajů za účelem vyřízení poptávky dle <a href="#">zásad ochrany osobních údajů</a>. <span class="req" style="color:var(--green)">*</span></span>
+          </label>
+          <button class="btn btn-primary" type="submit">Odeslat poptávku →</button>
+        </form>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="brandline">Kasia vera s.r.o.</div>
+        <p>Koření a kulinářské produkty pod značkou VERA GURMET. Rodinná firma od ledna 1993.</p>
+      </div>
+      <div>
+        <h4>Kontakt</h4>
+        <p>Nádražní 1202/5<br>251 01 Říčany u Prahy</p>
+        <p><a href="tel:+420323601422">+420 323 601 422</a><br><a href="tel:+420323601424">+420 323 601 424</a></p>
+        <p><a href="mailto:info@kasia.cz">info@kasia.cz</a></p>
+      </div>
+      <div>
+        <h4>Firemní údaje</h4>
+        <p>IČO: 25756729</p>
+        <p>Datová schránka: emye9prc</p>
+        <p>Otevírací doba:<br>Po–Pá 7:00–15:00</p>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Kasia vera s.r.o. — všechna práva vyhrazena.</span>
+      <a class="sklad" href="#">Sklad / Přihlášení</a>
+    </div>
+  </div>
+</footer>

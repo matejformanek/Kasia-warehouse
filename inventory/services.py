@@ -22,7 +22,7 @@ from decimal import Decimal
 from typing import Any
 
 from django.core.exceptions import ValidationError
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, get_connection
 from django.db import IntegrityError, transaction
 from django.template.loader import render_to_string
 
@@ -337,6 +337,33 @@ def edit_movement(
 # ---------------------------------------------------------------------------
 
 
+def _smtp_connection_from_settings(s: Settings):
+    """Build an SMTP connection from `Settings` DB, with env as fallback.
+
+    Per decision 0049:
+      - host / username / password: ``None`` when the DB field is
+        blank → Django's default backend reads `EMAIL_HOST*` from env.
+      - port: `Settings.smtp_port` is non-nullable with default 587, so
+        the DB value effectively always wins. Env `EMAIL_PORT` is not
+        consulted by this helper. To change ports, operators flip the
+        DB field; no migration needed for the dominant prod case.
+      - use_tls: same shape as port — `Settings.smtp_use_tls` is
+        non-nullable with default True; DB always wins, env
+        `EMAIL_USE_TLS` is not consulted.
+      - Call at execution time (not registration time) so a live
+        `Settings.load()` is read — not a snapshot from when the
+        výdej started.
+    """
+    return get_connection(
+        host=s.smtp_host or None,
+        port=s.smtp_port or None,
+        username=s.smtp_user or None,
+        password=s.smtp_password or None,
+        use_tls=s.smtp_use_tls,
+        timeout=10,
+    )
+
+
 def _assert_recipients_set() -> None:
     """Refuse to start a vydej apply / edit if Settings recipients are blank.
 
@@ -476,15 +503,16 @@ def send_dodaci_list_email(
         else (s.email_from_address or None)
     )
 
-    msg = EmailMessage(
-        subject=subject,
-        body=body,
-        from_email=from_email,
-        to=recipients,
-    )
-    msg.attach(f"{dodaci_list.cislo}.pdf", pdf_bytes, "application/pdf")
-
     try:
+        connection = _smtp_connection_from_settings(s)
+        msg = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=from_email,
+            to=recipients,
+            connection=connection,
+        )
+        msg.attach(f"{dodaci_list.cislo}.pdf", pdf_bytes, "application/pdf")
         msg.send(fail_silently=False)
     except Exception as exc:
         return DodaciListEmailLog.objects.create(
@@ -1373,11 +1401,13 @@ def send_low_stock_summary() -> int | None:
         else (s.email_from_address or None)
     )
 
+    connection = _smtp_connection_from_settings(s)
     msg = EmailMessage(
         subject=subject,
         body=body,
         from_email=from_email,
         to=[s.recipient_petr],
+        connection=connection,
     )
     msg.send(fail_silently=False)
     return len(rows)

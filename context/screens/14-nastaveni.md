@@ -25,7 +25,10 @@ very little to fiddle with here.
 - A **Odeslání dodacích listů** section:
   - SMTP konfigurace: server, port, šifrování, uživatel, heslo,
     odesílatel ("from") adresa a jméno. (Passwords are write-only —
-    never displayed back.)
+    never displayed back.) Hodnoty z DB mají přednost před hodnotami
+    v `.env` na serveru; prázdné pole znamená použít hodnotu z
+    `.env` (per
+    [`decisions/0049-smtp-source-of-truth.md`](../decisions/0049-smtp-source-of-truth.md)).
   - "Otestovat odeslání" — sends a test e-mail to the current user
     and reports success or failure.
   - **Příjemci dodacího listu** per

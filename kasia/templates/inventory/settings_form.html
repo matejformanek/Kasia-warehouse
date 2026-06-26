@@ -30,6 +30,10 @@
   {% endfor %}
 
   <h2>Odeslání dodacích listů — SMTP</h2>
+  <p style="color:var(--fg-soft); font-size:0.9rem;">
+    Pole jsou volitelná. Pokud necháte prázdná, použije se konfigurace
+    z <code>.env</code> souboru na serveru. Změna polí se projeví okamžitě.
+  </p>
   {% for f in form %}
     {% if f.name == "smtp_host" or f.name == "smtp_port" or f.name == "smtp_use_tls" or f.name == "smtp_user" or f.name == "smtp_password" or f.name == "email_from_address" or f.name == "email_from_name" %}
       <div class="field">

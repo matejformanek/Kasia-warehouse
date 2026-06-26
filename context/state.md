@@ -1162,8 +1162,7 @@
     never round-tripped through agent context.
     - Filled: SECRET_KEY (86 chars), POSTGRES_PASSWORD (64 chars),
       ALLOWED_HOSTS=91.98.47.1, DEBUG=0, DEFAULT_FROM_EMAIL.
-    - Blank pending decisions: SMTP block (no provider chosen yet),
-      RESTIC block (Storage Box not ordered).
+    - Blank pending decisions: RESTIC block (Storage Box not ordered).
   - `deploy.yml` simplified: `SSH_HOST` + `SSH_USER` removed from
     GH secrets (hardcoded `host: 91.98.47.1`, `username: app` as
     literals — non-secret). **Only `SSH_KEY` is now a GH secret;
@@ -1273,6 +1272,28 @@
   `Settings.recipient_karolina` = `karolina@kasia.cz` (needed
   before any real customer výdej, per the `_assert_recipients_set`
   guard in `inventory/services.py`).
+
+- **2026-06-26** — SMTP source-of-truth resolved per decision
+  [`0049`](./decisions/0049-smtp-source-of-truth.md). Real dodák
+  sends + low-stock summary now build their SMTP connection via a
+  shared `_smtp_connection_from_settings(s)` helper in
+  `inventory/services.py`. Settings DB wins for host / user /
+  password (blank → `None` → Django falls back to `EMAIL_HOST*`
+  env); `smtp_port` and `smtp_use_tls` are DB-only (both
+  non-nullable, defaults 587 + True match the env contract — no
+  migration needed for fall-through branches that don't exist at
+  6 users). `settings_test_smtp`
+  refactored onto the same helper so the "Otestovat odeslání"
+  green ✓ now exercises the same code path as a real send.
+  Refines [`0019`](./decisions/0019-email-smtp-sync.md) (sync-send
+  + fail-silent + `DodaciListEmailLog` FAILED-row contract
+  unchanged) and [`0037`](./decisions/0037-settings-singleton.md)
+  (plaintext `smtp_password` + write-only `PasswordInput`
+  unchanged). 4 new tests in `inventory/tests.py` cover helper
+  kwargs (set vs blank), end-to-end wire-up, and the fail-silent
+  contract. Provider details (`mail.kasia.cz:587` STARTTLS) on the
+  `.env.example`; `EMAIL_HOST_PASSWORD` lands out-of-band when
+  the `aplikace@kasia.cz` mailbox is created.
 
 ## Hand-off for the next session (post-compact)
 

@@ -134,6 +134,16 @@ def test_kontakt_post_missing_required_does_not_save() -> None:
     assert ContactInquiry.objects.count() == 0
 
 
+def test_kontakt_honeypot_blocks_spam() -> None:
+    """A bot that fills the hidden honeypot field is rejected, nothing saved."""
+    payload = dict(_VALID_POST)
+    payload["website"] = "http://spam.example"
+    response = Client().post(reverse("web:kontakt"), payload)
+    assert response.status_code == 200  # re-renders, no redirect
+    assert ContactInquiry.objects.count() == 0
+    assert len(mail.outbox) == 0
+
+
 def test_kontakt_email_failure_does_not_lose_the_row(monkeypatch) -> None:
     """A broken/missing SMTP config must never lose a saved inquiry (0050)."""
 

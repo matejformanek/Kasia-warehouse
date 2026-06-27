@@ -24,9 +24,33 @@ class ContactInquiryForm(forms.ModelForm):
         },
     )
 
+    # Honeypot — the form is a public, unauthenticated POST that writes a DB
+    # row and (with SMTP live) sends e-mail, so a cheap spam gate is worth it
+    # while staying right-sized (no captcha/rate-limit dependency). Humans
+    # never see this field (hidden + tabindex -1 + autocomplete off); a bot
+    # that fills it gets a silently-rejected submission. Not stored.
+    website = forms.CharField(
+        required=False,
+        label="Nevyplňujte",
+        widget=forms.TextInput(
+            attrs={
+                "tabindex": "-1",
+                "autocomplete": "off",
+                "aria-hidden": "true",
+            }
+        ),
+    )
+
     class Meta:
         model = ContactInquiry
         fields = ("name", "email", "phone", "message")
         widgets = {
             "message": forms.Textarea(attrs={"rows": 6}),
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("website"):
+            # Bot tripped the honeypot — fail validation without saving.
+            raise forms.ValidationError("Formulář se nepodařilo odeslat.")
+        return cleaned

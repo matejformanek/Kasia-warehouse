@@ -166,12 +166,21 @@ operation gives us shape.
 4. `docker compose up -d proxy` — Caddy auto-provisions a Let's
    Encrypt cert on first request to the hostname.
 5. Update `DJANGO_ALLOWED_HOSTS` in the on-box `.env`.
-6. Update `host:` literal in `.github/workflows/deploy.yml` if you
+6. **Set `CSRF_TRUSTED_ORIGINS` (+ `SECURE_PROXY_SSL_HEADER`) once HTTPS
+   is live.** Behind a TLS-terminating Caddy, Django sees plain HTTP and
+   will reject cross-origin POSTs — most visibly the public **kontakt**
+   form (per [`../context/decisions/0050-public-site-ia-and-content.md`](../context/decisions/0050-public-site-ia-and-content.md))
+   and any warehouse form. Add `CSRF_TRUSTED_ORIGINS=https://<hostname>`
+   to the on-box `.env` (wire it into `kasia/settings/base.py`) and set
+   `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")` so
+   `request.scheme` (used by the public site's og:image / JSON-LD URLs)
+   reports `https`. On HTTP-only (today) neither is needed.
+7. Update `host:` literal in `.github/workflows/deploy.yml` if you
    want it to be the hostname instead of the IP (cosmetic — the IP
    still works since DNS just resolves to it).
 
-No code change. No decision file. The Caddyfile comment header
-documents the exact two-line diff.
+No app code change for steps 1–5/7. Step 6 is a small settings + `.env`
+addition. The Caddyfile comment header documents the exact two-line diff.
 
 ## 6. Things that are not in this RUNBOOK on purpose
 

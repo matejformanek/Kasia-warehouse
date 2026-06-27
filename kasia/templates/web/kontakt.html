@@ -40,6 +40,11 @@
         <p class="helptext">Pole označená * jsou povinná.</p>
         <form method="post" action="{% url 'web:kontakt' %}" novalidate>
           {% csrf_token %}
+          {# Honeypot — visually hidden; leave empty (spam gate). #}
+          <div aria-hidden="true" style="position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;">
+            <label for="{{ form.website.id_for_label }}">{{ form.website.label }}</label>
+            {{ form.website }}
+          </div>
           {% if form.non_field_errors %}
             <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
           {% endif %}

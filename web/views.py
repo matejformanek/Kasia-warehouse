@@ -15,6 +15,7 @@ from django.contrib.auth.decorators import login_not_required
 from django.core.mail import EmailMessage
 from django.shortcuts import redirect, render
 from django.template.response import TemplateResponse
+from django.urls import reverse
 
 from .content import COMPANY, NAV, PROVOZOVNY
 from .forms import ContactInquiryForm
@@ -120,16 +121,10 @@ def robots_txt(request):
 @login_not_required
 def sitemap_xml(request):
     pages = ["web:home", "web:o_nas", "web:provozovny", "web:kontakt"]
-    urls = [request.build_absolute_uri(_reverse(name)) for name in pages]
+    urls = [request.build_absolute_uri(reverse(name)) for name in pages]
     return TemplateResponse(
         request,
         "web/sitemap.xml",
         {"urls": urls},
         content_type="application/xml",
     )
-
-
-def _reverse(name: str) -> str:
-    from django.urls import reverse
-
-    return reverse(name)

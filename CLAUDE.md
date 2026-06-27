@@ -9,6 +9,14 @@ runs locally via `make up` against the same Docker image we'll ship
 to the Hetzner box. Hetzner provisioning + the 14-day shadow run come
 last.
 
+The site is split into two surfaces on one domain (per
+[`0050`](./context/decisions/0050-public-site-and-sklad-split.md)): a
+**public marketing site at `/`** (no login, the `web` app — see
+[`context/public-site.md`](./context/public-site.md)) and the
+**login-gated warehouse app under `/sklad/…`** (auth at
+`/sklad/prihlaseni/`, users at `/sklad/uzivatele/`). `/admin/`,
+`/healthz`, and the `/navrhy/` design gallery stay at root.
+
 ## Read in this order
 
 1. **`context/state.md`** — current project status (Done / In progress / Next).
@@ -20,7 +28,9 @@ last.
    `state-file-discipline.md`, and `right-sized-for-small-business.md`.
 4. **`context/decisions/`** — read in numeric order. 0028–0034 supersede
    parts of 0001–0013 (Petr's 2026-06-09 brief); 0044 supersedes part
-   of 0039 (reservations). The tech-stack layer is 0014–0027.
+   of 0039 (reservations); 0050 + 0051 add the public site and move the
+   app under `/sklad/` (amend 0020 + 0047). The tech-stack layer is
+   0014–0027.
 
 ## Hard rules (summary — full text in `.claude/rules/`)
 
@@ -51,13 +61,17 @@ last.
 
 ## What this repo is
 
-- Django 5.2 LTS app at `inventory/` + `accounts/` + `kasia/`.
+- Django 5.2 LTS project at `kasia/` with three apps: `inventory/`
+  + `accounts/` (warehouse, under `/sklad/`) + `web/` (public
+  marketing site at `/`).
 - Models, services, views, forms, templates, admin, tests — all
-  shipped per the screen-by-screen design in `context/screens/`.
-- Local dev runs via `make up` → `http://localhost/` against the
-  full docker stack (web + Postgres 18 + Caddy). Same image we'll
-  ship to Hetzner; differences live in `.env`. Tests run on the
-  host via `make test` (`uv run pytest`).
+  shipped per the screen-by-screen design in `context/screens/`
+  (warehouse) and `context/public-site.md` (public site).
+- Local dev runs via `make up` → `http://localhost/` (public
+  homepage) and `http://localhost/sklad/` (warehouse app) against
+  the full docker stack (web + Postgres 18 + Caddy). Same image
+  we'll ship to Hetzner; differences live in `.env`. Tests run on
+  the host via `make test` (`uv run pytest`).
 - Hetzner box is **not yet provisioned**. The `deploy.yml` workflow
   on `origin/main` keeps failing on the SSH step ("missing server
   host") — that's the expected pre-Hetzner state, not a regression.

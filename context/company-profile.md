@@ -54,3 +54,12 @@ time, is firmly in the **small-business** scale band. The design should
 optimise for clarity and lightness over throughput, scalability, or
 elaborate role hierarchies. See [`people-and-roles.md`](./people-and-roles.md)
 for the user picture.
+
+## How customers reach Kasia
+
+B2B partners find and contact Kasia through its public web presence and
+the phone/e-mail on it (there is no e-shop). The dated kasia.cz is being
+replaced by a modern public marketing site hosted on the same domain as
+the warehouse tool — public site at `/`, warehouse app under `/sklad/`.
+See [`public-site.md`](./public-site.md) and
+[`decisions/0050-public-site-and-sklad-split.md`](./decisions/0050-public-site-and-sklad-split.md).

@@ -25,17 +25,23 @@ urlpatterns = [
         ),
         name="design_gallery",
     ),
+    # --- Warehouse app — fully login-gated, all under /sklad/ ----------------
+    # Per context/decisions/0050-public-site-and-sklad-split.md. View names are
+    # left unchanged (login, logout, password_*, the inventory/accounts
+    # namespaces), so every {% url %} / reverse() / LOGIN_URL re-resolves to
+    # the new /sklad/ paths automatically. The flat "sklad/..." prefixes (no
+    # wrapper namespace) keep the bare auth names at the root namespace.
     path(
-        "login/",
+        "sklad/prihlaseni/",
         auth_views.LoginView.as_view(template_name="registration/login.html"),
         name="login",
     ),
-    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("sklad/odhlaseni/", auth_views.LogoutView.as_view(), name="logout"),
     # Password reset flow — public (the magic link arrives by e-mail). Used
     # both by the operator "Resetovat heslo" admin action and for any future
     # self-service reset surface.
     path(
-        "reset-hesla/",
+        "sklad/reset-hesla/",
         login_not_required(
             auth_views.PasswordResetView.as_view(
                 template_name="registration/password_reset_form.html",
@@ -47,7 +53,7 @@ urlpatterns = [
         name="password_reset",
     ),
     path(
-        "reset-hesla/odeslano/",
+        "sklad/reset-hesla/odeslano/",
         login_not_required(
             auth_views.PasswordResetDoneView.as_view(
                 template_name="registration/password_reset_done.html",
@@ -56,7 +62,7 @@ urlpatterns = [
         name="password_reset_done",
     ),
     path(
-        "reset-hesla/potvrzeni/<uidb64>/<token>/",
+        "sklad/reset-hesla/potvrzeni/<uidb64>/<token>/",
         login_not_required(
             auth_views.PasswordResetConfirmView.as_view(
                 template_name="registration/password_reset_confirm.html",
@@ -66,7 +72,7 @@ urlpatterns = [
         name="password_reset_confirm",
     ),
     path(
-        "reset-hesla/hotovo/",
+        "sklad/reset-hesla/hotovo/",
         login_not_required(
             auth_views.PasswordResetCompleteView.as_view(
                 template_name="registration/password_reset_complete.html",
@@ -74,12 +80,11 @@ urlpatterns = [
         ),
         name="password_reset_complete",
     ),
-    # In-app self-service password change for already-authenticated users.
-    # Lives under /accounts/ to mirror Django's auth convention; we mount
-    # only these two views (not django.contrib.auth.urls wholesale) so the
-    # custom /login/ + /logout/ routes above stay authoritative.
+    # In-app self-service password change for already-authenticated users
+    # (Pass 8). We mount only these two views (not django.contrib.auth.urls
+    # wholesale) so the custom login/logout routes above stay authoritative.
     path(
-        "accounts/zmena-hesla/",
+        "sklad/zmena-hesla/",
         auth_views.PasswordChangeView.as_view(
             template_name="registration/password_change_form.html",
             success_url=reverse_lazy("password_change_done"),
@@ -87,12 +92,16 @@ urlpatterns = [
         name="password_change",
     ),
     path(
-        "accounts/zmena-hesla/hotovo/",
+        "sklad/zmena-hesla/hotovo/",
         auth_views.PasswordChangeDoneView.as_view(
             template_name="registration/password_change_done.html",
         ),
         name="password_change_done",
     ),
-    path("uzivatele/", include("accounts.urls", namespace="accounts")),
-    path("", include("inventory.urls", namespace="inventory")),
+    path("sklad/uzivatele/", include("accounts.urls", namespace="accounts")),
+    path("sklad/", include("inventory.urls", namespace="inventory")),
+    # --- Public marketing site at root — MUST stay last (per 0050) ----------
+    # Mounted in Phase 3 once the `web` app exists. Until then "/" 404s and
+    # only /sklad/* serves the app.
+    path("", include("web.urls", namespace="web")),
 ]

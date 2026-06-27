@@ -3,7 +3,7 @@
 ## Defaults
 
 - **Boring beats clever.** Prefer the most-trodden path in whatever stack we end up on. The framework's documented happy path is almost always right.
-- **Two-tier architecture is the goal.** One app, one DB. No microservices, no message queues, no event-sourcing, no CQRS, no separate read/write models — unless a *specific* feature requirement justifies it and that justification is written into `context/decisions/`.
+- **Two-tier architecture is the goal.** One Django *project*, one DB. (Multiple Django *apps* inside that one project — `inventory`, `accounts`, `web` — are fine and expected; "one app" here means one deployable, one database, not a single Python package. Per [`../../context/decisions/0050-public-site-and-sklad-split.md`](../../context/decisions/0050-public-site-and-sklad-split.md).) No microservices, no message queues, no event-sourcing, no CQRS, no separate read/write models — unless a *specific* feature requirement justifies it and that justification is written into `context/decisions/`.
 - **No SSO, no SAML, no OAuth provider integration.** Password + optional magic-link is plenty for ~6 users. Revisit only if Kasia grows or onboards external parties.
 - **No Kubernetes, no service mesh, no autoscaling, no multi-region.** A single VPS or simple PaaS deploy is enough. One box can serve this workload with room to spare.
 - **No real-time anything** (websockets, SSE, live cursors) unless a screen actually demands it. The owner's request in `context/owner-request.md` is well-served by plain request/response.

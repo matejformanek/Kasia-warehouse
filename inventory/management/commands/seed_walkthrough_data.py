@@ -333,7 +333,7 @@ class Command(BaseCommand):
     def _print_login_block(self) -> None:
         self.stdout.write("")
         self.stdout.write("=== READY ===")
-        self.stdout.write("Open http://localhost/")
+        self.stdout.write("Open http://localhost/sklad/  (public site is at /)")
         self.stdout.write("  karolina@kasia.local / heslo1234  (vlastník)")
         self.stdout.write("  tyn@kasia.local      / heslo1234  (obsluha TYN)")
         self.stdout.write("  sez@kasia.local      / heslo1234  (obsluha SEZ)")

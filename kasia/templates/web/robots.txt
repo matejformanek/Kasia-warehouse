@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /sklad/
+Disallow: /admin/
+Disallow: /navrhy/
+
+Sitemap: {{ request.scheme }}://{{ request.get_host }}/sitemap.xml

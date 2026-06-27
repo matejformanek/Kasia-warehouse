@@ -1,0 +1,40 @@
+{% extends "web/base.html" %}
+
+{% block title %}O nás — {{ company.legal_name }}{% endblock %}
+{% block meta_description %}Rodinná firma {{ company.legal_name }} dováží, zpracovává a balí koření od ledna {{ company.founded_year }}. Sídlo v Říčanech u Prahy.{% endblock %}
+
+{% block content %}
+<section>
+  <div class="wrap" style="max-width:760px;">
+    <p class="eyebrow">O nás</p>
+    <h1>Koření je naše řemeslo už přes třicet let</h1>
+    <p class="lead" style="max-width:none;">
+      {{ company.legal_name }} vznikla v {{ company.founded_cs }} jako rodinná
+      firma se sídlem v Říčanech u Prahy. Od začátku se věnujeme jednomu —
+      dovozu, zpracování a balení koření pro český trh.
+    </p>
+
+    <h2 style="margin-top:2rem;">Co děláme</h2>
+    <p>
+      Celé koření dovážíme z původních zemí. Na našich provozech ho čistíme,
+      třídíme, mleme a podle vlastních receptur mícháme do směsí. Hotové
+      produkty balíme do řady formátů — od velkých gastro balení po menší
+      balení pro provozy — a dodáváme je obchodním partnerům pod značkou
+      {{ company.brand }}.
+    </p>
+
+    <h2 style="margin-top:2rem;">Jak pracujeme</h2>
+    <p>
+      Jsme dodavatel pro velkoobchod a gastronomii, ne maloobchodní prodejce.
+      Naše práce stojí na stálé kvalitě, dohledatelnosti a spolehlivých
+      dodávkách. Provoz zajišťují dvě pracoviště — v Týništi nad Orlicí a
+      v Sezimově Ústí — a vedení i zázemí firmy sídlí v Říčanech u Prahy.
+    </p>
+
+    <p style="margin-top:2rem;">
+      <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
+      <a class="btn btn-outline" href="{% url 'web:provozovny' %}">Naše provozovny</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

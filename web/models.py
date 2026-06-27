@@ -8,7 +8,7 @@ class ContactInquiry(models.Model):
     (see web/views.py:kontakt). Production SMTP is still deferred
     (state.md § Hetzner), so an e-mail-only form would silently lose every
     inquiry — durability-over-uptime per
-    .claude/rules/right-sized-for-small-business.md and decision 0050.
+    .claude/rules/right-sized-for-small-business.md and decision 0051.
     Mirrors the durable-capture shape of inventory.Feedback (decision 0046).
 
     The submitter is a member of the public, never a Kasia ``User`` — so

@@ -1,8 +1,8 @@
-# 0050 — Public-site information architecture, content, and the `ContactInquiry` model
+# 0051 — Public-site information architecture, content, and the `ContactInquiry` model
 
 ## Context
 
-[`0049`](./0049-public-site-and-sklad-split.md) establishes *that* a
+[`0050`](./0050-public-site-and-sklad-split.md) establishes *that* a
 public marketing site lives at `/` (warehouse app under `/sklad/`). This
 decision fixes *what* the public site is: its information architecture,
 its content sourcing, the durable contact-form store, and the modern-web
@@ -30,7 +30,7 @@ genuinely belongs now.
   spice encyclopedia are large content surfaces that need real sourcing
   and upkeep; they are deferred, not first-build.
 - **C — A CMS-backed site.** Rejected per
-  [`0049`](./0049-public-site-and-sklad-split.md) option D — four mostly
+  [`0050`](./0050-public-site-and-sklad-split.md) option D — four mostly
   static pages don't justify CMS complexity.
 - **D — An email-only kontakt form (no DB store).** Rejected — see the
   `ContactInquiry` rationale below; without persistence, inquiries are
@@ -89,8 +89,13 @@ optional `handled` flag. **Email is a plain string, never linked to
 try/except and **never re-raises** (mirrors
 `inventory/services.py:send_dodaci_list_email`, per
 [`0019`](./0019-email-smtp-sync.md)); a failed send must not lose the
-saved row. A read-only `ContactInquiryAdmin` surfaces inquiries for
-review.
+saved row. The notification builds its SMTP connection + From address via
+the shared `_smtp_connection_from_settings(s)` helper
+([`0049`](./0049-smtp-source-of-truth.md)), so the contact form honours the
+`Settings`-DB-first SMTP source of truth rather than re-introducing a
+second, env-only send surface. A hidden honeypot field gates spam
+(right-sized — no captcha/rate-limit dependency). A read-only
+`ContactInquiryAdmin` surfaces inquiries for review.
 
 ### Modern-web essentials (every page)
 

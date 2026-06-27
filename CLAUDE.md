@@ -10,7 +10,7 @@ to the Hetzner box. Hetzner provisioning + the 14-day shadow run come
 last.
 
 The site is split into two surfaces on one domain (per
-[`0049`](./context/decisions/0049-public-site-and-sklad-split.md)): a
+[`0050`](./context/decisions/0050-public-site-and-sklad-split.md)): a
 **public marketing site at `/`** (no login, the `web` app — see
 [`context/public-site.md`](./context/public-site.md)) and the
 **login-gated warehouse app under `/sklad/…`** (auth at
@@ -28,7 +28,7 @@ The site is split into two surfaces on one domain (per
    `state-file-discipline.md`, and `right-sized-for-small-business.md`.
 4. **`context/decisions/`** — read in numeric order. 0028–0034 supersede
    parts of 0001–0013 (Petr's 2026-06-09 brief); 0044 supersedes part
-   of 0039 (reservations); 0049 + 0050 add the public site and move the
+   of 0039 (reservations); 0050 + 0051 add the public site and move the
    app under `/sklad/` (amend 0020 + 0047). The tech-stack layer is
    0014–0027.
 

@@ -1,4 +1,4 @@
-"""Tests for the public marketing site (decisions 0049 + 0050).
+"""Tests for the public marketing site (decisions 0050 + 0051).
 
 Covers: public pages render 200 anonymously; the warehouse app under /sklad/
 still 302s anonymously (the URL move is provably gated); the kontakt form
@@ -97,7 +97,7 @@ def test_sklad_login_page_renders() -> None:
     assert response.status_code == 200
 
 
-# --- Kontakt form persists + e-mails (durability over uptime, 0050) ---------
+# --- Kontakt form persists + e-mails (durability over uptime, 0051) ---------
 
 _VALID_POST = {
     "name": "Jan Novák",
@@ -145,7 +145,7 @@ def test_kontakt_honeypot_blocks_spam() -> None:
 
 
 def test_kontakt_email_failure_does_not_lose_the_row(monkeypatch) -> None:
-    """A broken/missing SMTP config must never lose a saved inquiry (0050)."""
+    """A broken/missing SMTP config must never lose a saved inquiry (0051)."""
 
     def _boom(self, *args, **kwargs):
         raise RuntimeError("smtp down")

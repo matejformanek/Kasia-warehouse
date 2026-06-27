@@ -1,4 +1,4 @@
-"""Public marketing site views (decisions 0049 + 0050).
+"""Public marketing site views (decisions 0050 + 0051).
 
 Every view is decorated ``@login_not_required`` — the global
 LoginRequiredMiddleware (decision 0020) has no include-level opt-out, so each
@@ -85,7 +85,22 @@ def _notify_inquiry(inquiry: ContactInquiry) -> None:
     inventory.services.send_dodaci_list_email (decision 0019). The inquiry is
     already committed; a missing/broken SMTP config must not surface to the
     public visitor or lose the row.
+
+    The SMTP connection + From address are built from the same
+    ``Settings``-DB-first source of truth the warehouse e-mails use
+    (decision 0049), so the contact form does not re-introduce a second,
+    env-only SMTP surface. Imports are local to keep web ↔ inventory
+    coupling at call time, not module load.
     """
+    from inventory.models import Settings
+    from inventory.services import _smtp_connection_from_settings
+
+    s = Settings.load()
+    from_email = (
+        f"{s.email_from_name} <{s.email_from_address}>"
+        if s.email_from_name and s.email_from_address
+        else (s.email_from_address or None)  # None → Django uses DEFAULT_FROM_EMAIL
+    )
     subject = f"Nová poptávka z webu — {inquiry.name}"
     body = (
         f"Jméno: {inquiry.name}\n"
@@ -98,10 +113,12 @@ def _notify_inquiry(inquiry: ContactInquiry) -> None:
         EmailMessage(
             subject=subject,
             body=body,
+            from_email=from_email,
             to=_CONTACT_RECIPIENTS,
             reply_to=[inquiry.email],
+            connection=_smtp_connection_from_settings(s),
         ).send(fail_silently=False)
-    except Exception:  # noqa: BLE001 — durability over uptime (0050)
+    except Exception:  # noqa: BLE001 — durability over uptime (0051)
         logger.warning(
             "Contact inquiry #%s saved but e-mail notification failed",
             inquiry.pk,
@@ -110,7 +127,7 @@ def _notify_inquiry(inquiry: ContactInquiry) -> None:
 
 
 # --- robots.txt + sitemap.xml (hand-rolled; no django.contrib.sitemaps) -----
-# Right-sized for four pages per decision 0050.
+# Right-sized for four pages per decision 0051.
 @login_not_required
 def robots_txt(request):
     return TemplateResponse(

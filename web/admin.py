@@ -5,7 +5,7 @@ from .models import ContactInquiry
 
 @admin.register(ContactInquiry)
 class ContactInquiryAdmin(admin.ModelAdmin):
-    """Read-only review surface for public poptávky (decision 0050).
+    """Read-only review surface for public poptávky (decision 0051).
 
     The durable store is the source of truth; admin is for review only, with
     a 'vyřízeno' toggle. Public submissions are never created or edited here.

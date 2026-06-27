@@ -4,8 +4,8 @@ The public counterpart to [`screens/`](./screens/). It is kept separate
 because the public site is a **marketing / communication** surface for the
 outside world, not an operator screen for warehouse staff.
 
-- **Decisions:** [`decisions/0049-public-site-and-sklad-split.md`](./decisions/0049-public-site-and-sklad-split.md)
-  (the split) and [`decisions/0050-public-site-ia-and-content.md`](./decisions/0050-public-site-ia-and-content.md)
+- **Decisions:** [`decisions/0050-public-site-and-sklad-split.md`](./decisions/0050-public-site-and-sklad-split.md)
+  (the split) and [`decisions/0051-public-site-ia-and-content.md`](./decisions/0051-public-site-ia-and-content.md)
   (this IA + content).
 - **Code:** the `web` Django app + templates under
   `kasia/templates/web/`. Curated content lives in `web/content.py`
@@ -15,7 +15,7 @@ outside world, not an operator screen for warehouse staff.
 ## URL map
 
 Public surface lives at the domain root; the warehouse app is under
-`/sklad/` (per 0049).
+`/sklad/` (per 0050).
 
 | Path | View | Page |
 |------|------|------|
@@ -62,7 +62,7 @@ Per-location card (adresa, otevírací doba, telefon, odkaz na mapu), from
   otevírací doba Po–Pá 7:00–15:00, odkaz na mapu.
 - **Poptávkový / kontaktní formulář** → `ContactInquiry`.
   - Persisted to DB first, **then** best-effort e-mail (try/except, never
-    re-raises — durability over uptime, per 0050 + 0019). Recipients via
+    re-raises — durability over uptime, per 0051 + 0019). Recipients via
     `settings.CONTACT_INQUIRY_RECIPIENTS` (default info@kasia.cz).
   - GDPR consent checkbox (required, not stored as a column).
   - Plain `<form method="post">` + `{% csrf_token %}` — the public base

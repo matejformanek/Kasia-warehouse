@@ -62,4 +62,4 @@ the phone/e-mail on it (there is no e-shop). The dated kasia.cz is being
 replaced by a modern public marketing site hosted on the same domain as
 the warehouse tool — public site at `/`, warehouse app under `/sklad/`.
 See [`public-site.md`](./public-site.md) and
-[`decisions/0049-public-site-and-sklad-split.md`](./decisions/0049-public-site-and-sklad-split.md).
+[`decisions/0050-public-site-and-sklad-split.md`](./decisions/0050-public-site-and-sklad-split.md).

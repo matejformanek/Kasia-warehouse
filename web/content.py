@@ -1,4 +1,4 @@
-"""Curated public-site content — decoupled from the warehouse DB (decision 0050).
+"""Curated public-site content — decoupled from the warehouse DB (decision 0051).
 
 Single source of truth for the company facts and locations rendered across the
 public pages, the footer, and the JSON-LD structured data. Czech-only for the
@@ -6,7 +6,7 @@ first build; templates are i18n-ready so EN/RU can layer on later.
 
 ⚠ TYN/SEZ street addresses + per-branch phones are NOT in the repo. They carry
 explicit "doplnit od Petra" placeholders — do not invent addresses (decision
-0050, context/warehouses.md).
+0051, context/warehouses.md).
 """
 
 # --- Company identity (public facts; context/company-profile.md) ------------

@@ -169,7 +169,7 @@ operation gives us shape.
 6. **Set `CSRF_TRUSTED_ORIGINS` (+ `SECURE_PROXY_SSL_HEADER`) once HTTPS
    is live.** Behind a TLS-terminating Caddy, Django sees plain HTTP and
    will reject cross-origin POSTs — most visibly the public **kontakt**
-   form (per [`../context/decisions/0050-public-site-ia-and-content.md`](../context/decisions/0050-public-site-ia-and-content.md))
+   form (per [`../context/decisions/0051-public-site-ia-and-content.md`](../context/decisions/0051-public-site-ia-and-content.md))
    and any warehouse form. Add `CSRF_TRUSTED_ORIGINS=https://<hostname>`
    to the on-box `.env` (wire it into `kasia/settings/base.py`) and set
    `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")` so

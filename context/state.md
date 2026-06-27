@@ -1162,8 +1162,7 @@
     never round-tripped through agent context.
     - Filled: SECRET_KEY (86 chars), POSTGRES_PASSWORD (64 chars),
       ALLOWED_HOSTS=91.98.47.1, DEBUG=0, DEFAULT_FROM_EMAIL.
-    - Blank pending decisions: SMTP block (no provider chosen yet),
-      RESTIC block (Storage Box not ordered).
+    - Blank pending decisions: RESTIC block (Storage Box not ordered).
   - `deploy.yml` simplified: `SSH_HOST` + `SSH_USER` removed from
     GH secrets (hardcoded `host: 91.98.47.1`, `username: app` as
     literals — non-secret). **Only `SSH_KEY` is now a GH secret;
@@ -1275,12 +1274,35 @@
   before any real customer výdej, per the `_assert_recipients_set`
   guard in `inventory/services.py`).
 
+- **2026-06-26** — SMTP source-of-truth resolved per decision
+  [`0049`](./decisions/0049-smtp-source-of-truth.md). Real dodák
+  sends + low-stock summary now build their SMTP connection via a
+  shared `_smtp_connection_from_settings(s)` helper in
+  `inventory/services.py`. Settings DB wins for host / user /
+  password (blank → `None` → Django falls back to `EMAIL_HOST*`
+  env); `smtp_port` and `smtp_use_tls` are DB-only (both
+  non-nullable, defaults 587 + True match the env contract — no
+  migration needed for fall-through branches that don't exist at
+  6 users). `settings_test_smtp`
+  refactored onto the same helper so the "Otestovat odeslání"
+  green ✓ now exercises the same code path as a real send.
+  Refines [`0019`](./decisions/0019-email-smtp-sync.md) (sync-send
+  + fail-silent + `DodaciListEmailLog` FAILED-row contract
+  unchanged) and [`0037`](./decisions/0037-settings-singleton.md)
+  (plaintext `smtp_password` + write-only `PasswordInput`
+  unchanged). 4 new tests in `inventory/tests.py` cover helper
+  kwargs (set vs blank), end-to-end wire-up, and the fail-silent
+  contract. Provider details (`mail.kasia.cz:587` STARTTLS) on the
+  `.env.example`; `EMAIL_HOST_PASSWORD` lands out-of-band when
+  the `aplikace@kasia.cz` mailbox is created.
+
 - **2026-06-26** — **Public marketing site at `/` + warehouse app moved
   under `/sklad/`.** Decisions
-  [`0049`](./decisions/0049-public-site-and-sklad-split.md) (the split;
+  [`0050`](./decisions/0050-public-site-and-sklad-split.md) (the split;
   second amendment of [`0020`](./decisions/0020-auth-django-builtin.md),
-  extends [`0047`](./decisions/0047-design-review-gallery.md)) and
-  [`0050`](./decisions/0050-public-site-ia-and-content.md) (four-page IA +
+  extends [`0047`](./decisions/0047-design-review-gallery.md); renumbered
+  from a draft 0049 after the SMTP 0049 landed first on main) and
+  [`0051`](./decisions/0051-public-site-ia-and-content.md) (four-page IA +
   `ContactInquiry` durability + SEO/GDPR essentials).
   - **URL re-wire** (`kasia/urls.py`): inventory/accounts/auth/password-
     reset/password-change all moved under `/sklad/` (login at
@@ -1297,9 +1319,12 @@
     literal, correct).
   - **New `web` app:** `ContactInquiry` model (durable poptávka store,
     email-only string never linked to User; e-mail best-effort
-    try/except per 0019) + read-only `ContactInquiryAdmin`; views all
-    `@login_not_required`; curated content in `web/content.py` (decoupled
-    from warehouse DB). Migration `web/0001_initial`. Separate public
+    try/except per 0019, routed through the shared
+    `_smtp_connection_from_settings` helper so it honours the SMTP
+    source-of-truth from 0049) + read-only `ContactInquiryAdmin`; views
+    all `@login_not_required`; a hidden honeypot spam-gate on the form;
+    curated content in `web/content.py` (decoupled from warehouse DB).
+    Migration `web/0001_initial`. Separate public
     `kasia/templates/web/base.html` (no htmx; SEO + OG + JSON-LD
     Organization; footer with contact/IČO/hours + Czech consent note +
     discreet "Sklad / Přihlášení" link) + `home` / `o_nas` / `provozovny`
@@ -1308,13 +1333,16 @@
   - **Stale-doc sweep:** 0020 preamble (2nd amendment banner), settings
     comment, `right-sized-for-small-business.md` (one Django *project*),
     `decision-log-discipline.md` (user-submitted-data models),
-    `CLAUDE.md`, `company-profile.md`, this file. New
+    `CLAUDE.md`, `company-profile.md`, `infra/RUNBOOK.md` (CSRF note for
+    HTTPS cutover), this file. New
     [`context/public-site.md`](./public-site.md) + README pointer.
-  - **Verification:** full suite **316 pytest tests green** (282 → 316);
-    ruff clean; `manage.py check` clean; `makemigrations --check` clean
-    (only the new `web` migration). Production-like smoke (DEBUG off,
-    manifest static): public pages 200, `/sklad/*` 302→`/sklad/prihlaseni/`,
-    `/admin//healthz//navrhy/` intact, manifest `{% static %}` resolves.
+  - **Verification:** full suite green; ruff clean; `manage.py check`
+    clean; `makemigrations --check` clean (only the new `web` migration).
+    Production-like smoke + full docker stack (`make up`): public pages
+    200, `/sklad/*` 302→`/sklad/prihlaseni/`, `/admin//healthz//navrhy/`
+    intact, kontakt POST persists a `ContactInquiry` in Postgres, manifest
+    `{% static %}` resolves. Hardened via `/pr-harden` (honeypot + CSRF
+    RUNBOOK note); PR #3.
   - **Next (deferred, gated on Petr):** build `design-options/public/`
     mockup gallery + SVG logo concepts → Petr picks → log a decision →
     port the winner into the real `web/` templates. Add deferred pages

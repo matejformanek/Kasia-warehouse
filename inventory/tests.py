@@ -909,6 +909,134 @@ def test_apply_vydej_failed_send_writes_failed_log(
     assert "smtp down" in log.error_message
 
 
+# SMTP source-of-truth (decision 0049) ------------------------------------
+
+
+@pytest.mark.django_db
+def test_smtp_connection_helper_uses_settings_db_when_set(monkeypatch) -> None:
+    """Per 0049: when Settings.smtp_* string fields are populated,
+    `_smtp_connection_from_settings` passes them verbatim to
+    `get_connection`. Locmem ignores host/port so we monkeypatch the
+    helper's `get_connection` to capture the call kwargs."""
+    from inventory import services
+
+    s = Settings.load()
+    s.smtp_host = "test.example.cz"
+    s.smtp_port = 2525
+    s.smtp_user = "x"
+    s.smtp_password = "y"
+    s.smtp_use_tls = True
+    s.save()
+
+    captured = {}
+
+    def _fake_get_connection(**kwargs):
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(services, "get_connection", _fake_get_connection)
+    services._smtp_connection_from_settings(Settings.load())
+
+    assert captured == {
+        "host": "test.example.cz",
+        "port": 2525,
+        "username": "x",
+        "password": "y",
+        "use_tls": True,
+        "timeout": 10,
+    }
+
+
+@pytest.mark.django_db
+def test_smtp_connection_helper_passes_none_for_blank_db_fields(monkeypatch) -> None:
+    """Per 0049: blank Settings.smtp_* string fields produce `None`
+    kwargs so Django's default backend reads `EMAIL_HOST*` from env."""
+    from inventory import services
+
+    s = Settings.load()
+    s.smtp_host = ""
+    s.smtp_port = 0
+    s.smtp_user = ""
+    s.smtp_password = ""
+    s.smtp_use_tls = True
+    s.save()
+
+    captured = {}
+
+    def _fake_get_connection(**kwargs):
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(services, "get_connection", _fake_get_connection)
+    services._smtp_connection_from_settings(Settings.load())
+
+    assert captured == {
+        "host": None,
+        "port": None,
+        "username": None,
+        "password": None,
+        "use_tls": True,
+        "timeout": 10,
+    }
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_LOCMEM_EMAIL)
+def test_send_dodaci_list_email_calls_helper(
+    tyn, ricany, pepper, user_tyn, monkeypatch
+) -> None:
+    """Real výdej end-to-end exercises the shared helper exactly once."""
+    from inventory import services
+
+    s = Settings.load()
+    s.smtp_host = "custom.example.cz"
+    s.save()
+
+    calls = []
+    real_helper = services._smtp_connection_from_settings
+
+    def _spy(settings_obj):
+        calls.append(settings_obj.smtp_host)
+        return real_helper(settings_obj)
+
+    monkeypatch.setattr(services, "_smtp_connection_from_settings", _spy)
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    apply_movement(
+        movement=_vydej(tyn, ricany, user_tyn),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
+        user=user_tyn,
+    )
+    assert calls == ["custom.example.cz"]
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_LOCMEM_EMAIL)
+def test_send_dodaci_list_email_failure_still_logs_failed_row(
+    tyn, ricany, pepper, user_tyn, monkeypatch
+) -> None:
+    """Per 0049 the helper does not change 0019's fail-silent contract:
+    a send exception still produces a FAILED log row and the výdej
+    commits."""
+    from inventory import services
+
+    def _raise(self, *args, **kwargs):
+        raise RuntimeError("smtp boom")
+
+    monkeypatch.setattr(services.EmailMessage, "send", _raise)
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mv = apply_movement(
+        movement=_vydej(tyn, ricany, user_tyn),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
+        user=user_tyn,
+    )
+    assert Movement.objects.filter(pk=mv.pk).exists()
+    log = DodaciListEmailLog.objects.get(dodaci_list__movement=mv)
+    assert log.status == DodaciListEmailLog.Status.FAILED
+    assert "smtp boom" in log.error_message
+
+
 # edit_movement re-issue hook ---------------------------------------------
 
 

@@ -55,7 +55,7 @@ If you are an agent or human picking this up cold, read in this order.
   post-MVP screens. Use the glossary spellings throughout.
 - [`public-site.md`](./public-site.md) — the public marketing site (`web`
   app) at `/`: IA, per-page content map, and Czech copy notes. The public
-  counterpart to `screens/` (per decisions 0049 + 0050).
+  counterpart to `screens/` (per decisions 0050 + 0051).
 - [`decisions/`](./decisions/) — append-only decision log. Format described in
   [`decisions/README.md`](./decisions/README.md). As of this commit, empty.
 

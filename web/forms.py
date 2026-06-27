@@ -7,7 +7,7 @@ class ContactInquiryForm(forms.ModelForm):
     """Public kontakt / poptávka form.
 
     Plain Django form posted as a normal ``<form method="post">`` — the
-    public base template ships no htmx (decision 0049/0050). CSRF is
+    public base template ships no htmx (decision 0050/0051). CSRF is
     enforced by the already-active CsrfViewMiddleware via {% csrf_token %}.
     """
 

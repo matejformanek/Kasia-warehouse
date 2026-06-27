@@ -70,6 +70,7 @@ from .models import (
     Supplier,
 )
 from .services import (
+    _smtp_connection_from_settings,
     apply_movement,
     apply_stock_adjustment,
     cancel_mixing_job,
@@ -1524,10 +1525,9 @@ def settings_test_smtp(request):
     to_email = form.cleaned_data["to_email"]
     s = Settings.load()
 
-    # Use the live Settings values, falling back to the env-driven Django
-    # defaults if a field is blank. This way the test reflects what a real
-    # dodák send will do.
-    from django.core.mail import EmailMessage, get_connection
+    # Same code path as the real dodák send — per decision 0049 the
+    # helper is the single SMTP-connection construction site.
+    from django.core.mail import EmailMessage
 
     from_address = s.email_from_address or None
     from_name = s.email_from_name or "Kasia vera"
@@ -1536,14 +1536,7 @@ def settings_test_smtp(request):
     )
 
     try:
-        connection = get_connection(
-            host=s.smtp_host or None,
-            port=s.smtp_port or None,
-            username=s.smtp_user or None,
-            password=s.smtp_password or None,
-            use_tls=s.smtp_use_tls,
-            timeout=10,
-        )
+        connection = _smtp_connection_from_settings(s)
         msg = EmailMessage(
             subject="Test e-mailu — Kasia vera",
             body=(

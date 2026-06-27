@@ -26,7 +26,7 @@ urlpatterns = [
         name="design_gallery",
     ),
     # --- Warehouse app — fully login-gated, all under /sklad/ ----------------
-    # Per context/decisions/0049-public-site-and-sklad-split.md. View names are
+    # Per context/decisions/0050-public-site-and-sklad-split.md. View names are
     # left unchanged (login, logout, password_*, the inventory/accounts
     # namespaces), so every {% url %} / reverse() / LOGIN_URL re-resolves to
     # the new /sklad/ paths automatically. The flat "sklad/..." prefixes (no
@@ -100,7 +100,7 @@ urlpatterns = [
     ),
     path("sklad/uzivatele/", include("accounts.urls", namespace="accounts")),
     path("sklad/", include("inventory.urls", namespace="inventory")),
-    # --- Public marketing site at root — MUST stay last (per 0049) ----------
+    # --- Public marketing site at root — MUST stay last (per 0050) ----------
     # Mounted in Phase 3 once the `web` app exists. Until then "/" 404s and
     # only /sklad/* serves the app.
     path("", include("web.urls", namespace="web")),

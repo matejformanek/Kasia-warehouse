@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{{ company.legal_name }}{% endblock %}</title>
 <meta name="description" content="{% block meta_description %}{{ company.legal_name }} — dovoz, zpracování a balení koření od roku {{ company.founded_year }}. Přes {{ company.spice_count }} druhů koření a {{ company.product_count }} kulinářských produktů pro gastro a velkoobchod.{% endblock %}">
-{# --- Open Graph (decision 0050) --- #}
+{# --- Open Graph (decision 0051) --- #}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{ company.legal_name }}">
 <meta property="og:title" content="{% block og_title %}{{ company.legal_name }} — koření a kulinářské produkty{% endblock %}">
@@ -16,7 +16,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="{% static 'brand/favicon-32.png' %}">
 <link rel="icon" type="image/png" sizes="192x192" href="{% static 'brand/favicon-192.png' %}">
 <link rel="apple-touch-icon" sizes="180x180" href="{% static 'brand/apple-touch-icon.png' %}">
-{# --- JSON-LD Organization / LocalBusiness (decision 0050) --- #}
+{# --- JSON-LD Organization / LocalBusiness (decision 0051) --- #}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",

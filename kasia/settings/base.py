@@ -47,19 +47,19 @@ MIDDLEWARE = [
     # Every view requires login unless decorated with @login_not_required
     # (Django 5.1+). The warehouse app lives under /sklad/ and is fully gated;
     # the public marketing site at / (web app) and the /navrhy/ gallery opt
-    # out per-view with @login_not_required. See decisions 0020, 0047, 0049.
+    # out per-view with @login_not_required. See decisions 0020, 0047, 0050.
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
 ]
 
-# --- Auth flow (per 0020; paths moved under /sklad/ per 0049) ---------------
+# --- Auth flow (per 0020; paths moved under /sklad/ per 0050) ---------------
 # Name-based, so they re-resolve to the new /sklad/ paths automatically.
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "inventory:home"
 # After logout, land on the public marketing homepage rather than the login
-# screen (per 0049 — the public site is now the natural front door).
+# screen (per 0050 — the public site is now the natural front door).
 LOGOUT_REDIRECT_URL = "web:home"
 
 ROOT_URLCONF = "kasia.urls"
@@ -140,7 +140,7 @@ EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@example.cz")
 
-# --- Public contact form (per 0050) ----------------------------------------
+# --- Public contact form (per 0051) ----------------------------------------
 # Where kontakt-form poptávky are e-mailed. The inquiry is persisted to the DB
 # regardless; the e-mail is a best-effort notification (web/views.py). Defaults
 # to the public info address; override via env without touching code.

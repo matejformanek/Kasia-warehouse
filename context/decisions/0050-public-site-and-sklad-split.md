@@ -1,4 +1,4 @@
-# 0049 — Public marketing site at `/`, warehouse app moves under `/sklad/`
+# 0050 — Public marketing site at `/`, warehouse app moves under `/sklad/`
 
 ## Context
 
@@ -25,7 +25,7 @@ stack ([`0014`](./0014-language-python-uv.md)–[`0027`](./0027-hosting-hetzner.
 so the `no-premature-tech-choices.md` gate does not apply and no
 `context/tech-options.md` entry is required.
 
-The companion decision [`0050`](./0050-public-site-ia-and-content.md)
+The companion decision [`0051`](./0051-public-site-ia-and-content.md)
 covers the public site's information architecture and content; this
 decision covers the **split itself**: where the app lives, where the
 public site lives, and how auth is exempted.
@@ -52,7 +52,7 @@ public site lives, and how auth is exempted.
 - **D — A CMS (Wagtail / headless) for the public site.** Four mostly
   static Czech pages do not need a CMS. Curated templates are
   right-sized; revisit only if Kasia wants self-service content editing.
-  Rejected — see [`0050`](./0050-public-site-ia-and-content.md).
+  Rejected — see [`0051`](./0051-public-site-ia-and-content.md).
 
 ## Choice
 
@@ -94,14 +94,14 @@ developer-shaped and English; the user-facing convention here is Czech
 ## Date & by-whom
 
 2026-06-26 — Matej (owner-side decision; scope locked to the four-page
-first build per [`0050`](./0050-public-site-ia-and-content.md)).
+first build per [`0051`](./0051-public-site-ia-and-content.md)).
 
 ## Consequences — things this now blocks or unblocks
 
 **Unblocks:**
 
 - The `web` app and its public templates (see
-  [`0050`](./0050-public-site-ia-and-content.md)).
+  [`0051`](./0051-public-site-ia-and-content.md)).
 - A future domain cutover where kasia.cz serves both the public site and
   the warehouse tool from one box.
 
@@ -123,13 +123,13 @@ first build per [`0050`](./0050-public-site-ia-and-content.md)).
   site at `/` is a deliberate, login-exempt application surface. 0020's
   auth posture for every warehouse screen and all real data is unchanged —
   those simply now live under `/sklad/`. **Update 0020's preamble to cite
-  0049 as a second amendment.**
+  0050 as a second amendment.**
 
 **Settings/doc fallout (handled in the same change):**
 
 - `kasia/settings/base.py` — the `LoginRequiredMiddleware` comment ("no
   public surface beyond /login/ and /healthz/") is now false; updated to
-  cite 0049 and the public marketing surface at `/`.
+  cite 0050 and the public marketing surface at `/`.
 - `.claude/rules/right-sized-for-small-business.md` "one app, one DB"
   clarified to mean one Django *project* / one DB; multiple Django *apps*
   (`inventory`, `accounts`, `web`) are fine.

@@ -3,9 +3,32 @@
 {% block title %}Přehled — Kasia vera{% endblock %}
 
 {% block content %}
-<h1>Přehled — {{ user.email }}</h1>
+<h1>Přehled <span class="muted" style="font-weight:500;">— {{ user.email }}</span></h1>
 
-<div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+<section class="kpis" aria-label="Klíčové ukazatele">
+  <div class="kpi accent">
+    <span class="lbl">K vyřešení</span>
+    <span class="k-val">{{ to_resolve_count }}</span>
+    <span class="k-sub">úkoly vyžadující pozornost</span>
+  </div>
+  <div class="kpi">
+    <span class="lbl">Produktů skladem</span>
+    <span class="k-val">{{ kpi_products }}</span>
+    <span class="k-sub">napříč {{ kpi_branches }} pobočkami</span>
+  </div>
+  <div class="kpi">
+    <span class="lbl">Celková zásoba</span>
+    <span class="k-val">{{ kpi_total_mass|floatformat:"3" }} <span class="k-unit">kg</span></span>
+    <span class="k-sub">součet všech poboček</span>
+  </div>
+  <div class="kpi">
+    <span class="lbl">Dochází zboží</span>
+    <span class="k-val">{{ kpi_low_stock }}</span>
+    <span class="k-sub">pod nastaveným prahem</span>
+  </div>
+</section>
+
+<div class="card row between">
   <div>
     {% if to_resolve_count %}
       <strong>K vyřešení: {{ to_resolve_count }}</strong>
@@ -13,9 +36,9 @@
       <span style="color:var(--ok);">K vyřešení dnes nic není.</span>
     {% endif %}
   </div>
-  <div>
+  <div class="actions">
     <a class="secondary" href="{% url 'inventory:prijem_create' %}">Nový příjem</a>
-    <a class="secondary" href="{% url 'inventory:vydej_create' %}">Nový výdej</a>
+    <a class="primary" href="{% url 'inventory:vydej_create' %}">Nový výdej</a>
   </div>
 </div>
 
@@ -55,7 +78,7 @@
 </div>
 {% endif %}
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;">
+<div class="grid-2">
   {% for panel in branch_panels %}
     <div class="card">
       <h2 style="font-size:1.05rem;margin-top:0;">

@@ -13,9 +13,17 @@ Branch staff do not see this screen — they land on
 [Přehled pobočky](03-prehled-pobocky.md) instead.
 
 ## What it shows
-- Header strip with the user's name, role, and a "log out" affordance.
-- Main navigation (catalogue, příjem, výdej, dodací listy, historie,
-  admin) — same nav as every other authenticated screen.
+- **Left sidebar** (per [`0054`](../decisions/0054-adopt-ui-directions.md)):
+  jpg logo + `KASIA / sklad`, the vertical main navigation (catalogue,
+  dodavatelé, odběratelé, příjem, výdej, míchání, převody, dodací listy,
+  historie, podpora; vlastník-only: pobočky, uživatelé, nastavení), and the
+  user e-mail + "Odhlásit" pinned at the bottom. Same chrome on every
+  authenticated screen; collapses to a top bar + scroll-nav under 720px.
+  (Replaces the former top-nav header strip.)
+- **KPI strip** at the top (per 0054): K vyřešení · Produktů skladem ·
+  Celková zásoba kg · Dochází zboží — derived from the same aggregates that
+  feed the branch panels and the low-stock e-mail. The branch dashboard
+  (screen 03) carries an equivalent per-branch KPI header.
 - **Two branch panels side by side**, one for Týniště nad Orlicí and
   one for Sezimovo Ústí. Each panel shows:
   - Branch name and location.

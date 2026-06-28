@@ -5,16 +5,39 @@
 {% block content %}
 <h1>{{ branch.code }} — {{ branch.name }}</h1>
 {% if branch.address %}
-  <p style="color:var(--fg-soft);margin-top:-0.5rem;">{{ branch.address }}</p>
+  <p class="muted" style="margin-top:-0.5rem;">{{ branch.address }}</p>
 {% endif %}
 
-<div class="card" style="display:flex;justify-content:space-between;align-items:center;">
-  <div style="color:var(--fg-soft);">
+<section class="kpis" aria-label="Klíčové ukazatele pobočky">
+  <div class="kpi accent">
+    <span class="lbl">Produktů skladem</span>
+    <span class="k-val">{{ kpi_products }}</span>
+    <span class="k-sub">s nenulovým stavem</span>
+  </div>
+  <div class="kpi">
+    <span class="lbl">Celková zásoba</span>
+    <span class="k-val">{{ kpi_total_mass|floatformat:"3" }} <span class="k-unit">kg</span></span>
+    <span class="k-sub">{{ branch.code }}</span>
+  </div>
+  <div class="kpi">
+    <span class="lbl">Dochází zboží</span>
+    <span class="k-val">{{ kpi_low_stock }}</span>
+    <span class="k-sub">pod nastaveným prahem</span>
+  </div>
+  <div class="kpi">
+    <span class="lbl">Nedávné pohyby</span>
+    <span class="k-val">{{ recent_movements|length }}</span>
+    <span class="k-sub">posledních evidovaných</span>
+  </div>
+</section>
+
+<div class="card row between">
+  <div class="muted">
     Stav skladu k {% now "d. m. Y H:i" %}.
   </div>
-  <div>
+  <div class="actions">
     <a class="secondary" href="{% url 'inventory:prijem_create' %}">Nový příjem</a>
-    <a class="secondary" href="{% url 'inventory:vydej_create' %}">Nový výdej</a>
+    <a class="primary" href="{% url 'inventory:vydej_create' %}">Nový výdej</a>
   </div>
 </div>
 

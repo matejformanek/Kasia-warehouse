@@ -1,0 +1,56 @@
+<svg viewBox="0 0 560 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Koření, hmoždíř a bylinky — ilustrace">
+  <defs>
+    <linearGradient id="kh-bowl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a9961"/>
+      <stop offset="1" stop-color="#18421f"/>
+    </linearGradient>
+    <radialGradient id="kh-halo" cx="50%" cy="38%" r="60%">
+      <stop offset="0" stop-color="#2a9961" stop-opacity="0.18"/>
+      <stop offset="0.6" stop-color="#2a9961" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#2a9961" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="560" height="300" fill="url(#kh-halo)"/>
+
+  <!-- scattered spice dots -->
+  <g fill="#c2581c" opacity="0.55">
+    <circle cx="92" cy="70" r="4"/><circle cx="130" cy="48" r="3"/>
+    <circle cx="450" cy="64" r="4"/><circle cx="486" cy="92" r="3"/>
+    <circle cx="64" cy="150" r="3"/><circle cx="506" cy="160" r="4"/>
+  </g>
+  <g fill="#2a9961" opacity="0.5">
+    <circle cx="110" cy="92" r="3"/><circle cx="470" cy="120" r="3"/>
+    <circle cx="84" cy="118" r="2.5"/><circle cx="492" cy="58" r="2.5"/>
+  </g>
+
+  <!-- mortar bowl -->
+  <path d="M180 150 h200 a12 12 0 0 1 12 12 v6 a112 96 0 0 1 -224 0 v-6 a12 12 0 0 1 12 -12 z"
+        fill="url(#kh-bowl)"/>
+  <ellipse cx="280" cy="150" rx="100" ry="22" fill="#16432a"/>
+  <ellipse cx="280" cy="148" rx="100" ry="22" fill="none" stroke="#eef4ee" stroke-width="3"/>
+  <!-- ground spice heap inside -->
+  <path d="M210 150 q70 -34 140 0 q-70 16 -140 0 z" fill="#c2581c" opacity="0.85"/>
+
+  <!-- pestle -->
+  <g stroke="#16432a" stroke-width="14" stroke-linecap="round" fill="none">
+    <line x1="330" y1="64" x2="296" y2="142"/>
+  </g>
+  <circle cx="296" cy="146" r="13" fill="#16432a"/>
+
+  <!-- herb sprig left -->
+  <g stroke="#2a9961" stroke-width="3" fill="none" stroke-linecap="round">
+    <path d="M120 230 q40 -50 84 -64"/>
+    <path d="M150 206 q-6 -18 8 -30 q14 10 -8 30 z" fill="#2a9961" stroke="none" opacity="0.9"/>
+    <path d="M176 192 q-6 -18 8 -30 q14 10 -8 30 z" fill="#2a9961" stroke="none" opacity="0.9"/>
+    <path d="M138 218 q-18 -8 -22 -26 q20 2 22 26 z" fill="#2a9961" stroke="none" opacity="0.7"/>
+  </g>
+
+  <!-- herb sprig right -->
+  <g stroke="#2a9961" stroke-width="3" fill="none" stroke-linecap="round">
+    <path d="M440 230 q-40 -50 -84 -64"/>
+    <path d="M410 206 q6 -18 -8 -30 q-14 10 8 30 z" fill="#2a9961" stroke="none" opacity="0.9"/>
+    <path d="M384 192 q6 -18 -8 -30 q-14 10 8 30 z" fill="#2a9961" stroke="none" opacity="0.9"/>
+    <path d="M422 218 q18 -8 22 -26 q-20 2 -22 26 z" fill="#2a9961" stroke="none" opacity="0.7"/>
+  </g>
+</svg>

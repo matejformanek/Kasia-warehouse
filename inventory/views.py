@@ -188,6 +188,11 @@ def home(request):
     # low_stock_rows() that feeds the daily summary e-mail.
     low_stock = low_stock_rows()
 
+    # KPI overview strip (decision 0054). All four are derivable from the
+    # aggregates already computed above for the per-branch panels.
+    kpi_products = sum(p["product_count"] for p in branch_panels)
+    kpi_total_mass = sum((p["total_mass"] for p in branch_panels), Decimal("0.000"))
+
     return render(
         request,
         "inventory/home.html",
@@ -198,6 +203,10 @@ def home(request):
             "edited_dodaky": edited_dodaky,
             "low_stock_rows": low_stock,
             "to_resolve_count": len(failed_dodaky) + len(edited_dodaky),
+            "kpi_products": kpi_products,
+            "kpi_total_mass": kpi_total_mass,
+            "kpi_low_stock": len(low_stock),
+            "kpi_branches": len(branches),
         },
     )
 
@@ -409,6 +418,19 @@ def branch_dashboard(request, code: str):
         .prefetch_related("lines__product")
         .order_by("-date_issued", "-id")[:15]
     )
+
+    # Per-branch KPI header (decision 0054). Computed branch-wide, not over
+    # the search-filtered list, so the numbers stay stable while searching.
+    from django.db.models import Sum
+
+    kpi_products = Stock.objects.filter(branch=branch, quantity__gt=0).count()
+    kpi_total_mass = Stock.objects.filter(branch=branch).aggregate(
+        s=Sum("quantity")
+    )["s"] or Decimal("0.000")
+    kpi_low_stock = sum(
+        1 for r in low_stock_rows() if r.branch.pk == branch.pk
+    )
+
     return render(
         request,
         "inventory/branch_dashboard.html",
@@ -418,6 +440,9 @@ def branch_dashboard(request, code: str):
             "stock_rows": stock_rows,
             "recent_movements": recent_movements,
             "search": search,
+            "kpi_products": kpi_products,
+            "kpi_total_mass": kpi_total_mass,
+            "kpi_low_stock": kpi_low_stock,
         },
     )
 

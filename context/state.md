@@ -1577,6 +1577,43 @@
     ruff clean, `manage.py check` clean, `makemigrations --check` clean (no
     migrations). Local `make up` + prod deploy pending.
 
+- **2026-06-29** — **UI directions ported into the real app (intermediate live
+  state)** per [`0054`](./decisions/0054-adopt-ui-directions.md). Branch
+  `ft_ui_port_intermediate` off synced main.
+  - **Sklad** (`kasia/templates/base.html`): chrome rewritten to a left
+    **sidebar** app shell — jpg logo + `KASIA / sklad`, vertical nav
+    (vlastník-only items split under a "Správa" label), user e-mail +
+    Odhlásit pinned bottom; collapses to a top bar + scroll-nav under 720px.
+    Sharp/0-radius, brand-green accent, **Inter** + **IBM Plex Mono**. Shared
+    component CSS rewritten under the **same class names** (`.card`,
+    `.primary`/`.secondary`, `table.lines`, `.tab-chip`, `.row-delete-btn`,
+    `.messages`, …) so every child template inherits; **all JS/HTMX hooks
+    preserved verbatim** (row-delete, whole-row nav, `stockWarnVals`,
+    `#lines-table`/`#lines-body`, `.stock-warn-cell`). `:root` gains
+    `--ok-soft` (the 0053 carry-chip referenced it). `.row-delete-btn`
+    box-model fixed (the oversized `Smazat`). Added `.kpis` KPI strip +
+    utilities (`.row`/`.stack`/`.actions`/`.muted`/`.num`/`.grid-2`).
+  - **KPI overview:** `inventory/views.py home()` adds 4 aggregates (K
+    vyřešení / Produktů skladem / Celková zásoba kg / Dochází zboží) → strip
+    in `inventory/home.html`; `branch_dashboard()` + `branch_dashboard.html`
+    get an equivalent per-branch KPI header (obsluha redirect target).
+  - **Public** (`kasia/templates/web/base.html`): restyled in place to
+    centered/curvy/green — radius 18/999, soft shadows, **Sora** + **Inter**,
+    eyebrow pills, hero helpers — keeping every page class name. `web/home.html`
+    rebuilt: centered hero (eyebrow, big Sora headline, stat block 369+/236,
+    pill CTAs) over hand-authored **`web/art-hero.svg`** (commented real-photo
+    slot), centered section heads, green SVG line-icons on all cards; every
+    section preserved (Co děláme ×6, Komu dodáváme ×3, Proč Kasia ×6, teasers).
+    o_nas / provozovny / kontakt / login inherit the system (kontakt still
+    form-free).
+  - **Docs/rules:** `0054`, new `.claude/rules/design-system.md`, amended
+    `no-premature-tech-choices.md` (design direction now gated), updated
+    `screens/02` + `public-site.md`.
+  - **Verification:** `manage.py check` clean, ruff clean, **349 pytest green**
+    (unchanged from baseline), `collectstatic --noinput` clean (SVG hashed into
+    manifest, `navrhy` gallery still collects). Local walkthrough + prod deploy
+    next.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main
@@ -1699,16 +1736,16 @@ feeds back, hold position and respond to direct asks.
    (0040, 0041, 0042) merged. Matej feeds back fixes /
    ideology changes screen by screen.
 
-2. **Public-site visual design** (per 0049/0050, parallel-friendly,
-   gated on Petr). Build `design-options/public/` standalone homepage
-   (+ one Kontakt) mockups rendering the same Czech sample content, an
-   `index.html` thumbnail gallery linked from `/navrhy/`, and 2–3
-   hand-authored SVG logo concepts. Petr picks a direction → log a
-   `decisions/NNNN-*.md` → port the winner into the real `web/`
-   templates. Then add the deferred public pages (Sortiment,
-   Encyklopedie koření, CSR, segmenty) as later passes. ⚠ Get TYN/SEZ
-   street addresses + per-branch phones (+ DIČ) from Petr to replace
-   the Provozovny/Kontakt placeholders.
+2. **UI-direction polish pass** (follows the intermediate live state from
+   [`0054`](./decisions/0054-adopt-ui-directions.md), 2026-06-29). The two
+   base templates + dashboards are ported; remaining work is a per-page
+   alignment/inline-style sweep across the sklad forms, index tables, and
+   detail/confirmation screens (replace fighting inline styles with the new
+   `.row`/`.stack`/`.actions`/`.muted`/`.num`/`.grid-2` utilities), plus
+   swapping the commented hero photo slot once Petr supplies a real photo.
+   Keep the class names + JS/HTMX hooks stable (see `design-system.md`).
+   Then add the deferred public pages (Sortiment, Encyklopedie koření, CSR,
+   segmenty) as later passes.
 
 3. **Quality-of-life backlog** — three items landed 2026-06-15;
    nothing currently queued. Reopen as walkthrough surfaces

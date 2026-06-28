@@ -7,270 +7,392 @@
 <link rel="icon" type="image/png" sizes="32x32" href="{% static 'brand/favicon-32.png' %}">
 <link rel="icon" type="image/png" sizes="192x192" href="{% static 'brand/favicon-192.png' %}">
 <link rel="apple-touch-icon" sizes="180x180" href="{% static 'brand/apple-touch-icon.png' %}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --fg: #111;
-    --fg-soft: #555;
-    --bg: #fafafa;
-    --bg-card: #fff;
-    --border: #d0d0d0;
-    --accent: #2a5d8c;
-    --error: #a40000;
+    /* Sharp/technical warehouse system — decision 0054. Radius 0 everywhere. */
+    --accent: #1f6b3a;
+    --accent-deep: #16432a;
+    --accent-tint: #eef4ee;
+    --fg: #141719;
+    --fg-soft: #565b66;
+    --fg-faint: #868c97;
+    --bg: #f6f7f5;
+    --bg-card: #ffffff;
+    --line: #d9dcd9;
+    --line-soft: #eef0ee;
+    --error: #a02525;
+    --error-tint: #fbebea;
+    --warn: #8a5a12;
     --ok: #1f6b3a;
-    --warn: #a45a00;
+    --ok-soft: #e7f1ea;
+    /* legacy alias kept so any stray var(--border) still resolves */
+    --border: #d9dcd9;
+    --sidebar-w: 244px;
+    --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   }
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   html, body {
-    font-family: system-ui, "Segoe UI", "DejaVu Sans", sans-serif;
+    font-family: var(--ui);
     color: var(--fg);
     background: var(--bg);
     margin: 0;
     font-size: 15px;
-    line-height: 1.4;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
-  header.top {
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
-    padding: 0.75rem 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  a { color: var(--accent); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -.01em; }
+  h1 { font-size: 1.45rem; margin: 0 0 1.1rem; }
+
+  /* ============ APP SHELL ============ */
+  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+  .app.no-sidebar { display: block; }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar {
+    position: sticky; top: 0; align-self: start; height: 100vh;
+    background: var(--bg-card); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; padding: 18px 14px;
   }
-  header.top .brand {
-    font-weight: bold;
-    font-size: 1.1rem;
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
+  .sidebar .brand {
+    display: flex; align-items: center; gap: 11px;
+    padding: 4px 8px 16px; margin-bottom: 6px;
+    border-bottom: 1px solid var(--line-soft); text-decoration: none;
   }
-  header.top .brand img {
-    height: 32px;
-    width: auto;
-    display: block;
+  .sidebar .brand img { height: 34px; width: auto; display: block; }
+  .sidebar .brand .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .sidebar .brand .brand-name { font-weight: 700; font-size: 16px; letter-spacing: .06em; color: var(--fg); }
+  .sidebar .brand .brand-sub { font-size: 11px; color: var(--fg-faint); letter-spacing: .14em; text-transform: uppercase; }
+
+  .nav { display: flex; flex-direction: column; gap: 1px; margin-top: 10px; flex: 1 1 auto; overflow-y: auto; }
+  .nav .nav-label {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--fg-faint); padding: 12px 10px 5px; font-weight: 600;
   }
-  header.top .brand .subtitle {
-    color: var(--fg-soft);
-    font-weight: normal;
-    font-size: 0.9rem;
+  .nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 11px; color: var(--fg-soft); font-weight: 500;
+    font-size: 14px; text-decoration: none; border-left: 3px solid transparent;
   }
-  header.top nav a, header.top nav button {
-    margin-left: 1rem;
-    color: var(--fg);
-    text-decoration: none;
+  .nav a:hover { background: var(--line-soft); color: var(--fg); }
+  .nav a.active { background: var(--accent-tint); color: var(--accent-deep); font-weight: 600; border-left-color: var(--accent); }
+  .nav a .ic { width: 17px; height: 17px; flex: 0 0 17px; color: var(--fg-faint); }
+  .nav a.active .ic { color: var(--accent); }
+
+  .sidebar .user {
+    margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line-soft);
+    display: flex; flex-direction: column; gap: 4px;
   }
-  header.top nav a:hover { text-decoration: underline; }
-  header.top nav .who { color: var(--fg-soft); margin-right: 1rem; }
-  header.top form { display: inline; }
-  header.top form button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font: inherit;
-    color: var(--fg);
-    padding: 0;
+  .sidebar .user .email { font-size: 12.5px; color: var(--fg-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sidebar .user form { margin: 0; }
+  .sidebar .user .logout {
+    font-size: 13px; font-weight: 600; color: var(--fg); background: none;
+    border: 1px solid var(--line); padding: 6px 10px; cursor: pointer; font-family: inherit; width: 100%; text-align: left;
   }
-  main {
-    max-width: 1100px;
-    margin: 1.5rem auto;
-    padding: 0 1.5rem;
-  }
-  h1 { font-size: 1.4rem; margin: 0 0 1rem; }
+  .sidebar .user .logout:hover { border-color: var(--error); color: var(--error); }
+
+  /* ============ TOPBAR (mobile) ============ */
+  .topbar { display: none; }
+
+  /* ============ MAIN ============ */
+  .content { padding: 30px 34px 56px; max-width: 1180px; width: 100%; min-width: 0; }
+  .app.no-sidebar .content { margin: 0 auto; max-width: 460px; padding-top: 64px; }
+
+  /* ============ MESSAGES ============ */
   .messages { margin-bottom: 1rem; }
-  .messages .msg {
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-  }
-  .messages .msg.success { background: #e8f4ec; color: var(--ok); }
-  .messages .msg.error   { background: #fbe8e8; color: var(--error); }
-  .messages .msg.warning { background: #fbf3e0; color: var(--warn); }
-  .messages .msg.info    { background: #e8eef6; color: var(--accent); }
+  .messages .msg { padding: 0.6rem 0.85rem; border-left: 3px solid var(--fg-faint); margin-bottom: 0.5rem; font-size: 0.95rem; }
+  .messages .msg.success { background: var(--ok-soft); border-left-color: var(--ok); color: var(--ok); }
+  .messages .msg.error   { background: var(--error-tint); border-left-color: var(--error); color: var(--error); }
+  .messages .msg.warning { background: #fbf3e0; border-left-color: var(--warn); color: var(--warn); }
+  .messages .msg.info    { background: var(--accent-tint); border-left-color: var(--accent); color: var(--accent-deep); }
+
+  /* ============ CARDS ============ */
   .card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1.25rem;
-    margin-bottom: 1.25rem;
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: 0;
+    padding: 1.2rem 1.35rem; margin-bottom: 1.2rem;
   }
-  form .field { margin-bottom: 0.75rem; }
+  .card h2 { font-size: 1.05rem; margin-top: 0; }
+
+  /* ============ KPI STRIP ============ */
+  .kpis {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+    background: var(--bg-card); border: 1px solid var(--line); margin-bottom: 1.2rem;
+  }
+  .kpi { padding: 16px 18px; border-left: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 7px; }
+  .kpi:first-child { border-left: 0; }
+  .kpi.accent { border-top: 2px solid var(--accent); }
+  .kpi .lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: var(--fg-faint); }
+  .kpi .k-val {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: 31px; font-weight: 600; line-height: 1; letter-spacing: -.02em;
+    color: var(--fg); display: flex; align-items: baseline; gap: 5px;
+  }
+  .kpi.accent .k-val { color: var(--accent); }
+  .kpi .k-unit { font-size: 13px; font-weight: 500; color: var(--fg-faint); letter-spacing: 0; }
+  .kpi .k-sub { font-size: 11.5px; color: var(--fg-soft); }
+
+  /* ============ FORM FIELDS ============ */
+  form .field { margin-bottom: 0.8rem; }
   form label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
-  form input[type=text],
-  form input[type=email],
-  form input[type=password],
-  form input[type=date],
-  form input[type=number],
-  form select,
-  form textarea {
-    font: inherit;
-    padding: 0.4rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    width: 100%;
-    max-width: 320px;
-    background: white;
+  form input[type=text], form input[type=email], form input[type=password],
+  form input[type=date], form input[type=number], form input[type=search],
+  form select, form textarea {
+    font: inherit; padding: 0.42rem 0.55rem; border: 1px solid var(--line);
+    border-radius: 0; width: 100%; max-width: 320px; background: #fff;
   }
+  form input:focus, form select:focus, form textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
   form textarea { max-width: 100%; }
-  form .errorlist {
-    list-style: none;
-    color: var(--error);
-    padding: 0;
-    margin: 0.25rem 0 0;
-    font-size: 0.9rem;
-  }
+  form .errorlist { list-style: none; color: var(--error); padding: 0; margin: 0.25rem 0 0; font-size: 0.9rem; }
+
+  /* ============ BUTTONS ============ */
   .primary, button.primary, a.primary {
-    background: var(--accent);
-    color: white;
-    border: 0;
-    padding: 0.55rem 1.1rem;
-    border-radius: 4px;
-    font: inherit;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
+    background: var(--accent); color: #fff; border: 1px solid var(--accent);
+    padding: 0.5rem 1.1rem; border-radius: 0; font: inherit; font-weight: 600;
+    cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4;
+    vertical-align: middle;
   }
-  .primary:hover, button.primary:hover, a.primary:hover {
-    filter: brightness(1.1);
-    color: white;
-  }
+  .primary:hover, button.primary:hover, a.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); color: #fff; }
   button.secondary, a.secondary {
-    background: white;
-    color: var(--fg);
-    border: 1px solid var(--border);
-    padding: 0.5rem 0.9rem;
-    border-radius: 4px;
-    font: inherit;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
+    background: #fff; color: var(--fg); border: 1px solid var(--line);
+    padding: 0.5rem 0.9rem; border-radius: 0; font: inherit; font-weight: 500;
+    cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4;
+    vertical-align: middle;
   }
-  table.lines {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 0.75rem;
-  }
-  table.lines th, table.lines td {
-    padding: 0.4rem 0.5rem;
-    border-bottom: 1px solid var(--border);
-    vertical-align: top;
-  }
+  button.secondary:hover, a.secondary:hover { border-color: var(--fg-faint); }
+
+  /* ============ TABLES ============ */
+  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; }
+  table.lines th, table.lines td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
   table.lines th {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    color: var(--fg-soft);
-    text-align: left;
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600;
   }
-  table.lines td input,
-  table.lines td select { max-width: 100%; }
+  table.lines td input, table.lines td select { max-width: 100%; }
+  table.lines tbody tr:hover td { background: #fafbfa; }
+
+  /* ============ STOCK / MOVEMENT WIDGETS ============ */
   .stock-warn { font-size: 0.9rem; color: var(--warn); margin-top: 0.2rem; }
   .stock-warn.over { color: var(--error); font-weight: bold; }
   .recipients {
-    background: #f3f6fa;
-    border-left: 3px solid var(--accent);
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
+    background: var(--accent-tint); border-left: 3px solid var(--accent);
+    padding: 0.5rem 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;
   }
   .warnings-banner {
-    background: #fbf3e0;
-    border-left: 3px solid var(--warn);
-    color: var(--warn);
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
+    background: #fbf3e0; border-left: 3px solid var(--warn); color: var(--warn);
+    padding: 0.5rem 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;
   }
   .warnings-banner ul { margin: 0.25rem 0 0 1rem; padding: 0; }
   .non-form-errors {
-    background: #fbe8e8;
-    color: var(--error);
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    margin-bottom: 0.75rem;
+    background: var(--error-tint); color: var(--error); border-left: 3px solid var(--error);
+    padding: 0.5rem 0.75rem; border-radius: 0; margin-bottom: 0.75rem;
   }
+
+  /* ============ ROW-DELETE BUTTON (formset Smazat) ============ */
+  /* Matches the input box-model so it lines up inside a table.lines td. */
   .row-delete-btn {
-    background: #fbe8e8;
-    color: var(--error);
-    border: 1px solid #f0c0c0;
-    border-radius: 4px;
-    padding: 0.3rem 0.6rem;
-    cursor: pointer;
-    font: inherit;
+    background: var(--error-tint); color: var(--error); border: 1px solid #e6c4c2;
+    border-radius: 0; padding: 0.4rem 0.6rem; line-height: 1.4; cursor: pointer;
+    font: inherit; vertical-align: middle; display: inline-block; white-space: nowrap;
   }
-  .row-delete-btn:hover { background: #f8d6d6; }
+  .row-delete-btn:hover { background: #f6dad8; }
   .line-row.marked-deleted { opacity: 0.45; text-decoration: line-through; }
-  .line-row.marked-deleted .row-delete-btn {
-    background: var(--bg-card);
-    color: var(--fg);
-    text-decoration: none;
-  }
+  .line-row.marked-deleted .row-delete-btn { background: var(--bg-card); color: var(--fg); text-decoration: none; }
   .line-row.marked-deleted .row-delete-btn::before { content: "↺ "; }
+
+  /* ============ REQUIRED-FIELD MARKERS ============ */
   .field-required::after { content: " *"; color: var(--error); font-weight: bold; }
-  .required-legend {
-    font-size: 0.85rem;
-    color: var(--fg-soft);
-    margin-bottom: 0.5rem;
-  }
+  .required-legend { font-size: 0.85rem; color: var(--fg-soft); margin-bottom: 0.5rem; }
   .required-legend::before { content: "* "; color: var(--error); font-weight: bold; }
+
+  /* ============ ROW LINK ============ */
   tr.row-link { cursor: pointer; }
-  tr.row-link:hover { background: #f3f6fa; }
+  tr.row-link:hover { background: var(--line-soft); }
   tr.row-link td a { color: var(--fg); }
+
+  /* ============ CHIPS ============ */
   .tab-chip {
-    padding: 0.35rem 0.9rem;
-    border-radius: 999px;
-    font-size: 0.9rem;
-    line-height: 1.3;
-    white-space: nowrap;
-    display: inline-block;
+    padding: 0.3rem 0.8rem; border-radius: 0; font-size: 0.85rem; line-height: 1.3;
+    white-space: nowrap; display: inline-block; border: 1px solid var(--line); background: #fff; color: var(--fg-soft);
   }
-  .tab-chip.active { color: white; }
+  .tab-chip.active { color: #fff; background: var(--accent); border-color: var(--accent); }
   a.tab-chip { text-decoration: none; }
-  details {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-  }
-  details summary {
-    cursor: pointer;
-    font-weight: 500;
-    color: var(--accent);
-  }
+
+  /* ============ DETAILS ============ */
+  details { background: var(--bg-card); border: 1px solid var(--line); border-radius: 0; padding: 1rem; margin-bottom: 1rem; }
+  details summary { cursor: pointer; font-weight: 500; color: var(--accent); }
   details summary:hover { text-decoration: underline; }
   details[open] summary { margin-bottom: 0.75rem; }
+
+  /* ============ UTILITIES (cut inline styles) ============ */
+  .row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  .stack { display: flex; flex-direction: column; gap: 0.5rem; }
+  .actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+  .muted { color: var(--fg-soft); }
+  .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+  .between { justify-content: space-between; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 980px) { .grid-2 { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .topbar {
+      display: flex; align-items: center; gap: 12px; background: var(--bg-card);
+      border-bottom: 1px solid var(--line); padding: 10px 16px; position: sticky; top: 0; z-index: 40;
+    }
+    .topbar .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .topbar .brand img { height: 30px; width: auto; }
+    .topbar .brand-name { font-weight: 700; font-size: 15px; letter-spacing: .05em; color: var(--fg); }
+    .topbar .brand-sub { font-size: 10px; color: var(--fg-faint); letter-spacing: .14em; text-transform: uppercase; }
+    .topbar .tb-user { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+    .topbar .tb-user .logout { background: none; border: 1px solid var(--line); padding: 5px 9px; font: inherit; font-weight: 600; cursor: pointer; color: var(--fg); }
+    .mob-nav {
+      display: flex; gap: 5px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      padding: 8px 16px; background: var(--bg-card); border-bottom: 1px solid var(--line);
+      position: sticky; top: 51px; z-index: 39;
+    }
+    .mob-nav a {
+      white-space: nowrap; padding: 6px 11px; font-size: 13px; font-weight: 500;
+      color: var(--fg-soft); background: var(--line-soft); text-decoration: none;
+    }
+    .mob-nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
+    .content { padding: 20px 16px 48px; max-width: 100%; }
+    .app.no-sidebar .content { padding-top: 36px; }
+    .kpis { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 480px) {
+    .kpis { grid-template-columns: 1fr; }
+    .kpi { border-left: 0; border-top: 1px solid var(--line-soft); }
+    .kpi:first-child { border-top: 0; }
+  }
 </style>
 <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-<header class="top">
-  <a class="brand" href="{% url 'inventory:home' %}" style="text-decoration:none;">
-    <img src="{% static 'brand/kasia-logo.jpg' %}" alt="Kasia">
-    <span class="subtitle">sklad</span>
-  </a>
-  <nav>
-    {% if user.is_authenticated %}
-      <a href="{% url 'inventory:catalogue_index' %}">Katalog</a>
-      <a href="{% url 'inventory:supplier_index' %}">Dodavatelé</a>
-      <a href="{% url 'inventory:customer_index' %}">Odběratelé</a>
-      <a href="{% url 'inventory:prijem_create' %}">Příjem</a>
-      <a href="{% url 'inventory:vydej_create' %}">Výdej</a>
-      <a href="{% url 'inventory:mixing_job_index' %}">Míchání</a>
-      <a href="{% url 'inventory:planned_transfer_index' %}">Převody</a>
-      <a href="{% url 'inventory:dodaci_list_index' %}">Dodací listy</a>
-      <a href="{% url 'inventory:movement_history' %}">Historie</a>
-      <a href="{% url 'inventory:support' %}">Podpora</a>
-      {% if user.is_vlastnik %}
-        <a href="{% url 'inventory:branch_index' %}">Pobočky</a>
-        <a href="{% url 'accounts:user_index' %}">Uživatelé</a>
-        <a href="{% url 'inventory:settings_edit' %}">Nastavení</a>
-      {% endif %}
-      <a href="{% url 'password_change' %}">Změnit heslo</a>
-      <span class="who">{{ user.email }}</span>
-      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Odhlásit</button></form>
+{% url 'inventory:home' as home_url %}
+{% with un=request.resolver_match.url_name %}
+<div class="app{% if not user.is_authenticated %} no-sidebar{% endif %}">
+
+{% if user.is_authenticated %}
+  {# ---- mobile top bar ---- #}
+  <div class="topbar">
+    <a class="brand" href="{{ home_url }}">
+      <img src="{% static 'brand/kasia-logo.jpg' %}" alt="Kasia">
+      <span class="brand-text">
+        <span class="brand-name">KASIA</span>
+      </span>
+    </a>
+    <span class="tb-user">
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="logout">Odhlásit</button></form>
+    </span>
+  </div>
+  <nav class="mob-nav" aria-label="Hlavní navigace (mobil)">
+    <a href="{{ home_url }}"{% if un == 'home' or un == 'branch_dashboard' %} class="active"{% endif %}>Přehled</a>
+    <a href="{% url 'inventory:catalogue_index' %}"{% if un == 'catalogue_index' %} class="active"{% endif %}>Katalog</a>
+    <a href="{% url 'inventory:supplier_index' %}"{% if un == 'supplier_index' %} class="active"{% endif %}>Dodavatelé</a>
+    <a href="{% url 'inventory:customer_index' %}"{% if un == 'customer_index' %} class="active"{% endif %}>Odběratelé</a>
+    <a href="{% url 'inventory:prijem_create' %}"{% if un == 'prijem_create' %} class="active"{% endif %}>Příjem</a>
+    <a href="{% url 'inventory:vydej_create' %}"{% if un == 'vydej_create' %} class="active"{% endif %}>Výdej</a>
+    <a href="{% url 'inventory:mixing_job_index' %}"{% if un == 'mixing_job_index' %} class="active"{% endif %}>Míchání</a>
+    <a href="{% url 'inventory:planned_transfer_index' %}"{% if un == 'planned_transfer_index' %} class="active"{% endif %}>Převody</a>
+    <a href="{% url 'inventory:dodaci_list_index' %}"{% if un == 'dodaci_list_index' %} class="active"{% endif %}>Dodací listy</a>
+    <a href="{% url 'inventory:movement_history' %}"{% if un == 'movement_history' %} class="active"{% endif %}>Historie</a>
+    <a href="{% url 'inventory:support' %}"{% if un == 'support' %} class="active"{% endif %}>Podpora</a>
+    {% if user.is_vlastnik %}
+      <a href="{% url 'inventory:branch_index' %}"{% if un == 'branch_index' %} class="active"{% endif %}>Pobočky</a>
+      <a href="{% url 'accounts:user_index' %}"{% if un == 'user_index' %} class="active"{% endif %}>Uživatelé</a>
+      <a href="{% url 'inventory:settings_edit' %}"{% if un == 'settings_edit' %} class="active"{% endif %}>Nastavení</a>
     {% endif %}
   </nav>
-</header>
-<main>
+
+  {# ---- desktop sidebar ---- #}
+  <aside class="sidebar">
+    <a class="brand" href="{{ home_url }}">
+      <img src="{% static 'brand/kasia-logo.jpg' %}" alt="Kasia">
+      <span class="brand-text">
+        <span class="brand-name">KASIA</span>
+        <span class="brand-sub">sklad</span>
+      </span>
+    </a>
+    <nav class="nav" aria-label="Hlavní navigace">
+      <span class="nav-label">Provoz</span>
+      <a href="{{ home_url }}"{% if un == 'home' or un == 'branch_dashboard' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        Přehled
+      </a>
+      <a href="{% url 'inventory:catalogue_index' %}"{% if un == 'catalogue_index' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h12"/></svg>
+        Katalog
+      </a>
+      <a href="{% url 'inventory:supplier_index' %}"{% if un == 'supplier_index' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 21V8l6-4 6 4v13"/><path d="M15 21V11l6 4v6"/><path d="M3 21h18"/></svg>
+        Dodavatelé
+      </a>
+      <a href="{% url 'inventory:customer_index' %}"{% if un == 'customer_index' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/><path d="M21 21v-1a5 5 0 0 0-4-4.9"/></svg>
+        Odběratelé
+      </a>
+      <a href="{% url 'inventory:prijem_create' %}"{% if un == 'prijem_create' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        Příjem
+      </a>
+      <a href="{% url 'inventory:vydej_create' %}"{% if un == 'vydej_create' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>
+        Výdej
+      </a>
+      <a href="{% url 'inventory:mixing_job_index' %}"{% if un == 'mixing_job_index' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 3v6a6 6 0 0 0 12 0V3"/><path d="M8 21h8M12 15v6"/></svg>
+        Míchání
+      </a>
+      <a href="{% url 'inventory:planned_transfer_index' %}"{% if un == 'planned_transfer_index' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8h13l-3-3m3 3-3 3"/><path d="M20 16H7l3-3m-3 3 3 3"/></svg>
+        Převody
+      </a>
+      <a href="{% url 'inventory:dodaci_list_index' %}"{% if un == 'dodaci_list_index' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
+        Dodací listy
+      </a>
+      <a href="{% url 'inventory:movement_history' %}"{% if un == 'movement_history' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/></svg>
+        Historie
+      </a>
+      <a href="{% url 'inventory:support' %}"{% if un == 'support' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .8-1 1.7"/><path d="M12 17h.01"/></svg>
+        Podpora
+      </a>
+      {% if user.is_vlastnik %}
+        <span class="nav-label">Správa</span>
+        <a href="{% url 'inventory:branch_index' %}"{% if un == 'branch_index' %} class="active" aria-current="page"{% endif %}>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 9l3-5h12l3 5"/><path d="M9 21v-6h6v6"/></svg>
+          Pobočky
+        </a>
+        <a href="{% url 'accounts:user_index' %}"{% if un == 'user_index' %} class="active" aria-current="page"{% endif %}>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/></svg>
+          Uživatelé
+        </a>
+        <a href="{% url 'inventory:settings_edit' %}"{% if un == 'settings_edit' %} class="active" aria-current="page"{% endif %}>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-2.88 1.2V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 7 19.6a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 2.6 14H2.5a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.4 9 1.7 1.7 0 0 0 4.06 7.1L4 7.05a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6h.09A1.7 1.7 0 0 0 10 2.6V2.5a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.4a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.6 9v.09A1.7 1.7 0 0 0 21.4 10h.1a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.6 1Z"/></svg>
+          Nastavení
+        </a>
+      {% endif %}
+    </nav>
+    <div class="user">
+      <a href="{% url 'password_change' %}" class="email" title="{{ user.email }}">{{ user.email }}</a>
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="logout">Odhlásit</button></form>
+    </div>
+  </aside>
+{% endif %}
+
+<main class="content" id="main">
   {% if messages %}
     <div class="messages">
       {% for m in messages %}
@@ -280,6 +402,8 @@
   {% endif %}
   {% block content %}{% endblock %}
 </main>
+</div>
+{% endwith %}
 <script>
   // Wire up "× Smazat" / "Vrátit zpět" toggle on formset rows.
   // Delegated so it works for rows added later via HTMX.

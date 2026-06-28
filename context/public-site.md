@@ -141,3 +141,26 @@ mockup-gallery round). The broader `design-options/public/` gallery (linked
 from `/navrhy/`) remains a style-exploration artifact for the homepage
 direction; its `05-kontakt.html` still shows a form and is **not** the live
 page.
+
+As of [`0054`](./decisions/0054-adopt-ui-directions.md) the live look ports the
+`design-options/public/11-centered-modern.html` direction onto this content:
+centered/curvy/green.
+
+### Visual assets & styling (decision 0054)
+- **Logo:** `kasia/static/brand/kasia-logo.jpg`, top-left wordmark
+  ("Kasia vera"); referenced via `{% static %}`.
+- **SVG art:** hand-authored green vector, no raster generation.
+  `kasia/static/web/art-hero.svg` is the homepage hero motif (mortar +
+  herbs); homepage cards use inline green SVG line-icons. A commented
+  `web/hero-photo.jpg` slot in `web/home.html` is left for Petr's real photo.
+  New SVG assets are committed to git so build-time `collectstatic` finds them.
+- **Fonts:** **Sora** (headings) + **Inter** (body), loaded from Google Fonts
+  via a `<link>` placed before the `<style>` block in `web/base.html`.
+- **Palette:** company green — `--green:#235c33`, `--green-dark:#18421f`,
+  `--green-soft:#eef4ee`, accent `--spice:#c2581c`. Defined in the
+  `web/base.html` `:root`; reference the vars, not raw hex.
+- **Radius / shadow:** 18px (cards) / 999px (pills); soft layered shadows.
+- **Maps:** functional OpenStreetMap embeds stay on Provozovny/Kontakt
+  (`.map-embed` frame restyled only); the footer keeps the cookie-free note.
+- **Class contract + sklad counterpart:** see
+  [`.claude/rules/design-system.md`](../.claude/rules/design-system.md).

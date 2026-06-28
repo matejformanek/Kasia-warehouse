@@ -272,7 +272,27 @@
   .map-embed iframe { display: block; width: 100%; border: 0; }
   .map-embed.tall iframe { height: 360px; }
   .map-embed.short iframe { height: 200px; }
-  .map-actions { margin-top: 0.75rem; }
+  .map-actions { margin: 0.85rem 0 0; }
+  .map-actions a { font-weight: 600; text-decoration: none; }
+  .map-actions a:hover { text-decoration: underline; }
+
+  /* Contact meta rows inside a branch card (provozovny) */
+  .branch .meta { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 0.85rem; margin: 0.6rem 0 0; }
+  .branch .meta dt { color: var(--muted); font-weight: 600; margin: 0; }
+  .branch .meta dd { margin: 0; }
+  .branch .meta a { text-decoration: none; color: var(--green); }
+  .branch .meta a:hover { text-decoration: underline; }
+
+  /* Long-form article (O nás): readable measure + accented section heads */
+  .article { max-width: var(--maxw-narrow); }
+  .article .article-photo {
+    width: 100%; border-radius: var(--radius); box-shadow: var(--shadow);
+    margin: 1.75rem 0 0.5rem; display: block;
+  }
+  .article h2 {
+    margin-top: 2.5rem; padding-left: 0.95rem; line-height: 1.2;
+    border-left: 4px solid var(--green-500);
+  }
 
   /* ===== Homepage helper sections (0054 refinement: de-box the page) ===== */
   /* Prose "O nás" band — text-left / media-right, not a grid of cards */

@@ -1644,6 +1644,28 @@
     not just pytest strings — the step missing last time). **No deploy** — by
     Matej's instruction after the unsanctioned first deploy, this is verified
     locally and waits for explicit go-ahead before touching `main`/prod.
+  - **Round 2 (same session, on local-eyeball feedback):**
+    - **Sklad content centered** — `.content` got `margin: 0 auto` so a wide
+      desktop centers the 1180px column instead of hugging the sidebar with a
+      big empty right gutter.
+    - **Themed edit-form fields** (`base.html`) — inputs/selects/textareas get a
+      faint fill, hover border, accent inset focus ring, and a custom SVG caret
+      on `<select>` (still radius-0 per 0054) so the *upravit* forms don't read
+      as raw browser widgets.
+    - **Historie tab-chips fixed** — the active chip was double-classed
+      `primary tab-chip` (button padding/line-height fighting the chip styles,
+      causing the shifted text + stray gap); now plain `.tab-chip` /
+      `.tab-chip.active`, container `align-items:center`. (Only `movement_history`
+      had this pattern.)
+    - **Public polish** — O nás wrapped in `.article` (readable measure, rounded
+      shadowed lead photo, green-accented section heads); provozovny phone/hours
+      moved to a tidy `.meta` definition list; map link styled.
+    - Note: the Nastavení **500 was a stale local DB**, not code — the running
+      dev Postgres was missing migrations `0012_settings_recipients_table` +
+      `0013_seed_stock_for_existing_products`; `manage.py migrate` fixed it
+      (those migrations already ship in the repo). Now 200.
+    - Re-verified: check / ruff clean, **349 pytest green**, collectstatic clean,
+      and all pages re-rendered via the rebuilt docker stack. Still **no deploy**.
 
 ## Hand-off for the next session (post-compact)
 

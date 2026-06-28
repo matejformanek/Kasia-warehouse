@@ -140,14 +140,4 @@ EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@example.cz")
 
-# --- Public contact form (per 0051) ----------------------------------------
-# Where kontakt-form poptávky are e-mailed. The inquiry is persisted to the DB
-# regardless; the e-mail is a best-effort notification (web/views.py). Defaults
-# to the public info address; override via env without touching code.
-CONTACT_INQUIRY_RECIPIENTS = [
-    e.strip()
-    for e in os.environ.get("CONTACT_INQUIRY_EMAIL", "info@kasia.cz").split(",")
-    if e.strip()
-]
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

@@ -1,33 +1,19 @@
-"""Public marketing site views (decisions 0050 + 0051).
+"""Public marketing site views (decisions 0050 + 0051; 0052 made Kontakt info-only).
 
 Every view is decorated ``@login_not_required`` — the global
 LoginRequiredMiddleware (decision 0020) has no include-level opt-out, so each
 public view must exempt itself, exactly like ``healthz`` and the ``/navrhy/``
-redirect in ``kasia/urls.py``. The decorator covers BOTH the GET and POST
-branch of the kontakt form; without it a POST would 302 to
-``/sklad/prihlaseni/`` before the inquiry is ever saved.
+redirect in ``kasia/urls.py``. Every page is a plain GET render; the public
+site stores no data (the contact form was removed in 0052), so ``web`` no
+longer imports from ``inventory`` — it is a clean leaf app.
 """
 
-import logging
-
-from django.conf import settings
 from django.contrib.auth.decorators import login_not_required
-from django.core.mail import EmailMessage
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
-from .content import COMPANY, NAV, PROVOZOVNY
-from .forms import ContactInquiryForm
-from .models import ContactInquiry
-
-logger = logging.getLogger(__name__)
-
-# Where kontakt-form notifications go. Public marketing address by default;
-# overridable via env so it can be retargeted without code changes.
-_CONTACT_RECIPIENTS = getattr(
-    settings, "CONTACT_INQUIRY_RECIPIENTS", [COMPANY["email"]]
-)
+from .content import COMPANY, EXECUTIVES, NAV, PROVOZOVNY
 
 
 def _public_context(active: str, **extra) -> dict:
@@ -58,72 +44,13 @@ def provozovny(request):
 
 @login_not_required
 def kontakt(request):
-    """GET renders the kontakt form; POST persists a ContactInquiry, then
-    attempts an e-mail notification (failure never loses the saved row)."""
-    if request.method == "POST":
-        form = ContactInquiryForm(request.POST)
-        if form.is_valid():
-            inquiry = form.save()
-            _notify_inquiry(inquiry)
-            return redirect("web:kontakt_ok")
-    else:
-        form = ContactInquiryForm()
+    """Info-only Kontakt page (decision 0052): contact panel + executive
+    directory + an embedded map. No form, no POST."""
     return render(
-        request, "web/kontakt.html", _public_context("web:kontakt", form=form)
+        request,
+        "web/kontakt.html",
+        _public_context("web:kontakt", executives=EXECUTIVES),
     )
-
-
-@login_not_required
-def kontakt_ok(request):
-    return render(request, "web/kontakt_ok.html", _public_context("web:kontakt"))
-
-
-def _notify_inquiry(inquiry: ContactInquiry) -> None:
-    """Best-effort e-mail notification of a new poptávka.
-
-    Wrapped in try/except and never re-raised, mirroring
-    inventory.services.send_dodaci_list_email (decision 0019). The inquiry is
-    already committed; a missing/broken SMTP config must not surface to the
-    public visitor or lose the row.
-
-    The SMTP connection + From address are built from the same
-    ``Settings``-DB-first source of truth the warehouse e-mails use
-    (decision 0049), so the contact form does not re-introduce a second,
-    env-only SMTP surface. Imports are local to keep web ↔ inventory
-    coupling at call time, not module load.
-    """
-    from inventory.models import Settings
-    from inventory.services import _smtp_connection_from_settings
-
-    s = Settings.load()
-    from_email = (
-        f"{s.email_from_name} <{s.email_from_address}>"
-        if s.email_from_name and s.email_from_address
-        else (s.email_from_address or None)  # None → Django uses DEFAULT_FROM_EMAIL
-    )
-    subject = f"Nová poptávka z webu — {inquiry.name}"
-    body = (
-        f"Jméno: {inquiry.name}\n"
-        f"E-mail: {inquiry.email}\n"
-        f"Telefon: {inquiry.phone or '—'}\n"
-        f"Odesláno: {inquiry.created_at:%d. %m. %Y %H:%M}\n\n"
-        f"Zpráva:\n{inquiry.message}\n"
-    )
-    try:
-        EmailMessage(
-            subject=subject,
-            body=body,
-            from_email=from_email,
-            to=_CONTACT_RECIPIENTS,
-            reply_to=[inquiry.email],
-            connection=_smtp_connection_from_settings(s),
-        ).send(fail_silently=False)
-    except Exception:  # noqa: BLE001 — durability over uptime (0051)
-        logger.warning(
-            "Contact inquiry #%s saved but e-mail notification failed",
-            inquiry.pk,
-            exc_info=True,
-        )
 
 
 # --- robots.txt + sitemap.xml (hand-rolled; no django.contrib.sitemaps) -----

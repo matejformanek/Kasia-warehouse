@@ -1,38 +1,44 @@
 {% extends "web/base.html" %}
+{% load static %}
 
 {% block title %}Provozovny — {{ company.legal_name }}{% endblock %}
-{% block meta_description %}Provozovny {{ company.legal_name }}: sídlo v Říčanech u Prahy a provozní sklady v Týništi nad Orlicí a Sezimově Ústí.{% endblock %}
+{% block meta_description %}Provozovny {{ company.legal_name }}: sídlo v Říčanech u Prahy a provozovny v Sezimově Ústí, Toužimi a Týništi nad Orlicí.{% endblock %}
 
 {% block content %}
 <section>
   <div class="wrap">
     <p class="eyebrow">Kde nás najdete</p>
     <h1>Provozovny</h1>
-    <p class="lead" style="max-width:60ch;">
-      Sídlo firmy je v Říčanech u Prahy; zpracování a sklad zajišťují dvě
-      provozní pracoviště.
+    <p class="lead" style="max-width:62ch;">
+      Sídlo firmy je v Říčanech u Prahy; další provozovny najdete v Sezimově
+      Ústí, Toužimi a Týništi nad Orlicí.
     </p>
 
-    <div class="grid cols-3" style="margin-top:2rem;">
+    <div class="branches" style="margin-top:2rem;">
       {% for p in provozovny %}
-        <div class="card">
-          <p class="eyebrow">{{ p.role }}</p>
-          <h3>{{ p.name }}</h3>
-          <p>
-            {% if p.street %}{{ p.street }}<br>{% endif %}
-            {% if p.postal_code %}{{ p.postal_code }} {% endif %}{{ p.city }}
-          </p>
-          {% if p.phone %}
+        <div class="card branch">
+          {% if p.photo %}
+            <img class="photo" src="{% static p.photo %}" alt="{{ p.name }} — {{ p.role }}" loading="lazy">
+          {% endif %}
+          <div class="body">
+            <span class="badge{% if p.is_hq %} hq{% endif %}">{{ p.role }}</span>
+            <h3>{{ p.name }}</h3>
+            <p class="addr">
+              {{ p.street }}<br>
+              {{ p.postal_code }} {{ p.city }}
+            </p>
             <p>Telefon: <a href="tel:{{ p.phone|cut:' ' }}">{{ p.phone }}</a></p>
-          {% endif %}
-          <p>Otevírací doba: {{ p.hours }}</p>
-          {% if p.note %}
-            <p class="helptext">{{ p.note }}</p>
-          {% endif %}
-          <p>
-            <a href="https://www.google.com/maps/search/?api=1&amp;query={{ p.map_query|urlencode }}"
-               target="_blank" rel="noopener">Zobrazit na mapě →</a>
-          </p>
+            <p>Otevírací doba: {{ p.hours }}</p>
+            <div class="map-embed short" style="margin-top:0.5rem;">
+              <iframe src="{{ p.map_embed }}" loading="lazy"
+                      title="Mapa — {{ p.name }}, {{ p.street }}, {{ p.city }}"
+                      referrerpolicy="no-referrer"></iframe>
+            </div>
+            <p class="map-actions">
+              <a href="https://www.google.com/maps/search/?api=1&amp;query={{ p.map_query|urlencode }}"
+                 target="_blank" rel="noopener">Otevřít v mapách →</a>
+            </p>
+          </div>
         </div>
       {% endfor %}
     </div>

@@ -1,5 +1,7 @@
 # 0051 — Public-site information architecture, content, and the `ContactInquiry` model
 
+> **Partially superseded by [0052](./0052-kontakt-info-only-drop-contactinquiry.md)** — the Kontakt poptávkový formulář and the `ContactInquiry` durable-store rationale no longer apply; Kontakt is now an info-only page. The four-page IA, content-decoupling, and modern-web essentials below still stand.
+
 ## Context
 
 [`0050`](./0050-public-site-and-sklad-split.md) establishes *that* a

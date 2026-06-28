@@ -22,7 +22,7 @@ class _MovementBaseForm(forms.Form):
     date_issued = forms.DateField(
         label="Datum vystavení",
         initial=date.today,
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
     note = forms.CharField(
         label="Poznámka",
@@ -94,7 +94,7 @@ class MovementLineForm(forms.Form):
     expiry = forms.DateField(
         label="Expirace",
         required=False,
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
     note = forms.CharField(label="Poznámka", max_length=256, required=False)
 
@@ -540,7 +540,9 @@ class PlannedTransferForm(forms.ModelForm):
             "notes",
         )
         widgets = {
-            "scheduled_for": forms.DateInput(attrs={"type": "date"}),
+            "scheduled_for": forms.DateInput(
+                attrs={"type": "date"}, format="%Y-%m-%d"
+            ),
             "notes": forms.Textarea(attrs={"rows": 2}),
             "quantity_kg": forms.NumberInput(attrs={"step": "0.001"}),
         }
@@ -599,7 +601,7 @@ class MixingPlanForm(forms.Form):
     )
     planned_for = forms.DateField(
         label="Plánováno na",
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
         required=False,
         initial=date.today,
     )

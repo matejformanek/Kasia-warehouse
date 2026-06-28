@@ -5565,8 +5565,8 @@ def test_planned_transfer_create_view_prefills_today(user_vlastnik) -> None:
     response = client.get("/sklad/prevody/novy/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
-    # Date input value is l10n'd (Czech format).
-    assert f'value="{date.today().strftime("%d.%m.%Y")}"' in body
+    # ISO YYYY-MM-DD — browsers only honour ISO in <input type="date">.
+    assert f'value="{date.today().isoformat()}"' in body
 
 
 @pytest.mark.django_db
@@ -5578,8 +5578,32 @@ def test_mixing_plan_form_prefills_today(user_vlastnik, tyn) -> None:
     response = client.get("/sklad/michani/planovat/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
-    # Date input value is l10n'd (Czech format).
-    assert f'value="{date.today().strftime("%d.%m.%Y")}"' in body
+    # ISO YYYY-MM-DD — browsers only honour ISO in <input type="date">.
+    assert f'value="{date.today().isoformat()}"' in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_prijem_create_view_prefills_today_iso(user_obsluha_tyn) -> None:
+    """GET /sklad/prijem/novy/ renders date_issued pre-filled with today (ISO)."""
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/sklad/prijem/novy/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert f'value="{date.today().isoformat()}"' in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_vydej_create_view_prefills_today_iso(user_obsluha_tyn) -> None:
+    """GET /sklad/vydej/novy/ renders date_issued pre-filled with today (ISO)."""
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/sklad/vydej/novy/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert f'value="{date.today().isoformat()}"' in body
 
 
 @pytest.mark.django_db(transaction=True)

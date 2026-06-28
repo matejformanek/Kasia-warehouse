@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from django.core.exceptions import ValidationError
@@ -485,13 +485,40 @@ def render_dodaci_list_pdf(dodaci_list: DodaciList) -> bytes:
     return HTML(string=html_string).write_pdf()
 
 
-def render_recipe_pdf(product: Product) -> bytes:
-    """Render a mixture's recipe sheet (ingredients + ratios + the free-form
-    mixing notes) to PDF via WeasyPrint, reusing the dodák PDF infra (0017).
+def _amounts_summing_to(
+    ratios: list[Decimal], total: Decimal, places: int
+) -> list[Decimal]:
+    """Round each ``ratio * total`` to ``places`` decimals so the rounded
+    parts sum **exactly** to ``total``.
 
-    The notes are the free-form packing / mixing instructions captured from
-    Petr's XLS on import (0048) and stored on ``Product.notes`` — surfaced
-    here as "additional mixing info" per the operator's request.
+    Ratios are assumed to sum to ~1.0 (the importer normalises them). Per-row
+    half-up rounding can drift the column total by a few units in the last
+    place (e.g. 33.33 × 3 = 99.99, or Knedlík's % summing to 100.01); we put
+    the whole rounding difference on the largest line so both the rows and the
+    total stay consistent.
+    """
+    q = Decimal(1).scaleb(-places)  # 0.01 for places=2, 0.001 for places=3
+    amounts = [(r * total).quantize(q, rounding=ROUND_HALF_UP) for r in ratios]
+    if not amounts:
+        return amounts
+    diff = total - sum(amounts, Decimal("0"))
+    largest = max(range(len(amounts)), key=lambda i: amounts[i])
+    amounts[largest] = (amounts[largest] + diff).quantize(q)
+    return amounts
+
+
+def render_recipe_pdf(product: Product, target_qty: Decimal | None = None) -> bytes:
+    """Render a mixture's recipe sheet (ingredient amounts for ``target_qty``
+    + the free-form mixing notes) to PDF via WeasyPrint, reusing the dodák PDF
+    infra (0017).
+
+    ``target_qty`` is the batch size chosen in the "Spočítat dávku" box
+    (defaults to 100 kg). The notes are the free-form packing / mixing
+    instructions captured from Petr's XLS on import (0048) and stored on
+    ``Product.notes``.
+
+    Percentages and per-batch kg are rounded to sum **exactly** to 100 % /
+    ``target_qty`` (per 0055 — Knedlík rounded to 100.01 % otherwise).
 
     Raises ``ValueError`` (Czech) if the product is not a mixture or has no
     recipe rows.
@@ -512,16 +539,17 @@ def render_recipe_pdf(product: Product) -> bytes:
     if not components:
         raise ValueError("Tato směs nemá vyplněnou recepturu.")
 
+    if target_qty is None or target_qty <= 0:
+        target_qty = Decimal("100")
+    target_qty = target_qty.quantize(Decimal("0.001"))
+
+    ratios = [c.ratio for c in components]
+    pcts = _amounts_summing_to(ratios, Decimal("100"), 2)
+    kgs = _amounts_summing_to(ratios, target_qty, 3)
     rows = [
-        {
-            "name": c.component_product.name_cs,
-            "ratio": c.ratio,
-            "pct": (c.ratio * Decimal("100")).quantize(Decimal("0.01")),
-            "per_100kg": (c.ratio * Decimal("100")).quantize(Decimal("0.001")),
-        }
-        for c in components
+        {"name": c.component_product.name_cs, "pct": pct, "kg": kg}
+        for c, pct, kg in zip(components, pcts, kgs, strict=True)
     ]
-    total_pct = sum((r["pct"] for r in rows), Decimal("0"))
 
     bundled_logo = Path(django_settings.BASE_DIR) / "kasia" / "static" / "brand" / "kasia-logo.jpg"
     default_logo_url = f"file://{bundled_logo}" if bundled_logo.exists() else ""
@@ -531,7 +559,8 @@ def render_recipe_pdf(product: Product) -> bytes:
         {
             "product": product,
             "rows": rows,
-            "total_pct": total_pct,
+            "target_qty": target_qty,
+            "total_pct": sum(pcts, Decimal("0")),
             "notes": product.notes,
             "settings": Settings.load(),
             "default_logo_url": default_logo_url,

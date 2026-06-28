@@ -33,11 +33,21 @@ field styling — fixed as a cosmetic bug, not a decision.)
    on the mixture product-detail page (and stop double-showing it in the stock
    card for mixtures). Add a "Zahájit míchání →" link to the real mixing-job flow
    so the recipe view has an actionable next step.
-2. **Add a recipe PDF**: `render_recipe_pdf(product)` in `services.py` →
-   `inventory/recipe_pdf.html` (A4, ingredient table with podíl / % / per-100 kg,
-   plus the mixing notes), served by `recipe_pdf` view at
-   `/sklad/katalog/<pk>/receptura/pdf/`. 404 for non-mixtures / recipe-less
-   mixtures.
+2. **Make "Spočítat dávku" the interactive batch tool** on the mixture detail
+   page: a kg input (accepts `12,5` and `12.5`) + quick-preset buttons
+   (5/10/25/50/100 kg); the "Potřeba (kg)" column recomputes live; the
+   **PDF button lives here** and carries the chosen qty (`?qty=`).
+3. **Add a recipe PDF**: `render_recipe_pdf(product, target_qty=100)` in
+   `services.py` → `inventory/recipe_pdf.html` (A4, ingredient table with
+   Podíl (%) + Potřeba for the chosen batch, plus the mixing notes), served by
+   `recipe_pdf` view at `/sklad/katalog/<pk>/receptura/pdf/?qty=<kg>`. 404 for
+   non-mixtures / recipe-less mixtures.
+4. **Exact-sum rounding** (`_amounts_summing_to`): per-row half-up rounding
+   drifts the column total (Knedlík's % summed to 100.01); the whole rounding
+   difference is put on the largest line so both the % column (→ 100.00) and the
+   kg column (→ target) sum exactly.
+5. **Pre-select the směs** on `mixing_job_create` when arriving via
+   "Zahájit míchání →" (`?mixture=<pk>`).
 
 No new model, no migration, no new dependency. Reuses WeasyPrint + the bundled
 logo fallback.

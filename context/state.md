@@ -1687,8 +1687,20 @@
     Django's plain defaults (DEBUG=False only).
   - Verified: check / ruff clean, **353 pytest green** (+4: recipe PDF download,
     404-for-raw-spice, notes+PDF-link on detail, branded-404), collectstatic clean,
-    recipe PDF + detail re-rendered via the docker stack. **PR to be opened** for
-    review → merge to live (Matej's call).
+    recipe PDF + detail re-rendered via the docker stack. PR opened (#9).
+  - **Round 2 on the same screen (Matej's feedback):**
+    - **"Spočítat dávku" is now the interactive tool** — the PDF button moved
+      here from the Receptura card; kg input accepts `12,5` / `12.5`; quick
+      presets 5/10/25/50/100 kg; the "Potřeba (kg)" column recomputes live; the
+      PDF link carries the chosen qty (`?qty=`), so the PDF matches what's on
+      screen.
+    - **Exact-sum rounding** (`_amounts_summing_to`) — Knedlík's % summed to
+      100.01; now the rounding difference lands on the largest line so the %
+      column sums to exactly 100.00 and the kg column to the target.
+    - **"Zahájit míchání →" pre-selects the směs** (`?mixture=<pk>` →
+      `mixing_job_create` marks the option selected).
+    - **356 pytest green** (+3: qty PDF, exact-sum unit test, mixture preselect);
+      re-rendered + Knedlík 100.00 % confirmed via the docker stack.
 
 ## Hand-off for the next session (post-compact)
 

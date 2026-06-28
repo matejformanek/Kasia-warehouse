@@ -1026,11 +1026,17 @@ def dodaci_list_pdf(request, cislo: str):
 
 @require_GET
 def recipe_pdf(request, pk: int):
-    """Download a mixture's recipe sheet (ingredients + ratios + mixing notes)
-    as a PDF. 404 for non-mixtures or recipe-less mixtures."""
+    """Download a mixture's recipe sheet (ingredient amounts for the chosen
+    batch size + mixing notes) as a PDF. The batch size comes from ``?qty=``
+    (the "Spočítat dávku" box; defaults to 100 kg). 404 for non-mixtures or
+    recipe-less mixtures."""
     product = get_object_or_404(Product, pk=pk)
     try:
-        pdf_bytes = render_recipe_pdf(product)
+        target_qty = Decimal(request.GET.get("qty", ""))
+    except (InvalidOperation, ValueError):
+        target_qty = None
+    try:
+        pdf_bytes = render_recipe_pdf(product, target_qty=target_qty)
     except ValueError as exc:
         raise Http404(str(exc)) from exc
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
@@ -1268,6 +1274,13 @@ def mixing_job_create(request):
         if request.user.branch_id
         else (branches[0] if branches else None)
     )
+    # Pre-select the směs when arriving from a recipe page (?mixture=<pk>);
+    # keep the selection on POST validation errors.
+    selected_mixture_id = (
+        request.POST.get("mixture")
+        if request.method == "POST"
+        else request.GET.get("mixture")
+    ) or ""
 
     error: str | None = None
     if request.method == "POST":
@@ -1344,6 +1357,7 @@ def mixing_job_create(request):
             "is_branch_locked": bool(
                 request.user.is_obsluha and request.user.branch_id
             ),
+            "selected_mixture_id": str(selected_mixture_id),
             "error": error,
         },
     )

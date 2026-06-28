@@ -43,7 +43,7 @@
               hx-params="branch,mixture,target_qty">
         <option value="">— vyberte směs —</option>
         {% for m in mixtures %}
-          <option value="{{ m.pk }}">{{ m.name_cs }}</option>
+          <option value="{{ m.pk }}"{% if m.pk|stringformat:"s" == selected_mixture_id %} selected{% endif %}>{{ m.name_cs }}</option>
         {% endfor %}
       </select>
     </div>

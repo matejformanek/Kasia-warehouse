@@ -227,6 +227,68 @@
   </p>
 </form>
 
+{% if mode == "edit" and carry_rows %}
+  <div class="card">
+    <h2 style="font-size:1rem;margin-top:0;">Pobočky držící tento produkt</h2>
+    <p style="color:var(--fg-soft);font-size:0.9rem;">
+      Pobočka „drží“ produkt, pokud pro ni existuje skladová položka
+      (i s nulovým stavem). Jen držené pobočky se započítávají do
+      katalogu, do denního e-mailu „Dochází zboží“ a do nedělního
+      přehledu (per <code>0053</code>).
+    </p>
+
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Pobočka</th>
+          <th style="text-align:center;">Stav</th>
+          <th style="text-align:right;">Na skladě (kg)</th>
+          <th style="text-align:right;">Rezervováno (kg)</th>
+          {% if user.is_vlastnik %}
+            <th></th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in carry_rows %}
+          <tr class="line-row">
+            <td>{{ row.branch.code }} — {{ row.branch.name }}</td>
+            <td style="text-align:center;">
+              {% if row.carried %}
+                <span class="tab-chip" style="background:var(--ok-soft);color:var(--ok);">✓ Drží</span>
+              {% else %}
+                <span class="tab-chip">— Nedrží</span>
+              {% endif %}
+            </td>
+            <td style="text-align:right;">{{ row.quantity|floatformat:3 }}</td>
+            <td style="text-align:right;">{{ row.reserved|floatformat:3 }}</td>
+            {% if user.is_vlastnik %}
+              <td style="text-align:right;">
+                {% if row.carried %}
+                  <form method="post"
+                        action="{% url 'inventory:product_branch_remove' product_id=target.pk branch_id=row.branch.pk %}"
+                        style="display:inline;"
+                        onsubmit="return confirm('Odebrat {{ target.name_cs }} z {{ row.branch.code }}? Nyní: {{ row.quantity|floatformat:3 }} kg, {{ row.reserved|floatformat:3 }} kg rezervováno.');">
+                    {% csrf_token %}
+                    <button type="submit" class="row-delete-btn">Odebrat</button>
+                  </form>
+                {% else %}
+                  <form method="post"
+                        action="{% url 'inventory:product_branch_add' product_id=target.pk branch_id=row.branch.pk %}"
+                        style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="secondary">Přidat</button>
+                  </form>
+                {% endif %}
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+
 {% if mode == "edit" and user.is_vlastnik %}
   <div class="card">
     <h2 style="font-size:1rem;margin-top:0;">Archivace</h2>

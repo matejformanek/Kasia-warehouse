@@ -82,6 +82,17 @@ A storage location goods pass through on their way somewhere else.
 Not currently modelled in this system; included here so that future
 agents recognise the term if the owner uses it.
 
+### drží / nedrží
+
+**EN:** carries / does not carry.
+A pobočka **drží** a product iff a `Stock` row exists for that
+`(product, branch)` pair; existence of the row IS the carry-flag, per
+[`decisions/0053-stock-row-is-branch-carry.md`](./decisions/0053-stock-row-is-branch-carry.md).
+Branches that *nedrží* a product do not appear in the catalogue chips,
+the per-product detail table, or the daily *Dochází zboží* e-mail.
+Vlastník toggles carry-state via Přidat / Odebrat buttons on the
+product edit screen; obsluha sees the state read-only.
+
 ## Goods
 
 ### zboží

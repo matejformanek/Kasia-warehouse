@@ -39,7 +39,11 @@ its recipe definition.
     `effective < threshold` for this product. Only shown when no branch
     filter is in scope (`?branch=` empty AND user is not obsluha-locked);
     the existing "dochází / prázdné" badge already covers the single-
-    branch case.
+    branch case. Per
+    [`decisions/0053-stock-row-is-branch-carry.md`](../decisions/0053-stock-row-is-branch-carry.md)
+    the chip + the daily *Dochází zboží* mail only consider branches that
+    **drží** the product (a `Stock` row exists). Branches that *nedrží*
+    the product never appear, even with `effective = 0`.
   - For mixtures, a small marker indicating "má recepturu".
 - A count of how many items match the current filters.
 - For owner-level users: a "Přidat položku" action.

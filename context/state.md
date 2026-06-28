@@ -1518,6 +1518,29 @@
   forms the user actually complained about). 339 tests green, ruff clean,
   `manage.py check` clean.
 
+- **2026-06-28** — **Per-branch product availability landed**
+  ([`0053`](./decisions/0053-stock-row-is-branch-carry.md)). Fixes the
+  Cibule-on-TYN-falsely-critical report. Existence of a `Stock` row is now
+  the source of truth for *branch carries product*. `low_stock_rows`
+  iterates Stock rows instead of `Product × Branch`; catalogue chips +
+  product detail use the same Stock-driven iteration. Two new
+  vlastník-only POST views (`product_branch_add`,
+  `product_branch_remove`) wired under
+  `katalog/<id>/pobocky/<branch>/{pridat,odebrat}/`. Product edit gets a
+  *Pobočky držící tento produkt* fieldset with **Drží / Nedrží**
+  badges (read-only for obsluha) + Přidat / Odebrat buttons
+  (vlastník-only, native `confirm()` warns on non-zero on-hand or
+  reservations). `product_create` calls a new
+  `seed_branch_carriage_for_product` helper that seeds a 0-kg `Stock`
+  row for every active branch. Data migration
+  `0013_seed_stock_for_existing_products` backfills the same rows for
+  every existing (active product × active branch) pair on prod (no-op
+  reverse). New domain headwords *drží / nedrží* in
+  `context/domain-glossary.md`; mention added to screens 04 + 05.
+  Tests: one rewrite (`test_low_stock_rows_sorted_by_deficit` — SEZ no
+  longer appears without a Stock row) + seven new tests. 346 tests
+  green, ruff clean, `manage.py check` clean.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

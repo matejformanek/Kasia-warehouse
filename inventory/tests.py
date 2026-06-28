@@ -4785,7 +4785,8 @@ def test_low_stock_rows_sorted_by_deficit(
     tyn, sez, pepper, paprika
 ) -> None:
     """low_stock_rows() returns only below-threshold (product, branch)
-    pairs, sorted by deficit DESC."""
+    pairs that the branch *carries* (per 0053), sorted by deficit DESC.
+    SEZ has no Stock row for either product, so it does not appear."""
     from inventory.services import low_stock_rows
 
     pepper.reorder_threshold_kg = Decimal("5.000")
@@ -4796,14 +4797,11 @@ def test_low_stock_rows_sorted_by_deficit(
     Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("1.500"))
 
     rows = low_stock_rows()
-    # Both products at TYN are below threshold; SEZ has no Stock so
-    # effective = 0 < threshold for both — 4 total.
     deficits = [r.deficit for r in rows]
     assert deficits == sorted(deficits, reverse=True)
-    # The biggest deficit should come first.
     pairs = {(r.product.pk, r.branch.code) for r in rows}
-    assert (pepper.pk, "TYN") in pairs
-    assert (paprika.pk, "TYN") in pairs
+    # Only TYN rows appear — SEZ carries neither product (no Stock row).
+    assert pairs == {(pepper.pk, "TYN"), (paprika.pk, "TYN")}
 
 
 @pytest.mark.django_db
@@ -6088,3 +6086,168 @@ def test_dodaci_list_detail_no_banner_after_successful_resend(
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "Poslední odeslání selhalo." not in body
+
+
+# ---------------------------------------------------------------------------
+# Decision 0053 — Stock row existence IS the "branch carries product" flag.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_low_stock_summary_skips_branch_without_stock_row(
+    tyn, sez, pepper
+) -> None:
+    """Per 0053: a branch without a Stock row does not enter the
+    low-stock report, even when its 'effective = 0' would otherwise
+    register as below threshold."""
+    from inventory.services import low_stock_rows
+
+    pepper.reorder_threshold_kg = Decimal("10.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("5.000"))
+    # TYN intentionally has no Stock row for pepper.
+
+    rows = low_stock_rows()
+    pairs = {(r.product.pk, r.branch.code) for r in rows}
+    assert (pepper.pk, "SEZ") in pairs
+    assert (pepper.pk, "TYN") not in pairs
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_chip_omits_branch_without_stock_row(
+    user_vlastnik, tyn, sez, pepper
+) -> None:
+    """Catalogue per-branch chip does not appear for a branch that
+    doesn't carry the product (no Stock row)."""
+    pepper.reorder_threshold_kg = Decimal("10.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("5.000"))
+    # No Stock row at TYN.
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/katalog/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    pepper_row_idx = body.index("Pepř")
+    snippet = body[pepper_row_idx : pepper_row_idx + 2000]
+    import re
+
+    chips = re.findall(
+        r"<span class=\"tab-chip\"[^>]*>([A-Z]{3})</span>", snippet
+    )
+    assert "SEZ" in chips
+    assert "TYN" not in chips
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_create_seeds_stock_rows_for_all_active_branches(
+    user_vlastnik, tyn, sez
+) -> None:
+    """Per 0053: creating a product seeds a 0-kg Stock row on every
+    active branch, preserving today's 'visible everywhere' default."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/sklad/katalog/novy/",
+        {
+            "name_cs": "Kmín",
+            "kind": Product.Kind.RAW_SPICE,
+            "notes": "",
+            "reorder_threshold_kg": "",
+        },
+    )
+    assert response.status_code in (200, 302)
+    product = Product.objects.get(name_cs="Kmín")
+    branch_ids = set(
+        Stock.objects.filter(product=product).values_list(
+            "branch_id", flat=True
+        )
+    )
+    active_branch_ids = set(
+        Branch.objects.filter(is_active=True).values_list("id", flat=True)
+    )
+    assert branch_ids == active_branch_ids
+    assert all(
+        s.quantity == Decimal("0.000")
+        for s in Stock.objects.filter(product=product)
+    )
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_branch_add_creates_zero_stock_row(
+    user_vlastnik, tyn, pepper
+) -> None:
+    """Vlastník POST adds carry-state (0-kg Stock row). Second POST is a
+    no-op (idempotent)."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    url = f"/sklad/katalog/{pepper.pk}/pobocky/{tyn.pk}/pridat/"
+    r1 = client.post(url)
+    assert r1.status_code in (200, 302)
+    assert Stock.objects.filter(product=pepper, branch=tyn).exists()
+    stock = Stock.objects.get(product=pepper, branch=tyn)
+    assert stock.quantity == Decimal("0.000")
+    # Second POST stays idempotent.
+    r2 = client.post(url)
+    assert r2.status_code in (200, 302)
+    assert Stock.objects.filter(product=pepper, branch=tyn).count() == 1
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_branch_remove_deletes_row_even_with_stock(
+    user_vlastnik, tyn, pepper
+) -> None:
+    """Per 0053 + Matej's allow-but-warn pick: the server has no
+    precondition — removal succeeds even with quantity > 0. UI warns."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("3.500"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    url = f"/sklad/katalog/{pepper.pk}/pobocky/{tyn.pk}/odebrat/"
+    response = client.post(url)
+    assert response.status_code in (200, 302)
+    assert not Stock.objects.filter(product=pepper, branch=tyn).exists()
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_branch_add_forbidden_for_obsluha(
+    user_obsluha_tyn, tyn, pepper
+) -> None:
+    """Carry-state mutation is vlastník-only; obsluha gets 403."""
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    url = f"/sklad/katalog/{pepper.pk}/pobocky/{tyn.pk}/pridat/"
+    response = client.post(url)
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_edit_renders_pobocky_section_with_drzi_state(
+    user_vlastnik, tyn, sez, pepper
+) -> None:
+    """Product edit page shows the Pobočky section with the correct
+    drží/nedrží state per branch and the matching action button."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("2.000"))
+    # SEZ has no Stock row → nedrží.
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/sklad/katalog/{pepper.pk}/upravit/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Pobočky držící tento produkt" in body
+    assert "Drží" in body
+    assert "Nedrží" in body
+    # The TYN row has the Odebrat action; the SEZ row has Přidat.
+    assert (
+        f"/sklad/katalog/{pepper.pk}/pobocky/{tyn.pk}/odebrat/" in body
+    )
+    assert (
+        f"/sklad/katalog/{pepper.pk}/pobocky/{sez.pk}/pridat/" in body
+    )

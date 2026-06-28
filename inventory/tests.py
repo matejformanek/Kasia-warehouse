@@ -856,9 +856,10 @@ def test_apply_vydej_writes_sent_log(tyn, ricany, pepper, user_tyn) -> None:
 def test_apply_vydej_refuses_when_recipients_empty(
     tyn, ricany, pepper, user_tyn
 ) -> None:
-    s = Settings.load()
-    s.recipient_petr = ""
-    s.save()
+    from inventory.models import SettingsRecipient
+
+    # Per 0052: refuse when no active SettingsRecipient row exists.
+    SettingsRecipient.objects.update(is_active=False)
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     with pytest.raises(ValidationError):
         apply_movement(
@@ -1238,6 +1239,36 @@ _VIEW_TEST_OVERRIDES = {
     **_PLAIN_STATIC,
     **_LOCMEM_EMAIL,
 }
+
+
+def _recipient_formset_keepall() -> dict:
+    """POST-data dict for the SettingsRecipient formset that keeps every
+    existing row untouched. Tests POSTing /nastaveni/ that don't actually
+    care about the recipient rows include this via **kwargs to satisfy
+    the formset's management form + per-row required fields per 0052."""
+    from inventory.models import SettingsRecipient
+
+    rows = list(
+        SettingsRecipient.objects.all().order_by(
+            "-is_active", "sort_order", "id"
+        )
+    )
+    payload: dict = {
+        "recipient-TOTAL_FORMS": str(len(rows)),
+        "recipient-INITIAL_FORMS": str(len(rows)),
+        "recipient-MIN_NUM_FORMS": "0",
+        "recipient-MAX_NUM_FORMS": "1000",
+    }
+    for i, r in enumerate(rows):
+        payload[f"recipient-{i}-id"] = str(r.pk)
+        payload[f"recipient-{i}-email"] = r.email
+        payload[f"recipient-{i}-label"] = r.label
+        payload[f"recipient-{i}-sort_order"] = str(r.sort_order)
+        if r.is_active:
+            payload[f"recipient-{i}-is_active"] = "on"
+        if r.is_low_stock_recipient:
+            payload[f"recipient-{i}-is_low_stock_recipient"] = "on"
+    return payload
 
 
 @pytest.mark.django_db
@@ -2418,7 +2449,8 @@ def test_catalogue_shows_total_kg_for_vlastnik(
     assert "11,500" in body
     # New (Pass 6) header "Na skladě" + scope hint over both branches.
     assert "Na skladě" in body
-    assert "obě pobočky" in body
+    # Copy updated per Podpora feedback #4 — N-branch ready.
+    assert "všechny aktivní pobočky" in body
 
 
 @pytest.mark.django_db
@@ -2575,14 +2607,14 @@ def test_is_internal_customer_skips_dodaci_list(
     tyn, user_tyn, pepper
 ) -> None:
     """A vydej to an internal odběratel must NOT create a DodaciList +
-    must NOT require recipient_petr/karolina to be set."""
-    from inventory.models import Customer
+    must NOT require active SettingsRecipient rows."""
+    from inventory.models import Customer, SettingsRecipient
     from inventory.services import apply_movement
 
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     micharna = Customer.objects.get(name="Míchárna", is_internal=True)
-    # Clear settings recipients to prove the guard is real.
-    Settings.objects.update(recipient_petr="", recipient_karolina="")
+    # Clear all recipients to prove the guard is real (per 0052).
+    SettingsRecipient.objects.all().delete()
 
     mv = apply_movement(
         movement=Movement(
@@ -3105,17 +3137,16 @@ def test_settings_edit_save_updates_company(user_vlastnik) -> None:
         "smtp_password": "",
         "email_from_address": "no-reply@example.cz",
         "email_from_name": "Kasia vera",
-        "recipient_petr": initial.recipient_petr,
-        "recipient_karolina": initial.recipient_karolina,
         "template_initial_subject": initial.template_initial_subject,
         "template_initial_body": initial.template_initial_body,
         "template_oprava_subject": initial.template_oprava_subject,
         "template_oprava_body": initial.template_oprava_body,
         "template_low_stock_subject": initial.template_low_stock_subject,
         "template_low_stock_body": initial.template_low_stock_body,
+        **_recipient_formset_keepall(),
     }
     response = client.post("/sklad/nastaveni/", data)
-    assert response.status_code == 302
+    assert response.status_code == 302, response.content[:500]
     s = Settings.load()
     assert s.company_dic == "CZ25756729"
     assert s.smtp_host == "smtp.example.cz"
@@ -3149,17 +3180,16 @@ def test_settings_edit_empty_password_keeps_existing(user_vlastnik) -> None:
         "smtp_password": "",  # blank → preserve
         "email_from_address": s.email_from_address,
         "email_from_name": s.email_from_name,
-        "recipient_petr": s.recipient_petr,
-        "recipient_karolina": s.recipient_karolina,
         "template_initial_subject": s.template_initial_subject,
         "template_initial_body": s.template_initial_body,
         "template_oprava_subject": s.template_oprava_subject,
         "template_oprava_body": s.template_oprava_body,
         "template_low_stock_subject": s.template_low_stock_subject,
         "template_low_stock_body": s.template_low_stock_body,
+        **_recipient_formset_keepall(),
     }
     response = client.post("/sklad/nastaveni/", data)
-    assert response.status_code == 302
+    assert response.status_code == 302, response.content[:500]
     s2 = Settings.load()
     assert s2.smtp_password == "old-secret"
 
@@ -4963,18 +4993,20 @@ def test_mail_low_stock_summary_empty_sends_nothing(user_vlastnik) -> None:
 def test_mail_low_stock_summary_populated_sends_one_email(
     tyn, pepper
 ) -> None:
-    """One e-mail to Settings.recipient_petr with the rendered list."""
+    """One e-mail to every is_low_stock_recipient row per 0052."""
     from django.core import mail
 
-    from inventory.models import Settings
+    from inventory.models import SettingsRecipient
     from inventory.services import send_low_stock_summary
 
     pepper.reorder_threshold_kg = Decimal("5.000")
     pepper.save()
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
-    s = Settings.load()
-    s.recipient_petr = "petr@test.local"
-    s.save()
+    # Conftest seeds Petr (is_low_stock_recipient=True) + Karolína (False).
+    # Swap Petr's address to a deterministic value for the assertion.
+    SettingsRecipient.objects.filter(label="Petr").update(
+        email="petr@test.local"
+    )
 
     result = send_low_stock_summary()
     assert result is not None and result >= 1
@@ -5516,3 +5548,519 @@ def test_catalogue_index_hides_xls_import_button_for_obsluha(user_obsluha_tyn) -
         response = client.get("/sklad/katalog/")
     assert response.status_code == 200
     assert "Importovat z XLS" not in response.content.decode("utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Batch A — Podpora feedback: form defaults to today, FAILED banner on dodák
+# detail (per /podpora/ feedback #1 + #5, 2026-06-26).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_planned_transfer_create_view_prefills_today(user_vlastnik) -> None:
+    """GET /prevody/novy/ renders scheduled_for pre-filled with today."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/prevody/novy/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    # Date input value is l10n'd (Czech format).
+    assert f'value="{date.today().strftime("%d.%m.%Y")}"' in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_plan_form_prefills_today(user_vlastnik, tyn) -> None:
+    """GET /michani/planovat/ renders planned_for pre-filled with today."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/michani/planovat/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    # Date input value is l10n'd (Czech format).
+    assert f'value="{date.today().strftime("%d.%m.%Y")}"' in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dodaci_list_detail_renders_failed_banner_when_unresolved(
+    user_tyn, tyn, ricany, pepper
+) -> None:
+    """When current_version has FAILED log and no SENT log, banner shows."""
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    # Replace all logs at current_version with a single FAILED row.
+    DodaciListEmailLog.objects.filter(
+        dodaci_list=dl, version=dl.current_version
+    ).delete()
+    DodaciListEmailLog.objects.create(
+        dodaci_list=dl,
+        version=dl.current_version,
+        recipients="petr@kasia.cz",
+        trigger_reason="initial send",
+        status=DodaciListEmailLog.Status.FAILED,
+        error_message="SMTP timeout",
+    )
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get(f"/sklad/dodaky/{dl.cislo}/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Poslední odeslání selhalo." in body
+
+
+# ---------------------------------------------------------------------------
+# Batch B — Catalogue per-branch low-stock chips (Podpora feedback #4,
+# 2026-06-26). Karolína: "Catalogue must show per-branch low-stock + drop
+# the 'obě pobočky' assumption (N-branch ready)."
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_index_shows_branch_low_stock_chips(
+    user_vlastnik, tyn, sez, pepper
+) -> None:
+    """Product low at TYN only → 'TYN' chip on row, no 'SEZ'."""
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("20.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/katalog/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    # Find the pepper row and inspect just its low-branches cell.
+    # The new <th>Nízký na</th> column should render exactly one chip.
+    assert "Nízký na" in body
+    assert ">TYN<" in body  # chip text
+    # No SEZ chip on this row (SEZ has 20 kg > 5 kg threshold).
+    pepper_row_idx = body.index("Pepř")
+    snippet = body[pepper_row_idx : pepper_row_idx + 2000]
+    assert "SEZ" not in snippet
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_index_three_branches_chip(
+    user_vlastnik, tyn, sez, pepper
+) -> None:
+    """Genericity proof: a third active branch low only there → chip shows."""
+    new_b = Branch.objects.create(code="HRA", name="Hradec Králové", is_active=True)
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("20.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("20.000"))
+    Stock.objects.create(product=pepper, branch=new_b, quantity=Decimal("1.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/katalog/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    pepper_row_idx = body.index("Pepř")
+    snippet = body[pepper_row_idx : pepper_row_idx + 2000]
+    assert ">HRA<" in snippet
+    # The other two branches should not appear as chips in this row.
+    assert ">TYN<" not in snippet
+    assert ">SEZ<" not in snippet
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_filter_branch_does_not_show_per_branch_chip(
+    user_vlastnik, tyn, sez, pepper
+) -> None:
+    """When ?branch=<code> is set, per-row chip column is empty (existing
+    per-row 'dochází' badge already covers the single-branch case)."""
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("20.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/katalog/?branch=TYN")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    pepper_row_idx = body.index("Pepř")
+    snippet = body[pepper_row_idx : pepper_row_idx + 2000]
+    # No chip in the snippet (TYN appears in the page header / filter chip
+    # is a different element).
+    assert "tab-chip" in body  # template still has tab-chip class somewhere
+    # The exact chip element `<span class="tab-chip" ... >TYN</span>` for
+    # the low-branches column must not be present in this row.
+    import re
+    chips = re.findall(
+        r"<span class=\"tab-chip\"[^>]*>([A-Z]{3})</span>", snippet
+    )
+    assert chips == []
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_obsluha_does_not_show_per_branch_chip(
+    user_obsluha_tyn, tyn, pepper
+) -> None:
+    """Obsluha is implicitly single-branch scoped → chip column empty."""
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/sklad/katalog/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    pepper_row_idx = body.index("Pepř")
+    snippet = body[pepper_row_idx : pepper_row_idx + 2000]
+    import re
+    chips = re.findall(
+        r"<span class=\"tab-chip\"[^>]*>([A-Z]{3})</span>", snippet
+    )
+    assert chips == []
+
+
+# ---------------------------------------------------------------------------
+# Batch C — Settings recipient save bug (Feedback #2a, 2026-06-26).
+# Root cause: the form template renders Settings fields via per-section
+# whitelists. template_low_stock_subject + template_low_stock_body (added
+# in decision 0045) were in none of the four sections, so POSTs stripped
+# them, ModelForm flagged them required, validation silently failed, and
+# Karolína's recipient change never persisted.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_form_renders_every_modelform_field(user_vlastnik) -> None:
+    """Regression: every SettingsForm field has an input rendered in the
+    page. If a future field is added to Settings without also updating
+    settings_form.html, this fails before it reaches prod."""
+    from inventory.forms import SettingsForm
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/nastaveni/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    form = SettingsForm()
+    missing = [name for name in form.fields if f'name="{name}"' not in body]
+    assert not missing, f"Fields rendered nowhere on /nastaveni/: {missing}"
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_recipient_change_persists_via_browser_payload(
+    user_vlastnik,
+) -> None:
+    """Reproduce Karolína's flow: POST the EXACT field set the template
+    renders (no extras). Recipient change must persist.
+
+    Per 0052: recipients live in the SettingsRecipient formset; this
+    test edits the Karolína row's email via the formset payload."""
+    from inventory.models import Settings, SettingsRecipient
+
+    client = Client()
+    client.force_login(user_vlastnik)
+
+    # Build the SettingsForm half of the POST from the rendered form so
+    # the test is coupled to the template, not to a hand-curated payload.
+    from inventory.forms import SettingsForm
+
+    form = SettingsForm(instance=Settings.load())
+    data = {}
+    for name in form.fields:
+        if name == "logo":
+            continue  # FileField — leave unset
+        if name == "smtp_password":
+            data[name] = ""  # blank → preserve
+            continue
+        val = form[name].value()
+        if val is None:
+            val = ""
+        if name == "smtp_use_tls":
+            data[name] = "on" if val else ""
+            continue
+        data[name] = str(val)
+
+    # Build the recipient-formset payload: keep Petr, change Karolína's
+    # address.
+    data.update(_recipient_formset_keepall())
+    karolina = SettingsRecipient.objects.get(label="Karolína")
+    petr = SettingsRecipient.objects.get(label="Petr")
+    rows = list(
+        SettingsRecipient.objects.all().order_by(
+            "-is_active", "sort_order", "id"
+        )
+    )
+    karolina_idx = rows.index(karolina)
+    data[f"recipient-{karolina_idx}-email"] = "nova_karolina@kasia.cz"
+
+    response = client.post("/sklad/nastaveni/", data)
+    assert response.status_code == 302, (
+        f"Expected redirect on save, got {response.status_code}. "
+        f"Body: {response.content.decode('utf-8')[:1500]}"
+    )
+    karolina.refresh_from_db()
+    assert karolina.email == "nova_karolina@kasia.cz"
+    petr.refresh_from_db()
+    assert petr.email == "petr@example.cz"  # untouched
+
+
+# ---------------------------------------------------------------------------
+# Batch D — N-list recipients (decision 0052 supersedes 0031 in part,
+# 2026-06-28). Operator-managed SettingsRecipient table replaces the
+# fixed (Petr, Karolína) pair on Settings.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_recipient_email_uniqueness_case_insensitive() -> None:
+    from django.db import IntegrityError, transaction
+
+    from inventory.models import SettingsRecipient
+
+    # Conftest already created petr@example.cz. Adding PETR@EXAMPLE.CZ
+    # must collide via the Lower("email") unique constraint.
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            SettingsRecipient.objects.create(
+                email="PETR@EXAMPLE.CZ", label="Dup"
+            )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_send_dodaci_list_iterates_all_active_recipients(
+    tyn, ricany, pepper, user_tyn
+) -> None:
+    """Three active rows → three recipients on the message."""
+    from inventory.models import SettingsRecipient
+
+    SettingsRecipient.objects.create(
+        email="uctarna@kasia.cz",
+        label="Účetní",
+        is_active=True,
+        is_low_stock_recipient=False,
+        sort_order=2,
+    )
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mv = apply_movement(
+        movement=Movement(
+            branch=tyn,
+            kind=Movement.Kind.VYDEJ,
+            date_issued=date(2026, 6, 28),
+            odberatel=ricany,
+        ),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
+        user=user_tyn,
+    )
+    log = DodaciListEmailLog.objects.get(dodaci_list__movement=mv)
+    assert log.status == DodaciListEmailLog.Status.SENT
+    # 3 active rows in conftest + new one = should ship to 3 addresses.
+    recips = [r.strip() for r in log.recipients.split(",")]
+    assert set(recips) == {
+        "petr@example.cz",
+        "karolina@example.cz",
+        "uctarna@kasia.cz",
+    }
+
+
+@pytest.mark.django_db(transaction=True)
+def test_send_dodaci_list_skips_inactive_recipients(
+    tyn, ricany, pepper, user_tyn
+) -> None:
+    """Karolína inactive → only Petr receives."""
+    from inventory.models import SettingsRecipient
+
+    SettingsRecipient.objects.filter(label="Karolína").update(is_active=False)
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mv = apply_movement(
+        movement=Movement(
+            branch=tyn,
+            kind=Movement.Kind.VYDEJ,
+            date_issued=date(2026, 6, 28),
+            odberatel=ricany,
+        ),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
+        user=user_tyn,
+    )
+    log = DodaciListEmailLog.objects.get(dodaci_list__movement=mv)
+    recips = [r.strip() for r in log.recipients.split(",")]
+    assert recips == ["petr@example.cz"]
+
+
+@pytest.mark.django_db
+def test_send_dodaci_list_refuses_with_zero_active_recipients(
+    tyn, ricany, pepper, user_tyn
+) -> None:
+    """No active recipients → ValidationError before any DB write."""
+    from inventory.models import SettingsRecipient
+
+    SettingsRecipient.objects.update(is_active=False)
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    with pytest.raises(ValidationError):
+        apply_movement(
+            movement=_vydej(tyn, ricany, user_tyn),
+            lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
+            user=user_tyn,
+        )
+    assert Movement.objects.count() == 0
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_send_low_stock_summary_targets_low_stock_recipients_only(
+    tyn, pepper
+) -> None:
+    """Karolína (is_low_stock_recipient=False) does NOT receive the summary."""
+    from django.core import mail
+
+    from inventory.services import send_low_stock_summary
+
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+
+    result = send_low_stock_summary()
+    assert result is not None
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == ["petr@example.cz"]
+    # Karolína is in the recipient table but NOT subscribed → not in to=.
+    assert "karolina@example.cz" not in mail.outbox[0].to
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_send_low_stock_summary_returns_none_with_no_subscribers(
+    tyn, pepper
+) -> None:
+    """No is_low_stock_recipient=True rows → no e-mail, return None."""
+    from django.core import mail
+
+    from inventory.models import SettingsRecipient
+    from inventory.services import send_low_stock_summary
+
+    SettingsRecipient.objects.update(is_low_stock_recipient=False)
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+
+    result = send_low_stock_summary()
+    assert result is None
+    assert len(mail.outbox) == 0
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipient_formset_renders_existing_rows(user_vlastnik) -> None:
+    """`/nastaveni/` renders one input row per existing SettingsRecipient
+    plus the formset's empty extra row."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/nastaveni/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    # Both seeded emails appear pre-filled on the page.
+    assert "petr@example.cz" in body
+    assert "karolina@example.cz" in body
+    # Formset management form is present.
+    assert "recipient-TOTAL_FORMS" in body
+    assert "recipient-INITIAL_FORMS" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipient_creation_via_settings_form(user_vlastnik) -> None:
+    """POSTing /nastaveni/ with a new (extra) recipient row creates it."""
+    from inventory.forms import SettingsForm
+    from inventory.models import Settings, SettingsRecipient
+
+    client = Client()
+    client.force_login(user_vlastnik)
+
+    # Build the Settings half of the payload.
+    form = SettingsForm(instance=Settings.load())
+    data = {}
+    for name in form.fields:
+        if name == "logo":
+            continue
+        if name == "smtp_password":
+            data[name] = ""
+            continue
+        val = form[name].value()
+        if val is None:
+            val = ""
+        if name == "smtp_use_tls":
+            data[name] = "on" if val else ""
+            continue
+        data[name] = str(val)
+
+    # Keep existing recipients + add one extra "Účetní" row.
+    data.update(_recipient_formset_keepall())
+    n = int(data["recipient-TOTAL_FORMS"])
+    data["recipient-TOTAL_FORMS"] = str(n + 1)
+    data[f"recipient-{n}-id"] = ""
+    data[f"recipient-{n}-email"] = "uctarna@example.cz"
+    data[f"recipient-{n}-label"] = "Účetní"
+    data[f"recipient-{n}-is_active"] = "on"
+    data[f"recipient-{n}-sort_order"] = "2"
+
+    response = client.post("/sklad/nastaveni/", data)
+    assert response.status_code == 302, response.content[:1500]
+    assert SettingsRecipient.objects.filter(email="uctarna@example.cz").exists()
+
+
+@pytest.mark.django_db
+def test_data_migration_idempotent() -> None:
+    """Re-running the 0012 RunPython callable on a populated table is a
+    no-op. The conftest seed already populated Petr + Karolína; calling
+    the migration helper again must not duplicate or modify them."""
+    import importlib
+
+    from django.apps import apps as django_apps
+
+    from inventory.models import SettingsRecipient
+
+    before = sorted(
+        SettingsRecipient.objects.all().values_list("email", flat=True)
+    )
+    mod = importlib.import_module(
+        "inventory.migrations.0012_settings_recipients_table"
+    )
+    mod._copy_recipients_into_table(django_apps, None)
+    after = sorted(
+        SettingsRecipient.objects.all().values_list("email", flat=True)
+    )
+    assert before == after
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dodaci_list_detail_no_banner_after_successful_resend(
+    user_tyn, tyn, ricany, pepper
+) -> None:
+    """FAILED followed by SENT at current_version → no banner."""
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    DodaciListEmailLog.objects.filter(
+        dodaci_list=dl, version=dl.current_version
+    ).delete()
+    DodaciListEmailLog.objects.create(
+        dodaci_list=dl,
+        version=dl.current_version,
+        recipients="petr@kasia.cz",
+        trigger_reason="initial send",
+        status=DodaciListEmailLog.Status.FAILED,
+        error_message="SMTP timeout",
+    )
+    DodaciListEmailLog.objects.create(
+        dodaci_list=dl,
+        version=dl.current_version,
+        recipients="petr@kasia.cz",
+        trigger_reason="ruční opětovné odeslání",
+        status=DodaciListEmailLog.Status.SENT,
+    )
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get(f"/sklad/dodaky/{dl.cislo}/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Poslední odeslání selhalo." not in body

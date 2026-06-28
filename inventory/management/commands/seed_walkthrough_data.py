@@ -55,11 +55,32 @@ class Command(BaseCommand):
 
         # --- Settings + users + catalogue (idempotent) ---------------
         s = Settings.load()
-        s.recipient_petr = "petr@kasia.local"
-        s.recipient_karolina = "karolina@kasia.local"
         s.email_from_address = "no-reply@kasia.local"
         s.email_from_name = "Kasia vera — sklad (dev)"
         s.save()
+
+        # Seed SettingsRecipient pair per 0052 (idempotent — uses
+        # get_or_create on the email column).
+        from inventory.models import SettingsRecipient
+
+        SettingsRecipient.objects.get_or_create(
+            email="petr@kasia.local",
+            defaults={
+                "label": "Petr",
+                "is_active": True,
+                "is_low_stock_recipient": True,
+                "sort_order": 0,
+            },
+        )
+        SettingsRecipient.objects.get_or_create(
+            email="karolina@kasia.local",
+            defaults={
+                "label": "Karolína",
+                "is_active": True,
+                "is_low_stock_recipient": False,
+                "sort_order": 1,
+            },
+        )
         self.stdout.write("• Settings recipients filled.")
 
         tyn = Branch.objects.get(code="TYN")

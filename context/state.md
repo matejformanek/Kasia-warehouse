@@ -1274,6 +1274,107 @@
   before any real customer výdej, per the `_assert_recipients_set`
   guard in `inventory/services.py`).
 
+- **2026-06-28** — Podpora feedback Batch D landed (Feedback #2b — N-list
+  recipients) per new decision
+  [`0052`](./decisions/0052-n-list-recipients-supersedes-0031.md)
+  (supersedes [`0031`](./decisions/0031-emails-internal-only-supersedes-0009.md)
+  in part — "internal only" intent stands; the fixed-pair UI and schema
+  shape are replaced). New `SettingsRecipient` model — `(email, label,
+  is_active, is_low_stock_recipient, sort_order, created_at)` with
+  case-insensitive `UniqueConstraint(Lower("email"))`. Single atomic
+  migration `0012_settings_recipients_table.py`:
+  CreateModel → RunPython data-migration (idempotent, seeds Petr +
+  Karolína from old Settings columns, sets Petr `is_low_stock_recipient
+  =True` per 0045) → drops both `Settings.recipient_*` columns.
+  Service refactor in `inventory/services.py`:
+  - `_assert_recipients_set` now requires ≥1 active SettingsRecipient
+    row; Czech error string updated.
+  - `send_dodaci_list_email` ships to all active recipients ordered
+    by `sort_order, id`.
+  - `send_low_stock_summary` ships to all active recipients with
+    `is_low_stock_recipient=True`; returns `None` (no raise) when
+    none are subscribed (matches `_assert_recipients_set`'s no-raise
+    posture for the daily cron path).
+  UI: `/nastaveni/` "Příjemci dodacího listu" block becomes a
+  modelformset using the project's existing JS-clone `<template>`
+  add-row pattern from `product_form.html:159-214` (NOT HTMX). Per-row
+  controls: email, label, is_active, is_low_stock_recipient,
+  sort_order, "× Smazat" button. Read-only `SettingsRecipientAdmin`
+  added.
+  Conftest autouse fixture rewritten to seed Petr + Karolína as
+  SettingsRecipient rows. 6 existing test references migrated
+  (`tests.py:855`, `:2576`, `:3093-3163`, `:4993`, `:5752`) +
+  `seed_walkthrough_data` + `mail_low_stock_summary` management
+  command + `inventory/admin.py` fieldset.
+  9 new tests: case-insensitive uniqueness; iterates all active;
+  skips inactive; refuses zero-active (ValidationError); low-stock
+  targets subscribed only; low-stock returns None with no
+  subscribers; formset renders existing rows; formset creates new
+  row via POST; data-migration helper is idempotent.
+  Screen docs `14-nastaveni.md` + `09-detail-dodaciho-listu.md`
+  updated. Full suite **321 pytest tests green** (312 → 321 = 1
+  removed via Batch C cleanup + 1 removed `recipient_petr` test +
+  9 new + 0 net = math check below). Ruff clean; system check clean;
+  makemigrations --check clean.
+
+- **2026-06-28** — Podpora feedback Batch B landed (Feedback #4 — catalogue
+  per-branch low-stock visibility, N-branch ready). `catalogue_index` view
+  collects `low_branches` per row (branches where `effective < threshold`).
+  Template gains a new "Nízký na" column rendering one branch-code chip
+  per failing branch, but only when no single branch is in scope (the
+  existing "dochází" badge already covers the single-branch case). Copy:
+  "obě pobočky" → "všechny aktivní pobočky" in three places (filter
+  option, "Zobrazit ..." link, scope hint). Reuses the same
+  `reserved_kg` + `threshold_for` helpers that feed the dashboard "Dochází
+  zboží" panel; no new services. Existing test at `:2421` updated
+  ("obě pobočky" → "všechny aktivní pobočky"). 4 new tests: chip shows
+  for failing branch only; third active branch proves N-branch genericity
+  (creates HRA); `?branch=` filter empties the chip column; obsluha
+  (implicit single-branch) empties the chip column. Screen doc
+  `04-katalog-produktu.md` updated. Full suite **312 pytest tests green**
+  (308 → 312); ruff clean; system check clean.
+
+- **2026-06-28** — Podpora feedback Batch C landed (Feedback #2a — settings
+  recipient save bug). Root cause: `settings_form.html` renders fields via
+  per-section whitelists (`{% if f.name == "..." %}`). The
+  `template_low_stock_subject` + `template_low_stock_body` fields added in
+  decision [`0045`](./decisions/0045-low-stock-summary-email.md) were in
+  none of the four sections, so the browser's POST stripped them; ModelForm
+  flagged both required (no `blank=True`); validation silently failed
+  (errors weren't visible because the fields are also iterated nowhere);
+  Karolína's recipient change never persisted and no error appeared.
+  Fixes:
+  - Added both `template_low_stock_*` fields to the "Šablony e-mailů"
+    section's whitelist (their natural home).
+  - Added a defensive top-of-form `{% if form.errors %}` banner so any
+    future "field added but template not updated" mistake surfaces
+    immediately instead of silently failing.
+  2 new tests: form-renders-every-field guard (future regressions trip
+  before reaching prod); recipient change persists via browser-shaped
+  POST (payload built from the form so it stays coupled to the template).
+  Full suite **308 pytest tests green** (306 → 308); ruff clean.
+
+- **2026-06-28** — Podpora feedback Batch A landed (Feedback #1 + #5):
+  - **#1** Doc date defaults to today on `PlannedTransferForm.scheduled_for`
+    (re-evaluated per render via `field.initial = date.today`) and
+    `MixingPlanForm.planned_for` (top-level field). Příjem/výdej already
+    had the default via `_MovementBaseForm`.
+  - **#5** Detail dodacího listu (`screen 09`) renders a red "Poslední
+    odeslání selhalo." banner above the existing "Znovu odeslat" button
+    when the dodák has ≥1 FAILED log at `current_version` and no SENT
+    log at `current_version`. Helper `_dl_failed_at_current_version(dl,
+    logs)` in `inventory/views.py` shared with the owner-dashboard
+    "K vyřešení" query (refactored to use it — DRY). Banner drops out
+    the moment a re-send succeeds. Spec was already in
+    `screens/09-detail-dodaciho-listu.md:97-100`.
+  - 4 new view tests: today-prefill on `/prevody/novy/` +
+    `/michani/planovat/`; banner shows when FAILED-no-SENT at
+    `current_version`; banner hidden after a successful SENT log lands.
+  - Full suite: **306 pytest tests green** (302 → 306); ruff clean;
+    system check clean; makemigrations --check clean. Feedback #2/#3/#4
+    deferred to subsequent batches; #3 (domain/HTTPS) waits on Matej
+    picking a domain.
+
 - **2026-06-26** — SMTP source-of-truth resolved per decision
   [`0049`](./decisions/0049-smtp-source-of-truth.md). Real dodák
   sends + low-stock summary now build their SMTP connection via a

@@ -28,10 +28,18 @@ its recipe definition.
   showing:
   - Czech name.
   - Type marker (koření / směs).
-  - On-hand in kg across both branches (visible to owner-level users);
-    per-branch on-hand (visible to branch staff for their own branch
-    only) per
+  - On-hand in kg across all active branches (visible to owner-level
+    users); per-branch on-hand (visible to branch staff for their own
+    branch only) per
     [`decisions/0003-primary-unit-kg-decimals.md`](../decisions/0003-primary-unit-kg-decimals.md).
+  - Rezervováno + Efektivně + Práh columns per
+    [`decisions/0043-reorder-threshold.md`](../decisions/0043-reorder-threshold.md)
+    + [`decisions/0044-reservations-planned-states.md`](../decisions/0044-reservations-planned-states.md).
+  - A "Nízký na" column rendering one branch-code chip per branch where
+    `effective < threshold` for this product. Only shown when no branch
+    filter is in scope (`?branch=` empty AND user is not obsluha-locked);
+    the existing "dochází / prázdné" badge already covers the single-
+    branch case.
   - For mixtures, a small marker indicating "má recepturu".
 - A count of how many items match the current filters.
 - For owner-level users: a "Přidat položku" action.

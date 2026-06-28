@@ -41,6 +41,7 @@ from .models import (
     Product,
     RecipeComponent,
     Settings,
+    SettingsRecipient,
     Stock,
     StockThresholdOverride,
     Supplier,
@@ -364,21 +365,45 @@ def _smtp_connection_from_settings(s: Settings):
     )
 
 
-def _assert_recipients_set() -> None:
-    """Refuse to start a vydej apply / edit if Settings recipients are blank.
+def _active_dodak_recipients() -> list[str]:
+    """All active SettingsRecipient e-mails, ordered for the send-to list.
 
-    Per 0031 every dodák goes to the fixed (Petr, Karolína) pair from
-    Settings; the seed migration leaves them empty intentionally so an
-    operator fills them on first run. We check before doing any DB work
-    that the on-commit hook can't roll back.
+    Per 0052: replaces the fixed pair from 0031 with an operator-managed
+    N-list. Caller iterates them as the dodák `to=` recipients.
     """
-    s = Settings.load()
-    if not s.recipient_petr or not s.recipient_karolina:
+    return list(
+        SettingsRecipient.objects.filter(is_active=True)
+        .order_by("sort_order", "id")
+        .values_list("email", flat=True)
+    )
+
+
+def _active_low_stock_recipients() -> list[str]:
+    """All active SettingsRecipient e-mails subscribed to the daily summary."""
+    return list(
+        SettingsRecipient.objects.filter(
+            is_active=True, is_low_stock_recipient=True
+        )
+        .order_by("sort_order", "id")
+        .values_list("email", flat=True)
+    )
+
+
+def _assert_recipients_set() -> None:
+    """Refuse to start a vydej apply / edit if there is no active recipient.
+
+    Per 0052 (supersedes 0031 in part): at least one active
+    SettingsRecipient row must exist. The migration seeds the rows from
+    the old (Petr, Karolína) pair; if both were blank, the operator must
+    add at least one in Nastavení before any výdej.
+    """
+    if not SettingsRecipient.objects.filter(is_active=True).exists():
         raise ValidationError(
             {
                 "recipients": (
-                    "V nastavení chybí příjemci dodacího listu "
-                    "(Petr a Karolína). Doplňte je v Nastavení před výdejem."
+                    "V nastavení chybí příjemci dodacího listu. "
+                    "Přidejte alespoň jednoho aktivního příjemce "
+                    "v Nastavení před výdejem."
                 )
             }
         )
@@ -477,14 +502,14 @@ def send_dodaci_list_email(
     trigger_reason: str,
     pdf_bytes: bytes,
 ) -> DodaciListEmailLog:
-    """Send one dodák e-mail to the fixed (Petr, Karolína) pair per 0031.
+    """Send one dodák e-mail to every active SettingsRecipient row per 0052.
 
     Wrapped in try/except per 0019: a send failure writes a FAILED log
     row and returns it; it does NOT re-raise. The výdej / oprava write
     that triggered the send is already committed.
     """
     s = Settings.load()
-    recipients = [s.recipient_petr, s.recipient_karolina]
+    recipients = _active_dodak_recipients()
     recipients_joined = ", ".join(recipients)
     is_oprava = trigger_reason.startswith("oprava")
     subject_template = (
@@ -1367,19 +1392,22 @@ def _format_low_stock_list(rows: list[LowStockRow]) -> str:
 
 
 def send_low_stock_summary() -> int | None:
-    """Build the low-stock list, render templates, send to Petr per 0045.
+    """Build the low-stock list, render templates, send to subscribed
+    recipients per 0045 + 0052.
 
     Returns the number of rows on success; None if nothing to send.
-    Recipient is `Settings.recipient_petr`. If the recipient is blank,
-    no e-mail is sent and None is returned (matches the
-    `_assert_recipients_set` posture without raising).
+    Recipients are all active SettingsRecipient rows with
+    `is_low_stock_recipient=True`. If none match, no e-mail is sent and
+    None is returned (matches `_assert_recipients_set`'s no-raise posture
+    for the daily cron path).
     """
     rows = low_stock_rows()
     if not rows:
         return None
 
     s = Settings.load()
-    if not s.recipient_petr:
+    recipients = _active_low_stock_recipients()
+    if not recipients:
         return None
 
     today = date.today().strftime("%d. %m. %Y")
@@ -1406,7 +1434,7 @@ def send_low_stock_summary() -> int | None:
         subject=subject,
         body=body,
         from_email=from_email,
-        to=[s.recipient_petr],
+        to=recipients,
         connection=connection,
     )
     msg.send(fail_silently=False)

@@ -39,6 +39,7 @@ from .forms import (
     RecipeComponentForm,
     RecipeComponentFormSet,
     SettingsForm,
+    SettingsRecipientFormSet,
     SmtpTestForm,
     StockAdjustmentForm,
     SupplierForm,
@@ -89,6 +90,20 @@ from .services import (
     start_mixing_job,
     threshold_for,
 )
+
+
+def _dl_failed_at_current_version(dodaci_list: DodaciList, logs) -> bool:
+    """True iff there is ≥1 FAILED log at current_version AND no SENT log
+    at current_version. Matches the dashboard's "K vyřešení" rule so the
+    detail-screen banner drops out the moment a re-send succeeds.
+    """
+    at_cv = [log for log in logs if log.version == dodaci_list.current_version]
+    if not at_cv:
+        return False
+    any_sent = any(log.status == DodaciListEmailLog.Status.SENT for log in at_cv)
+    if any_sent:
+        return False
+    return any(log.status == DodaciListEmailLog.Status.FAILED for log in at_cv)
 
 
 @require_GET
@@ -142,34 +157,24 @@ def home(request):
     )
 
     # K vyřešení: failed sends whose dodák hasn't yet been re-sent
-    # successfully at the current version. The query: dodáky that
-    # have ≥1 FAILED log at the current version and 0 SENT logs at
-    # the current version.
+    # successfully at the current version. Uses the same rule as the
+    # per-detail banner in `dodaci_list_detail` via
+    # `_dl_failed_at_current_version`.
     failed_dodaky = []
     for dl in DodaciList.objects.prefetch_related("email_logs"):
-        logs_at_current = [
-            log for log in dl.email_logs.all() if log.version == dl.current_version
-        ]
-        if not logs_at_current:
+        logs = list(dl.email_logs.all())
+        if not _dl_failed_at_current_version(dl, logs):
             continue
-        any_sent = any(
-            log.status == DodaciListEmailLog.Status.SENT for log in logs_at_current
+        logs_at_current = [log for log in logs if log.version == dl.current_version]
+        last_failed = max(
+            (
+                log
+                for log in logs_at_current
+                if log.status == DodaciListEmailLog.Status.FAILED
+            ),
+            key=lambda log: log.sent_at,
         )
-        any_failed = any(
-            log.status == DodaciListEmailLog.Status.FAILED for log in logs_at_current
-        )
-        if any_failed and not any_sent:
-            last_failed = max(
-                (
-                    log
-                    for log in logs_at_current
-                    if log.status == DodaciListEmailLog.Status.FAILED
-                ),
-                key=lambda log: log.sent_at,
-            )
-            failed_dodaky.append(
-                {"dodaci_list": dl, "last_failed": last_failed}
-            )
+        failed_dodaky.append({"dodaci_list": dl, "last_failed": last_failed})
 
     # Recently edited dodáky (current_version > 1), latest first, top 5.
     edited_dodaky = list(
@@ -756,11 +761,16 @@ def catalogue_index(request):
     )
 
     rows = []
+    # Per /podpora/ feedback #4: each row carries the list of branches
+    # currently under threshold; the template renders one chip per
+    # branch but only when no single branch is in scope (the existing
+    # per-row "dochází" badge already covers the single-branch case).
     for p in products:
         reserved = Decimal("0.000")
         effective_total = Decimal("0.000")
         threshold_min: Decimal | None = None
         is_low = False
+        low_branches: list[Branch] = []
         for b in reserved_branches:
             r = reserved_kg(p, b)
             reserved += r
@@ -777,6 +787,7 @@ def catalogue_index(request):
                 threshold_min = t if threshold_min is None else min(threshold_min, t)
                 if eff_b < t:
                     is_low = True
+                    low_branches.append(b)
         rows.append(
             {
                 "product": p,
@@ -785,6 +796,7 @@ def catalogue_index(request):
                 "effective": effective_total.quantize(Decimal("0.001")),
                 "threshold": threshold_min,
                 "is_low": is_low,
+                "low_branches": low_branches,
                 "has_recipe": p.pk in has_recipe,
             }
         )
@@ -963,6 +975,9 @@ def dodaci_list_detail(request, cislo: str):
             "lines": lines,
             "email_logs": email_logs,
             "last_status": email_logs[-1].status if email_logs else None,
+            "current_version_unresolved": _dl_failed_at_current_version(
+                dodaci_list, email_logs
+            ),
         },
     )
 
@@ -1490,14 +1505,25 @@ def _branch_counters_summary() -> list[dict]:
 def settings_edit(request):
     _require_vlastnik(request)
     instance = Settings.load()
+    from .models import SettingsRecipient
+    recipient_qs = SettingsRecipient.objects.all().order_by(
+        "-is_active", "sort_order", "id"
+    )
     if request.method == "POST":
         form = SettingsForm(request.POST, request.FILES, instance=instance)
-        if form.is_valid():
+        recipient_formset = SettingsRecipientFormSet(
+            request.POST, queryset=recipient_qs, prefix="recipient"
+        )
+        if form.is_valid() and recipient_formset.is_valid():
             form.save()
+            recipient_formset.save()
             messages.success(request, "Nastavení uloženo.")
             return redirect("inventory:settings_edit")
     else:
         form = SettingsForm(instance=instance)
+        recipient_formset = SettingsRecipientFormSet(
+            queryset=recipient_qs, prefix="recipient"
+        )
 
     smtp_test_form = SmtpTestForm(initial={"to_email": request.user.email})
 
@@ -1506,6 +1532,7 @@ def settings_edit(request):
         "inventory/settings_form.html",
         {
             "form": form,
+            "recipient_formset": recipient_formset,
             "settings": instance,
             "smtp_test_form": smtp_test_form,
             "branch_counters": _branch_counters_summary(),

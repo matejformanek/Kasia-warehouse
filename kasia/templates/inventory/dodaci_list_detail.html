@@ -12,6 +12,13 @@
   </div>
 {% endif %}
 
+{% if current_version_unresolved %}
+  <div class="card" style="border-left:4px solid var(--error);background:#fbe8e8;margin-bottom:1rem;">
+    <strong style="color:var(--error);">Poslední odeslání selhalo.</strong>
+    Klikněte na <em>Znovu odeslat</em> níže pro nový pokus. Podrobnosti chyby viz tabulka „Verze a odeslání".
+  </div>
+{% endif %}
+
 <div class="card">
   <h2 style="font-size:1.05rem;margin-top:0;">Metadata</h2>
   <p>

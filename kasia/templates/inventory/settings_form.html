@@ -8,8 +8,12 @@
 <form method="post" enctype="multipart/form-data" class="card">
   {% csrf_token %}
 
-  {% if form.non_field_errors %}
-    <div class="non-form-errors">{{ form.non_field_errors }}</div>
+  {% if form.errors %}
+    <div class="msg error" style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fbe8e8;color:var(--error);border-radius:4px;">
+      <strong>Formulář se nepodařilo uložit.</strong>
+      Zkontrolujte zvýrazněná pole níže.
+      {{ form.non_field_errors }}
+    </div>
   {% endif %}
 
   <h2 style="margin-top:0;">Společnost / hlavička dokumentu</h2>
@@ -51,19 +55,110 @@
 
   <h2>Příjemci dodacího listu</h2>
   <p style="color:var(--fg-soft); font-size:0.9rem;">
-    Každý dodací list se odesílá na obě adresy. Adresy odběratelů
-    nejsou nikdy v cestě e-mailu (rozhodnutí
-    <code>0031</code>).
+    Každý dodací list se odesílá na všechny aktivní adresy v seznamu níže.
+    Adresy odběratelů nejsou nikdy v cestě e-mailu (rozhodnutí
+    <code>0031</code> + <code>0052</code>). Souhrn „dochází zboží"
+    chodí jen příjemcům s odpovídajícím zaškrtnutím.
   </p>
-  {% for f in form %}
-    {% if f.name == "recipient_petr" or f.name == "recipient_karolina" %}
-      <div class="field">
-        <label class="field-required" for="{{ f.id_for_label }}">{{ f.label }}</label>
-        {{ f }}
-        {{ f.errors }}
-      </div>
-    {% endif %}
-  {% endfor %}
+
+  {{ recipient_formset.management_form }}
+  {% if recipient_formset.non_form_errors %}
+    <div class="non-form-errors">{{ recipient_formset.non_form_errors }}</div>
+  {% endif %}
+
+  <table class="lines" id="recipient-table">
+    <thead>
+      <tr>
+        <th class="field-required">E-mail</th>
+        <th>Popisek</th>
+        <th>Aktivní</th>
+        <th>Souhrn dochází zboží</th>
+        <th>Pořadí</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="recipient-body">
+      {% for r_form in recipient_formset.forms %}
+        <tr class="line-row" data-index="{{ forloop.counter0 }}">
+          <td>
+            {{ r_form.id }}
+            {{ r_form.email }}
+            {{ r_form.email.errors }}
+          </td>
+          <td>{{ r_form.label }}{{ r_form.label.errors }}</td>
+          <td style="text-align:center;">{{ r_form.is_active }}</td>
+          <td style="text-align:center;">{{ r_form.is_low_stock_recipient }}</td>
+          <td style="text-align:right;">{{ r_form.sort_order }}</td>
+          <td>
+            <input type="checkbox" name="{{ r_form.DELETE.html_name }}"
+                   id="{{ r_form.DELETE.id_for_label }}" hidden>
+            <button type="button" class="row-delete-btn"
+                    data-target="{{ r_form.DELETE.id_for_label }}">
+              × Smazat
+            </button>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {# Hidden empty-row template; JS clones it on "+ Přidat příjemce" click. #}
+  {% with prefix=recipient_formset.prefix %}
+    <template id="recipient-empty-row">
+      <tr class="line-row" data-index="__INDEX__">
+        <td>
+          <input type="email" name="{{ prefix }}-__INDEX__-email"
+                 id="id_{{ prefix }}-__INDEX__-email" maxlength="254">
+        </td>
+        <td>
+          <input type="text" name="{{ prefix }}-__INDEX__-label"
+                 id="id_{{ prefix }}-__INDEX__-label" maxlength="64">
+        </td>
+        <td style="text-align:center;">
+          <input type="checkbox" name="{{ prefix }}-__INDEX__-is_active"
+                 id="id_{{ prefix }}-__INDEX__-is_active" checked>
+        </td>
+        <td style="text-align:center;">
+          <input type="checkbox" name="{{ prefix }}-__INDEX__-is_low_stock_recipient"
+                 id="id_{{ prefix }}-__INDEX__-is_low_stock_recipient">
+        </td>
+        <td style="text-align:right;">
+          <input type="number" name="{{ prefix }}-__INDEX__-sort_order"
+                 id="id_{{ prefix }}-__INDEX__-sort_order"
+                 value="0" min="0" style="width:5rem;">
+        </td>
+        <td>
+          <input type="checkbox" name="{{ prefix }}-__INDEX__-DELETE"
+                 id="id_{{ prefix }}-__INDEX__-DELETE" hidden>
+          <button type="button" class="row-delete-btn"
+                  data-target="id_{{ prefix }}-__INDEX__-DELETE">
+            × Smazat
+          </button>
+        </td>
+      </tr>
+    </template>
+
+    <p>
+      <button type="button" class="secondary" id="recipient-add-row">
+        + Přidat příjemce
+      </button>
+    </p>
+
+    <script>
+      (function () {
+        const btn = document.getElementById("recipient-add-row");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          const body = document.getElementById("recipient-body");
+          const total = document.querySelector("[name={{ prefix }}-TOTAL_FORMS]");
+          const idx = parseInt(total.value, 10);
+          const tpl = document.getElementById("recipient-empty-row").innerHTML;
+          body.insertAdjacentHTML("beforeend", tpl.replace(/__INDEX__/g, idx));
+          total.value = idx + 1;
+        });
+      })();
+    </script>
+  {% endwith %}
 
   <h2>Šablony e-mailů</h2>
   <p style="color:var(--fg-soft); font-size:0.9rem;">
@@ -72,7 +167,7 @@
     odeslání dosadí automaticky.
   </p>
   {% for f in form %}
-    {% if f.name == "template_initial_subject" or f.name == "template_initial_body" or f.name == "template_oprava_subject" or f.name == "template_oprava_body" %}
+    {% if f.name == "template_initial_subject" or f.name == "template_initial_body" or f.name == "template_oprava_subject" or f.name == "template_oprava_body" or f.name == "template_low_stock_subject" or f.name == "template_low_stock_body" %}
       <div class="field">
         <label for="{{ f.id_for_label }}">{{ f.label }}</label>
         {{ f }}

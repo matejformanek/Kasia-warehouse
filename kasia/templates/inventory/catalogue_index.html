@@ -31,7 +31,7 @@
     <div class="field" style="margin-bottom:0;">
       <label for="id_filter_branch">Pobočka</label>
       <select name="branch" id="id_filter_branch">
-        <option value="">— obě —</option>
+        <option value="">— všechny pobočky —</option>
         {% for b in branches %}
           <option value="{{ b.code }}" {% if filter_branch_code == b.code %}selected{% endif %}>
             {{ b.code }} — {{ b.name }}
@@ -72,12 +72,12 @@
     <p style="color:var(--fg-soft);font-size:0.9rem;">
       Stavy a rezervace zobrazené pro pobočku <strong>{{ selected_branch.code }}</strong>.
       <a href="?{% if filter_q %}q={{ filter_q }}&{% endif %}{% if filter_kind %}kind={{ filter_kind }}&{% endif %}{% if filter_status and filter_status != 'active' %}status={{ filter_status }}{% endif %}">
-        Zobrazit obě pobočky
+        Zobrazit všechny pobočky
       </a>
     </p>
   {% else %}
     <p style="color:var(--fg-soft);font-size:0.9rem;">
-      Stavy a rezervace sečtené přes obě pobočky.
+      Stavy a rezervace sečtené přes všechny aktivní pobočky.
       Pro per-branch pohled vyberte pobočku ve filtru výše.
     </p>
   {% endif %}
@@ -91,6 +91,7 @@
         <th style="text-align:right;" title="Efektivně = na skladě − rezervováno">Efektivně</th>
         <th style="text-align:right;" title="Objednací bod (per 0043). Pokud má produkt per-pobočkovou výjimku, zobrazuje se nejnižší nastavený práh.">Práh</th>
         <th>Stav</th>
+        <th title="Pobočky pod prahem objednacího bodu (efektivně = na skladě − rezervováno)">Nízký na</th>
         <th></th>
       </tr>
     </thead>
@@ -125,6 +126,13 @@
               <span style="color:var(--error);font-weight:bold;">prázdné</span>
             {% elif row.is_low %}
               <span class="tab-chip active" style="background:var(--warn);">dochází</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not selected_branch and not obsluha_branch %}
+              {% for b in row.low_branches %}
+                <span class="tab-chip" style="background:var(--warn);color:#fff;">{{ b.code }}</span>
+              {% endfor %}
             {% endif %}
           </td>
           <td>

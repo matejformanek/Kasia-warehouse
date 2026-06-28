@@ -1541,6 +1541,42 @@
   longer appears without a Stock row) + seven new tests. 346 tests
   green, ruff clean, `manage.py check` clean.
 
+- **2026-06-28** — **Public-site pass 2: O nás long-form, homepage
+  enrichment, footer cleanup, public-branded login** (on
+  `ft_web_public_pass2`). A content + cosmetic refinement within decisions
+  [`0050`](./decisions/0050-public-site-and-sklad-split.md) +
+  [`0051`](./decisions/0051-public-site-ia-and-content.md) +
+  [`0052`](./decisions/0052-kontakt-info-only-drop-contactinquiry.md) — **no
+  new decision file** (docs updated instead; see `context/public-site.md`).
+  - **Header login link removed** — `Přihlášení` is now **footer-only** (a
+    "Přihlášení do skladu" link in the new *Odkazy* column), since a header
+    login link misleads customers who have no app access. `.login-link` CSS
+    dropped.
+  - **Footer** reorganised into three tidy columns (firma + IČO/datová
+    schránka / Kontakt / Odkazy) + a short legal strip; privacy note
+    shortened (dropped the long IP-clause sentence and the duplicate
+    "Sklad / Přihlášení" span).
+  - **O nás** rewritten as a real long-form article from kasia.cz/about
+    (Matej: include export/reach, omit RC Rugby sponsorship): lead →
+    sortiment → vlastní výroba (1995 česneková pasta Týniště, 1998 míchárna
+    Strančice, 2011 výrobna Sezimovo Ústí, gastro směsi z Toužimi pod VERA
+    GURMET) → dovoz a export (PL/UA/SK/IL/BY/NL) → dostupnost a dosah → CTA.
+  - **Homepage** enriched for B2B: Co děláme (capabilities), Komu dodáváme
+    (segments + one-line sortiment mention), Proč Kasia (why-us). **Products
+    kept minimal** — no product list, no new Produkty/Encyklopedie page
+    (deferred per 0051).
+  - **Public-branded login** (`registration/login.html` extends
+    `web/base.html`): two panels — Zaměstnanci (sign-in + "Zapomenuté
+    heslo?") / Zákazníci (staff-warehouse note + links back to web/Kontakt).
+    `login` route gains `redirect_authenticated_user=True` (logged-in visitor
+    → `/sklad/`) + `extra_context` for the public chrome. `web/base.html` CSS
+    fix: `input[type=password]` added to the form-input selector; login
+    errors use `{{ form.non_field_errors }}` (the existing `.errorlist` rule).
+  - `web/content.py`: added `COMPANY["export_markets"]`.
+  - **Verification:** 19 web tests green (incl. login redirect-authenticated),
+    ruff clean, `manage.py check` clean, `makemigrations --check` clean (no
+    migrations). Local `make up` + prod deploy pending.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

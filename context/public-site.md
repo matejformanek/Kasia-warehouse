@@ -31,27 +31,47 @@ Public surface lives at the domain root; the warehouse app is under
 
 Every public view is `@login_not_required` (the global
 `LoginRequiredMiddleware` has no include-level opt-out). Staff reach the app
-via a discreet, muted **"Přihlášení"** link in the header (→ `{% url 'login' %}`,
-`/sklad/prihlaseni/`) and the **"Sklad / Přihlášení"** link in the footer.
-"Sklad" is deliberately **not** in the marketing nav (decision 0052) so casual
-public visitors aren't led into the app.
+via a single **"Přihlášení do skladu"** link in the footer's *Odkazy* column
+(→ `{% url 'login' %}`, `/sklad/prihlaseni/`). The pass-1 header login link was
+**removed** (pass 2, 2026-06-28) — it was misleading for customers, who have no
+app access. Login is **footer-only**, and "Sklad" is deliberately **not** in the
+marketing nav so casual public visitors aren't led into the app.
+
+The login page (`registration/login.html`) is **public-branded**: it extends
+`web/base.html` (green chrome + cleaned footer) and shows two panels —
+**Zaměstnanci** (the sign-in form + "Zapomenuté heslo?") and **Zákazníci** (a
+note that this is the staff warehouse, with links back to the site + Kontakt).
+The `login` route sets `redirect_authenticated_user=True`, so an
+already-logged-in visitor hitting `/sklad/prihlaseni/` is bounced straight to
+`LOGIN_REDIRECT_URL` (`inventory:home`, `/sklad/`); `extra_context` feeds
+`company` / `nav` into the public chrome on both GET and invalid POST.
 
 ## Page content map (first build — four pages, locked by Matej 2026-06-26)
 
-### Domů (`/`)
+### Domů (`/`) — enriched for B2B (pass 2, 2026-06-28)
 - Hero: heritage since *leden 1993* + brand promise.
 - Proof stat: **"Přes 369 druhů koření a 236 kulinářských produktů."**
-- Short who-we-are / who-we-serve line (B2B: velkoobchod + gastro,
-  značka VERA GURMET).
-- Primary CTAs → Provozovny + Kontakt.
-- Teaser blocks → O nás / Provozovny / Kontakt.
+- **Co děláme** (capabilities): dovoz a kvalita, zpracování, míchání směsí,
+  balení, mokrá výroba, vlajkové produkty.
+- **Komu dodáváme** (segments): velkoobchody, gastro provozy, výrobci uzenin +
+  potravin — plus a one-line sortiment mention (no product list, no catalog —
+  Produkty/Encyklopedie stay deferred per 0051).
+- **Proč Kasia** (why-us): 30+ let, dovozce i zpracovatel, stálá kvalita +
+  dohledatelnost, rychlé dodávky, síť obchodních zástupců, dovoz i export.
+- Primary CTAs → Provozovny + Kontakt; teaser blocks → O nás / Provozovny /
+  Kontakt.
 
-### O nás (`/o-nas/`)
-- Příběh od *ledna 1993*, rodinná firma, sídlo Říčany u Prahy.
-- Co děláme: dovoz → čištění/třídění/mletí → míchání směsí → balení →
-  dodávky pod značkou VERA GURMET.
-- Concise (nice-to-have per Matej). CSR / sponzoring / kvalita may become
-  short *sections* here later — **not** separate pages now.
+### O nás (`/o-nas/`) — long-form article (pass 2, 2026-06-28)
+Real long-form article rebuilt from kasia.cz/about (Matej: include export/reach,
+omit RC Rugby sponsorship). Sections: Lead (rodinná firma od *ledna 1993*,
+přímý dovozce + zpracovatel) → Od koření k celému sortimentu (sušená zelenina,
+byliny; silná pozice v sušeném česneku/cibuli/majoránce) → Vlastní výroba
+(1995 česneková pasta v Týništi, mokrá výroba, 1998 míchárna Strančice, 2011
+výrobna Sezimovo Ústí, gastro směsi z Toužimi pod značkou VERA GURMET, VEGA +
+Zlaté kuře) → Dovoz a export (re-export do PL/UA/SK/IL/BY/NL; kmín, černý pepř,
+koriandr) → Dostupnost a dosah (sídlo Říčany ~15 km u dálnice na Brno, síť
+obchodních zástupců po ČR) → CTA. Export markets live in
+`COMPANY["export_markets"]`.
 
 ### Provozovny (`/provozovny/`)
 Card per location (building photo, role badge, adresa, telefon, otevírací
@@ -85,9 +105,11 @@ link still works if OSM is down).
 ## Modern essentials (every page)
 Responsive layout; SEO `<title>` + meta description + Open Graph; JSON-LD
 `Organization` structured data; hand-rolled `robots.txt` + `sitemap.xml`
-(no `django.contrib.sitemaps` — right-sized for four pages); Czech privacy
-note in the footer (no tracking cookies; OSM map embeds may expose the
-visitor IP to the map host — kept honest per 0052); accessible markup
+(no `django.contrib.sitemaps` — right-sized for four pages); short Czech
+privacy note in the footer (no tracking cookies; mapy vkládány z
+OpenStreetMap — pass 2 shortened it, dropping the long IP-clause sentence);
+the footer is three tidy columns (firma / Kontakt / Odkazy) + a legal strip;
+accessible markup
 (skip-link, `lang="cs"`, `aria-current`); favicon reused from
 `kasia/static/brand/`. Exec portraits + branch photos live in
 `kasia/static/web/` (`exec-*.jpg`, `branch-*.jpg`).

@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Přehled — Kasia sklad</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#2563eb;
+    --accent-d:#1d4ed8;
+    --accent-wash:#eff4ff;
+    --ink:#0b0f19;
+    --ink-2:#1f2733;
+    --paper:#ffffff;
+    --canvas:#f6f7f9;
+    --hair:#e6e8ec;
+    --hair-2:#eef0f3;
+    --mute:#6b7280;
+    --mute-2:#9aa1ad;
+    --error:#dc2626;
+    --error-wash:#fef2f2;
+    --error-line:#fecaca;
+    --warn:#b45309;
+    --warn-wash:#fffbeb;
+    --warn-line:#fde68a;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    background:var(--canvas);
+    color:var(--ink);
+    font-family:"Inter","Helvetica Neue",Arial,sans-serif;
+    font-size:13.5px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  a{color:inherit;text-decoration:none;}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;}
+  .num{
+    text-align:right;
+    font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-variant-numeric:tabular-nums;
+    font-feature-settings:"tnum" 1;
+    white-space:nowrap;
+  }
+  .wrap{max-width:1240px;margin:0 auto;padding:0 28px 80px;}
+
+  /* ---------- micro-label ---------- */
+  .lbl{
+    font-size:10px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    color:var(--mute-2);
+    line-height:1.2;
+  }
+
+  /* ---------- header ---------- */
+  header{
+    background:var(--paper);
+    border-bottom:1px solid var(--hair);
+    position:sticky;top:0;z-index:20;
+  }
+  .head-row{
+    max-width:1240px;margin:0 auto;
+    padding:14px 28px;
+    display:flex;align-items:center;gap:22px;
+  }
+  .brand{display:flex;align-items:center;gap:11px;}
+  .brand img{height:30px;width:auto;display:block;border-radius:5px;}
+  .brand .sub{
+    font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--mute);border-left:1px solid var(--hair);padding-left:11px;
+  }
+  nav{display:flex;flex-wrap:wrap;gap:2px;margin-left:6px;}
+  nav a{
+    font-size:13px;font-weight:500;color:var(--ink-2);
+    padding:6px 10px;border-radius:7px;
+  }
+  nav a:hover{background:var(--canvas);color:var(--ink);}
+  nav a[aria-current="page"]{color:var(--accent);background:var(--accent-wash);font-weight:600;}
+  .head-right{margin-left:auto;display:flex;align-items:center;gap:14px;}
+  .who{font-size:12.5px;color:var(--mute);}
+  .who strong{color:var(--ink-2);font-weight:600;}
+  .logout{
+    font-size:12.5px;font-weight:600;color:var(--ink-2);
+    border:1px solid var(--hair);padding:6px 12px;border-radius:7px;
+  }
+  .logout:hover{border-color:var(--mute-2);color:var(--ink);}
+
+  /* ---------- page head ---------- */
+  .page-head{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    gap:24px;flex-wrap:wrap;margin:36px 0 22px;
+  }
+  h1{font-size:23px;font-weight:700;letter-spacing:-.01em;line-height:1.15;}
+  h1 .who-email{color:var(--mute);font-weight:500;}
+
+  /* ---------- KPI strip ---------- */
+  .kpis{
+    display:grid;grid-template-columns:repeat(4,1fr);
+    gap:0;background:var(--paper);
+    border:1px solid var(--hair);border-radius:var(--radius);
+    overflow:hidden;margin-bottom:14px;
+  }
+  .kpi{
+    padding:18px 20px;
+    border-left:1px solid var(--hair-2);
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .kpi:first-child{border-left:0;}
+  .kpi .k-val{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-variant-numeric:tabular-nums;
+    font-size:34px;font-weight:600;line-height:1;letter-spacing:-.02em;
+    color:var(--ink);display:flex;align-items:baseline;gap:6px;
+  }
+  .kpi .k-unit{font-size:13px;font-weight:500;color:var(--mute-2);letter-spacing:0;}
+  .kpi.accent .k-val{color:var(--accent);}
+  .kpi .k-sub{font-size:11.5px;color:var(--mute);}
+
+  /* ---------- task bar ---------- */
+  .taskbar{
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    background:var(--paper);border:1px solid var(--hair);border-radius:var(--radius);
+    padding:14px 18px;margin-bottom:30px;
+  }
+  .task-flag{display:flex;align-items:center;gap:11px;}
+  .task-flag .badge{
+    font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;
+    font-size:18px;font-weight:700;color:#fff;background:var(--accent);
+    min-width:30px;height:30px;border-radius:7px;
+    display:inline-flex;align-items:center;justify-content:center;padding:0 8px;
+  }
+  .task-flag .txt{font-size:13.5px;font-weight:600;}
+  .task-actions{margin-left:auto;display:flex;gap:10px;}
+  .btn{
+    font-size:13px;font-weight:600;padding:8px 16px;border-radius:8px;
+    border:1px solid var(--hair);background:var(--paper);color:var(--ink-2);cursor:pointer;
+  }
+  .btn:hover{border-color:var(--mute-2);}
+  .btn--primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn--primary:hover{background:var(--accent-d);border-color:var(--accent-d);}
+
+  /* ---------- section heads ---------- */
+  .sec{margin-bottom:30px;}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:11px;}
+  .sec-head h2{font-size:15px;font-weight:700;letter-spacing:-.005em;}
+  .sec-head .count{
+    font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;
+    font-size:11.5px;font-weight:600;color:var(--mute-2);
+    background:var(--canvas);border:1px solid var(--hair);
+    padding:1px 8px;border-radius:20px;
+  }
+
+  /* ---------- card / table ---------- */
+  .card{
+    background:var(--paper);border:1px solid var(--hair);
+    border-radius:var(--radius);overflow:hidden;
+  }
+  table{border-collapse:collapse;width:100%;}
+  thead th{
+    font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;
+    color:var(--mute-2);text-align:left;
+    padding:10px 16px;border-bottom:1px solid var(--hair);background:var(--paper);
+  }
+  thead th.num{text-align:right;}
+  tbody td{
+    padding:11px 16px;border-bottom:1px solid var(--hair-2);
+    font-size:13.5px;color:var(--ink-2);vertical-align:middle;
+  }
+  tbody tr:last-child td{border-bottom:0;}
+  tbody tr:hover{background:#fafbfc;}
+  td.prod{font-weight:600;color:var(--ink);}
+  .pill{
+    display:inline-block;font-family:"IBM Plex Mono",monospace;
+    font-size:10.5px;font-weight:600;letter-spacing:.04em;
+    padding:2px 7px;border-radius:5px;
+    background:var(--canvas);border:1px solid var(--hair);color:var(--mute);
+  }
+  .deficit{color:var(--error);font-weight:600;}
+  .ver{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+    color:var(--mute);
+  }
+  .ver.v2{color:var(--warn);}
+
+  /* ---------- resolve detail ---------- */
+  .resolve{display:grid;gap:12px;}
+  .alert{
+    border:1px solid var(--hair);border-left-width:3px;
+    border-radius:var(--radius);padding:14px 16px;background:var(--paper);
+    display:flex;gap:14px;align-items:flex-start;
+  }
+  .alert.error{border-left-color:var(--error);background:var(--error-wash);border-color:var(--error-line);}
+  .alert.warn{border-left-color:var(--warn);background:var(--warn-wash);border-color:var(--warn-line);}
+  .alert .a-icon{
+    flex:0 0 auto;width:22px;height:22px;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:700;color:#fff;margin-top:1px;
+  }
+  .alert.error .a-icon{background:var(--error);}
+  .alert.warn .a-icon{background:var(--warn);}
+  .alert .a-body{min-width:0;}
+  .alert .a-kind{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;}
+  .alert.error .a-kind{color:var(--error);}
+  .alert.warn .a-kind{color:var(--warn);}
+  .alert .a-line{font-size:13.5px;color:var(--ink);line-height:1.45;}
+  .alert .a-line strong{font-weight:600;}
+  .alert .a-line .doc{font-family:"IBM Plex Mono",monospace;font-weight:600;}
+  .alert .a-meta{font-size:12px;color:var(--mute);margin-top:3px;}
+
+  /* ---------- branch grid ---------- */
+  .branches{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .branch{
+    background:var(--paper);border:1px solid var(--hair);
+    border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;
+  }
+  .branch-head{padding:16px 18px;border-bottom:1px solid var(--hair);}
+  .branch-title{display:flex;align-items:center;gap:10px;}
+  .branch-code{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:700;
+    color:var(--accent);background:var(--accent-wash);
+    padding:2px 8px;border-radius:6px;letter-spacing:.04em;
+  }
+  .branch-title h3{font-size:15px;font-weight:700;}
+  .branch-addr{font-size:12px;color:var(--mute);margin-top:6px;}
+  .branch-stats{display:flex;gap:26px;margin-top:14px;}
+  .bstat .b-val{
+    font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;
+    font-size:24px;font-weight:600;line-height:1;letter-spacing:-.02em;color:var(--ink);
+  }
+  .bstat .b-val .b-unit{font-size:12px;font-weight:500;color:var(--mute-2);margin-left:4px;}
+  .bstat .b-lbl{margin-top:6px;}
+  .branch-sub{padding:13px 18px 8px;}
+  .branch-sub .lbl{margin-bottom:2px;}
+  .branch table thead th{padding-left:18px;padding-right:18px;}
+  .branch table tbody td{padding-left:18px;padding-right:18px;}
+
+  /* recent moves */
+  .moves{padding:6px 18px 16px;border-top:1px solid var(--hair-2);}
+  .moves .lbl{margin:12px 0 8px;}
+  .move{
+    display:grid;grid-template-columns:auto auto 1fr auto;
+    align-items:baseline;gap:10px;
+    padding:7px 0;border-bottom:1px solid var(--hair-2);font-size:13px;
+  }
+  .move:last-child{border-bottom:0;}
+  .move .m-date{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:12px;color:var(--mute);}
+  .move .m-kind{
+    font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    padding:1px 7px;border-radius:5px;justify-self:start;
+  }
+  .move .m-kind.in{color:var(--accent-d);background:var(--accent-wash);}
+  .move .m-kind.out{color:var(--ink-2);background:var(--canvas);border:1px solid var(--hair);}
+  .move .m-party{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .move .m-items{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:12px;color:var(--mute);}
+
+  /* ---------- review footer ---------- */
+  .sec-foot{padding:12px 16px;border-top:1px solid var(--hair-2);}
+  .sec-foot a{font-size:13px;font-weight:600;color:var(--accent);}
+  .sec-foot a:hover{color:var(--accent-d);text-decoration:underline;}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:980px){
+    .kpis{grid-template-columns:1fr 1fr;}
+    .kpi:nth-child(3){border-left:0;}
+    .kpi:nth-child(odd){border-left:0;}
+    .kpi{border-top:1px solid var(--hair-2);}
+    .kpi:nth-child(1),.kpi:nth-child(2){border-top:0;}
+    .branches{grid-template-columns:1fr;}
+  }
+  @media (max-width:720px){
+    .wrap{padding:0 16px 56px;}
+    .head-row{flex-wrap:wrap;gap:12px;}
+    nav{order:3;width:100%;margin-left:0;}
+    .head-right{margin-left:auto;}
+    .kpis{grid-template-columns:1fr 1fr;}
+    .task-actions{margin-left:0;width:100%;}
+    .task-actions .btn{flex:1;}
+    .branch-stats{gap:18px;}
+  }
+  @media (max-width:480px){
+    .kpis{grid-template-columns:1fr;}
+    .kpi{border-left:0;border-top:1px solid var(--hair-2);}
+    .kpi:first-child{border-top:0;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-row">
+    <a class="brand" href="#" aria-label="Kasia sklad — přehled">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="sub">sklad</span>
+    </a>
+    <nav aria-label="Hlavní navigace">
+      <a href="#">Katalog</a>
+      <a href="#">Příjem</a>
+      <a href="#">Výdej</a>
+      <a href="#">Míchání</a>
+      <a href="#">Dodací listy</a>
+      <a href="#">Historie</a>
+      <a href="#">Pobočky</a>
+      <a href="#">Nastavení</a>
+    </nav>
+    <div class="head-right">
+      <span class="who"><strong>petr@kasiavera.cz</strong></span>
+      <a class="logout" href="#">Odhlásit</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="page-head">
+    <h1>Přehled <span class="who-email">— petr@kasiavera.cz</span></h1>
+  </div>
+
+  <!-- KPI strip -->
+  <section class="kpis" aria-label="Klíčové ukazatele">
+    <div class="kpi accent">
+      <span class="lbl">K vyřešení</span>
+      <span class="k-val">2</span>
+      <span class="k-sub">úkoly vyžadující pozornost</span>
+    </div>
+    <div class="kpi">
+      <span class="lbl">Produktů skladem</span>
+      <span class="k-val">43</span>
+      <span class="k-sub">napříč 2 pobočkami</span>
+    </div>
+    <div class="kpi">
+      <span class="lbl">Celková zásoba</span>
+      <span class="k-val">2 124.860 <span class="k-unit">kg</span></span>
+      <span class="k-sub">TYN + SEZ</span>
+    </div>
+    <div class="kpi">
+      <span class="lbl">Dochází zboží</span>
+      <span class="k-val">3</span>
+      <span class="k-sub">pod nastaveným prahem</span>
+    </div>
+  </section>
+
+  <!-- task bar -->
+  <div class="taskbar">
+    <div class="task-flag">
+      <span class="badge mono">2</span>
+      <span class="txt">K vyřešení</span>
+    </div>
+    <div class="task-actions">
+      <button class="btn" type="button">Nový příjem</button>
+      <button class="btn btn--primary" type="button">Nový výdej</button>
+    </div>
+  </div>
+
+  <!-- Dochází zboží -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2>Dochází zboží</h2>
+      <span class="count">3</span>
+    </div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Produkt</th>
+            <th scope="col">Pobočka</th>
+            <th scope="col" class="num">Skladem</th>
+            <th scope="col" class="num">Práh</th>
+            <th scope="col" class="num">Deficit (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="prod">Skořice mletá</td>
+            <td><span class="pill">TYN</span></td>
+            <td class="num">2.400</td>
+            <td class="num">5.000</td>
+            <td class="num deficit">2.600</td>
+          </tr>
+          <tr>
+            <td class="prod">Bobkový list</td>
+            <td><span class="pill">SEZ</span></td>
+            <td class="num">0.850</td>
+            <td class="num">3.000</td>
+            <td class="num deficit">2.150</td>
+          </tr>
+          <tr>
+            <td class="prod">Muškátový oříšek</td>
+            <td><span class="pill">TYN</span></td>
+            <td class="num">1.200</td>
+            <td class="num">2.000</td>
+            <td class="num deficit">0.800</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- K vyřešení (detail) -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2>K vyřešení</h2>
+      <span class="count">2</span>
+    </div>
+    <div class="resolve">
+      <div class="alert error">
+        <span class="a-icon" aria-hidden="true">!</span>
+        <div class="a-body">
+          <div class="a-kind">Nedoručené e-maily</div>
+          <div class="a-line">
+            <span class="doc">DL-TYN-2026-0042</span> — <strong>Restaurace U Lípy s.r.o.</strong>
+          </div>
+          <div class="a-meta">naposledy selhalo 23. 06. 2026 17:42 (SMTP timeout)</div>
+        </div>
+      </div>
+      <div class="alert warn">
+        <span class="a-icon" aria-hidden="true">!</span>
+        <div class="a-body">
+          <div class="a-kind">Nedávno editované dodáky</div>
+          <div class="a-line">
+            <span class="doc">DL-SEZ-2026-0039</span> — <strong>Pekařství Novák a syn</strong> — <span class="ver v2">v2</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Branch grid -->
+  <section class="sec">
+    <div class="branches">
+
+      <!-- TYN -->
+      <article class="branch" aria-label="Pobočka TYN">
+        <div class="branch-head">
+          <div class="branch-title">
+            <span class="branch-code">TYN</span>
+            <h3>Týniště nad Orlicí</h3>
+          </div>
+          <div class="branch-addr">Mírové náměstí 90, Týniště nad Orlicí</div>
+          <div class="branch-stats">
+            <div class="bstat">
+              <div class="b-val">24</div>
+              <div class="b-lbl lbl">Produktů skladem</div>
+            </div>
+            <div class="bstat">
+              <div class="b-val">1 248.560<span class="b-unit">kg</span></div>
+              <div class="b-lbl lbl">Celkem</div>
+            </div>
+          </div>
+        </div>
+        <div class="branch-sub">
+          <div class="lbl">Top 5 zásob</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Produkt</th>
+              <th scope="col" class="num">Kg</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="prod">Paprika sladká mletá</td><td class="num">312.500</td></tr>
+            <tr><td class="prod">Pepř černý celý</td><td class="num">187.250</td></tr>
+            <tr><td class="prod">Kmín celý</td><td class="num">154.000</td></tr>
+            <tr><td class="prod">Majoránka</td><td class="num">98.750</td></tr>
+            <tr><td class="prod">Skořice mletá</td><td class="num">2.400</td></tr>
+          </tbody>
+        </table>
+        <div class="moves">
+          <div class="lbl">Nedávné pohyby</div>
+          <div class="move">
+            <span class="m-date">23. 06.</span>
+            <span class="m-kind out">Výdej</span>
+            <span class="m-party">Restaurace U Lípy s.r.o.</span>
+            <span class="m-items">4 pol.</span>
+          </div>
+          <div class="move">
+            <span class="m-date">22. 06.</span>
+            <span class="m-kind in">Příjem</span>
+            <span class="m-party">Spice Trade Praha a.s.</span>
+            <span class="m-items">7 pol.</span>
+          </div>
+          <div class="move">
+            <span class="m-date">21. 06.</span>
+            <span class="m-kind out">Výdej</span>
+            <span class="m-party">Hotel Černý kůň</span>
+            <span class="m-items">2 pol.</span>
+          </div>
+          <div class="move">
+            <span class="m-date">20. 06.</span>
+            <span class="m-kind out">Výdej</span>
+            <span class="m-party">Říčany (HQ)</span>
+            <span class="m-items">3 pol.</span>
+          </div>
+          <div class="move">
+            <span class="m-date">19. 06.</span>
+            <span class="m-kind in">Příjem</span>
+            <span class="m-party">Worlée NaturProdukte</span>
+            <span class="m-items">5 pol.</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- SEZ -->
+      <article class="branch" aria-label="Pobočka SEZ">
+        <div class="branch-head">
+          <div class="branch-title">
+            <span class="branch-code">SEZ</span>
+            <h3>Sezimovo Ústí</h3>
+          </div>
+          <div class="branch-addr">Průmyslová 1024, Sezimovo Ústí</div>
+          <div class="branch-stats">
+            <div class="bstat">
+              <div class="b-val">19</div>
+              <div class="b-lbl lbl">Produktů skladem</div>
+            </div>
+            <div class="bstat">
+              <div class="b-val">876.300<span class="b-unit">kg</span></div>
+              <div class="b-lbl lbl">Celkem</div>
+            </div>
+          </div>
+        </div>
+        <div class="branch-sub">
+          <div class="lbl">Top 5 zásob</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Produkt</th>
+              <th scope="col" class="num">Kg</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="prod">Pepř černý celý</td><td class="num">205.000</td></tr>
+            <tr><td class="prod">Paprika sladká mletá</td><td class="num">142.800</td></tr>
+            <tr><td class="prod">Muškátový oříšek</td><td class="num">64.500</td></tr>
+            <tr><td class="prod">Kmín celý</td><td class="num">47.250</td></tr>
+            <tr><td class="prod">Bobkový list</td><td class="num">0.850</td></tr>
+          </tbody>
+        </table>
+        <div class="moves">
+          <div class="lbl">Nedávné pohyby</div>
+          <div class="move">
+            <span class="m-date">23. 06.</span>
+            <span class="m-kind in">Příjem</span>
+            <span class="m-party">Fuchs Gewürze</span>
+            <span class="m-items">6 pol.</span>
+          </div>
+          <div class="move">
+            <span class="m-date">22. 06.</span>
+            <span class="m-kind out">Výdej</span>
+            <span class="m-party">Pekařství Novák a syn</span>
+            <span class="m-items">3 pol.</span>
+          </div>
+          <div class="move">
+            <span class="m-date">21. 06.</span>
+            <span class="m-kind out">Výdej</span>
+            <span class="m-party">Jednota Tábor</span>
+            <span class="m-items">5 pol.</span>
+          </div>
+          <div class="move">
+            <span class="m-date">20. 06.</span>
+            <span class="m-kind out">Výdej</span>
+            <span class="m-party">Restaurace Na Růžku</span>
+            <span class="m-items">2 pol.</span>
+          </div>
+          <div class="move">
+            <span class="m-date">18. 06.</span>
+            <span class="m-kind in">Příjem</span>
+            <span class="m-party">Spice Trade Praha a.s.</span>
+            <span class="m-items">4 pol.</span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- Dodací listy k revizi -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2>Dodací listy k revizi</h2>
+      <span class="count">5</span>
+    </div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Číslo</th>
+            <th scope="col">Datum</th>
+            <th scope="col">Pobočka</th>
+            <th scope="col">Odběratel</th>
+            <th scope="col">Verze</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="mono" style="font-weight:600">DL-TYN-2026-0042</span></td>
+            <td class="num" style="text-align:left">23. 06. 2026</td>
+            <td><span class="pill">TYN</span></td>
+            <td>Restaurace U Lípy s.r.o.</td>
+            <td><span class="ver">v1</span></td>
+          </tr>
+          <tr>
+            <td><span class="mono" style="font-weight:600">DL-SEZ-2026-0039</span></td>
+            <td class="num" style="text-align:left">22. 06. 2026</td>
+            <td><span class="pill">SEZ</span></td>
+            <td>Pekařství Novák a syn</td>
+            <td><span class="ver v2">v2</span></td>
+          </tr>
+          <tr>
+            <td><span class="mono" style="font-weight:600">DL-TYN-2026-0041</span></td>
+            <td class="num" style="text-align:left">21. 06. 2026</td>
+            <td><span class="pill">TYN</span></td>
+            <td>Hotel Černý kůň</td>
+            <td><span class="ver">v1</span></td>
+          </tr>
+          <tr>
+            <td><span class="mono" style="font-weight:600">DL-SEZ-2026-0038</span></td>
+            <td class="num" style="text-align:left">21. 06. 2026</td>
+            <td><span class="pill">SEZ</span></td>
+            <td>Jednota Tábor</td>
+            <td><span class="ver">v1</span></td>
+          </tr>
+          <tr>
+            <td><span class="mono" style="font-weight:600">DL-TYN-2026-0040</span></td>
+            <td class="num" style="text-align:left">20. 06. 2026</td>
+            <td><span class="pill">TYN</span></td>
+            <td>Říčany (HQ)</td>
+            <td><span class="ver">v1</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="sec-foot">
+        <a href="#">Celý seznam →</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

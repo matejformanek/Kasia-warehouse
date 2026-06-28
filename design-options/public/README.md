@@ -12,23 +12,40 @@ copy. Final winner gets ported into the real `web/` Django templates per
 
 ## Files
 
+`logos.html` was removed (logo concepts dropped from this set). The original
+four homepage mockups (01–04) are kept as reference; ten new homepage
+directions (06–15) were added — **all without a logo image** (text wordmark
+"Kasia vera" only), minimalistic & modern, anchored mainly on the current
+green/clean look + `02-clean-green`.
+
 | File | What it is |
 |------|------------|
-| `index.html` | Sub-gallery — thumbnail grid linking everything below (same card/iframe/cover mechanism as the parent `design-options/index.html`). |
-| `01-warm-editorial.html` | Homepage — warm, editorial, spice-toned (paprika/cumin warmth), serif display type, generous spacing. |
-| `02-clean-green.html` | Homepage — clean modern, green brand-forward, crisp and corporate-friendly. |
-| `03-bold-photographic.html` | Homepage — bold, photo-led. CSS-gradient blocks stand in for photography with `(zde foto …)` captions showing where real images go. |
-| `04-minimalist.html` | Homepage — restrained, lots of whitespace, type-driven, minimal color. |
-| `05-kontakt.html` | Kontakt page — contact-details block + poptávkový/kontaktní formulář (jméno, e-mail, telefon, zpráva, GDPR souhlas) + static map placeholder. Form is visual only. Done in the `02-clean-green` direction. |
-| `logos.html` | Three hand-authored inline-SVG wordmark/leaf-mark concepts for "Kasia vera", each on light + dark backgrounds at two sizes. |
-| `assets/` | Local copies of `kasia-logo.jpg` + `favicon-32.png` (copied from `design-options/assets/`). |
+| `index.html` | Sub-gallery — thumbnail grid (new directions, original directions, Kontakt). |
+| `01-warm-editorial.html` | Original — warm, editorial, spice-toned, serif display. |
+| `02-clean-green.html` | Original — clean modern, green brand-forward (a key reference). |
+| `03-bold-photographic.html` | Original — bold, photo-led, gradient placeholders. |
+| `04-minimalist.html` | Original — restrained, type-driven, minimal colour. |
+| `05-kontakt.html` | Kontakt page — details + poptávkový formulář + map placeholder (visual only). |
+| `06-green-split.html` | New — split-screen hero, deep green + cream. |
+| `07-mono-green.html` | New — near-monochrome, green as single accent, type-driven. |
+| `08-sage-cards.html` | New — soft sage-green tinted cards, friendly modern B2B. |
+| `09-editorial-minimal.html` | New — serif-led editorial, generous whitespace, one green accent. |
+| `10-dark-green.html` | New — premium dark forest-green, gold accent. |
+| `11-centered-modern.html` | New — centered single-axis landing, green CTA. |
+| `12-saas-clean.html` | New — corporate B2B-SaaS structure, green primary. |
+| `13-warm-neutral.html` | New — warm sand/stone palette + green accent. |
+| `14-bold-type.html` | New — oversized bold grotesque headline, graphic. |
+| `15-grid-sections.html` | New — modular tiled grid, Swiss-influenced. |
+| `assets/` | Local copy of `favicon-32.png` (+ `kasia-logo.jpg`, used only by the original 01–04). |
 
 ## Conventions
 
 - Czech UI text, diacritics intact (UTF-8). English only in HTML comments / filenames.
 - Each mockup is fully self-contained: one HTML file, all CSS inline. The only
   external request is the Google Fonts `<link>` (as in the parent gallery).
-  No other CDNs, no external images. Brand logo via local `assets/kasia-logo.jpg`.
+  No other CDNs, no external images.
+- **New designs (06–15) use no logo image** — a styled text wordmark "Kasia vera".
+  The original 01–04 still reference the local `assets/kasia-logo.jpg`.
 - All links are relative (the set is served from a static subdirectory).
 - Real Kasia facts: IČO 25756729, Nádražní 1202/5, 251 01 Říčany u Prahy,
   +420 323 601 422 / 424, info@kasia.cz, datová schránka emye9prc,

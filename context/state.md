@@ -1348,6 +1348,29 @@
     port the winner into the real `web/` templates. Add deferred pages
     (Sortiment, Encyklopedie, …) as later passes.
 
+- **2026-06-28** — Design-gallery round 2 (both surfaces; on
+  `ft_web_public_site`; exploration only, live templates untouched).
+  - **Sklad** (`design-options/`): narrowed to the 4 chosen directions
+    (01 mono, 02 swiss, 04 green-brand, 07 soft-cards); deleted the other
+    14 (03,05,06,08–18); added 10 new in the same light/minimalist/modern
+    feel (11 indigo, 12 slate-amber, 13 sidebar-app, 14 teal-calm,
+    15 data-numerals, 16 pastel-cards, 17 outline-lineart, 18 sand-minimal,
+    19 compact-pro, 20 green-pro). `index.html` rebuilt into two groups.
+  - **Public** (`design-options/public/`): kept all four originals (01–04)
+    + 05-kontakt; **deleted `logos.html`**; added 10 new homepage designs
+    (06–15) — **all logo-image-free** (text wordmark "Kasia vera"),
+    minimalistic & modern, anchored on the current green/clean look +
+    02-clean-green. `public/index.html` rebuilt (logo card removed,
+    header wordmark-only).
+  - Both gallery sets share identical locked content (sklad dashboard /
+    public homepage copy from `web/content.py`); only styling differs.
+  - **Verification:** all gallery + 24 variant routes 200 over `http.server`;
+    deleted files 404; no Django tags; public new designs reference no logo
+    image; sample data + public copy consistent across all new files.
+  - **Next:** Petr reviews → pick keepers per surface → cull rejects,
+    iterate on picks + his requested changes → eventually log a decision +
+    port winners into real templates.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

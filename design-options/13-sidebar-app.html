@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Přehled — Kasia sklad</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:        #1d68d6;
+    --accent-deep:   #1652ac;
+    --accent-tint:   #eaf1fc;
+    --accent-tint-2: #dde9fa;
+    --bg:            #f7f8fa;
+    --surface:       #ffffff;
+    --sidebar:       #ffffff;
+    --ink:           #1a1d23;
+    --ink-soft:      #565b66;
+    --ink-faint:     #868c97;
+    --line:          #e7e9ee;
+    --line-soft:     #eef0f4;
+    --warn:          #8a5d00;
+    --warn-tint:     #fdf5e2;
+    --warn-line:     #f0dca6;
+    --error:         #a02525;
+    --error-tint:    #fbebea;
+    --error-line:    #f1c9c6;
+    --ok:            #1f7a44;
+    --ok-tint:       #e8f4ec;
+    --radius:        12px;
+    --radius-sm:     8px;
+    --shadow:        0 1px 2px rgba(20,30,55,.04), 0 8px 24px rgba(20,30,55,.05);
+    --sidebar-w:     244px;
+  }
+
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  a{color:var(--accent);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em;}
+
+  /* ============ APP SHELL ============ */
+  .app{
+    display:grid;
+    grid-template-columns:var(--sidebar-w) 1fr;
+    min-height:100vh;
+  }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar{
+    position:sticky;
+    top:0;
+    align-self:start;
+    height:100vh;
+    background:var(--sidebar);
+    border-right:1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    padding:20px 16px;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:6px 8px 18px;
+    margin-bottom:6px;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .brand img{
+    height:38px;
+    width:38px;
+    border-radius:9px;
+    object-fit:cover;
+    display:block;
+    box-shadow:0 1px 2px rgba(20,30,55,.12);
+  }
+  .brand-text{display:flex;flex-direction:column;line-height:1.15;}
+  .brand-name{
+    font-weight:700;
+    font-size:17px;
+    letter-spacing:.06em;
+    color:var(--ink);
+  }
+  .brand-sub{
+    font-size:12px;
+    color:var(--ink-faint);
+    letter-spacing:.14em;
+    text-transform:uppercase;
+  }
+
+  .nav{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    margin-top:14px;
+    flex:1 1 auto;
+  }
+  .nav-label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    color:var(--ink-faint);
+    padding:4px 10px 8px;
+    font-weight:600;
+  }
+  .nav a{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    padding:9px 11px;
+    border-radius:var(--radius-sm);
+    color:var(--ink-soft);
+    font-weight:500;
+    font-size:14.5px;
+    transition:background .12s ease, color .12s ease;
+  }
+  .nav a:hover{
+    background:var(--line-soft);
+    color:var(--ink);
+    text-decoration:none;
+  }
+  .nav a.active{
+    background:var(--accent-tint);
+    color:var(--accent-deep);
+    font-weight:600;
+  }
+  .nav a.active .ic{color:var(--accent);}
+  .ic{
+    width:18px;
+    height:18px;
+    flex:0 0 18px;
+    color:var(--ink-faint);
+  }
+  .nav a:hover .ic{color:var(--ink-soft);}
+
+  .user{
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px solid var(--line-soft);
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .avatar{
+    width:34px;height:34px;flex:0 0 34px;
+    border-radius:50%;
+    background:var(--accent-tint-2);
+    color:var(--accent-deep);
+    font-weight:600;
+    font-size:14px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .user-meta{min-width:0;line-height:1.25;}
+  .user-email{
+    font-size:13px;
+    color:var(--ink);
+    font-weight:500;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    max-width:120px;
+  }
+  .user .logout{
+    font-size:12.5px;
+    color:var(--ink-faint);
+    font-weight:500;
+  }
+  .user .logout:hover{color:var(--error);text-decoration:none;}
+
+  /* ============ MAIN ============ */
+  .main{min-width:0;display:flex;flex-direction:column;}
+  .content{
+    padding:32px 36px 56px;
+    max-width:1180px;
+    width:100%;
+  }
+
+  /* mobile top bar — hidden on desktop */
+  .topbar{display:none;}
+
+  /* ============ PAGE HEAD / TASK BAR ============ */
+  .page-head{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:24px;
+    flex-wrap:wrap;
+    margin-bottom:24px;
+  }
+  .page-head h1{
+    font-size:25px;
+    letter-spacing:-.02em;
+  }
+  .page-head .crumb{
+    font-size:12.5px;
+    color:var(--ink-faint);
+    letter-spacing:.04em;
+    margin-bottom:5px;
+  }
+  .actions{display:flex;align-items:center;gap:12px;}
+  .pill-count{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:var(--error-tint);
+    color:var(--error);
+    border:1px solid var(--error-line);
+    border-radius:999px;
+    padding:7px 14px;
+    font-size:13.5px;
+    font-weight:600;
+  }
+  .pill-count .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--error);display:inline-block;
+  }
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    border-radius:var(--radius-sm);
+    padding:9px 16px;
+    font-size:14px;
+    font-weight:600;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink);
+    cursor:pointer;
+    transition:border-color .12s, background .12s, box-shadow .12s;
+  }
+  .btn:hover{border-color:#cdd2dc;text-decoration:none;}
+  .btn-primary{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#fff;
+    box-shadow:0 1px 2px rgba(29,104,214,.25);
+  }
+  .btn-primary:hover{background:var(--accent-deep);border-color:var(--accent-deep);}
+  .btn .ic{width:16px;height:16px;flex:0 0 16px;color:currentColor;}
+
+  /* ============ CARDS ============ */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    margin-bottom:22px;
+    overflow:hidden;
+  }
+  .card-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:16px 20px;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .card-head h2{
+    font-size:15.5px;
+    display:flex;align-items:center;gap:9px;
+  }
+  .card-head .ic{width:17px;height:17px;flex:0 0 17px;color:var(--ink-faint);}
+  .card-head .meta{font-size:13px;color:var(--ink-faint);}
+  .card-body{padding:6px 20px 18px;}
+
+  /* ============ TABLES ============ */
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  thead th{
+    text-align:left;
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--ink-faint);
+    font-weight:600;
+    padding:10px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  tbody td{
+    padding:11px 12px;
+    border-bottom:1px solid var(--line-soft);
+    color:var(--ink);
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover td{background:#fafbfd;}
+  .num{
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+    font-feature-settings:"tnum" 1;
+  }
+  th.num{text-align:right;}
+  .mono{
+    font-variant-numeric:tabular-nums;
+    letter-spacing:.01em;
+  }
+  .deficit{color:var(--error);font-weight:600;}
+  .badge-branch{
+    display:inline-block;
+    font-size:11.5px;
+    font-weight:600;
+    letter-spacing:.04em;
+    padding:2px 8px;
+    border-radius:6px;
+    background:var(--accent-tint);
+    color:var(--accent-deep);
+  }
+  .ver{
+    display:inline-block;
+    font-size:12px;
+    font-weight:600;
+    padding:2px 8px;
+    border-radius:6px;
+    background:var(--line-soft);
+    color:var(--ink-soft);
+  }
+  .ver.v2{
+    background:var(--warn-tint);
+    color:var(--warn);
+    border:1px solid var(--warn-line);
+  }
+  .dl-num{font-weight:600;color:var(--ink);}
+
+  /* ============ K VYŘEŠENÍ DETAIL ============ */
+  .issues{display:flex;flex-direction:column;gap:12px;padding:14px 20px 18px;}
+  .issue{
+    display:flex;
+    gap:13px;
+    padding:13px 15px;
+    border-radius:var(--radius-sm);
+    border:1px solid var(--line);
+    align-items:flex-start;
+  }
+  .issue.error{background:var(--error-tint);border-color:var(--error-line);}
+  .issue.warn{background:var(--warn-tint);border-color:var(--warn-line);}
+  .issue .ic{width:19px;height:19px;flex:0 0 19px;margin-top:1px;}
+  .issue.error .ic{color:var(--error);}
+  .issue.warn .ic{color:var(--warn);}
+  .issue-body{min-width:0;}
+  .issue-title{font-weight:600;font-size:14px;margin-bottom:2px;}
+  .issue.error .issue-title{color:var(--error);}
+  .issue.warn .issue-title{color:var(--warn);}
+  .issue-detail{font-size:13.5px;color:var(--ink-soft);line-height:1.45;}
+  .issue-detail strong{color:var(--ink);font-weight:600;}
+
+  /* ============ BRANCH GRID ============ */
+  .branch-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:22px;
+    margin-bottom:22px;
+  }
+  .branch{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  .branch-head{
+    padding:16px 20px 14px;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .branch-head h3{
+    font-size:16px;
+    display:flex;align-items:center;gap:9px;
+  }
+  .branch-addr{
+    font-size:13px;
+    color:var(--ink-faint);
+    margin-top:5px;
+  }
+  .branch-summary{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    margin-top:9px;
+  }
+  .branch-summary strong{color:var(--ink);font-weight:600;}
+  .sub-label{
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.07em;
+    color:var(--ink-faint);
+    font-weight:600;
+    padding:14px 20px 4px;
+  }
+  .branch table{font-size:13.5px;}
+  .branch thead th{padding:8px 20px;}
+  .branch tbody td{padding:9px 20px;}
+
+  .moves{list-style:none;margin:0;padding:4px 20px 18px;display:flex;flex-direction:column;}
+  .move{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 0;
+    border-bottom:1px solid var(--line-soft);
+    font-size:13.5px;
+  }
+  .move:last-child{border-bottom:none;}
+  .move-date{
+    color:var(--ink-faint);
+    font-variant-numeric:tabular-nums;
+    flex:0 0 56px;
+  }
+  .tag{
+    font-size:11.5px;
+    font-weight:600;
+    padding:2px 8px;
+    border-radius:6px;
+    flex:0 0 auto;
+  }
+  .tag.in{background:var(--ok-tint);color:var(--ok);}
+  .tag.out{background:var(--accent-tint);color:var(--accent-deep);}
+  .move-who{color:var(--ink);flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .move-cnt{color:var(--ink-faint);flex:0 0 auto;font-variant-numeric:tabular-nums;}
+
+  .card-foot{
+    padding:13px 20px;
+    border-top:1px solid var(--line-soft);
+    text-align:right;
+  }
+  .card-foot a{font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px;}
+  .card-foot .ic{width:15px;height:15px;}
+
+  .skip-link{
+    position:absolute;left:-999px;top:0;
+    background:var(--accent);color:#fff;padding:8px 14px;border-radius:6px;z-index:50;
+  }
+  .skip-link:focus{left:12px;top:12px;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width:980px){
+    .branch-grid{grid-template-columns:1fr;}
+  }
+  @media (max-width:720px){
+    .app{grid-template-columns:1fr;}
+    .sidebar{display:none;}
+    .topbar{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      background:var(--surface);
+      border-bottom:1px solid var(--line);
+      padding:11px 16px;
+      position:sticky;top:0;z-index:40;
+    }
+    .topbar img{height:32px;width:32px;border-radius:8px;object-fit:cover;}
+    .topbar .brand-name{font-size:15px;letter-spacing:.05em;}
+    .topbar .brand-sub{font-size:10px;}
+    .topbar .tb-user{
+      margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12.5px;
+    }
+    .topbar .tb-user .e{color:var(--ink-soft);max-width:42vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .topbar nav{
+      display:flex;gap:4px;overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
+      padding:8px 16px;
+      background:var(--surface);
+      border-bottom:1px solid var(--line);
+      position:sticky;top:54px;z-index:39;
+    }
+    .topbar nav a{
+      white-space:nowrap;
+      padding:6px 12px;
+      border-radius:999px;
+      font-size:13.5px;
+      font-weight:500;
+      color:var(--ink-soft);
+      background:var(--line-soft);
+    }
+    .topbar nav a.active{background:var(--accent);color:#fff;font-weight:600;}
+    .mob-nav-wrap{position:sticky;top:54px;z-index:39;}
+    .content{padding:22px 16px 48px;}
+    .page-head h1{font-size:21px;}
+  }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Přeskočit na obsah</a>
+
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="brand-text">
+        <span class="brand-name">KASIA</span>
+        <span class="brand-sub">sklad</span>
+      </span>
+    </div>
+
+    <nav class="nav" aria-label="Hlavní navigace">
+      <span class="nav-label">Provoz</span>
+      <a href="#" class="active" aria-current="page">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Přehled
+      </a>
+      <a href="#">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h12"/></svg>
+        Katalog
+      </a>
+      <a href="#">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        Příjem
+      </a>
+      <a href="#">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>
+        Výdej
+      </a>
+      <a href="#">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 3v6a6 6 0 0 0 12 0V3"/><path d="M8 21h8M12 15v6"/></svg>
+        Míchání
+      </a>
+      <a href="#">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
+        Dodací listy
+      </a>
+      <a href="#">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/></svg>
+        Historie
+      </a>
+      <a href="#">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 21V8l6-4 6 4v13"/><path d="M15 21V11l6 4v6"/><path d="M3 21h18"/></svg>
+        Pobočky
+      </a>
+      <a href="#">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-2.88 1.2V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 7 19.6a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 2.6 14H2.5a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.4 9 1.7 1.7 0 0 0 4.06 7.1L4 7.05a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6h.09A1.7 1.7 0 0 0 10 2.6V2.5a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.4a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.6 9v.09A1.7 1.7 0 0 0 21.4 10h.1a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.6 1Z"/></svg>
+        Nastavení
+      </a>
+    </nav>
+
+    <div class="user">
+      <span class="avatar" aria-hidden="true">P</span>
+      <div class="user-meta">
+        <a href="#" class="user-email" title="petr@kasiavera.cz">petr@kasiavera.cz</a>
+        <br>
+        <a href="#" class="logout">Odhlásit</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+
+    <!-- mobile top bar -->
+    <div class="topbar">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="brand-text">
+        <span class="brand-name">KASIA</span>
+        <span class="brand-sub">sklad</span>
+      </span>
+      <span class="tb-user">
+        <a href="#" class="e" title="petr@kasiavera.cz">petr@kasiavera.cz</a>
+        <a href="#" class="logout">Odhlásit</a>
+      </span>
+    </div>
+    <div class="mob-nav-wrap">
+      <nav aria-label="Hlavní navigace (mobil)">
+        <a href="#" class="active" aria-current="page">Přehled</a>
+        <a href="#">Katalog</a>
+        <a href="#">Příjem</a>
+        <a href="#">Výdej</a>
+        <a href="#">Míchání</a>
+        <a href="#">Dodací listy</a>
+        <a href="#">Historie</a>
+        <a href="#">Pobočky</a>
+        <a href="#">Nastavení</a>
+      </nav>
+    </div>
+
+    <main class="content" id="main">
+
+      <!-- PAGE HEAD + TASK BAR -->
+      <div class="page-head">
+        <div>
+          <div class="crumb">Provoz / Přehled</div>
+          <h1>Přehled — petr@kasiavera.cz</h1>
+        </div>
+        <div class="actions">
+          <span class="pill-count"><span class="dot"></span>K vyřešení: 2</span>
+          <button class="btn btn-primary" type="button">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Nový příjem
+          </button>
+          <button class="btn" type="button">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14"/></svg>
+            Nový výdej
+          </button>
+        </div>
+      </div>
+
+      <!-- DOCHÁZÍ ZBOŽÍ -->
+      <section class="card" aria-labelledby="lowstock-h">
+        <div class="card-head">
+          <h2 id="lowstock-h">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 9v4m0 4h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+            Dochází zboží
+          </h2>
+          <span class="meta">3 položky pod prahem</span>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Produkt</th>
+                <th scope="col">Pobočka</th>
+                <th scope="col" class="num">Skladem</th>
+                <th scope="col" class="num">Práh</th>
+                <th scope="col" class="num">Deficit (kg)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Skořice mletá</td>
+                <td><span class="badge-branch">TYN</span></td>
+                <td class="num mono">2.400</td>
+                <td class="num mono">5.000</td>
+                <td class="num mono deficit">2.600</td>
+              </tr>
+              <tr>
+                <td>Bobkový list</td>
+                <td><span class="badge-branch">SEZ</span></td>
+                <td class="num mono">0.850</td>
+                <td class="num mono">3.000</td>
+                <td class="num mono deficit">2.150</td>
+              </tr>
+              <tr>
+                <td>Muškátový oříšek</td>
+                <td><span class="badge-branch">TYN</span></td>
+                <td class="num mono">1.200</td>
+                <td class="num mono">2.000</td>
+                <td class="num mono deficit">0.800</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- K VYŘEŠENÍ DETAIL -->
+      <section class="card" aria-labelledby="issues-h">
+        <div class="card-head">
+          <h2 id="issues-h">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+            K vyřešení
+          </h2>
+          <span class="meta">2 položky</span>
+        </div>
+        <div class="issues">
+          <div class="issue error">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3h.01"/></svg>
+            <div class="issue-body">
+              <div class="issue-title">Nedoručené e-maily</div>
+              <div class="issue-detail">
+                <strong>DL-TYN-2026-0042</strong> — Restaurace U Lípy s.r.o. — naposledy selhalo 23. 06. 2026 17:42 (SMTP timeout)
+              </div>
+            </div>
+          </div>
+          <div class="issue warn">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3 3 20h18L12 3Z"/><path d="M12 10v4m0 3h.01"/></svg>
+            <div class="issue-body">
+              <div class="issue-title">Nedávno editované dodáky</div>
+              <div class="issue-detail">
+                <strong>DL-SEZ-2026-0039</strong> — Pekařství Novák a syn — <span class="ver v2">v2</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BRANCH GRID -->
+      <div class="branch-grid">
+
+        <!-- PANEL 1 — TYN -->
+        <section class="branch" aria-labelledby="tyn-h">
+          <div class="branch-head">
+            <h3 id="tyn-h"><span class="badge-branch">TYN</span> Týniště nad Orlicí</h3>
+            <div class="branch-addr">Mírové náměstí 90, Týniště nad Orlicí</div>
+            <div class="branch-summary"><strong>24 produktů</strong> skladem, celkem <strong>1 248.560 kg</strong>.</div>
+          </div>
+
+          <div class="sub-label">Top 5 skladem</div>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Produkt</th>
+                <th scope="col" class="num">Kg</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Paprika sladká mletá</td><td class="num mono">312.500</td></tr>
+              <tr><td>Pepř černý celý</td><td class="num mono">187.250</td></tr>
+              <tr><td>Kmín celý</td><td class="num mono">154.000</td></tr>
+              <tr><td>Majoránka</td><td class="num mono">98.750</td></tr>
+              <tr><td>Skořice mletá</td><td class="num mono">2.400</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Nedávné pohyby</div>
+          <ul class="moves">
+            <li class="move"><span class="move-date">23. 06.</span><span class="tag out">Výdej</span><span class="move-who">Restaurace U Lípy s.r.o.</span><span class="move-cnt">4 pol.</span></li>
+            <li class="move"><span class="move-date">22. 06.</span><span class="tag in">Příjem</span><span class="move-who">Spice Trade Praha a.s.</span><span class="move-cnt">7 pol.</span></li>
+            <li class="move"><span class="move-date">21. 06.</span><span class="tag out">Výdej</span><span class="move-who">Hotel Černý kůň</span><span class="move-cnt">2 pol.</span></li>
+            <li class="move"><span class="move-date">20. 06.</span><span class="tag out">Výdej</span><span class="move-who">Říčany (HQ)</span><span class="move-cnt">3 pol.</span></li>
+            <li class="move"><span class="move-date">19. 06.</span><span class="tag in">Příjem</span><span class="move-who">Worlée NaturProdukte</span><span class="move-cnt">5 pol.</span></li>
+          </ul>
+        </section>
+
+        <!-- PANEL 2 — SEZ -->
+        <section class="branch" aria-labelledby="sez-h">
+          <div class="branch-head">
+            <h3 id="sez-h"><span class="badge-branch">SEZ</span> Sezimovo Ústí</h3>
+            <div class="branch-addr">Průmyslová 1024, Sezimovo Ústí</div>
+            <div class="branch-summary"><strong>19 produktů</strong> skladem, celkem <strong>876.300 kg</strong>.</div>
+          </div>
+
+          <div class="sub-label">Top 5 skladem</div>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Produkt</th>
+                <th scope="col" class="num">Kg</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Pepř černý celý</td><td class="num mono">205.000</td></tr>
+              <tr><td>Paprika sladká mletá</td><td class="num mono">142.800</td></tr>
+              <tr><td>Muškátový oříšek</td><td class="num mono">64.500</td></tr>
+              <tr><td>Kmín celý</td><td class="num mono">47.250</td></tr>
+              <tr><td>Bobkový list</td><td class="num mono">0.850</td></tr>
+            </tbody>
+          </table>
+
+          <div class="sub-label">Nedávné pohyby</div>
+          <ul class="moves">
+            <li class="move"><span class="move-date">23. 06.</span><span class="tag in">Příjem</span><span class="move-who">Fuchs Gewürze</span><span class="move-cnt">6 pol.</span></li>
+            <li class="move"><span class="move-date">22. 06.</span><span class="tag out">Výdej</span><span class="move-who">Pekařství Novák a syn</span><span class="move-cnt">3 pol.</span></li>
+            <li class="move"><span class="move-date">21. 06.</span><span class="tag out">Výdej</span><span class="move-who">Jednota Tábor</span><span class="move-cnt">5 pol.</span></li>
+            <li class="move"><span class="move-date">20. 06.</span><span class="tag out">Výdej</span><span class="move-who">Restaurace Na Růžku</span><span class="move-cnt">2 pol.</span></li>
+            <li class="move"><span class="move-date">18. 06.</span><span class="tag in">Příjem</span><span class="move-who">Spice Trade Praha a.s.</span><span class="move-cnt">4 pol.</span></li>
+          </ul>
+        </section>
+
+      </div>
+
+      <!-- DODACÍ LISTY K REVIZI -->
+      <section class="card" aria-labelledby="review-h">
+        <div class="card-head">
+          <h2 id="review-h">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/></svg>
+            Dodací listy k revizi
+          </h2>
+          <span class="meta">5 dokladů</span>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Číslo</th>
+                <th scope="col">Datum</th>
+                <th scope="col">Pobočka</th>
+                <th scope="col">Odběratel</th>
+                <th scope="col">Verze</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="dl-num mono">DL-TYN-2026-0042</td>
+                <td class="mono">23. 06. 2026</td>
+                <td><span class="badge-branch">TYN</span></td>
+                <td>Restaurace U Lípy s.r.o.</td>
+                <td><span class="ver">v1</span></td>
+              </tr>
+              <tr>
+                <td class="dl-num mono">DL-SEZ-2026-0039</td>
+                <td class="mono">22. 06. 2026</td>
+                <td><span class="badge-branch">SEZ</span></td>
+                <td>Pekařství Novák a syn</td>
+                <td><span class="ver v2">v2</span></td>
+              </tr>
+              <tr>
+                <td class="dl-num mono">DL-TYN-2026-0041</td>
+                <td class="mono">21. 06. 2026</td>
+                <td><span class="badge-branch">TYN</span></td>
+                <td>Hotel Černý kůň</td>
+                <td><span class="ver">v1</span></td>
+              </tr>
+              <tr>
+                <td class="dl-num mono">DL-SEZ-2026-0038</td>
+                <td class="mono">21. 06. 2026</td>
+                <td><span class="badge-branch">SEZ</span></td>
+                <td>Jednota Tábor</td>
+                <td><span class="ver">v1</span></td>
+              </tr>
+              <tr>
+                <td class="dl-num mono">DL-TYN-2026-0040</td>
+                <td class="mono">20. 06. 2026</td>
+                <td><span class="badge-branch">TYN</span></td>
+                <td>Říčany (HQ)</td>
+                <td><span class="ver">v1</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-foot">
+          <a href="#">Celý seznam
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+          </a>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+</body>
+</html>

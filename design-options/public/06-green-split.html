@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kasia vera — koření pro velkoobchod a gastro od roku 1993</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#235c33;
+    --green-deep:#1a472a;
+    --green-darker:#143620;
+    --spice:#c2581c;
+    --spice-soft:#e08a4a;
+    --cream:#f7f2e9;
+    --cream-deep:#efe6d4;
+    --ink:#1c2620;
+    --ink-soft:#46514a;
+    --line:#e2ddd1;
+    --white:#ffffff;
+    --maxw:1180px;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+    color:var(--ink);
+    background:var(--white);
+    font-size:17px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:"Fraunces","Fraunces",Georgia,serif;font-weight:500;line-height:1.08;letter-spacing:-0.01em;margin:0;}
+  p{margin:0;}
+  a{color:inherit;text-decoration:none;}
+  img{max-width:100%;}
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px;}
+
+  /* ---------- skip link ---------- */
+  .skip{position:absolute;left:-9999px;top:0;background:var(--green);color:#fff;padding:10px 16px;border-radius:8px;z-index:100;}
+  .skip:focus{left:16px;top:16px;}
+
+  /* ---------- header ---------- */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(255,255,255,0.88);
+    backdrop-filter:saturate(140%) blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{
+    display:flex;align-items:center;justify-content:space-between;
+    height:74px;
+  }
+  .brand{
+    font-family:"Fraunces",serif;
+    font-weight:600;
+    font-size:26px;
+    letter-spacing:-0.015em;
+    color:var(--green-deep);
+    display:inline-flex;align-items:baseline;gap:2px;
+  }
+  .brand .mark{
+    display:inline-block;width:11px;height:11px;border-radius:50%;
+    background:var(--spice);margin-right:9px;transform:translateY(-1px);
+  }
+  .brand em{font-style:normal;color:var(--spice);}
+  .nav-links{display:flex;align-items:center;gap:34px;}
+  .nav-links nav{display:flex;gap:30px;}
+  .nav-links nav a{
+    font-size:15px;font-weight:500;color:var(--ink-soft);
+    position:relative;padding:4px 0;transition:color .18s;
+  }
+  .nav-links nav a::after{
+    content:"";position:absolute;left:0;bottom:-2px;height:2px;width:0;
+    background:var(--spice);transition:width .22s ease;
+  }
+  .nav-links nav a:hover{color:var(--green-deep);}
+  .nav-links nav a:hover::after{width:100%;}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    font-weight:600;font-size:15px;border-radius:999px;
+    padding:12px 24px;cursor:pointer;transition:transform .15s,background .18s,box-shadow .18s;
+    border:1.5px solid transparent;white-space:nowrap;
+  }
+  .btn-spice{background:var(--spice);color:#fff;}
+  .btn-spice:hover{background:#a8470f;transform:translateY(-1px);box-shadow:0 8px 22px -8px rgba(194,88,28,.55);}
+  .btn-white{background:#fff;color:var(--green-deep);border-color:#fff;}
+  .btn-white:hover{transform:translateY(-1px);box-shadow:0 10px 28px -10px rgba(0,0,0,.4);}
+  .btn-ghost-light{background:transparent;color:#fff;border-color:rgba(255,255,255,.55);}
+  .btn-ghost-light:hover{background:rgba(255,255,255,.12);border-color:#fff;}
+  .btn-outline{background:transparent;color:var(--green-deep);border-color:var(--green);}
+  .btn-outline:hover{background:var(--green);color:#fff;transform:translateY(-1px);}
+
+  /* ---------- hero split ---------- */
+  .hero{
+    display:grid;
+    grid-template-columns:1.05fr 0.95fr;
+    min-height:clamp(540px,72vh,720px);
+  }
+  .hero-left{
+    background:
+      radial-gradient(120% 130% at 0% 0%, #2a6b3c 0%, var(--green) 45%, var(--green-deep) 100%);
+    color:#fff;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:clamp(48px,6vw,96px);
+    padding-left:max(32px,calc((100vw - var(--maxw))/2 + 32px));
+    position:relative;overflow:hidden;
+  }
+  .hero-left::before{
+    /* faint botanical texture */
+    content:"";position:absolute;inset:0;
+    background-image:radial-gradient(rgba(255,255,255,.06) 1px,transparent 1px);
+    background-size:22px 22px;
+    opacity:.5;pointer-events:none;
+  }
+  .hero-content{position:relative;max-width:540px;}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:10px;
+    font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--spice-soft);margin-bottom:26px;
+  }
+  .eyebrow::before{content:"";width:26px;height:2px;background:var(--spice);display:inline-block;}
+  .hero h1{
+    font-size:clamp(2.6rem,5.2vw,4.1rem);
+    color:#fff;margin-bottom:24px;
+  }
+  .hero .lead{
+    font-size:clamp(1.05rem,1.5vw,1.22rem);
+    color:rgba(255,255,255,.86);max-width:480px;margin-bottom:30px;
+  }
+  .hero .lead strong{color:#fff;font-weight:600;}
+  .stat{
+    display:flex;align-items:flex-start;gap:14px;
+    padding:18px 22px;margin-bottom:34px;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:14px;max-width:470px;
+  }
+  .stat .dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--spice-soft);margin-top:9px;}
+  .stat p{font-size:15px;color:rgba(255,255,255,.92);}
+  .stat strong{color:#fff;}
+  .hero-cta{display:flex;flex-wrap:wrap;gap:14px;}
+
+  .hero-right{
+    position:relative;overflow:hidden;
+    background:
+      linear-gradient(150deg, #d97d3a 0%, var(--spice) 38%, #9a4413 100%);
+    display:flex;align-items:flex-end;
+  }
+  .hero-right::before{
+    content:"";position:absolute;inset:0;
+    background-image:
+      radial-gradient(60% 50% at 75% 18%, rgba(247,242,233,.30), transparent 60%),
+      radial-gradient(45% 38% at 22% 82%, rgba(20,54,32,.34), transparent 60%);
+  }
+  .hero-right::after{
+    /* scattered "spice" specks */
+    content:"";position:absolute;inset:0;
+    background-image:
+      radial-gradient(circle, rgba(74,30,8,.5) 2px, transparent 3px),
+      radial-gradient(circle, rgba(247,242,233,.4) 1.5px, transparent 2.5px);
+    background-size:46px 46px,30px 30px;
+    background-position:0 0,18px 22px;
+    opacity:.55;
+  }
+  .photo-caption{
+    position:relative;z-index:2;margin:24px;
+    font-size:13px;font-weight:500;letter-spacing:.02em;
+    color:rgba(255,255,255,.92);
+    background:rgba(20,54,32,.42);
+    backdrop-filter:blur(2px);
+    padding:8px 14px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.2);
+  }
+
+  /* ---------- generic section ---------- */
+  section{padding:clamp(64px,8vw,108px) 0;}
+  .sec-head{max-width:620px;margin-bottom:52px;}
+  .sec-kicker{
+    font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--spice);margin-bottom:16px;display:flex;align-items:center;gap:10px;
+  }
+  .sec-kicker::before{content:"";width:26px;height:2px;background:var(--spice);}
+  h2{font-size:clamp(2rem,3.6vw,2.9rem);color:var(--green-deep);margin-bottom:18px;}
+  .sec-lead{font-size:1.1rem;color:var(--ink-soft);}
+
+  /* ---------- komu dodáváme cards ---------- */
+  .audience{background:var(--cream);}
+  .cards-3{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;}
+  .card{
+    background:#fff;border:1px solid var(--line);border-radius:18px;
+    padding:34px 30px;transition:transform .18s,box-shadow .2s,border-color .2s;
+  }
+  .card:hover{transform:translateY(-4px);box-shadow:0 18px 40px -22px rgba(26,71,42,.4);border-color:#cfead7;}
+  .card .icon{
+    width:50px;height:50px;border-radius:13px;margin-bottom:22px;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(145deg,#e9f3eb,#d6ead9);
+    color:var(--green-deep);
+  }
+  .card .icon svg{width:24px;height:24px;}
+  .card h3{font-size:1.32rem;color:var(--green-deep);margin-bottom:12px;}
+  .card p{color:var(--ink-soft);font-size:.98rem;}
+
+  /* ---------- teasers ---------- */
+  .teasers .cards-3{gap:0;border:1px solid var(--line);border-radius:20px;overflow:hidden;}
+  .teaser{
+    padding:42px 36px;background:#fff;
+    border-right:1px solid var(--line);
+    transition:background .2s;
+    display:flex;flex-direction:column;
+  }
+  .teaser:last-child{border-right:none;}
+  .teaser:hover{background:var(--cream);}
+  .teaser .t-eyebrow{
+    font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--spice);margin-bottom:18px;
+  }
+  .teaser h3{font-size:1.55rem;color:var(--green-deep);margin-bottom:14px;}
+  .teaser p{color:var(--ink-soft);font-size:1rem;flex:1;margin-bottom:22px;}
+  .teaser .t-link{
+    font-weight:600;color:var(--green-deep);font-size:.98rem;
+    display:inline-flex;align-items:center;gap:6px;align-self:flex-start;
+    border-bottom:2px solid transparent;padding-bottom:2px;transition:border-color .18s,gap .18s;
+  }
+  .teaser .t-link:hover{border-color:var(--spice);gap:11px;color:var(--spice);}
+
+  /* ---------- footer ---------- */
+  footer{
+    background:var(--green-darker);color:rgba(255,255,255,.8);
+    padding:72px 0 36px;
+  }
+  .foot-grid{
+    display:grid;grid-template-columns:1.7fr 1fr 1.1fr;gap:48px;
+    padding-bottom:48px;border-bottom:1px solid rgba(255,255,255,.12);
+  }
+  .foot-brand{
+    font-family:"Fraunces",serif;font-weight:600;font-size:24px;color:#fff;
+    display:inline-flex;align-items:baseline;margin-bottom:16px;
+  }
+  .foot-brand .mark{width:10px;height:10px;border-radius:50%;background:var(--spice-soft);margin-right:9px;align-self:center;}
+  .foot-brand em{font-style:normal;color:var(--spice-soft);}
+  .foot-about{font-size:.96rem;max-width:380px;color:rgba(255,255,255,.7);}
+  .foot-col h4{
+    font-family:"Inter",sans-serif;font-weight:700;font-size:12px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--spice-soft);margin:0 0 18px;
+  }
+  .foot-col p,.foot-col address{font-style:normal;font-size:.96rem;line-height:1.85;color:rgba(255,255,255,.8);}
+  .foot-col a:hover{color:#fff;text-decoration:underline;}
+  .foot-nav{display:flex;flex-direction:column;gap:11px;}
+  .foot-nav a{font-size:.96rem;color:rgba(255,255,255,.8);width:fit-content;}
+  .foot-nav a:hover{color:#fff;}
+  .foot-bottom{
+    display:flex;flex-wrap:wrap;gap:8px 28px;justify-content:space-between;align-items:center;
+    padding-top:28px;font-size:.85rem;color:rgba(255,255,255,.55);
+  }
+  .foot-bottom .legal{display:flex;flex-wrap:wrap;gap:8px 24px;}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:980px){
+    .cards-3{grid-template-columns:1fr;}
+    .teasers .cards-3{border-radius:16px;}
+    .teaser{border-right:none;border-bottom:1px solid var(--line);}
+    .teaser:last-child{border-bottom:none;}
+    .foot-grid{grid-template-columns:1fr 1fr;}
+  }
+  @media (max-width:720px){
+    body{font-size:16px;}
+    .wrap{padding:0 20px;}
+    .nav-links nav{display:none;}
+    .hero{grid-template-columns:1fr;}
+    .hero-left{padding:48px 20px 56px;padding-left:20px;}
+    .hero-right{min-height:280px;}
+    .foot-grid{grid-template-columns:1fr;gap:36px;}
+    .hero-cta .btn{flex:1;}
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Přeskočit na obsah</a>
+
+<!-- HEADER -->
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#" aria-label="Kasia vera — domů">
+      <span class="mark" aria-hidden="true"></span>Kasia&nbsp;<em>vera</em>
+    </a>
+    <div class="nav-links">
+      <nav aria-label="Hlavní navigace">
+        <a href="#">Domů</a>
+        <a href="#o-nas">O nás</a>
+        <a href="#provozovny">Provozovny</a>
+        <a href="#kontakt">Kontakt</a>
+      </nav>
+      <a class="btn btn-spice" href="#kontakt">Napište nám</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- HERO -->
+  <section class="hero" aria-labelledby="hero-title" style="padding:0;">
+    <div class="hero-left">
+      <div class="hero-content">
+        <span class="eyebrow">Rodinná firma od roku 1993</span>
+        <h1 id="hero-title">Koření, které dělá kuchyni</h1>
+        <p class="lead">Dovážíme, zpracováváme a balíme koření už přes třicet let. Dodáváme velkoobchodům, gastro provozům a obchodním řetězcům po celé České republice pod značkou <strong>VERA GURMET</strong>.</p>
+        <div class="stat">
+          <span class="dot" aria-hidden="true"></span>
+          <p><strong>Přes 369 druhů koření</strong> a 236 kulinářských produktů.</p>
+        </div>
+        <div class="hero-cta">
+          <a class="btn btn-white" href="#kontakt">Poptat spolupráci</a>
+          <a class="btn btn-ghost-light" href="#provozovny">Naše provozovny</a>
+        </div>
+      </div>
+    </div>
+    <div class="hero-right" role="img" aria-label="Fotografie koření">
+      <span class="photo-caption">(zde foto koření)</span>
+    </div>
+  </section>
+
+  <!-- KOMU DODÁVÁME -->
+  <section class="audience" aria-labelledby="audience-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-kicker">Komu dodáváme</span>
+        <h2 id="audience-title">Komu dodáváme</h2>
+        <p class="sec-lead">Jsme B2B dodavatel — naše koření a směsi najdete u velkoobchodů, ve vývařovnách a v gastro provozech, ne na pultě v maloobchodě napřímo.</p>
+      </div>
+      <div class="cards-3">
+        <article class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M5 10v9h14v-9"/><path d="M9 19v-5h6v5"/></svg>
+          </div>
+          <h3>Dovoz a kvalita</h3>
+          <p>Celé koření z původních zemí čistíme, třídíme a kontrolujeme, než se dostane do výroby.</p>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4"/><circle cx="12" cy="12" r="5"/><path d="M12 17v4"/><path d="M3 12h4"/><path d="M17 12h4"/></svg>
+          </div>
+          <h3>Zpracování a míchání</h3>
+          <p>Mleme, mícháme vlastní receptury a balíme do formátů od gastro pytlů po menší balení pro provozy.</p>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1.5"/><path d="M15 9h4l3 3v5h-7"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+          </div>
+          <h3>Spolehlivé dodávky</h3>
+          <p>Dvě provozní pracoviště a vlastní sklad zajišťují, že máte zboží včas a ve stálé kvalitě.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- TEASERY -->
+  <section class="teasers" aria-label="Rozcestník">
+    <div class="wrap">
+      <div class="cards-3">
+        <article class="teaser" id="o-nas">
+          <span class="t-eyebrow">O nás</span>
+          <h3>Příběh od roku 1993</h3>
+          <p>Rodinná firma se sídlem v Říčanech u Prahy. Kdo jsme a jak pracujeme.</p>
+          <a class="t-link" href="#">Více o nás →</a>
+        </article>
+        <article class="teaser" id="provozovny">
+          <span class="t-eyebrow">Provozovny</span>
+          <h3>Kde nás najdete</h3>
+          <p>Sídlo v Říčanech a provozní sklady v Týništi nad Orlicí a Sezimově Ústí.</p>
+          <a class="t-link" href="#">Zobrazit provozovny →</a>
+        </article>
+        <article class="teaser" id="kontakt">
+          <span class="t-eyebrow">Kontakt</span>
+          <h3>Napište nám</h3>
+          <p>Máte zájem o spolupráci nebo poptávku? Ozvěte se — rádi pomůžeme.</p>
+          <a class="t-link" href="#">Kontaktovat →</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <span class="foot-brand"><span class="mark" aria-hidden="true"></span>Kasia&nbsp;<em>vera</em>&nbsp;s.r.o.</span>
+        <p class="foot-about">Dovoz, zpracování a balení koření od roku 1993. Velkoobchod a gastro — značka VERA GURMET.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Kontakt</h4>
+        <address>
+          Nádražní 1202/5<br>
+          251 01 Říčany u Prahy<br><br>
+          <a href="tel:+420323601422">+420 323 601 422</a><br>
+          <a href="tel:+420323601424">+420 323 601 424</a><br>
+          <a href="mailto:info@kasia.cz">info@kasia.cz</a><br><br>
+          Po–Pá 7:00–15:00
+        </address>
+      </div>
+      <div class="foot-col">
+        <h4>Navigace</h4>
+        <nav class="foot-nav" aria-label="Patička">
+          <a href="#">Domů</a>
+          <a href="#o-nas">O nás</a>
+          <a href="#provozovny">Provozovny</a>
+          <a href="#kontakt">Kontakt</a>
+        </nav>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Kasia vera s.r.o.</span>
+      <span class="legal">
+        <span>IČO: 25756729</span>
+        <span>Datová schránka: emye9prc</span>
+      </span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

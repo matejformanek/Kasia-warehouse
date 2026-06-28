@@ -5,24 +5,21 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <style>
   :root {
-    --ink: #16181d;
-    --soft: #5b6068;
-    --line: #e4e2dd;
-    --bg: #f6f4ef;
-    --card: #ffffff;
-    --accent: #1f6b3a;
+    --ink: #16181d; --soft: #5b6068; --line: #e4e2dd;
+    --bg: #f6f4ef; --card: #ffffff; --accent: #1f6b3a;
   }
   * { box-sizing: border-box; }
   html, body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--ink);
+    margin: 0; background: var(--bg); color: var(--ink);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
+    line-height: 1.5; -webkit-font-smoothing: antialiased;
   }
   header.page { max-width: 1240px; margin: 0 auto; padding: 3rem 1.5rem 1.5rem; }
-  header.page .logo { height: 34px; width: auto; display: block; margin-bottom: 1.25rem; }
+  header.page .wordmark {
+    font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em;
+    color: var(--accent); margin-bottom: 1.1rem;
+  }
+  header.page .wordmark span { color: #c2581c; }
   h1 { font-size: clamp(1.6rem, 3vw, 2.3rem); margin: 0 0 0.5rem; letter-spacing: -0.01em; }
   header.page p.lede { margin: 0; max-width: 64ch; color: var(--soft); font-size: 1.05rem; }
   header.page p.note {
@@ -30,12 +27,13 @@
     padding: 0.6rem 0.85rem; background: #fff; border: 1px solid var(--line);
     border-left: 3px solid var(--accent); border-radius: 4px;
   }
+  header.page p.note a { color: var(--accent); font-weight: 600; }
   main { max-width: 1240px; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
   h2.group {
     font-size: 1.05rem; letter-spacing: 0.01em; margin: 2.5rem 0 0.35rem;
     padding-top: 1.5rem; border-top: 1px solid var(--line);
   }
-  h2.group:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  h2.group:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
   p.group-note { margin: 0 0 1.5rem; color: var(--soft); font-size: 0.9rem; max-width: 66ch; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 1.75rem; }
   .card {
@@ -44,15 +42,13 @@
     transition: box-shadow .18s ease, transform .18s ease;
   }
   .card:hover { box-shadow: 0 12px 30px -12px rgba(0,0,0,.22); transform: translateY(-2px); }
-  /* Clipped, scaled live preview — same mechanism as the parent gallery. */
   .thumb {
     position: relative; width: 100%; height: 248px; overflow: hidden;
     border-bottom: 1px solid var(--line); background: #fafafa;
   }
   .thumb iframe {
     position: absolute; top: 0; left: 0; width: 1280px; height: 1612px;
-    border: 0; transform: scale(0.258); transform-origin: top left;
-    pointer-events: none;
+    border: 0; transform: scale(0.258); transform-origin: top left; pointer-events: none;
   }
   .thumb a.cover { position: absolute; inset: 0; z-index: 2; display: block; }
   .meta { padding: 0.85rem 1rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -62,107 +58,61 @@
     display: inline-block; font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
     letter-spacing: 0.06em; padding: 0.15rem 0.5rem; border-radius: 999px; align-self: flex-start;
   }
-  .tag.warm { background: #f6ebdd; color: #a4521a; }
-  .tag.green { background: #eaf3ee; color: #1f6b3a; }
-  .tag.photo { background: #fbeae3; color: #b8401f; }
-  .tag.min { background: #eef0f2; color: #3b4250; }
+  .tag.orig { background: #eef0f2; color: #3b4250; }
+  .tag.new  { background: #eaf3ee; color: #1f6b3a; }
   .tag.page { background: #eef0fb; color: #2f3aa3; }
-  .tag.logo { background: #f3eefb; color: #6a3aa3; }
   .open { font-size: 0.85rem; color: var(--accent); text-decoration: none; font-weight: 600; }
   .open:hover { text-decoration: underline; }
   footer.page { max-width: 1240px; margin: 0 auto; padding: 0 1.5rem 4rem; color: var(--soft); font-size: 0.85rem; }
 </style>
 
 <header class="page">
-  <img class="logo" src="assets/kasia-logo.jpg" alt="Kasia">
+  <div class="wordmark">Kasia <span>vera</span></div>
   <h1>Návrhy veřejného webu — Kasia</h1>
   <p class="lede">Varianty vzhledu nového veřejného webu Kasia vera (stránka pro zákazníky, ne interní sklad).
     Obsah je ve všech návrzích stejný a vychází ze skutečných údajů firmy — liší se jen vizuální styl.
     Vyberte směr, který vám nejvíce sedí.</p>
   <p class="note"><strong>Poznámka:</strong> Jde o náhledy ke srovnání stylu, ne o hotový web.
-    Až vyberete směr, ten se zapracuje do skutečných stránek. Adresy poboček Týniště a Sezimovo Ústí
-    se zatím doplní od Petra, fotky koření jsou nahrazeny barevnými plochami.</p>
+    Nové návrhy jsou <strong>bez loga</strong> (zatím jen textová značka „Kasia vera"). Adresy poboček
+    Týniště a Sezimovo Ústí se doplní od Petra; fotky koření jsou nahrazeny barevnými plochami.
+    Hledáte návrhy <strong>skladu</strong>? → <a href="../index.html">Návrhy vzhledu skladu</a></p>
 </header>
 
 <main>
 
-  <h2 class="group">Úvodní stránka — čtyři směry</h2>
-  <p class="group-note">Stejný obsah úvodní stránky ve čtyřech vizuálních směrech. Klikněte na náhled pro otevření celé stránky.</p>
-
+  <h2 class="group">Úvodní stránka — nové směry (bez loga)</h2>
+  <p class="group-note">Deset nových minimalistických a moderních směrů, vycházejících hlavně ze současného
+    webu a směru „Čistý zelený". Každý používá jen textovou značku, žádné obrázkové logo.</p>
   <div class="grid">
+    <div class="card"><div class="thumb"><iframe src="06-green-split.html" title="Zelený split" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="06-green-split.html" aria-label="Otevřít 06 — Zelený split"></a></div><div class="meta"><span class="tag new">nový</span><span class="label"><span class="num">06</span> · Zelený split</span><a class="open" href="06-green-split.html">Otevřít celou stránku →</a></div></div>
+    <div class="card"><div class="thumb"><iframe src="07-mono-green.html" title="Mono + zelená" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="07-mono-green.html" aria-label="Otevřít 07 — Mono + zelená"></a></div><div class="meta"><span class="tag new">nový</span><span class="label"><span class="num">07</span> · Mono + zelená</span><a class="open" href="07-mono-green.html">Otevřít celou stránku →</a></div></div>
+    <div class="card"><div class="thumb"><iframe src="08-sage-cards.html" title="Sage karty" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="08-sage-cards.html" aria-label="Otevřít 08 — Sage karty"></a></div><div class="meta"><span class="tag new">nový</span><span class="label"><span class="num">08</span> · Sage karty</span><a class="open" href="08-sage-cards.html">Otevřít celou stránku →</a></div></div>
+    <div class="card"><div class="thumb"><iframe src="09-editorial-minimal.html" title="Editorial minimal" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="09-editorial-minimal.html" aria-label="Otevřít 09 — Editorial minimal"></a></div><div class="meta"><span class="tag new">nový</span><span class="label"><span class="num">09</span> · Editorial minimal</span><a class="open" href="09-editorial-minimal.html">Otevřít celou stránku →</a></div></div>
+    <div class="card"><div class="thumb"><iframe src="10-dark-green.html" title="Tmavě zelený" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="10-dark-green.html" aria-label="Otevřít 10 — Tmavě zelený"></a></div><div class="meta"><span class="tag new">nový</span><span class="label"><span class="num">10</span> · Tmavě zelený (premium)</span><a class="open" href="10-dark-green.html">Otevřít celou stránku →</a></div></div>
+    <div class="card"><div class="thumb"><iframe src="11-centered-modern.html" title="Centrovaný moderní" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="11-centered-modern.html" aria-label="Otevřít 11 — Centrovaný moderní"></a></div><div class="meta"><span class="tag new">nový</span><span class="label"><span class="num">11</span> · Centrovaný moderní</span><a class="open" href="11-centered-modern.html">Otevřít celou stránku →</a></div></div>
+    <div class="card"><div class="thumb"><iframe src="12-saas-clean.html" title="Čistý SaaS" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="12-saas-clean.html" aria-label="Otevřít 12 — Čistý SaaS"></a></div><div class="meta"><span class="tag new">nový</span><span class="label"><span class="num">12</span> · Čistý SaaS</span><a class="open" href="12-saas-clean.html">Otevřít celou stránku →</a></div></div>
+    <div class="card"><div class="thumb"><iframe src="13-warm-neutral.html" title="Teplý neutrální" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="13-warm-neutral.html" aria-label="Otevřít 13 — Teplý neutrální"></a></div><div class="meta"><span class="tag new">nový</span><span class="label"><span class="num">13</span> · Teplý neutrální</span><a class="open" href="13-warm-neutral.html">Otevřít celou stránku →</a></div></div>
+    <div class="card"><div class="thumb"><iframe src="14-bold-type.html" title="Výrazná typografie" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="14-bold-type.html" aria-label="Otevřít 14 — Výrazná typografie"></a></div><div class="meta"><span class="tag new">nový</span><span class="label"><span class="num">14</span> · Výrazná typografie</span><a class="open" href="14-bold-type.html">Otevřít celou stránku →</a></div></div>
+    <div class="card"><div class="thumb"><iframe src="15-grid-sections.html" title="Mřížkové sekce" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="15-grid-sections.html" aria-label="Otevřít 15 — Mřížkové sekce"></a></div><div class="meta"><span class="tag new">nový</span><span class="label"><span class="num">15</span> · Mřížkové sekce</span><a class="open" href="15-grid-sections.html">Otevřít celou stránku →</a></div></div>
+  </div>
 
-    <div class="card">
-      <div class="thumb"><iframe src="01-warm-editorial.html" title="Teplý editorial" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="01-warm-editorial.html" aria-label="Otevřít návrh 01 — Teplý editorial"></a></div>
-      <div class="meta">
-        <span class="tag warm">teplý / editorial</span>
-        <span class="label"><span class="num">01</span> · Teplý editorial</span>
-        <a class="open" href="01-warm-editorial.html">Otevřít celou stránku →</a>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="thumb"><iframe src="02-clean-green.html" title="Čistý zelený" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="02-clean-green.html" aria-label="Otevřít návrh 02 — Čistý zelený"></a></div>
-      <div class="meta">
-        <span class="tag green">čistý / zelený</span>
-        <span class="label"><span class="num">02</span> · Čistý zelený</span>
-        <a class="open" href="02-clean-green.html">Otevřít celou stránku →</a>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="thumb"><iframe src="03-bold-photographic.html" title="Výrazný fotografický" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="03-bold-photographic.html" aria-label="Otevřít návrh 03 — Výrazný fotografický"></a></div>
-      <div class="meta">
-        <span class="tag photo">výrazný / foto</span>
-        <span class="label"><span class="num">03</span> · Výrazný fotografický</span>
-        <a class="open" href="03-bold-photographic.html">Otevřít celou stránku →</a>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="thumb"><iframe src="04-minimalist.html" title="Minimalistický" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="04-minimalist.html" aria-label="Otevřít návrh 04 — Minimalistický"></a></div>
-      <div class="meta">
-        <span class="tag min">minimalistický</span>
-        <span class="label"><span class="num">04</span> · Minimalistický</span>
-        <a class="open" href="04-minimalist.html">Otevřít celou stránku →</a>
-      </div>
-    </div>
-
+  <h2 class="group">Úvodní stránka — původní směry</h2>
+  <p class="group-note">První čtyři návrhy (s obrázkovým logem). „Čistý zelený" a „Minimalistický" zůstávají jako reference.</p>
+  <div class="grid">
+    <div class="card"><div class="thumb"><iframe src="01-warm-editorial.html" title="Teplý editorial" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="01-warm-editorial.html" aria-label="Otevřít 01 — Teplý editorial"></a></div><div class="meta"><span class="tag orig">původní</span><span class="label"><span class="num">01</span> · Teplý editorial</span><a class="open" href="01-warm-editorial.html">Otevřít celou stránku →</a></div></div>
+    <div class="card"><div class="thumb"><iframe src="02-clean-green.html" title="Čistý zelený" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="02-clean-green.html" aria-label="Otevřít 02 — Čistý zelený"></a></div><div class="meta"><span class="tag orig">původní</span><span class="label"><span class="num">02</span> · Čistý zelený</span><a class="open" href="02-clean-green.html">Otevřít celou stránku →</a></div></div>
+    <div class="card"><div class="thumb"><iframe src="03-bold-photographic.html" title="Výrazný fotografický" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="03-bold-photographic.html" aria-label="Otevřít 03 — Výrazný fotografický"></a></div><div class="meta"><span class="tag orig">původní</span><span class="label"><span class="num">03</span> · Výrazný fotografický</span><a class="open" href="03-bold-photographic.html">Otevřít celou stránku →</a></div></div>
+    <div class="card"><div class="thumb"><iframe src="04-minimalist.html" title="Minimalistický" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="04-minimalist.html" aria-label="Otevřít 04 — Minimalistický"></a></div><div class="meta"><span class="tag orig">původní</span><span class="label"><span class="num">04</span> · Minimalistický</span><a class="open" href="04-minimalist.html">Otevřít celou stránku →</a></div></div>
   </div>
 
   <h2 class="group">Stránka Kontakt</h2>
   <p class="group-note">Ukázka veřejné stránky Kontakt s údaji firmy, poptávkovým formulářem a mapou — ve směru „Čistý zelený".</p>
-
   <div class="grid">
-
-    <div class="card">
-      <div class="thumb"><iframe src="05-kontakt.html" title="Kontakt" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="05-kontakt.html" aria-label="Otevřít návrh 05 — Kontakt"></a></div>
-      <div class="meta">
-        <span class="tag page">stránka kontakt</span>
-        <span class="label"><span class="num">05</span> · Kontakt + poptávkový formulář</span>
-        <a class="open" href="05-kontakt.html">Otevřít celou stránku →</a>
-      </div>
-    </div>
-
-  </div>
-
-  <h2 class="group">Návrhy loga</h2>
-  <p class="group-note">Tři vektorové koncepty značky „Kasia vera" na světlém i tmavém pozadí — krok od současného obrázkového loga k ostrému vektoru.</p>
-
-  <div class="grid">
-
-    <div class="card">
-      <div class="thumb"><iframe src="logos.html" title="Návrhy loga" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="logos.html" aria-label="Otevřít návrhy loga"></a></div>
-      <div class="meta">
-        <span class="tag logo">logo · vektor</span>
-        <span class="label">Návrhy loga — 3 koncepty</span>
-        <a class="open" href="logos.html">Otevřít celou stránku →</a>
-      </div>
-    </div>
-
+    <div class="card"><div class="thumb"><iframe src="05-kontakt.html" title="Kontakt" loading="lazy" tabindex="-1" aria-hidden="true"></iframe><a class="cover" href="05-kontakt.html" aria-label="Otevřít 05 — Kontakt"></a></div><div class="meta"><span class="tag page">stránka kontakt</span><span class="label"><span class="num">05</span> · Kontakt + poptávkový formulář</span><a class="open" href="05-kontakt.html">Otevřít celou stránku →</a></div></div>
   </div>
 
 </main>
 
 <footer class="page">
-  Kasia vera s.r.o. — návrhy veřejného webu · 4 úvodní stránky + Kontakt + návrhy loga
+  Kasia vera s.r.o. — návrhy veřejného webu · 10 nových + 4 původní úvodní stránky + Kontakt
 </footer>

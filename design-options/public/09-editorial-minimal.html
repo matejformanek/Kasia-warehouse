@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kasia vera — koření, které dělá kuchyni</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1a201b;
+    --ink-soft:#46514a;
+    --ink-faint:#727c75;
+    --paper:#fbfbf8;
+    --paper-2:#f3f3ee;
+    --line:#dcdcd3;
+    --line-soft:#e7e7df;
+    --green:#2f6b46;
+    --green-deep:#244f35;
+    --green-wash:#eef3ee;
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --maxw:1180px;
+    --gutter:clamp(20px,5vw,72px);
+  }
+
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:17px;
+    line-height:1.65;
+    letter-spacing:.005em;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  a{color:inherit;}
+  img{max-width:100%;display:block;}
+
+  .wrap{
+    max-width:var(--maxw);
+    margin-inline:auto;
+    padding-inline:var(--gutter);
+  }
+
+  /* ---------- shared editorial atoms ---------- */
+  .eyebrow{
+    font-family:var(--sans);
+    font-size:.72rem;
+    font-weight:600;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:var(--green);
+    margin:0;
+  }
+  .display{
+    font-family:var(--serif);
+    font-weight:400;
+    font-optical-sizing:auto;
+    line-height:1.04;
+    letter-spacing:-.012em;
+    color:var(--ink);
+  }
+  .lead{
+    color:var(--ink-soft);
+    font-size:1.075rem;
+    line-height:1.7;
+    max-width:60ch;
+  }
+
+  .section-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:1.5rem;
+    border-bottom:1px solid var(--line);
+    padding-bottom:1.1rem;
+    margin-bottom:2.8rem;
+  }
+  .section-head .index{
+    font-family:var(--serif);
+    font-style:italic;
+    font-size:1.05rem;
+    color:var(--ink-faint);
+  }
+  .section-head h2{
+    margin:0;
+    font-family:var(--serif);
+    font-weight:400;
+    font-size:clamp(1.7rem,3.4vw,2.5rem);
+    letter-spacing:-.01em;
+    line-height:1.08;
+  }
+
+  /* focus visibility — AA */
+  a:focus-visible,button:focus-visible{
+    outline:2px solid var(--green);
+    outline-offset:3px;
+    border-radius:2px;
+  }
+
+  .skip{
+    position:absolute;left:-9999px;top:0;
+    background:var(--green);color:#fff;
+    padding:.6rem 1rem;border-radius:0 0 6px 0;
+    z-index:100;font-weight:600;
+  }
+  .skip:focus{left:0;}
+
+  /* ---------- header ---------- */
+  header.site{
+    position:sticky;top:0;z-index:50;
+    background:color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter:saturate(140%) blur(10px);
+    border-bottom:1px solid var(--line-soft);
+  }
+  .nav{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:2rem;
+    min-height:74px;
+  }
+  .wordmark{
+    font-family:var(--serif);
+    font-weight:500;
+    font-size:1.45rem;
+    letter-spacing:-.01em;
+    text-decoration:none;
+    color:var(--ink);
+    white-space:nowrap;
+    display:inline-flex;align-items:baseline;gap:.4rem;
+  }
+  .wordmark .vera{
+    font-style:italic;
+    font-weight:400;
+    color:var(--green);
+  }
+  .wordmark .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--green);
+    display:inline-block;
+    transform:translateY(-1px);
+  }
+
+  nav.primary{
+    display:flex;align-items:center;gap:2.1rem;
+    margin-left:auto;
+  }
+  nav.primary a{
+    text-decoration:none;
+    color:var(--ink-soft);
+    font-size:.94rem;
+    font-weight:500;
+    letter-spacing:.01em;
+    position:relative;
+    padding-block:.3rem;
+    transition:color .18s ease;
+  }
+  nav.primary a::after{
+    content:"";
+    position:absolute;left:0;bottom:0;
+    width:0;height:1.5px;background:var(--green);
+    transition:width .22s ease;
+  }
+  nav.primary a:hover{color:var(--ink);}
+  nav.primary a:hover::after{width:100%;}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    gap:.5rem;
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:.92rem;
+    letter-spacing:.01em;
+    text-decoration:none;
+    padding:.7rem 1.3rem;
+    border-radius:999px;
+    transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease;
+    cursor:pointer;
+    border:1px solid transparent;
+  }
+  .btn-solid{
+    background:var(--green);color:#fff;
+  }
+  .btn-solid:hover{background:var(--green-deep);}
+  .btn-ghost{
+    border-color:var(--line);
+    color:var(--ink);
+    background:transparent;
+  }
+  .btn-ghost:hover{border-color:var(--green);color:var(--green-deep);}
+  .header-cta{display:inline-flex;}
+
+  /* ---------- hero ---------- */
+  .hero{
+    padding-top:clamp(3.5rem,8vw,7rem);
+    padding-bottom:clamp(2.5rem,6vw,4.5rem);
+  }
+  .hero-grid{
+    display:grid;
+    grid-template-columns:1.15fr .85fr;
+    gap:clamp(2rem,5vw,4.5rem);
+    align-items:end;
+  }
+  .hero .eyebrow{margin-bottom:1.6rem;}
+  .hero h1{
+    font-size:clamp(2.7rem,7vw,5.4rem);
+    margin:0 0 1.6rem;
+  }
+  .hero h1 em{
+    font-style:italic;
+    color:var(--green);
+  }
+  .hero .lead{
+    font-size:clamp(1.05rem,1.6vw,1.2rem);
+    max-width:48ch;
+  }
+  .hero-cta{
+    display:flex;flex-wrap:wrap;gap:.9rem;
+    margin-top:2.2rem;
+  }
+
+  .hero-aside{
+    border-left:1px solid var(--line);
+    padding-left:clamp(1.5rem,3vw,2.5rem);
+  }
+  .photo{
+    position:relative;
+    border-radius:4px;
+    overflow:hidden;
+    aspect-ratio:4/5;
+    background:
+      radial-gradient(120% 90% at 80% 10%, rgba(255,255,255,.35), transparent 55%),
+      linear-gradient(155deg,#3a7a52 0%,#2f6b46 45%,#244f35 100%);
+    box-shadow:0 1px 0 rgba(0,0,0,.04);
+  }
+  .photo::before{
+    content:"";
+    position:absolute;inset:0;
+    background-image:
+      radial-gradient(circle at 22% 30%, rgba(214,156,74,.5) 0 8px, transparent 9px),
+      radial-gradient(circle at 70% 22%, rgba(168,58,46,.45) 0 6px, transparent 7px),
+      radial-gradient(circle at 40% 64%, rgba(225,196,120,.42) 0 7px, transparent 8px),
+      radial-gradient(circle at 82% 72%, rgba(120,72,40,.5) 0 9px, transparent 10px),
+      radial-gradient(circle at 56% 88%, rgba(214,156,74,.4) 0 5px, transparent 6px),
+      radial-gradient(circle at 14% 80%, rgba(180,110,52,.45) 0 6px, transparent 7px);
+    opacity:.85;
+    mix-blend-mode:screen;
+  }
+  .photo .cap{
+    position:absolute;left:0;bottom:0;right:0;
+    padding:.7rem .9rem;
+    font-size:.74rem;
+    letter-spacing:.04em;
+    color:rgba(255,255,255,.92);
+    background:linear-gradient(0deg, rgba(20,40,28,.55), transparent);
+    font-style:italic;
+  }
+
+  .stat{
+    margin-top:1.6rem;
+    padding-top:1.4rem;
+    border-top:1px solid var(--line);
+  }
+  .stat .num{
+    font-family:var(--serif);
+    font-size:1.5rem;
+    line-height:1.25;
+    color:var(--ink);
+  }
+  .stat .num strong{
+    color:var(--green);
+    font-weight:600;
+  }
+
+  /* ---------- generic section spacing ---------- */
+  section.block{
+    padding-block:clamp(3.5rem,8vw,6rem);
+  }
+  .divide{border-top:1px solid var(--line-soft);}
+
+  /* Komu dodáváme */
+  .audience .lead{margin-top:-1.2rem;margin-bottom:3rem;}
+  .cols-3{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:clamp(1.5rem,3vw,3rem);
+  }
+  .feature{
+    display:flex;flex-direction:column;
+  }
+  .feature .ico{
+    width:42px;height:42px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--green-wash);
+    color:var(--green-deep);
+    margin-bottom:1.3rem;
+    font-family:var(--serif);
+    font-size:1.05rem;
+    font-style:italic;
+  }
+  .feature h3{
+    font-family:var(--serif);
+    font-weight:500;
+    font-size:1.3rem;
+    margin:0 0 .6rem;
+    letter-spacing:-.005em;
+  }
+  .feature p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:1rem;
+    line-height:1.65;
+  }
+
+  /* teasers */
+  .teasers{background:var(--paper-2);}
+  .teaser-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:0;
+    border:1px solid var(--line);
+    border-radius:6px;
+    overflow:hidden;
+    background:var(--paper);
+  }
+  .teaser{
+    padding:clamp(1.8rem,3vw,2.6rem);
+    display:flex;flex-direction:column;
+    border-right:1px solid var(--line);
+    transition:background .2s ease;
+  }
+  .teaser:last-child{border-right:none;}
+  .teaser:hover{background:var(--green-wash);}
+  .teaser .eyebrow{margin-bottom:1.4rem;}
+  .teaser h3{
+    font-family:var(--serif);
+    font-weight:500;
+    font-size:1.5rem;
+    line-height:1.15;
+    margin:0 0 .8rem;
+    letter-spacing:-.01em;
+  }
+  .teaser p{
+    margin:0 0 1.8rem;
+    color:var(--ink-soft);
+    font-size:1rem;
+    flex:1;
+  }
+  .teaser .more{
+    text-decoration:none;
+    font-weight:600;
+    font-size:.92rem;
+    color:var(--green-deep);
+    letter-spacing:.01em;
+    display:inline-flex;align-items:center;gap:.4rem;
+    transition:gap .18s ease;
+  }
+  .teaser:hover .more{gap:.7rem;}
+
+  /* ---------- footer ---------- */
+  footer.site{
+    background:var(--green-deep);
+    color:#dfe8e1;
+    padding-block:clamp(3rem,6vw,4.5rem);
+    margin-top:0;
+  }
+  .footer-grid{
+    display:grid;
+    grid-template-columns:1.5fr 1fr 1fr;
+    gap:clamp(2rem,5vw,4rem);
+    align-items:start;
+  }
+  footer.site .wordmark{color:#fff;}
+  footer.site .wordmark .vera{color:#a9d8bb;}
+  footer.site .wordmark .dot{background:#a9d8bb;}
+  .footer-about{
+    margin:1.1rem 0 0;
+    color:#bcd0c3;
+    font-size:.98rem;
+    line-height:1.65;
+    max-width:42ch;
+  }
+  .foot-h{
+    font-family:var(--sans);
+    text-transform:uppercase;
+    letter-spacing:.18em;
+    font-size:.7rem;
+    font-weight:600;
+    color:#8fbda1;
+    margin:0 0 1.1rem;
+  }
+  .foot-list{
+    list-style:none;margin:0;padding:0;
+    display:flex;flex-direction:column;gap:.55rem;
+    font-size:.96rem;
+  }
+  .foot-list a{
+    color:#dfe8e1;text-decoration:none;
+    transition:color .18s ease;
+  }
+  .foot-list a:hover{color:#fff;text-decoration:underline;text-underline-offset:3px;}
+  .foot-list .muted{color:#a9c0b0;}
+  .foot-list dt{color:#8fbda1;font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;}
+  .foot-block{margin-bottom:1.6rem;}
+  .foot-block:last-child{margin-bottom:0;}
+
+  .footer-bottom{
+    margin-top:clamp(2.2rem,5vw,3.2rem);
+    padding-top:1.4rem;
+    border-top:1px solid rgba(255,255,255,.14);
+    display:flex;flex-wrap:wrap;gap:1rem 2rem;
+    align-items:center;justify-content:space-between;
+    font-size:.86rem;
+    color:#a9c0b0;
+  }
+  .footer-bottom nav{display:flex;flex-wrap:wrap;gap:1.4rem;}
+  .footer-bottom nav a{color:#cfe0d5;text-decoration:none;}
+  .footer-bottom nav a:hover{color:#fff;text-decoration:underline;text-underline-offset:3px;}
+  .ids{display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:980px){
+    .hero-grid{grid-template-columns:1fr;align-items:start;}
+    .hero-aside{border-left:none;padding-left:0;border-top:1px solid var(--line);padding-top:2rem;}
+    .footer-grid{grid-template-columns:1fr 1fr;}
+    .footer-about{grid-column:1 / -1;}
+  }
+  @media (max-width:720px){
+    nav.primary{display:none;}
+    .cols-3{grid-template-columns:1fr;}
+    .teaser-grid{grid-template-columns:1fr;}
+    .teaser{border-right:none;border-bottom:1px solid var(--line);}
+    .teaser:last-child{border-bottom:none;}
+    .footer-grid{grid-template-columns:1fr;}
+    .section-head{flex-direction:column;gap:.4rem;align-items:flex-start;}
+    .footer-bottom{flex-direction:column;align-items:flex-start;}
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Přeskočit na obsah</a>
+
+<header class="site">
+  <div class="wrap nav">
+    <a class="wordmark" href="#" aria-label="Kasia vera — domů">
+      Kasia<span class="dot" aria-hidden="true"></span><span class="vera">vera</span>
+    </a>
+    <nav class="primary" aria-label="Hlavní navigace">
+      <a href="#">Domů</a>
+      <a href="#o-nas">O nás</a>
+      <a href="#provozovny">Provozovny</a>
+      <a href="#kontakt">Kontakt</a>
+    </nav>
+    <a class="btn btn-solid header-cta" href="#kontakt">Napište nám</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Rodinná firma od roku 1993</p>
+        <h1 class="display">Koření, které <em>dělá</em> kuchyni</h1>
+        <p class="lead">Dovážíme, zpracováváme a balíme koření už přes třicet let. Dodáváme velkoobchodům, gastro provozům a obchodním řetězcům po celé České republice pod značkou VERA GURMET.</p>
+        <div class="hero-cta">
+          <a class="btn btn-solid" href="#kontakt">Poptat spolupráci</a>
+          <a class="btn btn-ghost" href="#provozovny">Naše provozovny</a>
+        </div>
+      </div>
+      <aside class="hero-aside">
+        <figure class="photo" role="img" aria-label="Ilustrační foto koření">
+          <figcaption class="cap">(zde foto koření)</figcaption>
+        </figure>
+        <div class="stat">
+          <p class="num">Přes <strong>369 druhů koření</strong> a <strong>236 kulinářských produktů</strong>.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- KOMU DODÁVÁME -->
+  <section class="block audience divide" id="o-nas">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Komu dodáváme</h2>
+        <span class="index">01 — B2B</span>
+      </div>
+      <p class="lead">Jsme B2B dodavatel — naše koření a směsi najdete u velkoobchodů, ve vývařovnách a v gastro provozech, ne na pultě v maloobchodě napřímo.</p>
+      <div class="cols-3">
+        <article class="feature">
+          <span class="ico" aria-hidden="true">i</span>
+          <h3>Dovoz a kvalita</h3>
+          <p>Celé koření z původních zemí čistíme, třídíme a kontrolujeme, než se dostane do výroby.</p>
+        </article>
+        <article class="feature">
+          <span class="ico" aria-hidden="true">ii</span>
+          <h3>Zpracování a míchání</h3>
+          <p>Mleme, mícháme vlastní receptury a balíme do formátů od gastro pytlů po menší balení pro provozy.</p>
+        </article>
+        <article class="feature">
+          <span class="ico" aria-hidden="true">iii</span>
+          <h3>Spolehlivé dodávky</h3>
+          <p>Dvě provozní pracoviště a vlastní sklad zajišťují, že máte zboží včas a ve stálé kvalitě.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- TEASERY -->
+  <section class="block teasers divide" id="provozovny">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Zjistěte víc</h2>
+        <span class="index">02 — Rozcestník</span>
+      </div>
+      <div class="teaser-grid">
+        <article class="teaser">
+          <p class="eyebrow">O nás</p>
+          <h3>Příběh od roku 1993</h3>
+          <p>Rodinná firma se sídlem v Říčanech u Prahy. Kdo jsme a jak pracujeme.</p>
+          <a class="more" href="#o-nas">Více o nás <span aria-hidden="true">→</span></a>
+        </article>
+        <article class="teaser">
+          <p class="eyebrow">Provozovny</p>
+          <h3>Kde nás najdete</h3>
+          <p>Sídlo v Říčanech a provozní sklady v Týništi nad Orlicí a Sezimově Ústí.</p>
+          <a class="more" href="#provozovny">Zobrazit provozovny <span aria-hidden="true">→</span></a>
+        </article>
+        <article class="teaser">
+          <p class="eyebrow">Kontakt</p>
+          <h3>Napište nám</h3>
+          <p>Máte zájem o spolupráci nebo poptávku? Ozvěte se — rádi pomůžeme.</p>
+          <a class="more" href="#kontakt">Kontaktovat <span aria-hidden="true">→</span></a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="site" id="kontakt">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <a class="wordmark" href="#" aria-label="Kasia vera — domů">
+          Kasia<span class="dot" aria-hidden="true"></span><span class="vera">vera</span>
+        </a>
+        <p class="footer-about">Dovoz, zpracování a balení koření od roku 1993. Velkoobchod a gastro — značka VERA GURMET.</p>
+      </div>
+
+      <div>
+        <div class="foot-block">
+          <h2 class="foot-h">Adresa</h2>
+          <ul class="foot-list">
+            <li>Kasia vera s.r.o.</li>
+            <li>Nádražní 1202/5</li>
+            <li>251 01 Říčany u Prahy</li>
+          </ul>
+        </div>
+        <div class="foot-block">
+          <h2 class="foot-h">Otevírací doba</h2>
+          <ul class="foot-list">
+            <li>Po–Pá 7:00–15:00</li>
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <div class="foot-block">
+          <h2 class="foot-h">Kontakt</h2>
+          <ul class="foot-list">
+            <li><a href="tel:+420323601422">+420 323 601 422</a></li>
+            <li><a href="tel:+420323601424">+420 323 601 424</a></li>
+            <li><a href="mailto:info@kasia.cz">info@kasia.cz</a></li>
+          </ul>
+        </div>
+        <div class="foot-block">
+          <h2 class="foot-h">Údaje</h2>
+          <ul class="foot-list">
+            <li><span class="muted">IČO:</span> 25756729</li>
+            <li><span class="muted">Datová schránka:</span> emye9prc</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <nav aria-label="Navigace v patičce">
+        <a href="#">Domů</a>
+        <a href="#o-nas">O nás</a>
+        <a href="#provozovny">Provozovny</a>
+        <a href="#kontakt">Kontakt</a>
+      </nav>
+      <div class="ids">
+        <span>© 2026 Kasia vera s.r.o.</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

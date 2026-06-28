@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kasia vera — Koření, které dělá kuchyni</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green-900:#0c2316;
+    --green-850:#0f2a1a;
+    --green-800:#11301d;
+    --green-750:#14361f;
+    --green-700:#1a4128;
+    --green-line:#27513a;
+    --cream:#f3eee2;
+    --cream-soft:#e7e1d3;
+    --muted:#aebaa9;
+    --muted-dim:#8ea08c;
+    --gold:#d8a657;
+    --gold-soft:#e3bd80;
+    --rust:#c2581c;
+    --radius:14px;
+    --maxw:1120px;
+    --space:clamp(72px,9vw,128px);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--green-850);
+    color:var(--cream);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  h1,h2,h3{
+    font-family:"Cormorant Garamond",Georgia,serif;
+    font-weight:600;
+    line-height:1.08;
+    letter-spacing:-0.01em;
+    margin:0;
+    color:var(--cream);
+  }
+
+  a{color:inherit;text-decoration:none;}
+
+  .wrap{
+    width:100%;
+    max-width:var(--maxw);
+    margin:0 auto;
+    padding:0 clamp(20px,5vw,48px);
+  }
+
+  .eyebrow{
+    font-size:0.74rem;
+    font-weight:600;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin:0 0 18px;
+  }
+
+  /* ---- Buttons ---- */
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    padding:13px 24px;
+    border-radius:999px;
+    font-size:0.95rem;
+    font-weight:600;
+    letter-spacing:0.01em;
+    border:1px solid transparent;
+    cursor:pointer;
+    transition:transform .18s ease, background .18s ease, border-color .18s ease, color .18s ease;
+  }
+  .btn-primary{
+    background:var(--gold);
+    color:var(--green-900);
+  }
+  .btn-primary:hover{background:var(--gold-soft);transform:translateY(-2px);}
+  .btn-ghost{
+    background:transparent;
+    border-color:var(--green-line);
+    color:var(--cream);
+  }
+  .btn-ghost:hover{border-color:var(--gold);color:var(--gold-soft);transform:translateY(-2px);}
+  .btn-sm{padding:10px 20px;font-size:0.9rem;}
+
+  /* ---- Header ---- */
+  header.site{
+    position:sticky;
+    top:0;
+    z-index:50;
+    background:rgba(15,42,26,0.82);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--green-line);
+  }
+  .nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:24px;
+    height:74px;
+  }
+  .wordmark{
+    font-family:"Cormorant Garamond",Georgia,serif;
+    font-size:1.62rem;
+    font-weight:700;
+    letter-spacing:0.01em;
+    color:var(--cream);
+    display:inline-flex;
+    align-items:baseline;
+    gap:2px;
+  }
+  .wordmark .vera{color:var(--gold);font-style:italic;}
+  .wordmark::before{
+    content:"";
+    width:8px;height:8px;
+    border-radius:50%;
+    background:var(--rust);
+    margin-right:10px;
+    align-self:center;
+  }
+  nav.links{display:flex;align-items:center;gap:30px;}
+  nav.links a{
+    font-size:0.93rem;
+    font-weight:500;
+    color:var(--cream-soft);
+    position:relative;
+    padding:4px 0;
+    transition:color .18s ease;
+  }
+  nav.links a::after{
+    content:"";
+    position:absolute;left:0;bottom:-2px;
+    height:2px;width:0;
+    background:var(--gold);
+    transition:width .22s ease;
+  }
+  nav.links a:hover{color:var(--cream);}
+  nav.links a:hover::after{width:100%;}
+  .nav-cta{display:flex;align-items:center;gap:18px;}
+
+  /* ---- Hero ---- */
+  .hero{
+    position:relative;
+    overflow:hidden;
+    background:
+      radial-gradient(1100px 600px at 78% -8%, rgba(216,166,87,0.16), transparent 60%),
+      radial-gradient(800px 500px at 10% 110%, rgba(194,88,28,0.12), transparent 60%),
+      linear-gradient(180deg,var(--green-850),var(--green-900));
+    border-bottom:1px solid var(--green-line);
+  }
+  .hero-grid{
+    display:grid;
+    grid-template-columns:1.05fr 0.95fr;
+    gap:clamp(40px,5vw,72px);
+    align-items:center;
+    padding:clamp(72px,10vw,120px) 0 clamp(64px,8vw,104px);
+  }
+  .hero h1{
+    font-size:clamp(2.8rem,6.2vw,4.6rem);
+    margin-bottom:24px;
+  }
+  .hero .lead{
+    font-size:1.12rem;
+    color:var(--muted);
+    max-width:42ch;
+    margin:0 0 30px;
+  }
+  .stat{
+    display:flex;
+    align-items:flex-start;
+    gap:14px;
+    padding:18px 22px;
+    border:1px solid var(--green-line);
+    border-radius:var(--radius);
+    background:rgba(255,255,255,0.02);
+    max-width:46ch;
+    margin-bottom:34px;
+  }
+  .stat .bar{
+    width:3px;align-self:stretch;
+    background:linear-gradient(var(--gold),var(--rust));
+    border-radius:3px;
+    flex:0 0 auto;
+  }
+  .stat p{margin:0;font-size:0.98rem;color:var(--cream-soft);}
+  .stat strong{color:var(--gold-soft);font-weight:600;}
+  .hero-cta{display:flex;flex-wrap:wrap;gap:14px;}
+
+  /* hero photo placeholder */
+  .hero-photo{
+    position:relative;
+    aspect-ratio:4/5;
+    border-radius:20px;
+    border:1px solid var(--green-line);
+    background:
+      radial-gradient(120% 90% at 20% 15%, rgba(216,166,87,0.30), transparent 55%),
+      radial-gradient(120% 110% at 90% 90%, rgba(194,88,28,0.34), transparent 55%),
+      linear-gradient(150deg,var(--green-700),var(--green-900));
+    box-shadow:0 30px 80px -40px rgba(0,0,0,0.8);
+    overflow:hidden;
+  }
+  .photo-cap{
+    position:absolute;left:16px;bottom:14px;
+    font-size:0.78rem;letter-spacing:0.04em;
+    color:rgba(243,238,226,0.72);
+    background:rgba(12,35,22,0.55);
+    padding:6px 12px;border-radius:999px;
+    backdrop-filter:blur(4px);
+  }
+  .hero-photo .grain{
+    position:absolute;inset:0;
+    background-image:radial-gradient(rgba(243,238,226,0.05) 1px, transparent 1.4px);
+    background-size:7px 7px;
+    mix-blend-mode:overlay;
+  }
+
+  /* ---- Section base ---- */
+  section{padding:var(--space) 0;}
+  .band{
+    background:linear-gradient(180deg,var(--green-800),var(--green-750));
+    border-top:1px solid var(--green-line);
+    border-bottom:1px solid var(--green-line);
+  }
+  .sec-head{max-width:60ch;margin-bottom:52px;}
+  .sec-head h2{font-size:clamp(2rem,4vw,3rem);margin-bottom:16px;}
+  .sec-head p{color:var(--muted);font-size:1.08rem;margin:0;max-width:56ch;}
+
+  /* ---- Komu dodáváme cards ---- */
+  .cards-3{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:24px;
+  }
+  .card{
+    padding:34px 30px;
+    border:1px solid var(--green-line);
+    border-radius:var(--radius);
+    background:rgba(255,255,255,0.018);
+    transition:transform .2s ease, border-color .2s ease, background .2s ease;
+  }
+  .card:hover{
+    transform:translateY(-4px);
+    border-color:rgba(216,166,87,0.5);
+    background:rgba(216,166,87,0.04);
+  }
+  .card .num{
+    font-family:"Cormorant Garamond",serif;
+    font-size:1.4rem;
+    color:var(--gold);
+    border:1px solid var(--green-line);
+    width:44px;height:44px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:50%;
+    margin-bottom:22px;
+  }
+  .card h3{font-size:1.5rem;margin-bottom:12px;}
+  .card p{margin:0;color:var(--muted);font-size:0.98rem;}
+
+  /* ---- Teasers ---- */
+  .teasers{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:24px;
+  }
+  .teaser{
+    display:flex;
+    flex-direction:column;
+    padding:0;
+    border:1px solid var(--green-line);
+    border-radius:var(--radius);
+    overflow:hidden;
+    background:var(--green-800);
+    transition:transform .2s ease, border-color .2s ease;
+  }
+  .teaser:hover{transform:translateY(-4px);border-color:rgba(216,166,87,0.5);}
+  .teaser .thumb{
+    aspect-ratio:16/10;
+    position:relative;
+    border-bottom:1px solid var(--green-line);
+  }
+  .teaser .thumb.a{background:radial-gradient(110% 120% at 80% 10%,rgba(216,166,87,0.32),transparent 55%),linear-gradient(160deg,var(--green-700),var(--green-900));}
+  .teaser .thumb.b{background:radial-gradient(110% 120% at 20% 90%,rgba(194,88,28,0.32),transparent 55%),linear-gradient(160deg,var(--green-750),var(--green-900));}
+  .teaser .thumb.c{background:radial-gradient(120% 120% at 50% 20%,rgba(216,166,87,0.26),transparent 60%),linear-gradient(140deg,var(--green-700),var(--green-850));}
+  .teaser .thumb .photo-cap{font-size:0.72rem;left:12px;bottom:12px;}
+  .teaser .body{padding:26px 28px 30px;display:flex;flex-direction:column;flex:1;}
+  .teaser .eyebrow{margin-bottom:12px;}
+  .teaser h3{font-size:1.5rem;margin-bottom:10px;}
+  .teaser p{color:var(--muted);font-size:0.97rem;margin:0 0 20px;}
+  .teaser .more{
+    margin-top:auto;
+    font-weight:600;
+    font-size:0.95rem;
+    color:var(--gold);
+    transition:gap .18s ease;
+    display:inline-flex;gap:6px;
+  }
+  .teaser .more:hover{color:var(--gold-soft);gap:12px;}
+
+  /* ---- Footer ---- */
+  footer.site{
+    background:var(--green-900);
+    border-top:1px solid var(--green-line);
+    padding:clamp(56px,7vw,80px) 0 36px;
+    color:var(--muted);
+    font-size:0.95rem;
+  }
+  .foot-grid{
+    display:grid;
+    grid-template-columns:1.6fr 1fr 1fr;
+    gap:48px;
+    margin-bottom:48px;
+  }
+  .foot-brand .wordmark{font-size:1.5rem;margin-bottom:16px;}
+  .foot-brand p{max-width:42ch;margin:0;color:var(--muted-dim);}
+  .foot-col h4{
+    font-family:"Inter",sans-serif;
+    font-size:0.72rem;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin:0 0 16px;
+    font-weight:600;
+  }
+  .foot-col p,.foot-col a{margin:0 0 8px;display:block;color:var(--cream-soft);}
+  .foot-col a:hover{color:var(--gold-soft);}
+  .foot-col .sub{color:var(--muted-dim);}
+  .foot-bottom{
+    border-top:1px solid var(--green-line);
+    padding-top:28px;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+  }
+  .foot-meta{display:flex;flex-wrap:wrap;gap:8px 22px;color:var(--muted-dim);font-size:0.88rem;}
+  .foot-meta strong{color:var(--cream-soft);font-weight:500;}
+  .foot-nav{display:flex;flex-wrap:wrap;gap:22px;}
+  .foot-nav a{color:var(--cream-soft);font-size:0.9rem;}
+  .foot-nav a:hover{color:var(--gold-soft);}
+
+  /* ---- Responsive ---- */
+  @media (max-width:900px){
+    .hero-grid{grid-template-columns:1fr;}
+    .hero-photo{max-width:440px;}
+    .cards-3,.teasers{grid-template-columns:1fr 1fr;}
+    .foot-grid{grid-template-columns:1fr 1fr;}
+    .foot-brand{grid-column:1/-1;}
+  }
+  @media (max-width:720px){
+    nav.links{display:none;}
+    .cards-3,.teasers,.foot-grid{grid-template-columns:1fr;}
+    .hero-photo{max-width:none;}
+    .foot-bottom{flex-direction:column;align-items:flex-start;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important;scroll-behavior:auto;}
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site">
+  <div class="wrap nav">
+    <a class="wordmark" href="#" aria-label="Kasia vera — domů">Kasia&nbsp;<span class="vera">vera</span></a>
+    <nav class="links" aria-label="Hlavní navigace">
+      <a href="#">Domů</a>
+      <a href="#o-nas">O nás</a>
+      <a href="#provozovny">Provozovny</a>
+      <a href="#kontakt">Kontakt</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-primary btn-sm" href="#kontakt">Napište nám</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">Rodinná firma od roku 1993</p>
+      <h1>Koření, které dělá kuchyni</h1>
+      <p class="lead">Dovážíme, zpracováváme a balíme koření už přes třicet let. Dodáváme velkoobchodům, gastro provozům a obchodním řetězcům po celé České republice pod značkou VERA GURMET.</p>
+      <div class="stat">
+        <span class="bar" aria-hidden="true"></span>
+        <p>Přes <strong>369 druhů koření</strong> a <strong>236 kulinářských produktů</strong>.</p>
+      </div>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#kontakt">Poptat spolupráci</a>
+        <a class="btn btn-ghost" href="#provozovny">Naše provozovny</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="hero-photo">
+        <span class="grain" aria-hidden="true"></span>
+        <span class="photo-cap">(zde foto koření)</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: Komu dodáváme -->
+<section class="band" id="o-nas">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Komu dodáváme</h2>
+      <p>Jsme B2B dodavatel — naše koření a směsi najdete u velkoobchodů, ve vývařovnách a v gastro provozech, ne na pultě v maloobchodě napřímo.</p>
+    </div>
+    <div class="cards-3">
+      <article class="card">
+        <div class="num" aria-hidden="true">01</div>
+        <h3>Dovoz a kvalita</h3>
+        <p>Celé koření z původních zemí čistíme, třídíme a kontrolujeme, než se dostane do výroby.</p>
+      </article>
+      <article class="card">
+        <div class="num" aria-hidden="true">02</div>
+        <h3>Zpracování a míchání</h3>
+        <p>Mleme, mícháme vlastní receptury a balíme do formátů od gastro pytlů po menší balení pro provozy.</p>
+      </article>
+      <article class="card">
+        <div class="num" aria-hidden="true">03</div>
+        <h3>Spolehlivé dodávky</h3>
+        <p>Dvě provozní pracoviště a vlastní sklad zajišťují, že máte zboží včas a ve stálé kvalitě.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: teasery -->
+<section id="provozovny">
+  <div class="wrap">
+    <div class="teasers">
+
+      <article class="teaser">
+        <div class="thumb a"><span class="photo-cap">(zde foto provozu)</span></div>
+        <div class="body">
+          <p class="eyebrow">O nás</p>
+          <h3>Příběh od roku 1993</h3>
+          <p>Rodinná firma se sídlem v Říčanech u Prahy. Kdo jsme a jak pracujeme.</p>
+          <a class="more" href="#o-nas">Více o nás →</a>
+        </div>
+      </article>
+
+      <article class="teaser">
+        <div class="thumb b"><span class="photo-cap">(zde foto skladu)</span></div>
+        <div class="body">
+          <p class="eyebrow">Provozovny</p>
+          <h3>Kde nás najdete</h3>
+          <p>Sídlo v Říčanech a provozní sklady v Týništi nad Orlicí a Sezimově Ústí.</p>
+          <a class="more" href="#provozovny">Zobrazit provozovny →</a>
+        </div>
+      </article>
+
+      <article class="teaser">
+        <div class="thumb c"><span class="photo-cap">(zde foto koření)</span></div>
+        <div class="body">
+          <p class="eyebrow">Kontakt</p>
+          <h3>Napište nám</h3>
+          <p>Máte zájem o spolupráci nebo poptávku? Ozvěte se — rádi pomůžeme.</p>
+          <a class="more" href="#kontakt">Kontaktovat →</a>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="site" id="kontakt">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <div class="wordmark">Kasia&nbsp;<span class="vera">vera</span> s.r.o.</div>
+        <p>Dovoz, zpracování a balení koření od roku 1993. Velkoobchod a gastro — značka VERA GURMET.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Sídlo</h4>
+        <p>Nádražní 1202/5</p>
+        <p>251 01 Říčany u Prahy</p>
+        <p class="sub">Po–Pá 7:00–15:00</p>
+      </div>
+      <div class="foot-col">
+        <h4>Kontakt</h4>
+        <a href="tel:+420323601422">+420 323 601 422</a>
+        <a href="tel:+420323601424">+420 323 601 424</a>
+        <a href="mailto:info@kasia.cz">info@kasia.cz</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <div class="foot-meta">
+        <span>IČO: <strong>25756729</strong></span>
+        <span>Datová schránka: <strong>emye9prc</strong></span>
+      </div>
+      <nav class="foot-nav" aria-label="Patička">
+        <a href="#">Domů</a>
+        <a href="#o-nas">O nás</a>
+        <a href="#provozovny">Provozovny</a>
+        <a href="#kontakt">Kontakt</a>
+      </nav>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -8,8 +8,12 @@
 <form method="post" enctype="multipart/form-data" class="card">
   {% csrf_token %}
 
-  {% if form.non_field_errors %}
-    <div class="non-form-errors">{{ form.non_field_errors }}</div>
+  {% if form.errors %}
+    <div class="msg error" style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fbe8e8;color:var(--error);border-radius:4px;">
+      <strong>Formulář se nepodařilo uložit.</strong>
+      Zkontrolujte zvýrazněná pole níže.
+      {{ form.non_field_errors }}
+    </div>
   {% endif %}
 
   <h2 style="margin-top:0;">Společnost / hlavička dokumentu</h2>
@@ -72,7 +76,7 @@
     odeslání dosadí automaticky.
   </p>
   {% for f in form %}
-    {% if f.name == "template_initial_subject" or f.name == "template_initial_body" or f.name == "template_oprava_subject" or f.name == "template_oprava_body" %}
+    {% if f.name == "template_initial_subject" or f.name == "template_initial_body" or f.name == "template_oprava_subject" or f.name == "template_oprava_body" or f.name == "template_low_stock_subject" or f.name == "template_low_stock_body" %}
       <div class="field">
         <label for="{{ f.id_for_label }}">{{ f.label }}</label>
         {{ f }}

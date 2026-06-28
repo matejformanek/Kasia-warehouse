@@ -5577,6 +5577,79 @@ def test_dodaci_list_detail_renders_failed_banner_when_unresolved(
     assert "Poslední odeslání selhalo." in body
 
 
+# ---------------------------------------------------------------------------
+# Batch C — Settings recipient save bug (Feedback #2a, 2026-06-26).
+# Root cause: the form template renders Settings fields via per-section
+# whitelists. template_low_stock_subject + template_low_stock_body (added
+# in decision 0045) were in none of the four sections, so POSTs stripped
+# them, ModelForm flagged them required, validation silently failed, and
+# Karolína's recipient change never persisted.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_form_renders_every_modelform_field(user_vlastnik) -> None:
+    """Regression: every SettingsForm field has an input rendered in the
+    page. If a future field is added to Settings without also updating
+    settings_form.html, this fails before it reaches prod."""
+    from inventory.forms import SettingsForm
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/nastaveni/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    form = SettingsForm()
+    missing = [name for name in form.fields if f'name="{name}"' not in body]
+    assert not missing, f"Fields rendered nowhere on /nastaveni/: {missing}"
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_settings_recipient_change_persists_via_browser_payload(
+    user_vlastnik,
+) -> None:
+    """Reproduce Karolína's flow: POST the EXACT field set the template
+    renders (no extras). Recipient change must persist."""
+    from inventory.models import Settings
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    s = Settings.load()
+    s.recipient_karolina = "old@kasia.cz"
+    s.save()
+
+    # Build the POST from the rendered form so the test is coupled to
+    # the template, not to a hand-curated payload.
+    from inventory.forms import SettingsForm
+
+    form = SettingsForm(instance=Settings.load())
+    data = {}
+    for name in form.fields:
+        if name == "logo":
+            continue  # FileField — leave unset
+        if name == "smtp_password":
+            data[name] = ""  # blank → preserve
+            continue
+        val = form[name].value()
+        if val is None:
+            val = ""
+        if name == "smtp_use_tls":
+            data[name] = "on" if val else ""
+            continue
+        data[name] = str(val)
+    data["recipient_karolina"] = "nova_karolina@kasia.cz"
+
+    response = client.post("/nastaveni/", data)
+    assert response.status_code == 302, (
+        f"Expected redirect on save, got {response.status_code}. "
+        f"Body: {response.content.decode('utf-8')[:500]}"
+    )
+    s2 = Settings.load()
+    assert s2.recipient_karolina == "nova_karolina@kasia.cz"
+
+
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_dodaci_list_detail_no_banner_after_successful_resend(

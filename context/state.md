@@ -1274,6 +1274,26 @@
   before any real customer výdej, per the `_assert_recipients_set`
   guard in `inventory/services.py`).
 
+- **2026-06-28** — Podpora feedback Batch C landed (Feedback #2a — settings
+  recipient save bug). Root cause: `settings_form.html` renders fields via
+  per-section whitelists (`{% if f.name == "..." %}`). The
+  `template_low_stock_subject` + `template_low_stock_body` fields added in
+  decision [`0045`](./decisions/0045-low-stock-summary-email.md) were in
+  none of the four sections, so the browser's POST stripped them; ModelForm
+  flagged both required (no `blank=True`); validation silently failed
+  (errors weren't visible because the fields are also iterated nowhere);
+  Karolína's recipient change never persisted and no error appeared.
+  Fixes:
+  - Added both `template_low_stock_*` fields to the "Šablony e-mailů"
+    section's whitelist (their natural home).
+  - Added a defensive top-of-form `{% if form.errors %}` banner so any
+    future "field added but template not updated" mistake surfaces
+    immediately instead of silently failing.
+  2 new tests: form-renders-every-field guard (future regressions trip
+  before reaching prod); recipient change persists via browser-shaped
+  POST (payload built from the form so it stays coupled to the template).
+  Full suite **308 pytest tests green** (306 → 308); ruff clean.
+
 - **2026-06-28** — Podpora feedback Batch A landed (Feedback #1 + #5):
   - **#1** Doc date defaults to today on `PlannedTransferForm.scheduled_for`
     (re-evaluated per render via `field.initial = date.today`) and

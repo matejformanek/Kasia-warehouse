@@ -3,6 +3,14 @@
 Kasia vera operates from three physical locations. Only two of them hold
 tracked stock in this system.
 
+> **Note (2026-06-28):** the **public marketing site** (`web` app) lists
+> **four** provozovny — Říčany (sídlo), Sezimovo Ústí, Toužim, and Týniště
+> nad Orlicí — sourced from kasia.cz (decision 0052). That is curated public
+> content and is **decoupled** from this operational model: stock is still
+> tracked only at TYN + SEZ, and Říčany is still a destination-only
+> `Customer`. Toužim is a public-facing location that this warehouse system
+> does not track.
+
 ## The three locations
 
 ### Říčany u Prahy — headquarters (HQ)

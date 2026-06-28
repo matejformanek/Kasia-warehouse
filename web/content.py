@@ -1,12 +1,18 @@
 """Curated public-site content — decoupled from the warehouse DB (decision 0051).
 
-Single source of truth for the company facts and locations rendered across the
-public pages, the footer, and the JSON-LD structured data. Czech-only for the
-first build; templates are i18n-ready so EN/RU can layer on later.
+Single source of truth for the company facts, people, and locations rendered
+across the public pages, the footer, and the JSON-LD structured data. Czech-only
+for the first build; templates are i18n-ready so EN/RU can layer on later.
 
-⚠ TYN/SEZ street addresses + per-branch phones are NOT in the repo. They carry
-explicit "doplnit od Petra" placeholders — do not invent addresses (decision
-0051, context/warehouses.md).
+Addresses, per-branch phones, and the executive directory are the real public
+facts from kasia.cz (decision 0052 — Kontakt is now an info-only page, no form).
+Map coordinates are geocoded once during development and hardcoded here; four
+fixed locations don't justify a build- or run-time geocoding dependency
+(right-sized-for-small-business.md).
+
+⚠ Per-person e-mails/phones and DIČ are not public yet — they carry empty
+placeholders; templates render the link only when a value exists. Do not invent
+them (Matej will supply).
 """
 
 # --- Company identity (public facts; context/company-profile.md) ------------
@@ -25,51 +31,125 @@ COMPANY = {
     "country": "Česká republika",
     "phone_primary": "+420 323 601 422",
     "phone_secondary": "+420 323 601 424",
+    "fax": "+420 323 602 077",
     "email": "info@kasia.cz",
     "hours": "Po–Pá 7:00–15:00",
+    # Geocoded sídlo coordinates (Nominatim, street-level match).
+    "lat": 49.9966120,
+    "lng": 14.6648230,
+    "map_query": "Kasia vera, Nádražní 1202/5, Říčany u Prahy",
     # Proof stat from the business (company-profile.md / old kasia.cz).
     "spice_count": "369",
     "product_count": "236",
 }
 
-# --- Provozovny (context/warehouses.md) -------------------------------------
-# `address` / `phone` left as None where the repo does not have the data →
-# the template renders a "doplnit od Petra" note instead of a fabricated value.
+# --- Kontaktní osoby / vedení (public directory from kasia.cz; decision 0052)-
+# `email` / `phone` left "" until Matej supplies them → the template renders the
+# link only when a value exists (no fabricated contacts).
+EXECUTIVES = [
+    {
+        "name": "Ing. Jaroslav Šulc",
+        "role": "Prodej",
+        "email": "",
+        "phone": "",
+        "photo": "web/exec-sulc.jpg",
+    },
+    {
+        "name": "Věra Kovačková",
+        "role": "Administrativa",
+        "email": "",
+        "phone": "",
+        "photo": "web/exec-kovackova.jpg",
+    },
+    {
+        "name": "Petr Formánek",
+        "role": "Nákup",
+        "email": "",
+        "phone": "",
+        "photo": "web/exec-formanek.jpg",
+    },
+]
+
+# --- Provozovny (real addresses + per-branch phones from kasia.cz) -----------
+# Public content is curated and decoupled from the warehouse DB: the public site
+# lists all four locations, while stock tracking stays at TYN + SEZ only
+# (context/warehouses.md). `lat`/`lng` are geocoded once (Nominatim).
 PROVOZOVNY = [
     {
         "name": "Říčany u Prahy",
         "role": "Sídlo společnosti",
+        "is_hq": True,
         "street": "Nádražní 1202/5",
         "city": "Říčany u Prahy",
         "postal_code": "251 01",
         "phone": "+420 323 601 422",
         "hours": "Po–Pá 7:00–15:00",
-        "note": "",
+        "photo": "web/branch-ricany.jpg",
+        "lat": 49.9966120,
+        "lng": 14.6648230,
         "map_query": "Kasia vera, Nádražní 1202/5, Říčany u Prahy",
     },
     {
-        "name": "Týniště nad Orlicí",
-        "role": "Provozní sklad",
-        "street": None,
-        "city": "Týniště nad Orlicí",
-        "postal_code": None,
-        "phone": None,
+        "name": "Sezimovo Ústí",
+        "role": "Provozovna",
+        "is_hq": False,
+        "street": "Pod Kovosvitem 1096",
+        "city": "Sezimovo Ústí",
+        "postal_code": "391 02",
+        "phone": "+420 607 190 150",
         "hours": "Po–Pá 7:00–15:00",
-        "note": "Přesnou adresu a telefon doplníme od Petra.",
-        "map_query": "Týniště nad Orlicí",
+        "photo": "web/branch-sezimovo.jpg",
+        "lat": 49.3767134,
+        "lng": 14.6949753,
+        "map_query": "Pod Kovosvitem 1096, 391 02 Sezimovo Ústí",
     },
     {
-        "name": "Sezimovo Ústí",
-        "role": "Provozní sklad",
-        "street": None,
-        "city": "Sezimovo Ústí",
-        "postal_code": None,
-        "phone": None,
+        "name": "Toužim",
+        "role": "Provozovna",
+        "is_hq": False,
+        "street": "Malé náměstí 608",
+        "city": "Toužim",
+        "postal_code": "364 01",
+        "phone": "+420 775 353 637",
         "hours": "Po–Pá 7:00–15:00",
-        "note": "Přesnou adresu a telefon doplníme od Petra.",
-        "map_query": "Sezimovo Ústí",
+        "photo": "web/branch-touzim.jpg",
+        "lat": 50.0603089,
+        "lng": 12.9890123,
+        "map_query": "Malé náměstí 608, 364 01 Toužim",
+    },
+    {
+        "name": "Týniště nad Orlicí",
+        "role": "Provozovna",
+        "is_hq": False,
+        "street": "Turkova 77",
+        "city": "Týniště nad Orlicí",
+        "postal_code": "517 21",
+        "phone": "+420 604 640 950",
+        "hours": "Po–Pá 7:00–15:00",
+        "photo": "web/branch-tyniste.jpg",
+        "lat": 50.1505356,
+        "lng": 16.0707600,
+        "map_query": "Turkova 77, 517 21 Týniště nad Orlicí",
     },
 ]
+
+# --- Embedded-map URLs (OpenStreetMap, cookie-free; decision 0052) ----------
+# Built once at import from the hardcoded coords. The bbox is a small box around
+# the marker (~0.6 km). The embed iframe is the site's only external runtime
+# dependency and degrades gracefully — if OSM is unreachable the iframe is blank
+# but the "Otevřít v mapách" link (built in-template from `map_query`) still
+# works. Cookie-free, no JS library, no API key (right-sized).
+def _osm_embed(lat: float, lng: float, delta: float = 0.008) -> str:
+    return (
+        "https://www.openstreetmap.org/export/embed.html"
+        f"?bbox={lng - delta}%2C{lat - delta}%2C{lng + delta}%2C{lat + delta}"
+        f"&layer=mapnik&marker={lat}%2C{lng}"
+    )
+
+
+COMPANY["map_embed"] = _osm_embed(COMPANY["lat"], COMPANY["lng"])
+for _p in PROVOZOVNY:
+    _p["map_embed"] = _osm_embed(_p["lat"], _p["lng"])
 
 # --- Public navigation (leaves clean room for deferred pages) ---------------
 NAV = [

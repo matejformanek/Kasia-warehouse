@@ -140,6 +140,61 @@
   form .errorlist { list-style: none; padding: 0; margin: 0.3rem 0 0; color: #a40000; font-size: 0.95rem; }
   .helptext { color: var(--fg-soft); font-size: 0.95rem; }
 
+  /* Discreet staff login link (header) — utilitarian, not a CTA */
+  .login-link {
+    text-decoration: none; color: var(--fg-soft); font-size: 0.92rem;
+    padding: 0.45rem 0.55rem; border-radius: 6px; white-space: nowrap;
+  }
+  .login-link:hover { color: var(--green-dark); background: var(--green-soft); }
+
+  /* Contact panel — key/value facts */
+  .contact-panel { display: grid; gap: 0.75rem 1.5rem; margin: 0; }
+  @media (min-width: 560px) { .contact-panel { grid-template-columns: max-content 1fr; } }
+  .contact-panel dt { font-weight: 600; color: var(--fg-soft); margin: 0; }
+  .contact-panel dd { margin: 0; }
+  .contact-panel a { text-decoration: none; }
+  .contact-panel a:hover { text-decoration: underline; }
+
+  /* People / executive directory */
+  .people { display: grid; gap: 1.25rem; }
+  @media (min-width: 640px) { .people { grid-template-columns: repeat(3, 1fr); } }
+  .person { text-align: center; }
+  .person img {
+    width: 116px; height: 116px; object-fit: cover; border-radius: 50%;
+    border: 3px solid var(--green-soft); display: block; margin: 0 auto 0.85rem;
+  }
+  .person .name { font-weight: 700; color: var(--green-dark); }
+  .person .role { color: var(--spice); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin: 0.15rem 0 0.6rem; }
+  .person a { display: block; text-decoration: none; font-size: 0.97rem; }
+  .person a:hover { text-decoration: underline; }
+
+  /* Role badge */
+  .badge {
+    display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.2rem 0.6rem; border-radius: 999px;
+    background: var(--green-soft); color: var(--green-dark);
+  }
+  .badge.hq { background: var(--spice); color: #fff; }
+
+  /* Branch cards (provozovny) */
+  .branches { display: grid; gap: 1.5rem; }
+  @media (min-width: 760px) { .branches { grid-template-columns: repeat(2, 1fr); } }
+  .branch { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+  .branch > .photo { aspect-ratio: 16 / 9; width: 100%; object-fit: cover; background: var(--bg-alt); }
+  .branch .body { padding: 1.25rem 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 0.4rem; flex: 1; }
+  .branch h3 { margin: 0.35rem 0 0; }
+  .branch .addr { margin: 0; }
+
+  /* Embedded map */
+  .map-embed {
+    border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+    background: var(--bg-alt);
+  }
+  .map-embed iframe { display: block; width: 100%; border: 0; }
+  .map-embed.tall iframe { height: 360px; }
+  .map-embed.short iframe { height: 200px; }
+  .map-actions { margin-top: 0.75rem; }
+
   /* Footer */
   footer.site { background: var(--green-dark); color: #e7efe7; padding: 3rem 0 1.5rem; }
   footer.site a { color: #fff; }
@@ -167,7 +222,7 @@
       {% for item in nav %}
         <a href="{% url item.url_name %}"{% if active == item.url_name %} class="active" aria-current="page"{% endif %}>{{ item.label }}</a>
       {% endfor %}
-      <a class="cta" href="{% url 'web:kontakt' %}">Napište nám</a>
+      <a class="login-link" href="{% url 'login' %}">Přihlášení</a>
     </nav>
   </div>
 </header>
@@ -207,7 +262,7 @@
     </div>
     <div class="legal">
       <span>© {{ company.founded_year }}–2026 {{ company.legal_name }}. Všechna práva vyhrazena.</span>
-      <span>Tento web nepoužívá sledovací cookies. Údaje z kontaktního formuláře zpracováváme pouze za účelem vyřízení vaší poptávky.</span>
+      <span>Tento web nepoužívá sledovací cookies. Mapy jsou vkládány z OpenStreetMap; jejich načtení může serveru mapy zpřístupnit vaši IP adresu.</span>
       <span class="sklad-link"><a href="{% url 'inventory:home' %}">Sklad&nbsp;/&nbsp;Přihlášení</a></span>
     </div>
   </div>

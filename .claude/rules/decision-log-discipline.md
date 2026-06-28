@@ -17,7 +17,7 @@ Numbering is monotonic: `0001-`, `0002-`, etc. Slug is short-kebab-case.
 
 - Any tech choice — language, framework, ORM, DB engine, deployment target, frontend approach, auth model, PDF library, etc.
 - Schema shape decisions — e.g. mass-only vs pack-as-SKU, multi-tenant vs single, soft-delete vs hard
-- New models that persist user-submitted data (e.g. `Feedback` per 0046, `ContactInquiry` per 0051) — the durability/retention story is a decision, not an implementation detail
+- New models that persist user-submitted data (e.g. `Feedback` per 0046) — the durability/retention story is a decision, not an implementation detail
 - Workflow shape that contradicts something in `context/workflows.md` (update `workflows.md` in the same change)
 - Anything you're about to do that you can't easily undo
 

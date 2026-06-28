@@ -1370,6 +1370,35 @@
   - **Next:** Petr reviews → pick keepers per surface → cull rejects,
     iterate on picks + his requested changes → eventually log a decision +
     port winners into real templates.
+- **2026-06-28** — **Kontakt + Provozovny rebuilt from real kasia.cz data;
+  contact form removed** (on `ft_web_public_site`). Decision
+  [`0052`](./decisions/0052-kontakt-info-only-drop-contactinquiry.md)
+  (partially supersedes 0051).
+  - **Removed the poptávkový formulář entirely:** `ContactInquiry` model
+    (+ `0002_delete_contactinquiry` migration DROPs the table), `web/forms.py`,
+    `ContactInquiryAdmin`, the `kontakt_ok` view/route/template,
+    `_notify_inquiry` + `_CONTACT_RECIPIENTS`, and the
+    `CONTACT_INQUIRY_RECIPIENTS` setting. **`web` is now a clean leaf app**
+    (no `web → inventory` imports, no models).
+  - **Kontakt** is info-only: contact panel (incl. new fax +420 323 602 077),
+    a 3-person exec directory (Šulc/Prodej, Kovačková/Administrativa,
+    Formánek/Nákup — photos from kasia.cz; per-person e-mail/phone are
+    placeholders), and an embedded cookie-free **OSM map** of the sídlo.
+  - **Provozovny** now lists **4** real locations (Říčany sídlo + Sezimovo
+    Ústí, Toužim, Týniště nad Orlicí) with real addresses, per-branch phones,
+    building photos, and per-card OSM maps. Coords geocoded once (Nominatim),
+    hardcoded in `web/content.py`. Public content stays decoupled from the
+    warehouse DB (stock tracking still TYN + SEZ only).
+  - Discreet **"Přihlášení"** link added to the header (muted, not a CTA);
+    "Sklad" still absent from the marketing nav. Footer privacy note updated
+    for the OSM embed (IP exposure to map host). 7 images in
+    `kasia/static/web/`.
+  - **Verification:** 16 web tests green, ruff clean, `manage.py check` clean,
+    `makemigrations --check` clean. Local `make up` + prod deploy pending.
+  - ⚠ **Carry-over:** the one-line fix to
+    `.claude/rules/decision-log-discipline.md` (drop the `ContactInquiry per
+    0051` example) was blocked by the auto-mode classifier (rules-file
+    self-modification) — apply manually before merge.
 
 ## Hand-off for the next session (post-compact)
 

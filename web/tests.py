@@ -1,19 +1,18 @@
-"""Tests for the public marketing site (decisions 0050 + 0051).
+"""Tests for the public marketing site (decisions 0050 + 0051; 0052 info-only Kontakt).
 
 Covers: public pages render 200 anonymously; the warehouse app under /sklad/
-still 302s anonymously (the URL move is provably gated); the kontakt form
-persists a ContactInquiry and a failed e-mail send never loses the row.
+still 302s anonymously (the URL move is provably gated); the info-only Kontakt
+page renders the executive directory + a tel: link; Provozovny renders the real
+branch addresses. The public site stores no data (the contact form was removed
+in 0052).
 """
 
 import pytest
-from django.core import mail
 from django.test import Client, override_settings
 from django.urls import reverse
 
-from .models import ContactInquiry
-
 # Public templates use {% static %}; under tests the manifest storage has no
-# manifest, and the kontakt form sends e-mail — mirror inventory/tests.py.
+# manifest — mirror inventory/tests.py with plain static storage.
 _OVERRIDES = {
     "STORAGES": {
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
@@ -21,7 +20,6 @@ _OVERRIDES = {
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
         },
     },
-    "EMAIL_BACKEND": "django.core.mail.backends.locmem.EmailBackend",
 }
 
 pytestmark = pytest.mark.django_db
@@ -29,7 +27,7 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture(autouse=True)
 def _view_overrides():
-    """Plain-static (no manifest under tests) + locmem e-mail for outbox."""
+    """Plain-static (no manifest under tests)."""
     with override_settings(**_OVERRIDES):
         yield
 
@@ -39,7 +37,7 @@ def _view_overrides():
 
 @pytest.mark.parametrize(
     "name",
-    ["web:home", "web:o_nas", "web:provozovny", "web:kontakt", "web:kontakt_ok"],
+    ["web:home", "web:o_nas", "web:provozovny", "web:kontakt"],
 )
 def test_public_page_renders_anonymously(name) -> None:
     response = Client().get(reverse(name))
@@ -53,6 +51,26 @@ def test_home_renders_proof_stat_and_sklad_link() -> None:
     # Discreet "Sklad / Přihlášení" footer link points into the app.
     assert "/sklad/" in body
     assert "Přihlášení" in body
+
+
+def test_kontakt_is_info_only_with_directory() -> None:
+    """Kontakt is an info page (0052): exec directory + a callable phone, no form."""
+    body = Client().get(reverse("web:kontakt")).content.decode("utf-8")
+    assert "Šulc" in body  # executive directory rendered
+    assert 'href="tel:+420323601422"' in body  # primary phone is callable
+    assert "<form" not in body  # the poptávkový formulář is gone
+
+
+def test_kontakt_ok_route_is_gone() -> None:
+    """The form thank-you route was removed with the form (0052)."""
+    response = Client().get("/kontakt/odeslano/")
+    assert response.status_code == 404
+
+
+def test_provozovny_renders_real_branch_address() -> None:
+    body = Client().get(reverse("web:provozovny")).content.decode("utf-8")
+    assert "Pod Kovosvitem" in body  # Sezimovo Ústí real street
+    assert "Toužim" in body  # the fourth location
 
 
 def test_robots_txt() -> None:
@@ -95,64 +113,3 @@ def test_sklad_paths_redirect_anonymous_to_login(path) -> None:
 def test_sklad_login_page_renders() -> None:
     response = Client().get("/sklad/prihlaseni/")
     assert response.status_code == 200
-
-
-# --- Kontakt form persists + e-mails (durability over uptime, 0051) ---------
-
-_VALID_POST = {
-    "name": "Jan Novák",
-    "email": "jan@example.cz",
-    "phone": "+420 777 123 456",
-    "message": "Mám zájem o velkoobchodní spolupráci.",
-    "consent": "on",
-}
-
-
-def test_kontakt_post_persists_inquiry_and_redirects() -> None:
-    response = Client().post(reverse("web:kontakt"), _VALID_POST)
-    assert response.status_code == 302
-    assert response["Location"] == reverse("web:kontakt_ok")
-    inquiry = ContactInquiry.objects.get()
-    assert inquiry.name == "Jan Novák"
-    assert inquiry.email == "jan@example.cz"
-    assert inquiry.handled is False
-    # Best-effort notification e-mail was sent.
-    assert len(mail.outbox) == 1
-
-
-def test_kontakt_post_without_consent_does_not_save() -> None:
-    payload = dict(_VALID_POST)
-    del payload["consent"]
-    response = Client().post(reverse("web:kontakt"), payload)
-    assert response.status_code == 200  # re-renders with errors
-    assert ContactInquiry.objects.count() == 0
-
-
-def test_kontakt_post_missing_required_does_not_save() -> None:
-    response = Client().post(reverse("web:kontakt"), {"consent": "on"})
-    assert response.status_code == 200
-    assert ContactInquiry.objects.count() == 0
-
-
-def test_kontakt_honeypot_blocks_spam() -> None:
-    """A bot that fills the hidden honeypot field is rejected, nothing saved."""
-    payload = dict(_VALID_POST)
-    payload["website"] = "http://spam.example"
-    response = Client().post(reverse("web:kontakt"), payload)
-    assert response.status_code == 200  # re-renders, no redirect
-    assert ContactInquiry.objects.count() == 0
-    assert len(mail.outbox) == 0
-
-
-def test_kontakt_email_failure_does_not_lose_the_row(monkeypatch) -> None:
-    """A broken/missing SMTP config must never lose a saved inquiry (0051)."""
-
-    def _boom(self, *args, **kwargs):
-        raise RuntimeError("smtp down")
-
-    monkeypatch.setattr("web.views.EmailMessage.send", _boom)
-    response = Client().post(reverse("web:kontakt"), _VALID_POST)
-    assert response.status_code == 302
-    assert response["Location"] == reverse("web:kontakt_ok")
-    assert ContactInquiry.objects.count() == 1  # row survived the failed send
-    assert len(mail.outbox) == 0

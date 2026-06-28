@@ -1274,6 +1274,23 @@
   before any real customer výdej, per the `_assert_recipients_set`
   guard in `inventory/services.py`).
 
+- **2026-06-28** — Podpora feedback Batch B landed (Feedback #4 — catalogue
+  per-branch low-stock visibility, N-branch ready). `catalogue_index` view
+  collects `low_branches` per row (branches where `effective < threshold`).
+  Template gains a new "Nízký na" column rendering one branch-code chip
+  per failing branch, but only when no single branch is in scope (the
+  existing "dochází" badge already covers the single-branch case). Copy:
+  "obě pobočky" → "všechny aktivní pobočky" in three places (filter
+  option, "Zobrazit ..." link, scope hint). Reuses the same
+  `reserved_kg` + `threshold_for` helpers that feed the dashboard "Dochází
+  zboží" panel; no new services. Existing test at `:2421` updated
+  ("obě pobočky" → "všechny aktivní pobočky"). 4 new tests: chip shows
+  for failing branch only; third active branch proves N-branch genericity
+  (creates HRA); `?branch=` filter empties the chip column; obsluha
+  (implicit single-branch) empties the chip column. Screen doc
+  `04-katalog-produktu.md` updated. Full suite **312 pytest tests green**
+  (308 → 312); ruff clean; system check clean.
+
 - **2026-06-28** — Podpora feedback Batch C landed (Feedback #2a — settings
   recipient save bug). Root cause: `settings_form.html` renders fields via
   per-section whitelists (`{% if f.name == "..." %}`). The

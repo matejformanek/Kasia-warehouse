@@ -760,11 +760,16 @@ def catalogue_index(request):
     )
 
     rows = []
+    # Per /podpora/ feedback #4: each row carries the list of branches
+    # currently under threshold; the template renders one chip per
+    # branch but only when no single branch is in scope (the existing
+    # per-row "dochází" badge already covers the single-branch case).
     for p in products:
         reserved = Decimal("0.000")
         effective_total = Decimal("0.000")
         threshold_min: Decimal | None = None
         is_low = False
+        low_branches: list[Branch] = []
         for b in reserved_branches:
             r = reserved_kg(p, b)
             reserved += r
@@ -781,6 +786,7 @@ def catalogue_index(request):
                 threshold_min = t if threshold_min is None else min(threshold_min, t)
                 if eff_b < t:
                     is_low = True
+                    low_branches.append(b)
         rows.append(
             {
                 "product": p,
@@ -789,6 +795,7 @@ def catalogue_index(request):
                 "effective": effective_total.quantize(Decimal("0.001")),
                 "threshold": threshold_min,
                 "is_low": is_low,
+                "low_branches": low_branches,
                 "has_recipe": p.pk in has_recipe,
             }
         )

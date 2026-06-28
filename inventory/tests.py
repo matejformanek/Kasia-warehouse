@@ -2418,7 +2418,8 @@ def test_catalogue_shows_total_kg_for_vlastnik(
     assert "11,500" in body
     # New (Pass 6) header "Na skladě" + scope hint over both branches.
     assert "Na skladě" in body
-    assert "obě pobočky" in body
+    # Copy updated per Podpora feedback #4 — N-branch ready.
+    assert "všechny aktivní pobočky" in body
 
 
 @pytest.mark.django_db
@@ -5575,6 +5576,116 @@ def test_dodaci_list_detail_renders_failed_banner_when_unresolved(
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "Poslední odeslání selhalo." in body
+
+
+# ---------------------------------------------------------------------------
+# Batch B — Catalogue per-branch low-stock chips (Podpora feedback #4,
+# 2026-06-26). Karolína: "Catalogue must show per-branch low-stock + drop
+# the 'obě pobočky' assumption (N-branch ready)."
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_index_shows_branch_low_stock_chips(
+    user_vlastnik, tyn, sez, pepper
+) -> None:
+    """Product low at TYN only → 'TYN' chip on row, no 'SEZ'."""
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("20.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/katalog/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    # Find the pepper row and inspect just its low-branches cell.
+    # The new <th>Nízký na</th> column should render exactly one chip.
+    assert "Nízký na" in body
+    assert ">TYN<" in body  # chip text
+    # No SEZ chip on this row (SEZ has 20 kg > 5 kg threshold).
+    pepper_row_idx = body.index("Pepř")
+    snippet = body[pepper_row_idx : pepper_row_idx + 2000]
+    assert "SEZ" not in snippet
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_index_three_branches_chip(
+    user_vlastnik, tyn, sez, pepper
+) -> None:
+    """Genericity proof: a third active branch low only there → chip shows."""
+    new_b = Branch.objects.create(code="HRA", name="Hradec Králové", is_active=True)
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("20.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("20.000"))
+    Stock.objects.create(product=pepper, branch=new_b, quantity=Decimal("1.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/katalog/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    pepper_row_idx = body.index("Pepř")
+    snippet = body[pepper_row_idx : pepper_row_idx + 2000]
+    assert ">HRA<" in snippet
+    # The other two branches should not appear as chips in this row.
+    assert ">TYN<" not in snippet
+    assert ">SEZ<" not in snippet
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_filter_branch_does_not_show_per_branch_chip(
+    user_vlastnik, tyn, sez, pepper
+) -> None:
+    """When ?branch=<code> is set, per-row chip column is empty (existing
+    per-row 'dochází' badge already covers the single-branch case)."""
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("20.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/katalog/?branch=TYN")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    pepper_row_idx = body.index("Pepř")
+    snippet = body[pepper_row_idx : pepper_row_idx + 2000]
+    # No chip in the snippet (TYN appears in the page header / filter chip
+    # is a different element).
+    assert "tab-chip" in body  # template still has tab-chip class somewhere
+    # The exact chip element `<span class="tab-chip" ... >TYN</span>` for
+    # the low-branches column must not be present in this row.
+    import re
+    chips = re.findall(
+        r"<span class=\"tab-chip\"[^>]*>([A-Z]{3})</span>", snippet
+    )
+    assert chips == []
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_obsluha_does_not_show_per_branch_chip(
+    user_obsluha_tyn, tyn, pepper
+) -> None:
+    """Obsluha is implicitly single-branch scoped → chip column empty."""
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/katalog/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    pepper_row_idx = body.index("Pepř")
+    snippet = body[pepper_row_idx : pepper_row_idx + 2000]
+    import re
+    chips = re.findall(
+        r"<span class=\"tab-chip\"[^>]*>([A-Z]{3})</span>", snippet
+    )
+    assert chips == []
 
 
 # ---------------------------------------------------------------------------

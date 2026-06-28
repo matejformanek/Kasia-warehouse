@@ -91,7 +91,7 @@
       </tbody>
     </table>
   {% endif %}
-  {% if product.notes %}
+  {% if product.notes and product.kind != "mixture" %}
     <p style="margin-top:1rem;color:var(--fg-soft);">{{ product.notes|linebreaksbr }}</p>
   {% endif %}
 </div>
@@ -128,21 +128,42 @@
   {% else %}
     <p style="color:var(--fg-soft);">Recept zatím nebyl vyplněn.</p>
   {% endif %}
+
+  {% if product.notes %}
+    <div class="recipe-notes">
+      <h3 style="font-size:0.95rem;margin:0 0 0.4rem;">Poznámky k míchání</h3>
+      <p style="margin:0;white-space:pre-wrap;">{{ product.notes }}</p>
+    </div>
+  {% endif %}
+
+  {% if recipe %}
+    <div class="actions" style="margin-top:1.1rem;">
+      <a class="primary" href="{% url 'inventory:mixing_job_create' %}?mixture={{ product.pk }}">Zahájit míchání →</a>
+    </div>
+  {% endif %}
 </div>
 
 {% if recipe %}
-<div class="card" id="recipe-scaler">
+<form class="card" id="recipe-scaler" onsubmit="return false;"
+      data-pdf-base="{% url 'inventory:recipe_pdf' pk=product.pk %}">
   <h2 style="font-size:1.05rem;margin-top:0;">Spočítat dávku</h2>
   <p style="color:var(--fg-soft);font-size:0.9rem;">
-    Zadejte cílové množství směsi a uvidíte, kolik každé suroviny budete
-    potřebovat. Není to zahájení míchání — jen pomocný výpočet podle
-    poměrů z receptury.
+    Zvolte cílové množství směsi — v tabulce uvidíte, kolik každé suroviny
+    budete potřebovat, a recepturu pro toto množství si můžete stáhnout jako PDF.
+    Není to zahájení míchání, jen výpočet podle poměrů z receptury.
   </p>
   <div class="field">
     <label for="recipe-scaler-target">Cílové množství (kg)</label>
-    <input type="number" step="0.001" min="0.001"
-           id="recipe-scaler-target" value="10.000"
+    <input type="text" inputmode="decimal"
+           id="recipe-scaler-target" value="10"
            style="max-width:160px;">
+  </div>
+  <div class="actions" style="margin:-0.2rem 0 1rem;">
+    <button type="button" class="secondary scaler-preset" data-kg="5">5 kg</button>
+    <button type="button" class="secondary scaler-preset" data-kg="10">10 kg</button>
+    <button type="button" class="secondary scaler-preset" data-kg="25">25 kg</button>
+    <button type="button" class="secondary scaler-preset" data-kg="50">50 kg</button>
+    <button type="button" class="secondary scaler-preset" data-kg="100">100 kg</button>
   </div>
   <table class="lines">
     <thead>
@@ -167,24 +188,42 @@
       {% endfor %}
     </tbody>
   </table>
-</div>
+  <div class="actions" style="margin-top:1rem;">
+    <a class="primary" id="recipe-pdf-link"
+       href="{% url 'inventory:recipe_pdf' pk=product.pk %}"
+       target="_blank" rel="noopener">Stáhnout recepturu (PDF)</a>
+  </div>
+</form>
 <script>
   (function () {
+    const form = document.getElementById("recipe-scaler");
     const target = document.getElementById("recipe-scaler-target");
-    if (!target) return;
-    const outs = document.querySelectorAll("#recipe-scaler .recipe-scaler-out");
+    if (!form || !target) return;
+    const outs = form.querySelectorAll(".recipe-scaler-out");
+    const pdf = document.getElementById("recipe-pdf-link");
+    const pdfBase = form.dataset.pdfBase;
+    function currentQty() {
+      // Accept both "12.5" and Czech "12,5".
+      return parseFloat(String(target.value).replace(",", ".").trim());
+    }
     function recompute() {
-      const t = parseFloat(target.value);
+      const t = currentQty();
+      const ok = isFinite(t) && t > 0;
       outs.forEach(function (el) {
         const r = parseFloat(el.dataset.ratio);
-        if (!isFinite(t) || t <= 0 || !isFinite(r)) {
-          el.textContent = "—";
-        } else {
-          el.textContent = (t * r).toFixed(3);
-        }
+        el.textContent = (ok && isFinite(r)) ? (t * r).toFixed(3) : "—";
       });
+      if (pdf && pdfBase) {
+        pdf.href = ok ? pdfBase + "?qty=" + encodeURIComponent(t) : pdfBase;
+      }
     }
     target.addEventListener("input", recompute);
+    form.querySelectorAll(".scaler-preset").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        target.value = btn.dataset.kg;
+        recompute();
+      });
+    });
     recompute();
   })();
 </script>

@@ -6,7 +6,7 @@
 
 {% block content %}
 <section>
-  <div class="wrap" style="max-width:760px;">
+  <div class="wrap article">
     <p class="eyebrow">O nás</p>
     <h1>Koření je naše řemeslo už přes třicet let</h1>
     <p class="lead" style="max-width:none;">
@@ -16,10 +16,10 @@
       hotové produkty pro velkoobchod a gastronomii.
     </p>
 
-    <img src="{% static 'web/branch-ricany.jpg' %}" alt="Sídlo {{ company.legal_name }} v Říčanech u Prahy"
-         style="width:100%;border-radius:12px;margin:1.5rem 0 0.5rem;">
+    <img class="article-photo" src="{% static 'web/branch-ricany.jpg' %}"
+         alt="Sídlo {{ company.legal_name }} v Říčanech u Prahy">
 
-    <h2 style="margin-top:2rem;">Od koření k celému sortimentu</h2>
+    <h2>Od koření k celému sortimentu</h2>
     <p>
       Postupně jsme sortiment rozšířili o sušenou zeleninu a byliny. Dnes máme
       silnou pozici zejména v sušeném česneku, cibuli a majoránce. Celé suroviny
@@ -28,7 +28,7 @@
       menší provozní balení.
     </p>
 
-    <h2 style="margin-top:2rem;">Vlastní výroba</h2>
+    <h2>Vlastní výroba</h2>
     <p>
       Vedle dovozu a zpracování stojíme i na vlastní výrobě. V roce 1995 jsme
       v Týništi nad Orlicí začali vyrábět česnekovou pastu a stali se jejím
@@ -39,7 +39,7 @@
       mezi vlajkové produkty patří VEGA a Zlaté kuře.
     </p>
 
-    <h2 style="margin-top:2rem;">Dovoz a export</h2>
+    <h2>Dovoz a export</h2>
     <p>
       Koření dovážíme přímo ze zemí původu — mezi klíčové komodity patří kmín,
       černý pepř a koriandr. Kromě dovozu pro český trh také vyvážíme a
@@ -47,7 +47,7 @@
       {% for market in company.export_markets %}{{ market }}{% if not forloop.last %}, {% endif %}{% endfor %}.
     </p>
 
-    <h2 style="margin-top:2rem;">Dostupnost a dosah</h2>
+    <h2>Dostupnost a dosah</h2>
     <p>
       Sídlo i hlavní zázemí firmy najdete v Říčanech u Prahy, zhruba 15 km od
       Prahy přímo u dálnice na Brno. Po celé České republice nás zastupuje síť

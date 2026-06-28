@@ -27,9 +27,11 @@
               {{ p.street }}<br>
               {{ p.postal_code }} {{ p.city }}
             </p>
-            <p>Telefon: <a href="tel:{{ p.phone|cut:' ' }}">{{ p.phone }}</a></p>
-            <p>Otevírací doba: {{ p.hours }}</p>
-            <div class="map-embed short" style="margin-top:0.5rem;">
+            <dl class="meta">
+              <dt>Telefon</dt><dd><a href="tel:{{ p.phone|cut:' ' }}">{{ p.phone }}</a></dd>
+              <dt>Otevřeno</dt><dd>{{ p.hours }}</dd>
+            </dl>
+            <div class="map-embed short" style="margin-top:0.85rem;">
               <iframe src="{{ p.map_embed }}" loading="lazy"
                       title="Mapa — {{ p.name }}, {{ p.street }}, {{ p.city }}"
                       referrerpolicy="no-referrer"></iframe>

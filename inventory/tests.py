@@ -2532,6 +2532,101 @@ def test_product_detail_renders_recipe_for_mixture(
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_shows_mixing_notes_and_pdf_link(user_vlastnik, pepper) -> None:
+    mixture = Product.objects.create(
+        name_cs="Gulášové koření",
+        kind=Product.Kind.MIXTURE,
+        notes="BALIT Á 5 KG",
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper, ratio=Decimal("1.0")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/katalog/{mixture.pk}/").content.decode("utf-8")
+    assert "Poznámky k míchání" in body  # XLS notes surfaced with the recipe
+    assert "BALIT Á 5 KG" in body
+    assert f"/sklad/katalog/{mixture.pk}/receptura/pdf/" in body
+    assert "Stáhnout recepturu" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipe_pdf_download(user_vlastnik, pepper, paprika) -> None:
+    mixture = Product.objects.create(
+        name_cs="Gulášové koření",
+        kind=Product.Kind.MIXTURE,
+        notes="BALIT Á 5 KG\ndoba míchání 8 min",
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper, ratio=Decimal("0.7")
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=paprika, ratio=Decimal("0.3")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/sklad/katalog/{mixture.pk}/receptura/pdf/")
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "application/pdf"
+    assert "receptura-" in response.headers["Content-Disposition"]
+    assert response.content[:4] == b"%PDF"
+    assert len(response.content) > 1000
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipe_pdf_404_for_raw_spice(user_vlastnik, pepper) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/sklad/katalog/{pepper.pk}/receptura/pdf/")
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipe_pdf_respects_qty(user_vlastnik, pepper, paprika) -> None:
+    mixture = Product.objects.create(name_cs="Gulášové koření", kind=Product.Kind.MIXTURE)
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper, ratio=Decimal("0.7")
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=paprika, ratio=Decimal("0.3")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/sklad/katalog/{mixture.pk}/receptura/pdf/?qty=25")
+    assert response.status_code == 200
+    assert response.content[:4] == b"%PDF"
+
+
+def test_recipe_amounts_sum_exactly_to_total() -> None:
+    """Largest-line rounding: % column sums to exactly 100, kg to the target —
+    even for ratios whose naive per-row rounding drifts (Knedlík → 100.01)."""
+    from inventory.services import _amounts_summing_to
+
+    ratios = [Decimal("0.333333"), Decimal("0.333333"), Decimal("0.333334")]
+    pcts = _amounts_summing_to(ratios, Decimal("100"), 2)
+    assert sum(pcts, Decimal("0")) == Decimal("100.00")
+    kgs = _amounts_summing_to(ratios, Decimal("25"), 3)
+    assert sum(kgs, Decimal("0")) == Decimal("25.000")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_create_preselects_mixture_from_query(user_vlastnik, pepper) -> None:
+    mixture = Product.objects.create(name_cs="Gulášové koření", kind=Product.Kind.MIXTURE)
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper, ratio=Decimal("1.0")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/michani/novy/?mixture={mixture.pk}").content.decode("utf-8")
+    assert f'value="{mixture.pk}" selected' in body  # směs pre-selected from recipe page
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_product_detail_shows_used_in_for_raw_spice(
     user_vlastnik, pepper
 ) -> None:

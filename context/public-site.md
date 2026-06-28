@@ -48,18 +48,28 @@ already-logged-in visitor hitting `/sklad/prihlaseni/` is bounced straight to
 
 ## Page content map (first build — four pages, locked by Matej 2026-06-26)
 
-### Domů (`/`) — enriched for B2B (pass 2, 2026-06-28)
-- Hero: heritage since *leden 1993* + brand promise.
-- Proof stat: **"Přes 369 druhů koření a 236 kulinářských produktů."**
-- **Co děláme** (capabilities): dovoz a kvalita, zpracování, míchání směsí,
-  balení, mokrá výroba, vlajkové produkty.
-- **Komu dodáváme** (segments): velkoobchody, gastro provozy, výrobci uzenin +
-  potravin — plus a one-line sortiment mention (no product list, no catalog —
-  Produkty/Encyklopedie stay deferred per 0051).
-- **Proč Kasia** (why-us): 30+ let, dovozce i zpracovatel, stálá kvalita +
+### Domů (`/`) — enriched for B2B, de-boxed (pass 2, 2026-06-28; section flow
+revised 2026-06-29 on Matej's feedback — refines 0054, not a new direction)
+- Hero: brand promise headline **"Koření, které dělá kuchyni"** (the *Rodinná
+  firma od roku 1993* eyebrow was dropped from the hero — it now framing the
+  prose band below).
+- Proof stat in the hero: **"Přes 369 druhů koření a 236 kulinářských produktů."**
+- **Co děláme** (capabilities): the six icon cards — dovoz a kvalita, zpracování,
+  míchání směsí, balení, mokrá výroba, vlajkové produkty. The one section where
+  cards earn their place.
+- **Prose "O nás" band** (`.about-band`, white bg, *not* boxes): heading +
+  short rodinná-firma / dovozce-i-zpracovatel copy + *Více o nás →*, paired with
+  the Říčany photo. This carries the *od roku 1993* framing.
+- **Komu dodáváme** (segments): light inline icon rows (`.feature-list`, no card
+  chrome) — velkoobchody, gastro provozy, výrobci uzenin + potravin — plus a
+  one-line sortiment mention (no product list, no catalog — Produkty/Encyklopedie
+  stay deferred per 0051).
+- **Proč Kasia** (why-us): borderless 2-column **checklist** (`.checklist`, the
+  main de-boxing move) — 30+ let, dovozce i zpracovatel, stálá kvalita +
   dohledatelnost, rychlé dodávky, síť obchodních zástupců, dovoz i export.
-- Primary CTAs → Provozovny + Kontakt; teaser blocks → O nás / Provozovny /
-  Kontakt.
+- **Dark-green CTA band** (`.cta-band`): *Pojďme spolupracovat* + CTAs, closes the
+  page on colour. The three trailing teaser cards (O nás / Provozovny / Kontakt)
+  were dropped — that nav lives in the header, footer, and this CTA.
 
 ### O nás (`/o-nas/`) — long-form article (pass 2, 2026-06-28)
 Real long-form article rebuilt from kasia.cz/about (Matej: include export/reach,

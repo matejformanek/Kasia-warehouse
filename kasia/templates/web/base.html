@@ -193,12 +193,17 @@
   }
 
   /* Forms */
-  form .field { margin-bottom: 1rem; }
-  form label { display: block; font-weight: 600; margin-bottom: 0.3rem; }
+  form .field { margin-bottom: 1.1rem; }
+  form label { display: block; font-weight: 600; margin-bottom: 0.35rem; color: var(--green-dark); }
   form input[type=text], form input[type=email], form input[type=tel],
   form input[type=password], form textarea {
-    width: 100%; font: inherit; padding: 0.6rem 0.7rem;
-    border: 1px solid var(--border); border-radius: 8px; background: #fff;
+    width: 100%; font: inherit; padding: 0.7rem 0.85rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  form input:focus, form textarea:focus {
+    outline: none; border-color: var(--green-500);
+    box-shadow: 0 0 0 3px rgba(42,153,97,.16);
   }
   form .checkbox { display: flex; gap: 0.6rem; align-items: flex-start; font-weight: 400; }
   form .checkbox input { margin-top: 0.35rem; }
@@ -207,10 +212,15 @@
 
   /* Login card (staff sign-in, public chrome) */
   .login-card { max-width: 880px; margin: 0 auto; }
-  .login-panels { display: grid; gap: 1.5rem; align-items: start; }
+  .login-panels { display: grid; gap: 1.5rem; align-items: stretch; }
   @media (min-width: 760px) { .login-panels { grid-template-columns: 3fr 2fr; } }
-  .login-panels .card h2 { font-size: 1.3rem; }
-  .login-aside { background: var(--green-soft); border-color: transparent; }
+  .login-panels .card { box-shadow: var(--shadow); }
+  .login-panels .card h2 { font-family: var(--display); font-size: 1.4rem; margin: 0 0 1rem; }
+  .login-aside {
+    background: linear-gradient(165deg, var(--green-soft), #e2efe5);
+    border-color: transparent; box-shadow: var(--shadow-sm);
+  }
+  .login-aside h2 { color: var(--green-dark); }
   .login-meta { color: var(--fg-soft); font-size: 0.95rem; margin-top: 0.75rem; }
 
   /* Contact panel — key/value facts */
@@ -218,7 +228,7 @@
   @media (min-width: 560px) { .contact-panel { grid-template-columns: max-content 1fr; } }
   .contact-panel dt { font-weight: 600; color: var(--fg-soft); margin: 0; }
   .contact-panel dd { margin: 0; }
-  .contact-panel a { text-decoration: none; }
+  .contact-panel a { text-decoration: none; color: var(--green); }
   .contact-panel a:hover { text-decoration: underline; }
 
   /* People / executive directory */
@@ -227,9 +237,9 @@
   .person { text-align: center; }
   .person img {
     width: 116px; height: 116px; object-fit: cover; border-radius: 50%;
-    border: 3px solid var(--green-soft); display: block; margin: 0 auto 0.85rem;
+    border: 3px solid #fff; box-shadow: var(--shadow-sm); display: block; margin: 0 auto 0.85rem;
   }
-  .person .name { font-weight: 700; color: var(--green-dark); }
+  .person .name { font-family: var(--display); font-weight: 700; color: var(--green-dark); }
   .person .role { color: var(--spice); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin: 0.15rem 0 0.6rem; }
   .person a { display: block; text-decoration: none; font-size: 0.97rem; }
   .person a:hover { text-decoration: underline; }
@@ -237,40 +247,115 @@
   /* Role badge */
   .badge {
     display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
-    text-transform: uppercase; padding: 0.2rem 0.6rem; border-radius: 999px;
+    text-transform: uppercase; padding: 0.25rem 0.7rem; border-radius: 999px;
     background: var(--green-soft); color: var(--green-dark);
   }
   .badge.hq { background: var(--spice); color: #fff; }
 
-  /* Branch cards (provozovny) */
+  /* Branch cards (provozovny) — sit inside .card, so shadow + hover are inherited */
   .branches { display: grid; gap: 1.5rem; }
   @media (min-width: 760px) { .branches { grid-template-columns: repeat(2, 1fr); } }
   .branch { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
-  .branch > .photo { aspect-ratio: 16 / 9; width: 100%; object-fit: cover; background: var(--bg-alt); }
-  .branch .body { padding: 1.25rem 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 0.4rem; flex: 1; }
-  .branch h3 { margin: 0.35rem 0 0; }
-  .branch .addr { margin: 0; }
+  .branch > .photo {
+    aspect-ratio: 16 / 9; width: 100%; object-fit: cover; background: var(--bg-alt);
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .branch .body { padding: 1.35rem 1.6rem 1.6rem; display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
+  .branch h3 { margin: 0.4rem 0 0; font-size: 1.35rem; }
+  .branch .addr { margin: 0; color: var(--fg-soft); }
 
   /* Embedded map */
   .map-embed {
-    border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
-    background: var(--bg-alt);
+    border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+    background: var(--bg-alt); box-shadow: var(--shadow-sm);
   }
   .map-embed iframe { display: block; width: 100%; border: 0; }
   .map-embed.tall iframe { height: 360px; }
   .map-embed.short iframe { height: 200px; }
-  .map-actions { margin-top: 0.75rem; }
+  .map-actions { margin: 0.85rem 0 0; }
+  .map-actions a { font-weight: 600; text-decoration: none; }
+  .map-actions a:hover { text-decoration: underline; }
+
+  /* Contact meta rows inside a branch card (provozovny) */
+  .branch .meta { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 0.85rem; margin: 0.6rem 0 0; }
+  .branch .meta dt { color: var(--muted); font-weight: 600; margin: 0; }
+  .branch .meta dd { margin: 0; }
+  .branch .meta a { text-decoration: none; color: var(--green); }
+  .branch .meta a:hover { text-decoration: underline; }
+
+  /* Long-form article (O nás): readable measure + accented section heads */
+  .article { max-width: var(--maxw-narrow); }
+  .article .article-photo {
+    width: 100%; border-radius: var(--radius); box-shadow: var(--shadow);
+    margin: 1.75rem 0 0.5rem; display: block;
+  }
+  .article h2 {
+    margin-top: 2.5rem; padding-left: 0.95rem; line-height: 1.2;
+    border-left: 4px solid var(--green-500);
+  }
+
+  /* ===== Homepage helper sections (0054 refinement: de-box the page) ===== */
+  /* Prose "O nás" band — text-left / media-right, not a grid of cards */
+  .about-band { display: grid; gap: 2.5rem; align-items: center; }
+  @media (min-width: 820px) { .about-band { grid-template-columns: 1fr 1fr; } }
+  .about-band .about-copy .lead { max-width: 48ch; }
+  .about-band .about-media img,
+  .about-band .about-media .art-frame {
+    width: 100%; border-radius: var(--radius); box-shadow: var(--shadow); display: block;
+  }
+  .about-band .about-media .art-frame {
+    background: linear-gradient(165deg, var(--green-soft), #e2efe5); padding: 2rem;
+  }
+
+  /* "Komu dodáváme" — light inline icon rows, no card chrome */
+  .feature-list { display: grid; gap: 2rem 1.5rem; }
+  @media (min-width: 720px) { .feature-list { grid-template-columns: repeat(3, 1fr); } }
+  .feature-list .item { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+  .feature-list .item .card-icon { margin-bottom: 0.4rem; }
+  .feature-list .item h3 { font-size: 1.15rem; margin: 0; }
+  .feature-list .item p { color: var(--fg-soft); margin: 0; }
+
+  /* "Proč Kasia" — borderless 2-column checklist (the main de-boxing move) */
+  .checklist { display: grid; gap: 1.6rem 2.5rem; }
+  @media (min-width: 720px) { .checklist { grid-template-columns: repeat(2, 1fr); } }
+  .checklist .check { display: flex; gap: 0.9rem; align-items: flex-start; }
+  .checklist .check .tick {
+    flex: 0 0 34px; width: 34px; height: 34px; border-radius: 999px; margin-top: 2px;
+    background: var(--green-soft); color: var(--green-dark); display: grid; place-items: center;
+  }
+  .checklist .check .tick svg { width: 19px; height: 19px; }
+  .checklist .check h3 { font-size: 1.12rem; margin: 0 0 0.2rem; }
+  .checklist .check p { margin: 0; color: var(--fg-soft); }
+
+  /* Dark-green CTA band — colour contrast to close the page */
+  .cta-band {
+    background: linear-gradient(135deg, var(--green-dark), var(--green));
+    border-radius: var(--radius); padding: 3.5rem 2rem; text-align: center; color: #fff;
+    box-shadow: var(--shadow);
+  }
+  .cta-band h2 { color: #fff; }
+  .cta-band p { color: #d8e8dc; max-width: 52ch; margin: 0 auto 1.8rem; }
+  .cta-band .btn-outline { border-color: rgba(255,255,255,.55); color: #fff; }
+  .cta-band .btn-outline:hover { background: rgba(255,255,255,.12); border-color: #fff; }
 
   /* Footer */
-  footer.site { background: var(--green-dark); color: #e7efe7; padding: 3rem 0 1.5rem; }
-  footer.site a { color: #fff; }
-  footer.site h4 { color: #fff; margin: 0 0 0.75rem; font-size: 1rem; letter-spacing: 0.02em; }
-  footer.site .grid { gap: 2rem; }
+  footer.site {
+    background: var(--green-dark); color: #d7e4d8;
+    padding: 3.5rem 0 1.75rem; border-top: 3px solid var(--green-500);
+  }
+  footer.site a { color: #eaf2ea; text-decoration: none; }
+  footer.site a:hover { text-decoration: underline; }
+  footer.site .foot-brand { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem; }
+  footer.site .foot-brand img { height: 34px; width: auto; border-radius: 8px; display: block; }
+  footer.site .foot-brand .name { font-family: var(--display); font-weight: 700; color: #fff; font-size: 1.2rem; letter-spacing: -.02em; }
+  footer.site h4 { font-family: var(--display); color: #fff; margin: 0 0 0.85rem; font-size: 0.9rem; letter-spacing: 0.05em; text-transform: uppercase; }
+  footer.site .grid { gap: 2.5rem; }
   @media (min-width: 720px) { footer.site .grid { grid-template-columns: 2fr 1fr 1fr; } }
-  footer.site .muted { color: #b9ccb9; font-size: 0.9rem; }
+  footer.site .muted { color: #a9c1ac; font-size: 0.92rem; line-height: 1.75; }
+  footer.site .foot-links a { display: inline-block; padding: 0.1rem 0; }
   footer.site .legal {
-    border-top: 1px solid rgba(255,255,255,0.15); margin-top: 2rem;
-    padding-top: 1.25rem; font-size: 0.85rem; color: #b9ccb9;
+    border-top: 1px solid rgba(255,255,255,0.14); margin-top: 2.5rem;
+    padding-top: 1.4rem; font-size: 0.84rem; color: #9bb59f;
     display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between;
   }
 </style>
@@ -299,7 +384,10 @@
   <div class="wrap">
     <div class="grid">
       <div>
-        <h4>{{ company.legal_name }}</h4>
+        <div class="foot-brand">
+          <img src="{% static 'brand/kasia-logo.jpg' %}" alt="">
+          <span class="name">Kasia vera</span>
+        </div>
         <p class="muted">
           Dovoz, zpracování a balení koření od roku {{ company.founded_year }} —
           velkoobchod a gastro, značka {{ company.brand }}.
@@ -321,7 +409,7 @@
       </div>
       <div>
         <h4>Odkazy</h4>
-        <p class="muted">
+        <p class="muted foot-links">
           {% for item in nav %}
             <a href="{% url item.url_name %}">{{ item.label }}</a><br>
           {% endfor %}

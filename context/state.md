@@ -1614,6 +1614,94 @@
     manifest, `navrhy` gallery still collects). Local walkthrough + prod deploy
     next.
 
+- **2026-06-29** — **UI-port bugfix + public restyle finish** (branch
+  `hf_web_ui_port_fix`; **refines `0054`, does not supersede it** — directions +
+  shared-class contract unchanged). The 2026-06-29 `0054` deploy was shipped
+  *without* a visual check or sign-off and two problems surfaced (Matej's
+  feedback): (1) **sklad was unusable** — `.mob-nav` had no default
+  `display:none`, so on desktop it rendered as the first item of the `.app`
+  grid, shoved the sidebar into the `1fr` column and left a stray unstyled link
+  column; (2) the **public restyle stopped at `.stat`** — footer / login /
+  branch cards / map / forms below it were still pre-`0054` flat CSS. Fixes on
+  this branch:
+  - **Fix A (critical):** added `.mob-nav { display:none }` to the desktop block
+    in `kasia/templates/base.html` (the `@media(max-width:720px)` block still
+    turns it on for mobile). Sidebar 244px + `.content` 1fr restored; JS/HTMX
+    hooks + shared classes untouched.
+  - **Fix B:** brought the leftover `web/base.html` CSS into the curvy-green
+    system (radius/shadow tokens, Sora headings) — forms, login card/panels/
+    aside, contact panel, people, badge, branch cards (rounded top photo,
+    inherited card shadow/hover), map-embed, and a redesigned footer (brand
+    wordmark block + hairline accent); every class name kept, footer login link
+    kept class-free (test-locked).
+  - **Fix C:** de-boxed `web/home.html` — dropped the hero eyebrow, added a prose
+    `.about-band` (Říčany photo), a light `.feature-list` (Komu dodáváme), a
+    borderless `.checklist` (Proč Kasia), and a dark-green `.cta-band`; dropped
+    the 3 trailing teaser cards. Kept "Co děláme / Komu dodáváme / Proč Kasia" +
+    369/236 (test-locked).
+  - **Verification:** `manage.py check` clean, ruff clean, **349 pytest green**,
+    `collectstatic --noinput` clean; rendered locally via `make up` (real pages,
+    not just pytest strings — the step missing last time). **No deploy** — by
+    Matej's instruction after the unsanctioned first deploy, this is verified
+    locally and waits for explicit go-ahead before touching `main`/prod.
+  - **Round 2 (same session, on local-eyeball feedback):**
+    - **Sklad content centered** — `.content` got `margin: 0 auto` so a wide
+      desktop centers the 1180px column instead of hugging the sidebar with a
+      big empty right gutter.
+    - **Themed edit-form fields** (`base.html`) — inputs/selects/textareas get a
+      faint fill, hover border, accent inset focus ring, and a custom SVG caret
+      on `<select>` (still radius-0 per 0054) so the *upravit* forms don't read
+      as raw browser widgets.
+    - **Historie tab-chips fixed** — the active chip was double-classed
+      `primary tab-chip` (button padding/line-height fighting the chip styles,
+      causing the shifted text + stray gap); now plain `.tab-chip` /
+      `.tab-chip.active`, container `align-items:center`. (Only `movement_history`
+      had this pattern.)
+    - **Public polish** — O nás wrapped in `.article` (readable measure, rounded
+      shadowed lead photo, green-accented section heads); provozovny phone/hours
+      moved to a tidy `.meta` definition list; map link styled.
+    - Note: the Nastavení **500 was a stale local DB**, not code — the running
+      dev Postgres was missing migrations `0012_settings_recipients_table` +
+      `0013_seed_stock_for_existing_products`; `manage.py migrate` fixed it
+      (those migrations already ship in the repo). Now 200.
+    - Re-verified: check / ruff clean, **349 pytest green**, collectstatic clean,
+      and all pages re-rendered via the rebuilt docker stack. Still **no deploy**.
+
+- **2026-06-29** — **Recipe PDF + mixing notes + custom error pages** (same branch;
+  [`0055`](./decisions/0055-recipe-pdf-and-mixing-notes.md)). On Matej's walkthrough
+  of a *směs* product detail:
+  - The free-form **mixing notes** (packing size / mixing time, captured from the
+    recipe XLS into `Product.notes` per `0048`) are now surfaced as "Poznámky
+    k míchání" inside the Receptura card (and no longer double-shown in the stock
+    card for mixtures). Added a "Zahájit míchání →" link to the real mixing-job
+    flow so the recipe view has an actionable next step.
+  - **Recipe PDF** — `render_recipe_pdf()` (WeasyPrint, reuses dodák infra) →
+    `inventory/recipe_pdf.html` (ingredient table podíl / % / per-100 kg + notes),
+    `recipe_pdf` view at `/sklad/katalog/<pk>/receptura/pdf/` (404 for non-mixtures).
+    "Stáhnout recepturu (PDF)" button on the detail page. No model/migration/dep.
+  - **Themed "Spočítat dávku" box** — the scaler inputs weren't in a `<form>`, so
+    they missed the themed field CSS; wrapped the scaler card in a non-submitting
+    `<form>`. Cosmetic, JS hooks unchanged.
+  - **Custom branded error pages** — `kasia/templates/404.html` (green/Sora, logo,
+    links to úvod + sklad login) and a dependency-free `500.html`, replacing
+    Django's plain defaults (DEBUG=False only).
+  - Verified: check / ruff clean, **353 pytest green** (+4: recipe PDF download,
+    404-for-raw-spice, notes+PDF-link on detail, branded-404), collectstatic clean,
+    recipe PDF + detail re-rendered via the docker stack. PR opened (#9).
+  - **Round 2 on the same screen (Matej's feedback):**
+    - **"Spočítat dávku" is now the interactive tool** — the PDF button moved
+      here from the Receptura card; kg input accepts `12,5` / `12.5`; quick
+      presets 5/10/25/50/100 kg; the "Potřeba (kg)" column recomputes live; the
+      PDF link carries the chosen qty (`?qty=`), so the PDF matches what's on
+      screen.
+    - **Exact-sum rounding** (`_amounts_summing_to`) — Knedlík's % summed to
+      100.01; now the rounding difference lands on the largest line so the %
+      column sums to exactly 100.00 and the kg column to the target.
+    - **"Zahájit míchání →" pre-selects the směs** (`?mixture=<pk>` →
+      `mixing_job_create` marks the option selected).
+    - **356 pytest green** (+3: qty PDF, exact-sum unit test, mixture preselect);
+      re-rendered + Knedlík 100.00 % confirmed via the docker stack.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

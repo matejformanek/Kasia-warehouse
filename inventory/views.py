@@ -19,9 +19,10 @@ from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .forms import (
@@ -85,6 +86,7 @@ from .services import (
     plan_mixing_job,
     record_completed_mixing_job,
     render_dodaci_list_pdf,
+    render_recipe_pdf,
     reserved_kg,
     seed_branch_carriage_for_product,
     send_dodaci_list_email,
@@ -1022,6 +1024,27 @@ def dodaci_list_pdf(request, cislo: str):
     return response
 
 
+@require_GET
+def recipe_pdf(request, pk: int):
+    """Download a mixture's recipe sheet (ingredient amounts for the chosen
+    batch size + mixing notes) as a PDF. The batch size comes from ``?qty=``
+    (the "Spočítat dávku" box; defaults to 100 kg). 404 for non-mixtures or
+    recipe-less mixtures."""
+    product = get_object_or_404(Product, pk=pk)
+    try:
+        target_qty = Decimal(request.GET.get("qty", ""))
+    except (InvalidOperation, ValueError):
+        target_qty = None
+    try:
+        pdf_bytes = render_recipe_pdf(product, target_qty=target_qty)
+    except ValueError as exc:
+        raise Http404(str(exc)) from exc
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    slug = slugify(product.name_cs) or f"smes-{product.pk}"
+    response["Content-Disposition"] = f'inline; filename="receptura-{slug}.pdf"'
+    return response
+
+
 @require_POST
 def dodaci_list_resend(request, cislo: str):
     dodaci_list = get_object_or_404(DodaciList, cislo=cislo)
@@ -1251,6 +1274,13 @@ def mixing_job_create(request):
         if request.user.branch_id
         else (branches[0] if branches else None)
     )
+    # Pre-select the směs when arriving from a recipe page (?mixture=<pk>);
+    # keep the selection on POST validation errors.
+    selected_mixture_id = (
+        request.POST.get("mixture")
+        if request.method == "POST"
+        else request.GET.get("mixture")
+    ) or ""
 
     error: str | None = None
     if request.method == "POST":
@@ -1327,6 +1357,7 @@ def mixing_job_create(request):
             "is_branch_locked": bool(
                 request.user.is_obsluha and request.user.branch_id
             ),
+            "selected_mixture_id": str(selected_mixture_id),
             "error": error,
         },
     )

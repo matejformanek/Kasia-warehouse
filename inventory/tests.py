@@ -2532,6 +2532,59 @@ def test_product_detail_renders_recipe_for_mixture(
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_shows_mixing_notes_and_pdf_link(user_vlastnik, pepper) -> None:
+    mixture = Product.objects.create(
+        name_cs="Gulášové koření",
+        kind=Product.Kind.MIXTURE,
+        notes="BALIT Á 5 KG",
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper, ratio=Decimal("1.0")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/katalog/{mixture.pk}/").content.decode("utf-8")
+    assert "Poznámky k míchání" in body  # XLS notes surfaced with the recipe
+    assert "BALIT Á 5 KG" in body
+    assert f"/sklad/katalog/{mixture.pk}/receptura/pdf/" in body
+    assert "Stáhnout recepturu" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipe_pdf_download(user_vlastnik, pepper, paprika) -> None:
+    mixture = Product.objects.create(
+        name_cs="Gulášové koření",
+        kind=Product.Kind.MIXTURE,
+        notes="BALIT Á 5 KG\ndoba míchání 8 min",
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper, ratio=Decimal("0.7")
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=paprika, ratio=Decimal("0.3")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/sklad/katalog/{mixture.pk}/receptura/pdf/")
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "application/pdf"
+    assert "receptura-" in response.headers["Content-Disposition"]
+    assert response.content[:4] == b"%PDF"
+    assert len(response.content) > 1000
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipe_pdf_404_for_raw_spice(user_vlastnik, pepper) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/sklad/katalog/{pepper.pk}/receptura/pdf/")
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_product_detail_shows_used_in_for_raw_spice(
     user_vlastnik, pepper
 ) -> None:

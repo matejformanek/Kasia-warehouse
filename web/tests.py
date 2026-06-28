@@ -104,6 +104,16 @@ def test_robots_txt() -> None:
     assert "Sitemap:" in body
 
 
+@override_settings(DEBUG=False, **_OVERRIDES)
+def test_custom_404_page_is_branded() -> None:
+    """A missing URL renders our branded 404, not Django's plain default."""
+    response = Client().get("/tahle-stranka-rozhodne-neexistuje/")
+    assert response.status_code == 404
+    body = response.content.decode("utf-8")
+    assert "Stránka nenalezena" in body
+    assert "404" in body
+
+
 def test_sitemap_xml() -> None:
     response = Client().get("/sitemap.xml")
     assert response.status_code == 200

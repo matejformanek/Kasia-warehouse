@@ -485,6 +485,61 @@ def render_dodaci_list_pdf(dodaci_list: DodaciList) -> bytes:
     return HTML(string=html_string).write_pdf()
 
 
+def render_recipe_pdf(product: Product) -> bytes:
+    """Render a mixture's recipe sheet (ingredients + ratios + the free-form
+    mixing notes) to PDF via WeasyPrint, reusing the dodák PDF infra (0017).
+
+    The notes are the free-form packing / mixing instructions captured from
+    Petr's XLS on import (0048) and stored on ``Product.notes`` — surfaced
+    here as "additional mixing info" per the operator's request.
+
+    Raises ``ValueError`` (Czech) if the product is not a mixture or has no
+    recipe rows.
+    """
+    from pathlib import Path
+
+    from django.conf import settings as django_settings
+    from weasyprint import HTML
+
+    if product.kind != Product.Kind.MIXTURE:
+        raise ValueError("Recepturu lze stáhnout jen pro směs.")
+
+    components = list(
+        RecipeComponent.objects.filter(mixture_product=product)
+        .select_related("component_product")
+        .order_by("component_product__name_cs")
+    )
+    if not components:
+        raise ValueError("Tato směs nemá vyplněnou recepturu.")
+
+    rows = [
+        {
+            "name": c.component_product.name_cs,
+            "ratio": c.ratio,
+            "pct": (c.ratio * Decimal("100")).quantize(Decimal("0.01")),
+            "per_100kg": (c.ratio * Decimal("100")).quantize(Decimal("0.001")),
+        }
+        for c in components
+    ]
+    total_pct = sum((r["pct"] for r in rows), Decimal("0"))
+
+    bundled_logo = Path(django_settings.BASE_DIR) / "kasia" / "static" / "brand" / "kasia-logo.jpg"
+    default_logo_url = f"file://{bundled_logo}" if bundled_logo.exists() else ""
+
+    html_string = render_to_string(
+        "inventory/recipe_pdf.html",
+        {
+            "product": product,
+            "rows": rows,
+            "total_pct": total_pct,
+            "notes": product.notes,
+            "settings": Settings.load(),
+            "default_logo_url": default_logo_url,
+        },
+    )
+    return HTML(string=html_string).write_pdf()
+
+
 def _substitute_template(text: str, dodaci_list: DodaciList) -> str:
     """Substitute the screen-14 placeholders. Reason placeholder is only
     used in the oprava body; the caller is expected to append the

@@ -1667,6 +1667,29 @@
     - Re-verified: check / ruff clean, **349 pytest green**, collectstatic clean,
       and all pages re-rendered via the rebuilt docker stack. Still **no deploy**.
 
+- **2026-06-29** — **Recipe PDF + mixing notes + custom error pages** (same branch;
+  [`0055`](./decisions/0055-recipe-pdf-and-mixing-notes.md)). On Matej's walkthrough
+  of a *směs* product detail:
+  - The free-form **mixing notes** (packing size / mixing time, captured from the
+    recipe XLS into `Product.notes` per `0048`) are now surfaced as "Poznámky
+    k míchání" inside the Receptura card (and no longer double-shown in the stock
+    card for mixtures). Added a "Zahájit míchání →" link to the real mixing-job
+    flow so the recipe view has an actionable next step.
+  - **Recipe PDF** — `render_recipe_pdf()` (WeasyPrint, reuses dodák infra) →
+    `inventory/recipe_pdf.html` (ingredient table podíl / % / per-100 kg + notes),
+    `recipe_pdf` view at `/sklad/katalog/<pk>/receptura/pdf/` (404 for non-mixtures).
+    "Stáhnout recepturu (PDF)" button on the detail page. No model/migration/dep.
+  - **Themed "Spočítat dávku" box** — the scaler inputs weren't in a `<form>`, so
+    they missed the themed field CSS; wrapped the scaler card in a non-submitting
+    `<form>`. Cosmetic, JS hooks unchanged.
+  - **Custom branded error pages** — `kasia/templates/404.html` (green/Sora, logo,
+    links to úvod + sklad login) and a dependency-free `500.html`, replacing
+    Django's plain defaults (DEBUG=False only).
+  - Verified: check / ruff clean, **353 pytest green** (+4: recipe PDF download,
+    404-for-raw-spice, notes+PDF-link on detail, branded-404), collectstatic clean,
+    recipe PDF + detail re-rendered via the docker stack. **PR to be opened** for
+    review → merge to live (Matej's call).
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

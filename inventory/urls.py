@@ -36,6 +36,7 @@ urlpatterns = [
         name="xls_import_confirm",
     ),
     path("katalog/<int:pk>/", views.product_detail, name="product_detail"),
+    path("katalog/<int:pk>/receptura/pdf/", views.recipe_pdf, name="recipe_pdf"),
     path("katalog/<int:pk>/upravit/", views.product_edit, name="product_edit"),
     path(
         "katalog/<int:pk>/archivovat/",

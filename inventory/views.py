@@ -19,9 +19,10 @@ from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .forms import (
@@ -85,6 +86,7 @@ from .services import (
     plan_mixing_job,
     record_completed_mixing_job,
     render_dodaci_list_pdf,
+    render_recipe_pdf,
     reserved_kg,
     seed_branch_carriage_for_product,
     send_dodaci_list_email,
@@ -1019,6 +1021,21 @@ def dodaci_list_pdf(request, cislo: str):
     pdf_bytes = render_dodaci_list_pdf(dodaci_list)
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'inline; filename="{dodaci_list.cislo}.pdf"'
+    return response
+
+
+@require_GET
+def recipe_pdf(request, pk: int):
+    """Download a mixture's recipe sheet (ingredients + ratios + mixing notes)
+    as a PDF. 404 for non-mixtures or recipe-less mixtures."""
+    product = get_object_or_404(Product, pk=pk)
+    try:
+        pdf_bytes = render_recipe_pdf(product)
+    except ValueError as exc:
+        raise Http404(str(exc)) from exc
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    slug = slugify(product.name_cs) or f"smes-{product.pk}"
+    response["Content-Disposition"] = f'inline; filename="receptura-{slug}.pdf"'
     return response
 
 

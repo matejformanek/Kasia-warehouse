@@ -16,6 +16,7 @@ from .models import (
     Product,
     RecipeComponent,
     Settings,
+    SettingsRecipient,
     Stock,
     StockThresholdOverride,
     Supplier,
@@ -403,10 +404,8 @@ class SettingsAdmin(admin.ModelAdmin):
                 )
             },
         ),
-        (
-            "Příjemci dodacího listu",
-            {"fields": ("recipient_petr", "recipient_karolina")},
-        ),
+        # Příjemci jsou v separátní tabulce SettingsRecipient per 0052;
+        # spravují se v UI na /nastaveni/. Pole na Settings neexistují.
         (
             "Šablony e-mailů",
             {
@@ -415,6 +414,8 @@ class SettingsAdmin(admin.ModelAdmin):
                     "template_initial_body",
                     "template_oprava_subject",
                     "template_oprava_body",
+                    "template_low_stock_subject",
+                    "template_low_stock_body",
                 )
             },
         ),
@@ -425,6 +426,21 @@ class SettingsAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None) -> bool:
         return False
+
+
+@admin.register(SettingsRecipient)
+class SettingsRecipientAdmin(admin.ModelAdmin):
+    list_display = (
+        "email",
+        "label",
+        "is_active",
+        "is_low_stock_recipient",
+        "sort_order",
+        "created_at",
+    )
+    list_filter = ("is_active", "is_low_stock_recipient")
+    search_fields = ("email", "label")
+    ordering = ("-is_active", "sort_order", "id")
 
 
 # ---------------------------------------------------------------------------

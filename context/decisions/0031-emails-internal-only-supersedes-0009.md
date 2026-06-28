@@ -1,5 +1,7 @@
 # 0031 — Dodací list e-mails internal only (supersedes 0009)
 
+> **Superseded in part 2026-06-28 by [`0052-n-list-recipients-supersedes-0031.md`](./0052-n-list-recipients-supersedes-0031.md)** — the "fixed pair `[Petr, Karolína]`" shape under § Choice is replaced by an operator-managed N-list; the "internal only / never to customers" intent stands.
+
 ## Context
 
 Petr's 2026-06-09 reply (Czech, relayed via Matej):

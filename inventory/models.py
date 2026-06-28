@@ -24,6 +24,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CheckConstraint, Q, UniqueConstraint
+from django.db.models.functions import Lower
 
 
 class Branch(models.Model):
@@ -675,9 +676,8 @@ class Settings(models.Model):
     email_from_address = models.EmailField("odesílatel — adresa", blank=True)
     email_from_name = models.CharField("odesílatel — jméno", max_length=128, blank=True)
 
-    # Dodák recipients per 0031.
-    recipient_petr = models.EmailField("příjemce Petr", blank=True)
-    recipient_karolina = models.EmailField("příjemce Karolína", blank=True)
+    # Dodák recipients are an N-list in SettingsRecipient per 0052.
+    # The recipient_petr / recipient_karolina columns were dropped.
 
     # E-mail templates per screens/14.
     template_initial_subject = models.CharField(
@@ -732,6 +732,39 @@ class Settings(models.Model):
 
     def __str__(self) -> str:
         return "Nastavení"
+
+
+class SettingsRecipient(models.Model):
+    """One internal e-mail recipient for dodáky + optional low-stock summary.
+
+    Per [`0052`](../context/decisions/0052-n-list-recipients-supersedes-0031.md):
+    operator-managed N-list replaces the fixed pair from
+    [`0031`](../context/decisions/0031-emails-internal-only-supersedes-0009.md).
+    Each row has an explicit subscription flag for the daily low-stock
+    summary so subscribers don't have to be derived from row order.
+    """
+
+    email = models.EmailField("e-mail")
+    label = models.CharField("popisek", max_length=64, blank=True)
+    is_active = models.BooleanField("aktivní", default=True)
+    is_low_stock_recipient = models.BooleanField(
+        "dostává souhrn dochází zboží", default=False
+    )
+    sort_order = models.PositiveSmallIntegerField("pořadí", default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "příjemce nastavení"
+        verbose_name_plural = "příjemci nastavení"
+        ordering = ["-is_active", "sort_order", "id"]
+        constraints = [
+            UniqueConstraint(
+                Lower("email"), name="recipient_email_unique_ci"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.label or self.email}"
 
 
 # ---------------------------------------------------------------------------

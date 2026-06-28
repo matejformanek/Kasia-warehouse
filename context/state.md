@@ -1274,6 +1274,49 @@
   before any real customer výdej, per the `_assert_recipients_set`
   guard in `inventory/services.py`).
 
+- **2026-06-28** — Podpora feedback Batch D landed (Feedback #2b — N-list
+  recipients) per new decision
+  [`0052`](./decisions/0052-n-list-recipients-supersedes-0031.md)
+  (supersedes [`0031`](./decisions/0031-emails-internal-only-supersedes-0009.md)
+  in part — "internal only" intent stands; the fixed-pair UI and schema
+  shape are replaced). New `SettingsRecipient` model — `(email, label,
+  is_active, is_low_stock_recipient, sort_order, created_at)` with
+  case-insensitive `UniqueConstraint(Lower("email"))`. Single atomic
+  migration `0012_settings_recipients_table.py`:
+  CreateModel → RunPython data-migration (idempotent, seeds Petr +
+  Karolína from old Settings columns, sets Petr `is_low_stock_recipient
+  =True` per 0045) → drops both `Settings.recipient_*` columns.
+  Service refactor in `inventory/services.py`:
+  - `_assert_recipients_set` now requires ≥1 active SettingsRecipient
+    row; Czech error string updated.
+  - `send_dodaci_list_email` ships to all active recipients ordered
+    by `sort_order, id`.
+  - `send_low_stock_summary` ships to all active recipients with
+    `is_low_stock_recipient=True`; returns `None` (no raise) when
+    none are subscribed (matches `_assert_recipients_set`'s no-raise
+    posture for the daily cron path).
+  UI: `/nastaveni/` "Příjemci dodacího listu" block becomes a
+  modelformset using the project's existing JS-clone `<template>`
+  add-row pattern from `product_form.html:159-214` (NOT HTMX). Per-row
+  controls: email, label, is_active, is_low_stock_recipient,
+  sort_order, "× Smazat" button. Read-only `SettingsRecipientAdmin`
+  added.
+  Conftest autouse fixture rewritten to seed Petr + Karolína as
+  SettingsRecipient rows. 6 existing test references migrated
+  (`tests.py:855`, `:2576`, `:3093-3163`, `:4993`, `:5752`) +
+  `seed_walkthrough_data` + `mail_low_stock_summary` management
+  command + `inventory/admin.py` fieldset.
+  9 new tests: case-insensitive uniqueness; iterates all active;
+  skips inactive; refuses zero-active (ValidationError); low-stock
+  targets subscribed only; low-stock returns None with no
+  subscribers; formset renders existing rows; formset creates new
+  row via POST; data-migration helper is idempotent.
+  Screen docs `14-nastaveni.md` + `09-detail-dodaciho-listu.md`
+  updated. Full suite **321 pytest tests green** (312 → 321 = 1
+  removed via Batch C cleanup + 1 removed `recipient_petr` test +
+  9 new + 0 net = math check below). Ruff clean; system check clean;
+  makemigrations --check clean.
+
 - **2026-06-28** — Podpora feedback Batch B landed (Feedback #4 — catalogue
   per-branch low-stock visibility, N-branch ready). `catalogue_index` view
   collects `low_branches` per row (branches where `effective < threshold`).

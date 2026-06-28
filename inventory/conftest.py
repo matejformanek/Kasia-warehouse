@@ -173,22 +173,41 @@ def _ensure_micharna_seed(db) -> None:
 
 @pytest.fixture(autouse=True)
 def settings_with_recipients(db) -> Settings:
-    """Populate Settings.recipient_petr / recipient_karolina for all tests.
+    """Seed Settings + two SettingsRecipient rows for all tests.
 
-    The seed migration leaves recipients blank intentionally (operator
-    fills them on first run). Pass 2's vydej hook refuses to apply a
-    výdej while either recipient is empty; auto-applying this fixture
-    keeps Pass 1 tests passing without each one repeating the boilerplate.
-
-    Tests that need to verify the empty-recipient guard override these
-    fields directly and re-save.
+    Per 0052 (replaces 0031's fixed pair with an N-list): the dodák send
+    refuses to apply while no active recipient exists. We seed two —
+    Petr (is_low_stock_recipient=True per 0045) and Karolína — so the
+    bulk of the test suite, which doesn't care about recipients, doesn't
+    have to repeat the boilerplate. Tests that verify the empty-recipient
+    guard delete these rows directly.
     """
-    # Settings.load() will get_or_create — survives a flushed Settings
+    from inventory.models import SettingsRecipient
+
+    # Settings.load() will get_or_create — survives flushed Settings
     # table across transaction=True tests.
     s = Settings.load()
-    s.recipient_petr = "petr@example.cz"
-    s.recipient_karolina = "karolina@example.cz"
     s.email_from_address = "no-reply@example.cz"
     s.email_from_name = "Kasia vera"
     s.save()
+
+    if not SettingsRecipient.objects.exists():
+        SettingsRecipient.objects.bulk_create(
+            [
+                SettingsRecipient(
+                    email="petr@example.cz",
+                    label="Petr",
+                    is_active=True,
+                    is_low_stock_recipient=True,
+                    sort_order=0,
+                ),
+                SettingsRecipient(
+                    email="karolina@example.cz",
+                    label="Karolína",
+                    is_active=True,
+                    is_low_stock_recipient=False,
+                    sort_order=1,
+                ),
+            ]
+        )
     return s

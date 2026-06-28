@@ -32,11 +32,17 @@ very little to fiddle with here.
   - "Otestovat odeslání" — sends a test e-mail to the current user
     and reports success or failure.
   - **Příjemci dodacího listu** per
-    [`decisions/0031-emails-internal-only-supersedes-0009.md`](../decisions/0031-emails-internal-only-supersedes-0009.md):
-    exactly two fields — Petr's e-mail and Karolína's e-mail. Both
-    required. The dodák-send code reads these two addresses and
-    sends to them on every dodák; no per-customer remembered list,
-    no ad-hoc additions on issue or re-send.
+    [`decisions/0052-n-list-recipients-supersedes-0031.md`](../decisions/0052-n-list-recipients-supersedes-0031.md)
+    (supersedes the fixed-pair UI from
+    [`decisions/0031-emails-internal-only-supersedes-0009.md`](../decisions/0031-emails-internal-only-supersedes-0009.md)
+    in part; the "internal only / never to customers" intent stands):
+    repeatable list of rows. Each row has e-mail, popisek, aktivní
+    checkbox, "Souhrn dochází zboží" checkbox, pořadí. Operator clicks
+    "+ Přidat příjemce" to add a row; per-row "× Smazat" to remove.
+    Every dodák ships to all active rows; the daily low-stock summary
+    ships only to rows with "Souhrn dochází zboží" zaškrtnuté. At
+    least one active row must exist or výdej refuses. No per-customer
+    remembered list, no ad-hoc additions on issue or re-send.
 - A **Dodací list — formát** section:
   - **Číslování** is fixed at `<BRANCH>-<YYYY>-<NNNN>` per
     [`decisions/0008-dodaci-list-numbering.md`](../decisions/0008-dodaci-list-numbering.md);

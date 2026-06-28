@@ -39,6 +39,7 @@ from .forms import (
     RecipeComponentForm,
     RecipeComponentFormSet,
     SettingsForm,
+    SettingsRecipientFormSet,
     SmtpTestForm,
     StockAdjustmentForm,
     SupplierForm,
@@ -1504,14 +1505,25 @@ def _branch_counters_summary() -> list[dict]:
 def settings_edit(request):
     _require_vlastnik(request)
     instance = Settings.load()
+    from .models import SettingsRecipient
+    recipient_qs = SettingsRecipient.objects.all().order_by(
+        "-is_active", "sort_order", "id"
+    )
     if request.method == "POST":
         form = SettingsForm(request.POST, request.FILES, instance=instance)
-        if form.is_valid():
+        recipient_formset = SettingsRecipientFormSet(
+            request.POST, queryset=recipient_qs, prefix="recipient"
+        )
+        if form.is_valid() and recipient_formset.is_valid():
             form.save()
+            recipient_formset.save()
             messages.success(request, "Nastavení uloženo.")
             return redirect("inventory:settings_edit")
     else:
         form = SettingsForm(instance=instance)
+        recipient_formset = SettingsRecipientFormSet(
+            queryset=recipient_qs, prefix="recipient"
+        )
 
     smtp_test_form = SmtpTestForm(initial={"to_email": request.user.email})
 
@@ -1520,6 +1532,7 @@ def settings_edit(request):
         "inventory/settings_form.html",
         {
             "form": form,
+            "recipient_formset": recipient_formset,
             "settings": instance,
             "smtp_test_form": smtp_test_form,
             "branch_counters": _branch_counters_summary(),

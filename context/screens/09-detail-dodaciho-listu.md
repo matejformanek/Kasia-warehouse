@@ -40,11 +40,20 @@ poslat ještě jednou?".
 - An **e-mail status** block (current state derived from the audit
   table above):
   - Recipients per
-    [`decisions/0031-emails-internal-only-supersedes-0009.md`](../decisions/0031-emails-internal-only-supersedes-0009.md):
-    the fixed pair `[Petr, Karolína]` from
-    [`14-nastaveni.md`](14-nastaveni.md), read-only.
-  - A "Znovu odeslat" action that re-sends the **current** PDF to
-    the fixed pair.
+    [`decisions/0052-n-list-recipients-supersedes-0031.md`](../decisions/0052-n-list-recipients-supersedes-0031.md)
+    (supersedes the fixed pair from
+    [`decisions/0031-emails-internal-only-supersedes-0009.md`](../decisions/0031-emails-internal-only-supersedes-0009.md)
+    in part — "internal only / never to customers" intent stands):
+    the set of active rows from
+    [`14-nastaveni.md`](14-nastaveni.md) at the time of send. The
+    historical recipient list (who actually received this version) is
+    preserved verbatim in the "Verze a odeslání" log table above.
+  - A "Znovu odeslat" action that re-sends the **current** PDF to the
+    currently active recipients.
+  - When the most recent send at `current_version` failed and no later
+    successful send exists, a prominent red banner ("Poslední odeslání
+    selhalo.") appears above the action set per Podpora feedback #5
+    (2026-06-26).
 - A link to the underlying výdej movement on
   [Úprava pohybu](11-uprava-pohybu.md), labelled "Otevřít výdej". For
   branch staff this opens read-only on
@@ -61,7 +70,7 @@ poslat ještě jednou?".
 ## What you can do here
 - Read the PDF preview.
 - Download the PDF.
-- Re-send the e-mail to the fixed pair via "Znovu odeslat".
+- Re-send the e-mail to the currently active recipients via "Znovu odeslat".
 - Navigate to the underlying výdej (edit or read-only depending on
   role).
 - Navigate back to [Seznam dodacích listů](08-seznam-dodacich-listu.md).

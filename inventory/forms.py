@@ -201,11 +201,46 @@ class SettingsForm(forms.ModelForm):
             return self.instance.smtp_password
         return new_value
 
-    def clean_recipient_petr(self) -> str:
-        return self.cleaned_data["recipient_petr"].strip()
 
-    def clean_recipient_karolina(self) -> str:
-        return self.cleaned_data["recipient_karolina"].strip()
+# Per 0052 — operator-managed N-list of recipients replaces the fixed
+# Petr+Karolína pair from 0031. Uses modelformset_factory to match the
+# existing project pattern (RecipeComponentFormSet at :365,
+# ThresholdOverrideFormSet at :481); the JS-clone <template> add-row UI
+# lives in settings_form.html.
+from .models import SettingsRecipient  # noqa: E402
+
+
+class SettingsRecipientForm(forms.ModelForm):
+    class Meta:
+        model = SettingsRecipient
+        fields = (
+            "email",
+            "label",
+            "is_active",
+            "is_low_stock_recipient",
+            "sort_order",
+        )
+        labels = {
+            "email": "E-mail",
+            "label": "Popisek",
+            "is_active": "Aktivní",
+            "is_low_stock_recipient": "Souhrn dochází zboží",
+            "sort_order": "Pořadí",
+        }
+        widgets = {
+            "sort_order": forms.NumberInput(attrs={"style": "width:5rem;"}),
+        }
+
+    def clean_email(self) -> str:
+        return (self.cleaned_data.get("email") or "").strip().lower()
+
+
+SettingsRecipientFormSet = forms.modelformset_factory(
+    SettingsRecipient,
+    form=SettingsRecipientForm,
+    extra=1,
+    can_delete=True,
+)
 
 
 class SmtpTestForm(forms.Form):

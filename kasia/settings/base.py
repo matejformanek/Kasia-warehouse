@@ -109,6 +109,11 @@ TIME_ZONE = "Europe/Prague"
 USE_I18N = True
 USE_TZ = True
 
+# HTML5 <input type="date"> requires ISO YYYY-MM-DD to display a pre-filled
+# value. Keep Czech formats as fallback parsers so a user can still type
+# "28.06.2026" by hand.
+DATE_INPUT_FORMATS = ["%Y-%m-%d", "%d.%m.%Y", "%d. %m. %Y"]
+
 # --- Static files (WhiteNoise compressed manifest, per 0018) ---------------
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"

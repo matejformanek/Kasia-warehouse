@@ -1501,6 +1501,23 @@
     0051` example) was blocked by the auto-mode classifier (rules-file
     self-modification) — apply manually before merge.
 
+- **2026-06-28** — **Doc-creation forms now pre-fill today's date in the
+  browser** (follow-up to Batch A in PR #4). Root cause: `<input type="date">`
+  only honours ISO `YYYY-MM-DD` for its `value=` attribute, but Django was
+  rendering `28.06.2026` from the Czech locale, which browsers silently drop.
+  Fix in `inventory/forms.py`: added `format="%Y-%m-%d"` to all four
+  `DateInput` widgets (`_MovementBaseForm.date_issued`,
+  `MovementLineForm.expiry`, `PlannedTransferForm.scheduled_for`,
+  `MixingPlanForm.planned_for`). Added `DATE_INPUT_FORMATS` to
+  `kasia/settings/base.py` so the ISO value POSTed back by the browser still
+  parses (Czech locale's formats remain first for hand-typed input).
+  Affects `/sklad/prijem/novy/`, `/sklad/vydej/novy/`,
+  `/sklad/pohyby/<pk>/upravit/`, `/sklad/prevody/novy/`,
+  `/sklad/michani/planovat/`. Batch A regression tests flipped from Czech
+  to ISO assertion; two new positive tests added for prijem + vydej (the
+  forms the user actually complained about). 339 tests green, ruff clean,
+  `manage.py check` clean.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

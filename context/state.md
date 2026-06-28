@@ -1274,6 +1274,27 @@
   before any real customer výdej, per the `_assert_recipients_set`
   guard in `inventory/services.py`).
 
+- **2026-06-28** — Podpora feedback Batch A landed (Feedback #1 + #5):
+  - **#1** Doc date defaults to today on `PlannedTransferForm.scheduled_for`
+    (re-evaluated per render via `field.initial = date.today`) and
+    `MixingPlanForm.planned_for` (top-level field). Příjem/výdej already
+    had the default via `_MovementBaseForm`.
+  - **#5** Detail dodacího listu (`screen 09`) renders a red "Poslední
+    odeslání selhalo." banner above the existing "Znovu odeslat" button
+    when the dodák has ≥1 FAILED log at `current_version` and no SENT
+    log at `current_version`. Helper `_dl_failed_at_current_version(dl,
+    logs)` in `inventory/views.py` shared with the owner-dashboard
+    "K vyřešení" query (refactored to use it — DRY). Banner drops out
+    the moment a re-send succeeds. Spec was already in
+    `screens/09-detail-dodaciho-listu.md:97-100`.
+  - 4 new view tests: today-prefill on `/prevody/novy/` +
+    `/michani/planovat/`; banner shows when FAILED-no-SENT at
+    `current_version`; banner hidden after a successful SENT log lands.
+  - Full suite: **306 pytest tests green** (302 → 306); ruff clean;
+    system check clean; makemigrations --check clean. Feedback #2/#3/#4
+    deferred to subsequent batches; #3 (domain/HTTPS) waits on Matej
+    picking a domain.
+
 - **2026-06-26** — SMTP source-of-truth resolved per decision
   [`0049`](./decisions/0049-smtp-source-of-truth.md). Real dodák
   sends + low-stock summary now build their SMTP connection via a

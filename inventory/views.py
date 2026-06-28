@@ -91,6 +91,20 @@ from .services import (
 )
 
 
+def _dl_failed_at_current_version(dodaci_list: DodaciList, logs) -> bool:
+    """True iff there is ≥1 FAILED log at current_version AND no SENT log
+    at current_version. Matches the dashboard's "K vyřešení" rule so the
+    detail-screen banner drops out the moment a re-send succeeds.
+    """
+    at_cv = [log for log in logs if log.version == dodaci_list.current_version]
+    if not at_cv:
+        return False
+    any_sent = any(log.status == DodaciListEmailLog.Status.SENT for log in at_cv)
+    if any_sent:
+        return False
+    return any(log.status == DodaciListEmailLog.Status.FAILED for log in at_cv)
+
+
 @require_GET
 def home(request):
     """Post-login landing.
@@ -142,34 +156,24 @@ def home(request):
     )
 
     # K vyřešení: failed sends whose dodák hasn't yet been re-sent
-    # successfully at the current version. The query: dodáky that
-    # have ≥1 FAILED log at the current version and 0 SENT logs at
-    # the current version.
+    # successfully at the current version. Uses the same rule as the
+    # per-detail banner in `dodaci_list_detail` via
+    # `_dl_failed_at_current_version`.
     failed_dodaky = []
     for dl in DodaciList.objects.prefetch_related("email_logs"):
-        logs_at_current = [
-            log for log in dl.email_logs.all() if log.version == dl.current_version
-        ]
-        if not logs_at_current:
+        logs = list(dl.email_logs.all())
+        if not _dl_failed_at_current_version(dl, logs):
             continue
-        any_sent = any(
-            log.status == DodaciListEmailLog.Status.SENT for log in logs_at_current
+        logs_at_current = [log for log in logs if log.version == dl.current_version]
+        last_failed = max(
+            (
+                log
+                for log in logs_at_current
+                if log.status == DodaciListEmailLog.Status.FAILED
+            ),
+            key=lambda log: log.sent_at,
         )
-        any_failed = any(
-            log.status == DodaciListEmailLog.Status.FAILED for log in logs_at_current
-        )
-        if any_failed and not any_sent:
-            last_failed = max(
-                (
-                    log
-                    for log in logs_at_current
-                    if log.status == DodaciListEmailLog.Status.FAILED
-                ),
-                key=lambda log: log.sent_at,
-            )
-            failed_dodaky.append(
-                {"dodaci_list": dl, "last_failed": last_failed}
-            )
+        failed_dodaky.append({"dodaci_list": dl, "last_failed": last_failed})
 
     # Recently edited dodáky (current_version > 1), latest first, top 5.
     edited_dodaky = list(
@@ -963,6 +967,9 @@ def dodaci_list_detail(request, cislo: str):
             "lines": lines,
             "email_logs": email_logs,
             "last_status": email_logs[-1].status if email_logs else None,
+            "current_version_unresolved": _dl_failed_at_current_version(
+                dodaci_list, email_logs
+            ),
         },
     )
 

@@ -5516,3 +5516,95 @@ def test_catalogue_index_hides_xls_import_button_for_obsluha(user_obsluha_tyn) -
         response = client.get("/sklad/katalog/")
     assert response.status_code == 200
     assert "Importovat z XLS" not in response.content.decode("utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Batch A — Podpora feedback: form defaults to today, FAILED banner on dodák
+# detail (per /podpora/ feedback #1 + #5, 2026-06-26).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_planned_transfer_create_view_prefills_today(user_vlastnik) -> None:
+    """GET /prevody/novy/ renders scheduled_for pre-filled with today."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/prevody/novy/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    # Date input value is l10n'd (Czech format).
+    assert f'value="{date.today().strftime("%d.%m.%Y")}"' in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_plan_form_prefills_today(user_vlastnik, tyn) -> None:
+    """GET /michani/planovat/ renders planned_for pre-filled with today."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/michani/planovat/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    # Date input value is l10n'd (Czech format).
+    assert f'value="{date.today().strftime("%d.%m.%Y")}"' in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dodaci_list_detail_renders_failed_banner_when_unresolved(
+    user_tyn, tyn, ricany, pepper
+) -> None:
+    """When current_version has FAILED log and no SENT log, banner shows."""
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    # Replace all logs at current_version with a single FAILED row.
+    DodaciListEmailLog.objects.filter(
+        dodaci_list=dl, version=dl.current_version
+    ).delete()
+    DodaciListEmailLog.objects.create(
+        dodaci_list=dl,
+        version=dl.current_version,
+        recipients="petr@kasia.cz",
+        trigger_reason="initial send",
+        status=DodaciListEmailLog.Status.FAILED,
+        error_message="SMTP timeout",
+    )
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get(f"/dodaky/{dl.cislo}/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Poslední odeslání selhalo." in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dodaci_list_detail_no_banner_after_successful_resend(
+    user_tyn, tyn, ricany, pepper
+) -> None:
+    """FAILED followed by SENT at current_version → no banner."""
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    DodaciListEmailLog.objects.filter(
+        dodaci_list=dl, version=dl.current_version
+    ).delete()
+    DodaciListEmailLog.objects.create(
+        dodaci_list=dl,
+        version=dl.current_version,
+        recipients="petr@kasia.cz",
+        trigger_reason="initial send",
+        status=DodaciListEmailLog.Status.FAILED,
+        error_message="SMTP timeout",
+    )
+    DodaciListEmailLog.objects.create(
+        dodaci_list=dl,
+        version=dl.current_version,
+        recipients="petr@kasia.cz",
+        trigger_reason="ruční opětovné odeslání",
+        status=DodaciListEmailLog.Status.SENT,
+    )
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get(f"/dodaky/{dl.cislo}/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Poslední odeslání selhalo." not in body

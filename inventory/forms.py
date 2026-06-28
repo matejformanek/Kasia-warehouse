@@ -525,6 +525,7 @@ class PlannedTransferForm(forms.ModelForm):
         self.fields["product"].queryset = Product.objects.filter(
             is_active=True
         ).order_by("name_cs")
+        self.fields["scheduled_for"].initial = date.today
 
     def clean(self):
         cleaned = super().clean()
@@ -565,6 +566,7 @@ class MixingPlanForm(forms.Form):
         label="Plánováno na",
         widget=forms.DateInput(attrs={"type": "date"}),
         required=False,
+        initial=date.today,
     )
     note = forms.CharField(
         label="Poznámka",

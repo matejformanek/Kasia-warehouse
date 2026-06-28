@@ -48,6 +48,16 @@ urlpatterns = [
         name="product_reactivate",
     ),
     path(
+        "katalog/<int:product_id>/pobocky/<int:branch_id>/pridat/",
+        views.product_branch_add,
+        name="product_branch_add",
+    ),
+    path(
+        "katalog/<int:product_id>/pobocky/<int:branch_id>/odebrat/",
+        views.product_branch_remove,
+        name="product_branch_remove",
+    ),
+    path(
         "katalog/<int:pk>/upravit-stav/",
         views.stock_adjust_edit,
         name="stock_adjust_edit",

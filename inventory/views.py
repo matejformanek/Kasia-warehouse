@@ -86,6 +86,7 @@ from .services import (
     record_completed_mixing_job,
     render_dodaci_list_pdf,
     reserved_kg,
+    seed_branch_carriage_for_product,
     send_dodaci_list_email,
     start_mixing_job,
     threshold_for,
@@ -760,6 +761,16 @@ def catalogue_index(request):
         else list(Branch.objects.filter(is_active=True))
     )
 
+    # Per 0053: a branch *carries* a product iff a Stock row exists for
+    # that pair. Pre-fetch existing rows in scope so chips/thresholds
+    # only consider branches that actually carry each product.
+    carried_stocks_by_pair: dict[tuple[int, int], Decimal] = {
+        (s.product_id, s.branch_id): s.quantity
+        for s in Stock.objects.filter(
+            product__in=products, branch__in=reserved_branches
+        )
+    }
+
     rows = []
     # Per /podpora/ feedback #4: each row carries the list of branches
     # currently under threshold; the template renders one chip per
@@ -772,14 +783,12 @@ def catalogue_index(request):
         is_low = False
         low_branches: list[Branch] = []
         for b in reserved_branches:
+            on_hand = carried_stocks_by_pair.get((p.pk, b.pk))
+            if on_hand is None:
+                # Branch does not carry this product — skip.
+                continue
             r = reserved_kg(p, b)
             reserved += r
-            on_hand = (
-                Stock.objects.filter(product=p, branch=b)
-                .values_list("quantity", flat=True)
-                .first()
-                or Decimal("0.000")
-            )
             eff_b = on_hand - r
             effective_total += eff_b
             t = threshold_for(p, b)
@@ -832,19 +841,16 @@ def product_detail(request, pk: int):
     stocks = list(stock_qs.order_by("branch__code"))
     total = sum((s.quantity for s in stocks), start=Decimal("0.000"))
 
-    # Per-branch reserved/effective breakdown per 0043 + 0044.
-    branches_for_stock = (
-        [request.user.branch]
-        if (request.user.is_obsluha and request.user.branch_id)
-        else list(Branch.objects.filter(is_active=True).order_by("code"))
-    )
-    stocks_by_branch_id = {s.branch_id: s for s in stocks}
+    # Per-branch reserved/effective breakdown per 0043 + 0044. Per 0053
+    # we iterate only branches that *carry* this product (Stock row
+    # exists); the empty-state row in the template handles the no-row
+    # case.
     branch_rows = []
     total_reserved = Decimal("0.000")
     total_effective = Decimal("0.000")
-    for b in branches_for_stock:
-        s = stocks_by_branch_id.get(b.pk)
-        on_hand = s.quantity if s else Decimal("0.000")
+    for s in stocks:
+        b = s.branch
+        on_hand = s.quantity
         reserved = reserved_kg(product, b)
         effective = (on_hand - reserved).quantize(Decimal("0.001"))
         threshold = threshold_for(product, b)
@@ -1780,6 +1786,10 @@ def product_create(request):
         form = ProductForm(request.POST, can_edit_threshold=can_edit_threshold)
         if form.is_valid():
             product = form.save()
+            # Per 0053, seed a 0-kg Stock row for every active branch so
+            # the new product is "carried everywhere" by default. Vlastník
+            # narrows the carry list via the Pobočky controls on edit.
+            seed_branch_carriage_for_product(product)
             messages.success(request, f"Produkt {product.name_cs} přidán.")
             if (
                 product.kind == Product.Kind.MIXTURE
@@ -1905,6 +1915,26 @@ def product_edit(request, pk: int):
         RecipeComponentForm(mixture=product) if can_edit_recipe else None
     )
 
+    # Per 0053: "drží / nedrží" controls. Row existence in Stock is the
+    # carry flag. Visible read-only to obsluha; buttons are vlastník-only.
+    carry_stocks_by_branch_id = {
+        s.branch_id: s
+        for s in Stock.objects.filter(product=product).select_related("branch")
+    }
+    carry_rows = []
+    for b in Branch.objects.filter(is_active=True).order_by("code"):
+        s = carry_stocks_by_branch_id.get(b.pk)
+        carry_rows.append(
+            {
+                "branch": b,
+                "carried": s is not None,
+                "quantity": s.quantity if s is not None else Decimal("0.000"),
+                "reserved": (
+                    reserved_kg(product, b) if s is not None else Decimal("0.000")
+                ),
+            }
+        )
+
     return render(
         request,
         "inventory/product_form.html",
@@ -1918,6 +1948,7 @@ def product_edit(request, pk: int):
             "kind_locked": kind_locked,
             "can_edit_recipe": can_edit_recipe,
             "can_edit_threshold": can_edit_threshold,
+            "carry_rows": carry_rows,
         },
     )
 
@@ -1955,6 +1986,49 @@ def product_reactivate(request, pk: int):
     product.save(update_fields=["is_active"])
     messages.success(request, f"Produkt {product.name_cs} aktivován.")
     return redirect("inventory:product_detail", pk=product.pk)
+
+
+@require_POST
+def product_branch_add(request, product_id: int, branch_id: int):
+    """Mark a branch as carrying this product by creating a 0-kg Stock
+    row. Vlastník-only per 0053. Idempotent — second call is a no-op.
+    """
+    _require_vlastnik(request)
+    product = get_object_or_404(Product, pk=product_id)
+    branch = get_object_or_404(Branch, pk=branch_id, is_active=True)
+    _, created = Stock.objects.get_or_create(
+        product=product,
+        branch=branch,
+        defaults={"quantity": Decimal("0.000")},
+    )
+    if created:
+        messages.success(
+            request,
+            f"Pobočka {branch.code} nyní drží {product.name_cs}.",
+        )
+    else:
+        messages.info(
+            request,
+            f"Pobočka {branch.code} už produkt {product.name_cs} drží.",
+        )
+    return redirect("inventory:product_edit", pk=product.pk)
+
+
+@require_POST
+def product_branch_remove(request, product_id: int, branch_id: int):
+    """Stop carrying this product on this branch by deleting the Stock
+    row. Vlastník-only per 0053. Destructive on non-zero on-hand — the
+    UI warns; the server has no precondition.
+    """
+    _require_vlastnik(request)
+    product = get_object_or_404(Product, pk=product_id)
+    branch = get_object_or_404(Branch, pk=branch_id)
+    Stock.objects.filter(product=product, branch=branch).delete()
+    messages.success(
+        request,
+        f"Pobočka {branch.code} už nedrží {product.name_cs}.",
+    )
+    return redirect("inventory:product_edit", pk=product.pk)
 
 
 # ---------------------------------------------------------------------------

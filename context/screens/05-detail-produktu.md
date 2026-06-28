@@ -23,11 +23,19 @@ list of recepturní složky that defines what the mixture is made of.
   anything the owner wants visible.
 - A **stav zásob** section (per
   [`decisions/0028-mass-only-supersedes-0006.md`](../decisions/0028-mass-only-supersedes-0006.md)):
-  one row per branch showing on-hand quantity in kg per
+  one row per branch that **drží** this product (a `Stock` row exists)
+  showing on-hand quantity in kg per
   [`decisions/0003-primary-unit-kg-decimals.md`](../decisions/0003-primary-unit-kg-decimals.md):
   - Týniště nad Orlicí — quantity in kg.
   - Sezimovo Ústí — quantity in kg.
   - (Branch staff see only their own branch's row.)
+  - Per
+    [`decisions/0053-stock-row-is-branch-carry.md`](../decisions/0053-stock-row-is-branch-carry.md):
+    when no branch carries the product, the table renders a single
+    empty-state row pointing vlastník at the *Pobočky* controls in
+    edit mode. Vlastník toggles carry-state via Přidat / Odebrat
+    buttons on the edit screen; obsluha sees the *Drží / Nedrží*
+    badges read-only.
 - A small product-level **summary mass**: total on-hand in kg across
   both branches (owner-level) or just this branch (branch staff).
 - For mixtures only:

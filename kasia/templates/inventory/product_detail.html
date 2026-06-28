@@ -68,7 +68,28 @@
       </tbody>
     </table>
   {% else %}
-    <p style="color:var(--fg-soft);">Tento produkt zatím nikde na skladě není.</p>
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Pobočka</th>
+          <th style="text-align:right;">Na skladě</th>
+          <th style="text-align:right;">Rezervováno</th>
+          <th style="text-align:right;">Efektivně</th>
+          <th style="text-align:right;">Práh</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td colspan="5" style="text-align:center;color:var(--fg-soft);font-style:italic;">
+            Tento produkt nedrží žádná pobočka.
+            {% if user.is_vlastnik %}
+              Přidat ho lze v
+              <a href="{% url 'inventory:product_edit' pk=product.pk %}">úpravě produktu</a>.
+            {% endif %}
+          </td>
+        </tr>
+      </tbody>
+    </table>
   {% endif %}
   {% if product.notes %}
     <p style="margin-top:1rem;color:var(--fg-soft);">{{ product.notes|linebreaksbr }}</p>

@@ -1209,60 +1209,74 @@ def effective_kg(product: Product, branch: Branch) -> Decimal:
 
 
 def low_stock_rows() -> list[LowStockRow]:
-    """Every (product, branch) pair where a threshold is set and
+    """Every carried (product, branch) pair where a threshold is set and
     effective < threshold. Sorted by deficit DESC.
 
     Used by the owner dashboard panel, branch dashboard, product
     detail page, AND the daily summary e-mail. One source of truth.
+
+    Per 0053, a branch *carries* a product iff a Stock row exists for
+    that pair — branches without a row do not enter this report.
     """
     rows: list[LowStockRow] = []
-    branches = list(Branch.objects.filter(is_active=True).order_by("code"))
-    products = list(
-        Product.objects.filter(is_active=True).order_by("name_cs")
+    stocks = list(
+        Stock.objects.select_related("product", "branch")
+        .filter(branch__is_active=True, product__is_active=True)
+        .order_by("product__name_cs", "branch__code")
     )
-    if not branches or not products:
+    if not stocks:
         return rows
 
-    # Pre-fetch stocks + overrides in two queries.
-    stocks_by_pair = {
-        (s.product_id, s.branch_id): s.quantity
-        for s in Stock.objects.filter(
-            product__in=products, branch__in=branches
-        )
-    }
     overrides_by_pair = {
         (o.product_id, o.branch_id): o.threshold_kg
         for o in StockThresholdOverride.objects.filter(
-            product__in=products, branch__in=branches
+            product__in={s.product_id for s in stocks},
+            branch__in={s.branch_id for s in stocks},
         )
     }
 
-    for product in products:
-        for branch in branches:
-            threshold = overrides_by_pair.get((product.pk, branch.pk))
-            if threshold is None:
-                threshold = product.reorder_threshold_kg
-            if threshold is None:
-                continue
-            on_hand = stocks_by_pair.get(
-                (product.pk, branch.pk), Decimal("0.000")
-            )
-            reserved = reserved_kg(product, branch)
-            effective = (on_hand - reserved).quantize(Decimal("0.001"))
-            if effective < threshold:
-                rows.append(
-                    LowStockRow(
-                        product=product,
-                        branch=branch,
-                        on_hand=on_hand,
-                        reserved=reserved,
-                        effective=effective,
-                        threshold=threshold,
-                        deficit=(threshold - effective).quantize(Decimal("0.001")),
-                    )
+    for stock in stocks:
+        product = stock.product
+        branch = stock.branch
+        threshold = overrides_by_pair.get((product.pk, branch.pk))
+        if threshold is None:
+            threshold = product.reorder_threshold_kg
+        if threshold is None:
+            continue
+        on_hand = stock.quantity
+        reserved = reserved_kg(product, branch)
+        effective = (on_hand - reserved).quantize(Decimal("0.001"))
+        if effective < threshold:
+            rows.append(
+                LowStockRow(
+                    product=product,
+                    branch=branch,
+                    on_hand=on_hand,
+                    reserved=reserved,
+                    effective=effective,
+                    threshold=threshold,
+                    deficit=(threshold - effective).quantize(Decimal("0.001")),
                 )
+            )
     rows.sort(key=lambda r: r.deficit, reverse=True)
     return rows
+
+
+def seed_branch_carriage_for_product(product: Product) -> None:
+    """Create a 0-kg Stock row for every active Branch that does not
+    already carry `product`. Per 0053, row existence IS the carry-flag.
+
+    Idempotent: skips branches that already have a Stock row.
+    """
+    existing_branch_ids = set(
+        Stock.objects.filter(product=product).values_list("branch_id", flat=True)
+    )
+    for branch in Branch.objects.filter(is_active=True):
+        if branch.pk in existing_branch_ids:
+            continue
+        Stock.objects.create(
+            product=product, branch=branch, quantity=Decimal("0.000")
+        )
 
 
 # ---------------------------------------------------------------------------

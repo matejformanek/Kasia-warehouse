@@ -97,8 +97,12 @@
   }
   .sidebar .user .logout:hover { border-color: var(--error); color: var(--error); }
 
-  /* ============ TOPBAR (mobile) ============ */
+  /* ============ TOPBAR + MOBILE NAV (hidden on desktop) ============ */
+  /* Both are mobile-only; the @media(max-width:720px) block below turns them
+     on. Without these default `display:none` rules .mob-nav would render as a
+     grid item in the .app grid and shove the sidebar out of its column. */
   .topbar { display: none; }
+  .mob-nav { display: none; }
 
   /* ============ MAIN ============ */
   .content { padding: 30px 34px 56px; max-width: 1180px; width: 100%; min-width: 0; }

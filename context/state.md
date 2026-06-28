@@ -1614,6 +1614,37 @@
     manifest, `navrhy` gallery still collects). Local walkthrough + prod deploy
     next.
 
+- **2026-06-29** — **UI-port bugfix + public restyle finish** (branch
+  `hf_web_ui_port_fix`; **refines `0054`, does not supersede it** — directions +
+  shared-class contract unchanged). The 2026-06-29 `0054` deploy was shipped
+  *without* a visual check or sign-off and two problems surfaced (Matej's
+  feedback): (1) **sklad was unusable** — `.mob-nav` had no default
+  `display:none`, so on desktop it rendered as the first item of the `.app`
+  grid, shoved the sidebar into the `1fr` column and left a stray unstyled link
+  column; (2) the **public restyle stopped at `.stat`** — footer / login /
+  branch cards / map / forms below it were still pre-`0054` flat CSS. Fixes on
+  this branch:
+  - **Fix A (critical):** added `.mob-nav { display:none }` to the desktop block
+    in `kasia/templates/base.html` (the `@media(max-width:720px)` block still
+    turns it on for mobile). Sidebar 244px + `.content` 1fr restored; JS/HTMX
+    hooks + shared classes untouched.
+  - **Fix B:** brought the leftover `web/base.html` CSS into the curvy-green
+    system (radius/shadow tokens, Sora headings) — forms, login card/panels/
+    aside, contact panel, people, badge, branch cards (rounded top photo,
+    inherited card shadow/hover), map-embed, and a redesigned footer (brand
+    wordmark block + hairline accent); every class name kept, footer login link
+    kept class-free (test-locked).
+  - **Fix C:** de-boxed `web/home.html` — dropped the hero eyebrow, added a prose
+    `.about-band` (Říčany photo), a light `.feature-list` (Komu dodáváme), a
+    borderless `.checklist` (Proč Kasia), and a dark-green `.cta-band`; dropped
+    the 3 trailing teaser cards. Kept "Co děláme / Komu dodáváme / Proč Kasia" +
+    369/236 (test-locked).
+  - **Verification:** `manage.py check` clean, ruff clean, **349 pytest green**,
+    `collectstatic --noinput` clean; rendered locally via `make up` (real pages,
+    not just pytest strings — the step missing last time). **No deploy** — by
+    Matej's instruction after the unsanctioned first deploy, this is verified
+    locally and waits for explicit go-ahead before touching `main`/prod.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

@@ -1,28 +1,56 @@
-{% extends "base.html" %}
+{% extends "web/base.html" %}
 
-{% block title %}Přihlášení — Kasia vera{% endblock %}
+{% block title %}Přihlášení do skladu — {{ company.legal_name }}{% endblock %}
+{% block meta_description %}Přihlášení do skladového systému {{ company.legal_name }} pro zaměstnance.{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width:420px;margin:2rem auto;">
-  <h1>Přihlášení</h1>
-  <form method="post">
-    {% csrf_token %}
-    {% if form.non_field_errors %}
-      <div class="non-form-errors">
-        {{ form.non_field_errors }}
-      </div>
-    {% endif %}
-    <div class="field">
-      <label for="id_username">E-mail</label>
-      <input type="email" name="username" id="id_username" required autofocus
-             value="{{ form.username.value|default:'' }}">
+<section>
+  <div class="wrap login-card">
+    <p class="eyebrow">Sklad</p>
+    <h1>Přihlášení do skladu</h1>
+    <p class="lead" style="max-width:60ch;">
+      Skladový systém je interní nástroj {{ company.legal_name }} pro zaměstnance.
+    </p>
+
+    <div class="login-panels" style="margin-top:1.5rem;">
+      <section class="card" aria-label="Přihlášení pro zaměstnance">
+        <h2>Zaměstnanci</h2>
+        <form method="post">
+          {% csrf_token %}
+          {{ form.non_field_errors }}
+          <div class="field">
+            <label for="id_username">E-mail</label>
+            <input type="email" name="username" id="id_username" required autofocus
+                   value="{{ form.username.value|default:'' }}">
+          </div>
+          <div class="field">
+            <label for="id_password">Heslo</label>
+            <input type="password" name="password" id="id_password" required>
+          </div>
+          {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+          <button class="btn btn-primary" type="submit">Přihlásit</button>
+        </form>
+        <p class="login-meta">
+          <a href="{% url 'password_reset' %}">Zapomenuté heslo?</a>
+        </p>
+      </section>
+
+      <section class="card login-aside" aria-label="Informace pro zákazníky">
+        <h2>Zákazníci</h2>
+        <p>
+          Toto je přihlášení do interního skladu pro zaměstnance — jako zákazník
+          zde účet nepotřebujete.
+        </p>
+        <p>
+          Máte zájem o spolupráci nebo o naše produkty? Vraťte se na náš web nebo
+          se nám ozvěte.
+        </p>
+        <p class="login-meta">
+          <a href="{% url 'web:home' %}">← Zpět na web</a><br>
+          <a href="{% url 'web:kontakt' %}">Kontakt</a>
+        </p>
+      </section>
     </div>
-    <div class="field">
-      <label for="id_password">Heslo</label>
-      <input type="password" name="password" id="id_password" required>
-    </div>
-    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-    <button class="primary" type="submit">Přihlásit</button>
-  </form>
-</div>
+  </div>
+</section>
 {% endblock %}

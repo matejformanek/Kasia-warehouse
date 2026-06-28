@@ -41,6 +41,17 @@ COMPANY = {
     # Proof stat from the business (company-profile.md / old kasia.cz).
     "spice_count": "369",
     "product_count": "236",
+    # Import + export/re-export reach (kasia.cz About; decision 0052 — RC Rugby
+    # sponsorship omitted by Matej). Rendered as a plain list in the O nás
+    # export paragraph; no per-market data beyond the country name is needed.
+    "export_markets": [
+        "Polsko",
+        "Ukrajina",
+        "Slovensko",
+        "Izrael",
+        "Bělorusko",
+        "Nizozemsko",
+    ],
 }
 
 # --- Kontaktní osoby / vedení (public directory from kasia.cz; decision 0052)-

@@ -8,8 +8,11 @@ in 0052).
 """
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.test import Client, override_settings
 from django.urls import reverse
+
+User = get_user_model()
 
 # Public templates use {% static %}; under tests the manifest storage has no
 # manifest — mirror inventory/tests.py with plain static storage.
@@ -48,9 +51,28 @@ def test_home_renders_proof_stat_and_sklad_link() -> None:
     body = Client().get(reverse("web:home")).content.decode("utf-8")
     assert "369" in body  # proof stat
     assert "236" in body
-    # Discreet "Sklad / Přihlášení" footer link points into the app.
-    assert "/sklad/" in body
-    assert "Přihlášení" in body
+    # Přihlášení is footer-only now (pass 2): the header link is gone, the
+    # footer "Přihlášení do skladu" link points into the app.
+    assert 'class="login-link"' not in body  # header login link removed
+    assert reverse("login") in body  # footer link to /sklad/prihlaseni/
+    assert "Přihlášení do skladu" in body
+
+
+def test_home_is_enriched_for_b2b() -> None:
+    """Pass 2 enrichment: capabilities / segments / why-us sections render."""
+    body = Client().get(reverse("web:home")).content.decode("utf-8")
+    assert "Co děláme" in body
+    assert "Komu dodáváme" in body
+    assert "Proč Kasia" in body
+
+
+def test_o_nas_renders_long_form_history() -> None:
+    """Pass 2: O nás is a real article with heritage + export content."""
+    body = Client().get(reverse("web:o_nas")).content.decode("utf-8")
+    assert "1993" in body
+    assert "majoránce" in body  # the spice-position paragraph
+    assert "export" in body.lower()  # dovoz a export section
+    assert "Polsko" in body  # an export market
 
 
 def test_kontakt_is_info_only_with_directory() -> None:
@@ -110,6 +132,22 @@ def test_sklad_paths_redirect_anonymous_to_login(path) -> None:
     assert response["Location"].startswith("/sklad/prihlaseni/")
 
 
-def test_sklad_login_page_renders() -> None:
+def test_sklad_login_page_renders_public_branded() -> None:
+    """Pass 2: login uses the public chrome + dual employee/customer guidance."""
     response = Client().get("/sklad/prihlaseni/")
     assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Kasia vera s.r.o." in body  # public chrome (company name in footer)
+    assert "Zaměstnanci" in body  # employee sign-in panel
+    assert "Zákazníci" in body  # customer-guidance panel
+    assert 'name="password"' in body  # the sign-in form
+
+
+def test_sklad_login_redirects_authenticated_user() -> None:
+    """An already-logged-in visitor is bounced to the sklad homepage, not the form."""
+    user = User.objects.create_user(email="staff@example.cz", password="x" * 12)
+    client = Client()
+    client.force_login(user)
+    response = client.get("/sklad/prihlaseni/")
+    assert response.status_code == 302
+    assert response["Location"].startswith("/sklad/")

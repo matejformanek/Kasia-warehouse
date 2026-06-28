@@ -131,7 +131,8 @@
   /* Forms */
   form .field { margin-bottom: 1rem; }
   form label { display: block; font-weight: 600; margin-bottom: 0.3rem; }
-  form input[type=text], form input[type=email], form input[type=tel], form textarea {
+  form input[type=text], form input[type=email], form input[type=tel],
+  form input[type=password], form textarea {
     width: 100%; font: inherit; padding: 0.6rem 0.7rem;
     border: 1px solid var(--border); border-radius: 8px; background: #fff;
   }
@@ -140,12 +141,13 @@
   form .errorlist { list-style: none; padding: 0; margin: 0.3rem 0 0; color: #a40000; font-size: 0.95rem; }
   .helptext { color: var(--fg-soft); font-size: 0.95rem; }
 
-  /* Discreet staff login link (header) — utilitarian, not a CTA */
-  .login-link {
-    text-decoration: none; color: var(--fg-soft); font-size: 0.92rem;
-    padding: 0.45rem 0.55rem; border-radius: 6px; white-space: nowrap;
-  }
-  .login-link:hover { color: var(--green-dark); background: var(--green-soft); }
+  /* Login card (staff sign-in, public chrome) */
+  .login-card { max-width: 880px; margin: 0 auto; }
+  .login-panels { display: grid; gap: 1.5rem; align-items: start; }
+  @media (min-width: 760px) { .login-panels { grid-template-columns: 3fr 2fr; } }
+  .login-panels .card h2 { font-size: 1.3rem; }
+  .login-aside { background: var(--green-soft); border-color: transparent; }
+  .login-meta { color: var(--fg-soft); font-size: 0.95rem; margin-top: 0.75rem; }
 
   /* Contact panel — key/value facts */
   .contact-panel { display: grid; gap: 0.75rem 1.5rem; margin: 0; }
@@ -207,7 +209,6 @@
     padding-top: 1.25rem; font-size: 0.85rem; color: #b9ccb9;
     display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between;
   }
-  footer.site .sklad-link a { color: #cfe0cf; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -222,7 +223,6 @@
       {% for item in nav %}
         <a href="{% url item.url_name %}"{% if active == item.url_name %} class="active" aria-current="page"{% endif %}>{{ item.label }}</a>
       {% endfor %}
-      <a class="login-link" href="{% url 'login' %}">Přihlášení</a>
     </nav>
   </div>
 </header>
@@ -237,8 +237,12 @@
       <div>
         <h4>{{ company.legal_name }}</h4>
         <p class="muted">
-          Dovoz, zpracování a balení koření od roku {{ company.founded_year }}.<br>
-          Velkoobchod a gastro — značka {{ company.brand }}.
+          Dovoz, zpracování a balení koření od roku {{ company.founded_year }} —
+          velkoobchod a gastro, značka {{ company.brand }}.
+        </p>
+        <p class="muted">
+          IČO: {{ company.ico }}<br>
+          Datová schránka: {{ company.datova_schranka }}
         </p>
       </div>
       <div>
@@ -252,18 +256,18 @@
         </p>
       </div>
       <div>
-        <h4>Údaje</h4>
+        <h4>Odkazy</h4>
         <p class="muted">
-          IČO: {{ company.ico }}<br>
-          {% if company.dic %}DIČ: {{ company.dic }}<br>{% endif %}
-          Datová schránka: {{ company.datova_schranka }}
+          {% for item in nav %}
+            <a href="{% url item.url_name %}">{{ item.label }}</a><br>
+          {% endfor %}
+          <a href="{% url 'login' %}">Přihlášení do skladu</a>
         </p>
       </div>
     </div>
     <div class="legal">
       <span>© {{ company.founded_year }}–2026 {{ company.legal_name }}. Všechna práva vyhrazena.</span>
-      <span>Tento web nepoužívá sledovací cookies. Mapy jsou vkládány z OpenStreetMap; jejich načtení může serveru mapy zpřístupnit vaši IP adresu.</span>
-      <span class="sklad-link"><a href="{% url 'inventory:home' %}">Sklad&nbsp;/&nbsp;Přihlášení</a></span>
+      <span>Tento web nepoužívá sledovací cookies. Mapy jsou vkládány z OpenStreetMap.</span>
     </div>
   </div>
 </footer>

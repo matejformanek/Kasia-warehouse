@@ -1,7 +1,8 @@
 {% extends "web/base.html" %}
+{% load static %}
 
 {% block title %}O nás — {{ company.legal_name }}{% endblock %}
-{% block meta_description %}Rodinná firma {{ company.legal_name }} dováží, zpracovává a balí koření od ledna {{ company.founded_year }}. Sídlo v Říčanech u Prahy.{% endblock %}
+{% block meta_description %}Rodinná firma {{ company.legal_name }} dováží, zpracovává a vyrábí koření, sušenou zeleninu, byliny a kulinářské produkty od ledna {{ company.founded_year }}. Vlastní výroba, značka {{ company.brand }}, dovoz i export. Sídlo v Říčanech u Prahy.{% endblock %}
 
 {% block content %}
 <section>
@@ -9,26 +10,50 @@
     <p class="eyebrow">O nás</p>
     <h1>Koření je naše řemeslo už přes třicet let</h1>
     <p class="lead" style="max-width:none;">
-      {{ company.legal_name }} vznikla v {{ company.founded_cs }} jako rodinná
-      firma se sídlem v Říčanech u Prahy. Od začátku se věnujeme jednomu —
-      dovozu, zpracování a balení koření pro český trh.
+      {{ company.legal_name }} je rodinná firma, která vznikla v
+      {{ company.founded_cs }}. Od začátku jsme přímý dovozce a zpracovatel
+      koření — celé koření nakupujeme v zemích původu a u nás z něj děláme
+      hotové produkty pro velkoobchod a gastronomii.
     </p>
 
-    <h2 style="margin-top:2rem;">Co děláme</h2>
+    <img src="{% static 'web/branch-ricany.jpg' %}" alt="Sídlo {{ company.legal_name }} v Říčanech u Prahy"
+         style="width:100%;border-radius:12px;margin:1.5rem 0 0.5rem;">
+
+    <h2 style="margin-top:2rem;">Od koření k celému sortimentu</h2>
     <p>
-      Celé koření dovážíme z původních zemí. Na našich provozech ho čistíme,
-      třídíme, mleme a podle vlastních receptur mícháme do směsí. Hotové
-      produkty balíme do řady formátů — od velkých gastro balení po menší
-      balení pro provozy — a dodáváme je obchodním partnerům pod značkou
-      {{ company.brand }}.
+      Postupně jsme sortiment rozšířili o sušenou zeleninu a byliny. Dnes máme
+      silnou pozici zejména v sušeném česneku, cibuli a majoránce. Celé suroviny
+      na našich provozech čistíme, třídíme, mleme a podle vlastních receptur
+      mícháme do směsí — a balíme do řady formátů, od velkých gastro balení po
+      menší provozní balení.
     </p>
 
-    <h2 style="margin-top:2rem;">Jak pracujeme</h2>
+    <h2 style="margin-top:2rem;">Vlastní výroba</h2>
     <p>
-      Jsme dodavatel pro velkoobchod a gastronomii, ne maloobchodní prodejce.
-      Naše práce stojí na stálé kvalitě, dohledatelnosti a spolehlivých
-      dodávkách. Vedení i zázemí firmy sídlí v Říčanech u Prahy a provoz
-      doplňují provozovny v Sezimově Ústí, Toužimi a Týništi nad Orlicí.
+      Vedle dovozu a zpracování stojíme i na vlastní výrobě. V roce 1995 jsme
+      v Týništi nad Orlicí začali vyrábět česnekovou pastu a stali se jejím
+      předním dodavatelem na trhu. Rozvinuli jsme i mokrou výrobu — sójovou
+      omáčku, tekuté polévkové koření a marinády. V roce 1998 jsme otevřeli
+      míchárnu ve Strančicích a v roce 2011 novou výrobnu v Sezimově Ústí.
+      Gastro směsi vyrábíme v Toužimi pod značkou <strong>{{ company.brand }}</strong>;
+      mezi vlajkové produkty patří VEGA a Zlaté kuře.
+    </p>
+
+    <h2 style="margin-top:2rem;">Dovoz a export</h2>
+    <p>
+      Koření dovážíme přímo ze zemí původu — mezi klíčové komodity patří kmín,
+      černý pepř a koriandr. Kromě dovozu pro český trh také vyvážíme a
+      reexportujeme do řady zemí:
+      {% for market in company.export_markets %}{{ market }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+    </p>
+
+    <h2 style="margin-top:2rem;">Dostupnost a dosah</h2>
+    <p>
+      Sídlo i hlavní zázemí firmy najdete v Říčanech u Prahy, zhruba 15 km od
+      Prahy přímo u dálnice na Brno. Po celé České republice nás zastupuje síť
+      obchodních zástupců, takže jsme dostupní rychle a pružně. Mezi naše
+      zákazníky patří jak nejmenší výrobci uzenin, tak nadnárodní výrobci
+      potravin.
     </p>
 
     <p style="margin-top:2rem;">

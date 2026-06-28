@@ -5,6 +5,8 @@ from django.http import HttpResponse
 from django.urls import include, path, reverse_lazy
 from django.views.generic.base import RedirectView
 
+from web.content import COMPANY, NAV
+
 
 @login_not_required
 def healthz(_request):
@@ -33,7 +35,16 @@ urlpatterns = [
     # wrapper namespace) keep the bare auth names at the root namespace.
     path(
         "sklad/prihlaseni/",
-        auth_views.LoginView.as_view(template_name="registration/login.html"),
+        # Public-branded login: extends web/base.html so it carries the marketing
+        # chrome (decision 0050–0052 refinement). redirect_authenticated_user
+        # sends an already-logged-in visitor straight to LOGIN_REDIRECT_URL
+        # (inventory:home). extra_context feeds the public header/footer (rendered
+        # on both GET and invalid POST).
+        auth_views.LoginView.as_view(
+            template_name="registration/login.html",
+            redirect_authenticated_user=True,
+            extra_context={"company": COMPANY, "nav": NAV, "active": ""},
+        ),
         name="login",
     ),
     path("sklad/odhlaseni/", auth_views.LogoutView.as_view(), name="logout"),

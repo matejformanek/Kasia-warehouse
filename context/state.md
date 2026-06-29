@@ -1726,10 +1726,24 @@
   - **No Terraform change** — firewall id 11145413 already opens 443.
   - Verified: `manage.py check` clean; **356 pytest green** (all new flags
     default OFF, suite runs under DEBUG=True so behaviour is unchanged).
-  - **Phase B held in a separate, unmerged PR** (Caddyfile hostname block +
-    `compose.yaml` 443) so it can't auto-deploy before DNS resolves.
-  - **Pending:** on-box `.env` pre-set (DJANGO_ALLOWED_HOSTS + CSRF origins,
-    SECURE_COOKIES left 0) — needs SSH to the box.
+  - **Phase B held in a separate, unmerged draft PR (#14)** (Caddyfile
+    hostname block + `compose.yaml` 443) so it can't auto-deploy before DNS
+    resolves. Phase A is PR #13.
+  - **On-box `.env` pre-set (done 2026-06-29):** SSH'd to the box (app@),
+    backed up `.env` → `.env.bak.https-cutover`, set
+    `DJANGO_ALLOWED_HOSTS=kasia.cz,www.kasia.cz,91.98.47.1,127.0.0.1,localhost`
+    and added `DJANGO_CSRF_TRUSTED_ORIGINS=https://kasia.cz,https://www.kasia.cz`;
+    left `DJANGO_SECURE_COOKIES` unset (cookies still flow over HTTP).
+    `docker compose up -d --force-recreate web` to load the new env (plain
+    `restart` does **not** re-read env_file). Side effect: the `/healthz`
+    healthcheck — which had been returning 400 (DisallowedHost) because the
+    old `ALLOWED_HOSTS` lacked `127.0.0.1` — now passes; container reports
+    **healthy**. Verified `http://91.98.47.1/` still serves (302). HTTPS on
+    the box is **not** reachable (443 unpublished until Phase B; and LE never
+    certs a bare IP — HTTPS waits for DNS + Phase B).
+  - **Remaining for cutover:** point DNS (`A kasia.cz` / `A www.kasia.cz`
+    → 91.98.47.1), confirm via `dig`, merge PR #14, then set
+    `DJANGO_SECURE_COOKIES=1` on the box + recreate web.
 
 ## Hand-off for the next session (post-compact)
 

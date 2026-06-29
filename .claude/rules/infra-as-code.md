@@ -11,6 +11,7 @@ This rule lands with decisions [`0022`](../../context/decisions/0022-container-i
 - **Rollback is image re-tag, not git revert.** Re-tag the previous `sha-*` image as `latest` in GHCR and re-deploy, per [`infra/RUNBOOK.md`](../../infra/RUNBOOK.md) § Rollback. Don't bypass the image registry by `git revert + redeploy`; that risks shipping a fresh build with subtle differences.
 - **Terraform apply is manual.** CI runs `fmt -check`, `validate`, `plan`; only Matej runs `terraform apply` from a workstation with `HCLOUD_TOKEN` in env. See [`decisions/0025`](../../context/decisions/0025-iac-terraform-hcloud.md) for the reasoning.
 - **Local development is the same compose stack.** `docker compose up` runs the same `Dockerfile` and `compose.yaml` that ship to prod; differences live in `.env`. No `compose.dev.yaml`. If a dev-only knob is needed, drive it from `.env`.
+- **Site-specific knobs are per-deployment `.env`, never committed.** The HTTPS/domain settings (`DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `DJANGO_SECURE_COOKIES`, per [`decisions/0056`](../../context/decisions/0056-domain-cutover-https.md)) live only in the on-box `.env` and are *documented* (not set) in `.env.example`. Their reader code in `kasia/settings/base.py` defaults to today's HTTP-only behaviour, so the same image runs both locally and on prod.
 
 ## Why this rule exists
 

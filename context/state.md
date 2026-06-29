@@ -1717,6 +1717,49 @@
   migrations; verified live on prod `http://91.98.47.1/` (logo serves 200, H1 +
   slogan correct).
 
+- **2026-06-29** — Phase A of the HTTPS / `kasia.cz` cutover landed
+  (decision [`0056`](./decisions/0056-domain-cutover-https.md)). Goal:
+  front-load every *safe* change to prod before the A record is pointed, so
+  the actual cutover is the smallest possible flip. Canonical host is the
+  apex `kasia.cz`; `www.kasia.cz` → 301 → `kasia.cz`.
+  - `kasia/settings/base.py`: added **env-gated** `SECURE_PROXY_SSL_HEADER`
+    (`HTTP_X_FORWARDED_PROTO`/https), `CSRF_TRUSTED_ORIGINS` (from
+    `DJANGO_CSRF_TRUSTED_ORIGINS`), and `SESSION_COOKIE_SECURE` /
+    `CSRF_COOKIE_SECURE` (from `DJANGO_SECURE_COOKIES`, default off). All
+    default to today's HTTP-only behaviour until the on-box `.env` opts in —
+    so the change is **inert on deploy**. No `SECURE_SSL_REDIRECT` (Caddy
+    redirects), no `USE_X_FORWARDED_HOST` (Caddy preserves Host).
+  - `.env.example`: documented `DJANGO_ALLOWED_HOSTS` (keep
+    `127.0.0.1,localhost` for the `/healthz` healthcheck under DEBUG=False),
+    `DJANGO_CSRF_TRUSTED_ORIGINS`, `DJANGO_SECURE_COOKIES` (flip to 1 only
+    once HTTPS is live).
+  - `infra/RUNBOOK.md` § 5 rewritten: 443 already open on the live firewall
+    (no Terraform change); the DNS-must-resolve-before-Caddyfile ordering +
+    LE rate-limit caveat; Phase A `.env` pre-set vs Phase B flip.
+  - `.claude/rules/infra-as-code.md`: note that the site-specific `.env`
+    vars are per-deployment, never committed.
+  - **No Terraform change** — firewall id 11145413 already opens 443.
+  - Verified: `manage.py check` clean; **356 pytest green** (all new flags
+    default OFF, suite runs under DEBUG=True so behaviour is unchanged).
+  - **Phase B held in a separate, unmerged draft PR (#14)** (Caddyfile
+    hostname block + `compose.yaml` 443) so it can't auto-deploy before DNS
+    resolves. Phase A is PR #13.
+  - **On-box `.env` pre-set (done 2026-06-29):** SSH'd to the box (app@),
+    backed up `.env` → `.env.bak.https-cutover`, set
+    `DJANGO_ALLOWED_HOSTS=kasia.cz,www.kasia.cz,91.98.47.1,127.0.0.1,localhost`
+    and added `DJANGO_CSRF_TRUSTED_ORIGINS=https://kasia.cz,https://www.kasia.cz`;
+    left `DJANGO_SECURE_COOKIES` unset (cookies still flow over HTTP).
+    `docker compose up -d --force-recreate web` to load the new env (plain
+    `restart` does **not** re-read env_file). Side effect: the `/healthz`
+    healthcheck — which had been returning 400 (DisallowedHost) because the
+    old `ALLOWED_HOSTS` lacked `127.0.0.1` — now passes; container reports
+    **healthy**. Verified `http://91.98.47.1/` still serves (302). HTTPS on
+    the box is **not** reachable (443 unpublished until Phase B; and LE never
+    certs a bare IP — HTTPS waits for DNS + Phase B).
+  - **Remaining for cutover:** point DNS (`A kasia.cz` / `A www.kasia.cz`
+    → 91.98.47.1), confirm via `dig`, merge PR #14, then set
+    `DJANGO_SECURE_COOKIES=1` on the box + recreate web.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

@@ -8,7 +8,7 @@
 <section class="hero">
   <div class="hero-halo" aria-hidden="true"></div>
   <div class="wrap hero-inner">
-    <h1>Koření, které dělá <span class="accent">kuchyni</span></h1>
+    <h1>Koření, které <span class="accent">gurmán</span> ocení</h1>
     <p class="lead">
       Dovážíme, zpracováváme a vyrábíme koření už přes třicet let. Dodáváme
       velkoobchodům, gastro provozům, výrobcům potravin a obchodním řetězcům po
@@ -29,10 +29,9 @@
       </div>
     </div>
 
-    {# Hand-authored green hero art (decision 0054). Swap for Petr's real photo when ready: #}
-    {# <img class="hero-art" src="{% static 'web/hero-photo.jpg' %}" alt="Koření Kasia vera"> #}
-    <div class="hero-art" aria-hidden="true">
-      <img src="{% static 'web/art-hero.svg' %}" alt="" width="560" height="300">
+    {# Real company logo captured from kasia.cz (owner override of the hand-authored SVG, decision 0054). #}
+    <div class="hero-art">
+      <img src="{% static 'web/hero-logo.png' %}" alt="{{ company.legal_name }}">
     </div>
 
     <div class="hero-cta">

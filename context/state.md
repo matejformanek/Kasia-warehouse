@@ -1701,6 +1701,21 @@
       `mixing_job_create` marks the option selected).
     - **356 pytest green** (+3: qty PDF, exact-sum unit test, mixture preselect);
       re-rendered + Knedlík 100.00 % confirmed via the docker stack.
+- **2026-06-29** — **Homepage hero now shows the real Kasia logo + real slogan**
+  (branch `ft_wa_hero_logo`, PR #11, squash-merged + deployed to prod). Captured
+  the live company logo from `kasia.cz` (being taken down) → `kasia/static/web/
+  hero-logo.png` (259×157 PNG) and swapped it for the hand-authored `art-hero.svg`
+  in the homepage hero (`web/home.html`); dropped `aria-hidden`, real `alt`
+  (`company.legal_name`) — an explicit owner override of the green-SVG preference
+  in [`0054`](./decisions/0054-adopt-ui-directions.md). Added `.hero-art img`
+  sizing + tightened `.hero-art` `max-width` to 360px so the small raster isn't
+  upscaled (`web/base.html`). H1 changed to Kasia's real slogan **"Koření, které
+  gurmán ocení"**. `art-hero.svg` left unreferenced (harmless). **Map idea
+  shelved**: a hand-drawn themed SVG can only be country-level, so the functional
+  OpenStreetMap embeds stay as-is (no decision, no code change). check / ruff
+  clean, **356 pytest green** (no new tests — pure template/asset swap), no
+  migrations; verified live on prod `http://91.98.47.1/` (logo serves 200, H1 +
+  slogan correct).
 
 ## Hand-off for the next session (post-compact)
 

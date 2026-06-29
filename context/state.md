@@ -1702,6 +1702,35 @@
     - **356 pytest green** (+3: qty PDF, exact-sum unit test, mixture preselect);
       re-rendered + Knedlík 100.00 % confirmed via the docker stack.
 
+- **2026-06-29** — Phase A of the HTTPS / `kasia.cz` cutover landed
+  (decision [`0056`](./decisions/0056-domain-cutover-https.md)). Goal:
+  front-load every *safe* change to prod before the A record is pointed, so
+  the actual cutover is the smallest possible flip. Canonical host is the
+  apex `kasia.cz`; `www.kasia.cz` → 301 → `kasia.cz`.
+  - `kasia/settings/base.py`: added **env-gated** `SECURE_PROXY_SSL_HEADER`
+    (`HTTP_X_FORWARDED_PROTO`/https), `CSRF_TRUSTED_ORIGINS` (from
+    `DJANGO_CSRF_TRUSTED_ORIGINS`), and `SESSION_COOKIE_SECURE` /
+    `CSRF_COOKIE_SECURE` (from `DJANGO_SECURE_COOKIES`, default off). All
+    default to today's HTTP-only behaviour until the on-box `.env` opts in —
+    so the change is **inert on deploy**. No `SECURE_SSL_REDIRECT` (Caddy
+    redirects), no `USE_X_FORWARDED_HOST` (Caddy preserves Host).
+  - `.env.example`: documented `DJANGO_ALLOWED_HOSTS` (keep
+    `127.0.0.1,localhost` for the `/healthz` healthcheck under DEBUG=False),
+    `DJANGO_CSRF_TRUSTED_ORIGINS`, `DJANGO_SECURE_COOKIES` (flip to 1 only
+    once HTTPS is live).
+  - `infra/RUNBOOK.md` § 5 rewritten: 443 already open on the live firewall
+    (no Terraform change); the DNS-must-resolve-before-Caddyfile ordering +
+    LE rate-limit caveat; Phase A `.env` pre-set vs Phase B flip.
+  - `.claude/rules/infra-as-code.md`: note that the site-specific `.env`
+    vars are per-deployment, never committed.
+  - **No Terraform change** — firewall id 11145413 already opens 443.
+  - Verified: `manage.py check` clean; **356 pytest green** (all new flags
+    default OFF, suite runs under DEBUG=True so behaviour is unchanged).
+  - **Phase B held in a separate, unmerged PR** (Caddyfile hostname block +
+    `compose.yaml` 443) so it can't auto-deploy before DNS resolves.
+  - **Pending:** on-box `.env` pre-set (DJANGO_ALLOWED_HOSTS + CSRF origins,
+    SECURE_COOKIES left 0) — needs SSH to the box.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

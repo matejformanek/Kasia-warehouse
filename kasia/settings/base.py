@@ -22,6 +22,16 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-dev-key-do-not-use-in
 DEBUG = _env_bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
+# Behind the TLS-terminating Caddy proxy (per 0024 / 0056). Caddy sets
+# X-Forwarded-Proto; this lets Django emit https:// links + treat the
+# request as secure. Caddy preserves the original Host, so no
+# USE_X_FORWARDED_HOST. No SECURE_SSL_REDIRECT — Caddy does the redirect.
+# All env-gated so behaviour is unchanged until the on-box .env opts in.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
+SESSION_COOKIE_SECURE = _env_bool("DJANGO_SECURE_COOKIES", default=False)
+CSRF_COOKIE_SECURE = _env_bool("DJANGO_SECURE_COOKIES", default=False)
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

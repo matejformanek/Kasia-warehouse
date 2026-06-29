@@ -156,31 +156,83 @@ to keep — is currently open
 § Decide later). Write the SOP into this file once a month of real
 operation gives us shape.
 
-## 5. Domain cutover (when one lands)
+## 5. Domain cutover to HTTPS at `kasia.cz`
 
-1. Point an A record at `server_ipv4`.
-2. Edit [`../Caddyfile`](../Caddyfile): replace the `:80 { ... }`
-   block with the hostname-based one in the comment header.
-3. Edit [`../compose.yaml`](../compose.yaml): uncomment the
-   `"443:443"` port publish under the `proxy` service.
-4. `docker compose up -d proxy` — Caddy auto-provisions a Let's
-   Encrypt cert on first request to the hostname.
-5. Update `DJANGO_ALLOWED_HOSTS` in the on-box `.env`.
-6. **Set `CSRF_TRUSTED_ORIGINS` (+ `SECURE_PROXY_SSL_HEADER`) once HTTPS
-   is live.** Behind a TLS-terminating Caddy, Django sees plain HTTP and
-   will reject cross-origin POSTs — most visibly the public **kontakt**
-   form (per [`../context/decisions/0051-public-site-ia-and-content.md`](../context/decisions/0051-public-site-ia-and-content.md))
-   and any warehouse form. Add `CSRF_TRUSTED_ORIGINS=https://<hostname>`
-   to the on-box `.env` (wire it into `kasia/settings/base.py`) and set
-   `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")` so
-   `request.scheme` (used by the public site's og:image / JSON-LD URLs)
-   reports `https`. On HTTP-only (today) neither is needed.
-7. Update `host:` literal in `.github/workflows/deploy.yml` if you
-   want it to be the hostname instead of the IP (cosmetic — the IP
-   still works since DNS just resolves to it).
+Full plan and rationale: [`../context/decisions/0056-domain-cutover-https.md`](../context/decisions/0056-domain-cutover-https.md).
+Canonical host is the apex `kasia.cz`; `www.kasia.cz` → 301 → `kasia.cz`.
 
-No app code change for steps 1–5/7. Step 6 is a small settings + `.env`
-addition. The Caddyfile comment header documents the exact two-line diff.
+**443 is already open** on the live firewall
+(`infra/terraform/main.tf`, firewall id 11145413) — **no Terraform
+change** at cutover.
+
+**The hard constraint:** Caddy cannot get a Let's Encrypt cert until DNS
+resolves to the box. Activating the hostname Caddyfile *before* the A
+record points here takes the IP site offline (the `:80` catch-all is gone)
+and makes Caddy fail against ACME, risking the LE rate limit. Since
+`deploy.yml` does `git reset --hard origin/main`, a manual on-box Caddyfile
+edit would be overwritten on the next deploy — so the Caddyfile change is
+**held on an unmerged branch and merged only after `dig` confirms DNS.**
+
+### 5a. Phase A — prime prod now (safe; IP site stays up on HTTP)
+
+The Django HTTPS settings already live (env-gated) in
+[`../kasia/settings/base.py`](../kasia/settings/base.py) and default to
+today's behaviour until the on-box `.env` opts in:
+
+- `SECURE_PROXY_SSL_HEADER` — so password-reset e-mails
+  (`accounts/views.py`) and the sitemap (`web/views.py`) emit
+  `https://kasia.cz/...` instead of `http://91.98.47.1/...`.
+- `CSRF_TRUSTED_ORIGINS` (from `DJANGO_CSRF_TRUSTED_ORIGINS`) — required
+  for cross-origin POSTs behind the TLS-terminating proxy, most visibly
+  the public **kontakt** form (per
+  [`../context/decisions/0051-public-site-ia-and-content.md`](../context/decisions/0051-public-site-ia-and-content.md))
+  and any warehouse form.
+- `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` (from
+  `DJANGO_SECURE_COOKIES`, default off).
+
+On the box, pre-set the **safe** values in `.env` and restart web:
+
+```
+DJANGO_ALLOWED_HOSTS=kasia.cz,www.kasia.cz,91.98.47.1,127.0.0.1,localhost
+DJANGO_CSRF_TRUSTED_ORIGINS=https://kasia.cz,https://www.kasia.cz
+# leave DJANGO_SECURE_COOKIES unset/0 — cookies must still flow over HTTP
+```
+
+⚠️ Keep `127.0.0.1,localhost` in `DJANGO_ALLOWED_HOSTS` — the web
+container healthcheck hits `http://127.0.0.1:8000/healthz` and
+`CommonMiddleware` validates Host under `DEBUG=False`; drop them and the
+deploy goes unhealthy. Keep `91.98.47.1` so the IP keeps working through
+the transition.
+
+After this, the site is unchanged (HTTP on the IP) but the box is primed.
+
+### 5b. Phase B — the flip (only when DNS is pointed at the box)
+
+The Caddyfile + compose change is held in a **separate, unmerged PR**:
+
+- [`../Caddyfile`](../Caddyfile): replace the `:80 { ... }` block with the
+  `kasia.cz { ... }` reverse-proxy block + a `www.kasia.cz` block that
+  `redir https://kasia.cz{uri} permanent`.
+- [`../compose.yaml`](../compose.yaml): uncomment the `"443:443"` port
+  publish under the `proxy` service.
+
+Then, in order:
+
+1. Tell the domain manager: **add** `A kasia.cz → 91.98.47.1` and
+   `A www.kasia.cz → 91.98.47.1`. **Do not touch MX / mail records.**
+2. Confirm `dig +short kasia.cz` and `dig +short www.kasia.cz` →
+   `91.98.47.1`.
+3. **Only then** merge the held PR to `main` → auto-deploy activates the
+   Caddyfile + 443. Caddy provisions the cert on first hit.
+4. On the box, set `DJANGO_SECURE_COOKIES=1` in `.env` and restart web.
+5. (Optional, cosmetic) update the `host:` literal in
+   `.github/workflows/deploy.yml` to the hostname — the IP still works
+   since DNS just resolves to it.
+
+Verify: `curl -I http://kasia.cz` → 301/308 → `https://kasia.cz`;
+`curl -Iv https://kasia.cz` → valid LE cert + 200;
+`curl -I https://www.kasia.cz` → 301 → `https://kasia.cz`;
+`docker compose logs proxy` → cert obtained, no ACME errors.
 
 ## 6. Things that are not in this RUNBOOK on purpose
 

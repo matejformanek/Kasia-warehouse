@@ -38,7 +38,10 @@ or restructure:
   `<tr class="line-row" data-index>`, form is the `.closest("form")` with
   `[name=branch]`, inputs `lines-{idx}-product` / `lines-{idx}-quantity_kg`);
   HTMX targets `.stock-warn-cell` / `#lines-table` / `#lines-body` (beforeend)
-  and the `.secondary` "Přidat řádek" button. The `.app` wrapper must not nest
+  and the `.secondary` "Přidat řádek" button — the button additionally carries
+  `id="add-line-btn"` so the auto-append `<script>` in
+  `_movement_form_lines.html` can programmatically `.click()` it when the
+  operator types in the trailing row. The `.app` wrapper must not nest
   the movement form such that `.closest("form")` / `[name=branch]` resolution
   changes.
 

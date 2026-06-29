@@ -22,6 +22,9 @@ its recipe definition.
     not lost forever, just hidden by default).
   - Branch presence (optional): only show items currently on hand at a
     chosen branch.
+  - Stav skladu (optional): "Dochází" / "Prázdné" — narrows the list to
+    rows whose Stav column already shows the orange "dochází" or red
+    "prázdné" badge. Single-select; combines with the other filters.
 - A scrollable list of catalogue **products** (per
   [`decisions/0028-mass-only-supersedes-0006.md`](../decisions/0028-mass-only-supersedes-0006.md):
   one row per product, stock in kg only — no variants), each row

@@ -838,6 +838,21 @@ def catalogue_index(request):
             }
         )
 
+    state_filter = (request.GET.get("state") or "").strip()
+    if state_filter == "low":
+        rows = [
+            r
+            for r in rows
+            if r["is_low"]
+            and not (r["effective"] <= 0 and r["threshold"] is not None)
+        ]
+    elif state_filter == "empty":
+        rows = [
+            r
+            for r in rows
+            if r["effective"] <= 0 and r["threshold"] is not None
+        ]
+
     return render(
         request,
         "inventory/catalogue_index.html",
@@ -848,6 +863,7 @@ def catalogue_index(request):
             "filter_kind": kind,
             "filter_status": status,
             "filter_branch_code": filter_branch_code,
+            "filter_state": state_filter,
             "selected_branch": selected_branch,
             "branches": Branch.objects.filter(is_active=True).order_by("code"),
             "obsluha_branch": (

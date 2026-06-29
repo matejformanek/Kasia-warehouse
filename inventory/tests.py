@@ -6465,3 +6465,112 @@ def test_product_edit_renders_pobocky_section_with_drzi_state(
     assert (
         f"/sklad/katalog/{pepper.pk}/pobocky/{sez.pk}/pridat/" in body
     )
+
+
+# ---------------------------------------------------------------------------
+# Polish round 2 — row-click, auto-append line, catalog state filter
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_job_index_rows_are_row_link(user_vlastnik, tyn, pepper) -> None:
+    """Mixing index rows must use the shared `tr.row-link` pattern so the
+    whole row navigates to the job detail."""
+    from inventory.services import start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = start_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("2.000"),
+        user=user_vlastnik,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/michani/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert 'class="row-link"' in body
+    assert f'data-href="/sklad/michani/{job.pk}/"' in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_movement_form_lines_has_add_line_btn_id(user_vlastnik) -> None:
+    """The auto-append <script> in _movement_form_lines.html keys off
+    `#add-line-btn` — guarantee the marker keeps shipping."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    for path in ("/sklad/prijem/novy/", "/sklad/vydej/novy/"):
+        response = client.get(path)
+        assert response.status_code == 200
+        body = response.content.decode("utf-8")
+        assert 'id="add-line-btn"' in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_line_row_partial_still_returns_blank_row(user_tyn) -> None:
+    """Sanity: line_row_partial keeps returning a blank row with the
+    expected name attrs — the auto-append JS depends on it."""
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.get("/sklad/_partials/line-row/?index=5")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert 'name="lines-5-product"' in body
+    assert 'name="lines-5-quantity_kg"' in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_filter_state_low_keeps_only_low_rows(
+    user_vlastnik, tyn, sez, pepper, paprika
+) -> None:
+    """?state=low keeps rows where is_low but not effective<=0 with threshold."""
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    paprika.reorder_threshold_kg = Decimal("5.000")
+    paprika.save()
+    # Pepper: low (1 kg < 5 kg threshold, still positive).
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("1.000"))
+    # Paprika: above threshold on both branches.
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("20.000"))
+    Stock.objects.create(product=paprika, branch=sez, quantity=Decimal("20.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/katalog/?state=low")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert pepper.name_cs in body
+    assert paprika.name_cs not in body
+    assert "Nalezeno: 1" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_filter_state_empty_keeps_only_empty_rows(
+    user_vlastnik, tyn, sez, pepper, paprika
+) -> None:
+    """?state=empty keeps rows where effective<=0 and threshold is set."""
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    paprika.reorder_threshold_kg = Decimal("5.000")
+    paprika.save()
+    # Pepper: effective = 0 on both branches → empty.
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("0.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("0.000"))
+    # Paprika: low but not empty.
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("1.000"))
+    Stock.objects.create(product=paprika, branch=sez, quantity=Decimal("1.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/katalog/?state=empty")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert pepper.name_cs in body
+    assert paprika.name_cs not in body
+    assert "Nalezeno: 1" in body

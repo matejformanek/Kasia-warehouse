@@ -1809,6 +1809,43 @@
     rewritten to post the new `qty_<branch.pk>` fields); ruff +
     `manage.py check` clean. No new decision file — this is polish + UX
     refinement of existing surfaces, not architecture.
+- **2026-06-29** — **Polish round 2: row-click, auto-append line, catalog
+  stock-state filter, Míchání icon** (branch `ft_wa_polish_round_2`).
+  Four-item bundle from the walkthrough following PR #15:
+  - **Mixing index whole-row click** — `mixing_job_index.html`: rows
+    converted from single-anchor "Zahájeno" cell to `tr.row-link
+    data-href` so anywhere on a row navigates to the job detail. Reuses
+    the existing JS handler + hover CSS in `base.html` (same pattern as
+    `catalogue_index.html` / `dodaci_list_index.html` /
+    `planned_transfer_index.html` / `movement_history.html`). Supplier /
+    customer / branch index pages intentionally kept button-driven —
+    they have no "detail" view.
+  - **Auto-append blank line on Příjem/Výdej** —
+    `_movement_form_lines.html`: the existing "Přidat řádek" button now
+    carries `id="add-line-btn"`; an inline delegated `input` listener on
+    `#lines-body` programmatically clicks that button when the operator
+    types into the last non-deleted row, so there's always one trailing
+    empty line. Guard via `data-autopopulated="1"` on the row to avoid
+    spamming the partial endpoint on rapid keystrokes. Both screens
+    share the partial.
+  - **Catalog stock-state filter** — `catalogue_index.html` +
+    `inventory/views.py:catalogue_index`: new `?state=low|empty` query
+    param + matching `<select name="state">` in the filter strip
+    ("Dochází" / "Prázdné"). Filter runs in Python after `rows` are
+    built (because `is_low` / `effective` are per-request, not stored
+    on `Product`) and before `count` is read, so the "Nalezeno: N"
+    line reflects the filtered length. Companion edits to the
+    "Vymazat filtry" condition and the "Zobrazit všechny pobočky"
+    link so neither loses the state filter on navigation.
+  - **Míchání sidebar icon** — `base.html:371`: SVG paths swapped
+    from the cup-on-stand glyph to a two-opposing-curved-arrows
+    rotate/cycle glyph, in the same Feather/Lucide 1.8 stroke style
+    as the rest of the sidebar.
+  - **371 pytest green** (+5: mixing index row-link, add-line-btn
+    marker present on both Příjem/Výdej, line_row_partial sanity,
+    catalog state=low filter, catalog state=empty filter); ruff +
+    `manage.py check` clean. No new decision file — pure UI polish,
+    nothing schema-shaped.
 
 ## Hand-off for the next session (post-compact)
 

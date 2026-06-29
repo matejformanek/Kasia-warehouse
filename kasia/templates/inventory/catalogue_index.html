@@ -27,6 +27,14 @@
       <option value="all" {% if filter_status == "all" %}selected{% endif %}>vše</option>
     </select>
   </div>
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_state">Stav skladu</label>
+    <select name="state" id="id_filter_state">
+      <option value="" {% if not filter_state %}selected{% endif %}>— vše —</option>
+      <option value="low" {% if filter_state == "low" %}selected{% endif %}>Dochází</option>
+      <option value="empty" {% if filter_state == "empty" %}selected{% endif %}>Prázdné</option>
+    </select>
+  </div>
   {% if not obsluha_branch %}
     <div class="field" style="margin-bottom:0;">
       <label for="id_filter_branch">Pobočka</label>
@@ -71,7 +79,7 @@
   {% elif selected_branch %}
     <p style="color:var(--fg-soft);font-size:0.9rem;">
       Stavy a rezervace zobrazené pro pobočku <strong>{{ selected_branch.code }}</strong>.
-      <a href="?{% if filter_q %}q={{ filter_q }}&{% endif %}{% if filter_kind %}kind={{ filter_kind }}&{% endif %}{% if filter_status and filter_status != 'active' %}status={{ filter_status }}{% endif %}">
+      <a href="?{% if filter_q %}q={{ filter_q }}&{% endif %}{% if filter_kind %}kind={{ filter_kind }}&{% endif %}{% if filter_status and filter_status != 'active' %}status={{ filter_status }}&{% endif %}{% if filter_state %}state={{ filter_state }}{% endif %}">
         Zobrazit všechny pobočky
       </a>
     </p>
@@ -148,7 +156,7 @@
       {% endfor %}
     </tbody>
   </table>
-{% elif filter_q or filter_kind or filter_status != "active" %}
+{% elif filter_q or filter_kind or filter_status != "active" or filter_state %}
   <p>Nic neodpovídá filtru.
     <a href="{% url 'inventory:catalogue_index' %}">Vymazat filtry</a>
   </p>

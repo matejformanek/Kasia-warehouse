@@ -26,12 +26,8 @@
     </thead>
     <tbody>
       {% for j in jobs %}
-        <tr>
-          <td>
-            <a href="{% url 'inventory:mixing_job_detail' pk=j.pk %}">
-              {{ j.started_at|date:"d. m. Y H:i" }}
-            </a>
-          </td>
+        <tr class="row-link" data-href="{% url 'inventory:mixing_job_detail' pk=j.pk %}">
+          <td>{{ j.started_at|date:"d. m. Y H:i" }}</td>
           <td>{{ j.branch.code }}</td>
           <td>{{ j.mixture.name_cs }}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ j.target_qty|floatformat:"3" }}</td>

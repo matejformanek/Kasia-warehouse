@@ -1,0 +1,66 @@
+{% comment %}
+Compact "last N movements" panel rendered under příjem / výdej forms so
+operators can see what happened recently without leaving the page.
+
+Context:
+- recent_movements: list of Movement (already kind-filtered + branch-scoped)
+- panel_kind: "prijem" or "vydej" — drives heading + history link
+- panel_branch: optional Branch (obsluha-locked); shown in heading
+{% endcomment %}
+{% if recent_movements %}
+  <div class="card" style="margin-top:1rem;">
+    <h2 style="font-size:1.05rem;margin-top:0;display:flex;justify-content:space-between;align-items:baseline;gap:1rem;">
+      {% if panel_kind == "prijem" %}Poslední příjmy{% else %}Poslední výdeje{% endif %}
+      {% if panel_branch %}<small style="color:var(--fg-soft);font-weight:normal;">pobočka {{ panel_branch.code }}</small>{% endif %}
+      <a href="{% url 'inventory:movement_history' %}?tab={{ panel_kind }}"
+         target="_blank"
+         style="font-size:0.85rem;font-weight:normal;">
+        Zobrazit celou historii ↗
+      </a>
+    </h2>
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Pobočka</th>
+          <th>Položky</th>
+          <th>{% if panel_kind == "prijem" %}Dodavatel{% else %}Odběratel{% endif %}</th>
+          <th>{% if panel_kind == "vydej" %}Dodací list{% else %}Detail{% endif %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mv in recent_movements %}
+          {% with first_line=mv.lines.first lines_count=mv.lines.count %}
+          <tr>
+            <td>{{ mv.date_issued|date:"d. m. Y" }}</td>
+            <td>{{ mv.branch.code }}</td>
+            <td>
+              {% if first_line %}
+                {{ first_line.product.name_cs }}
+                {% if lines_count > 1 %}
+                  <span style="color:var(--fg-soft);">+{{ lines_count|add:"-1" }} dalších</span>
+                {% endif %}
+              {% endif %}
+            </td>
+            <td>
+              {% if panel_kind == "prijem" %}{{ mv.dodavatel.name }}{% else %}{{ mv.odberatel.name }}{% endif %}
+            </td>
+            <td>
+              {% if panel_kind == "vydej" %}
+                {% with dl=mv.dodaci_list %}
+                  {% if dl %}
+                    <a href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}" target="_blank">{{ dl.cislo }} ↗</a>
+                  {% endif %}
+                {% endwith %}
+              {% else %}
+                <a href="{% url 'inventory:movement_edit' pk=mv.pk %}" target="_blank"
+                   style="font-size:0.85rem;">upravit ↗</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}

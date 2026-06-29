@@ -32,7 +32,7 @@ Context:
 </table>
 
 <p>
-  <button type="button" class="secondary"
+  <button type="button" id="add-line-btn" class="secondary"
           hx-get="{% url 'inventory:line_row_partial' %}"
           hx-target="#lines-body"
           hx-swap="beforeend"
@@ -41,3 +41,28 @@ Context:
     Přidat řádek
   </button>
 </p>
+
+<script>
+  (function () {
+    const body = document.getElementById("lines-body");
+    if (!body) return;
+    const addBtn = document.getElementById("add-line-btn");
+    if (!addBtn) return;
+
+    body.addEventListener("input", (e) => {
+      const row = e.target.closest("tr");
+      if (!row || row.classList.contains("marked-deleted")) return;
+      const visibleRows = body.querySelectorAll("tr:not(.marked-deleted)");
+      const lastRow = visibleRows[visibleRows.length - 1];
+      if (row !== lastRow) return;
+      if (row.dataset.autopopulated === "1") return;
+      const product = row.querySelector('select[name$="-product"]');
+      const qty = row.querySelector('input[name$="-quantity_kg"]');
+      const productFilled = product && product.value;
+      const qtyFilled = qty && qty.value && parseFloat(qty.value.replace(",", ".")) > 0;
+      if (!productFilled && !qtyFilled) return;
+      row.dataset.autopopulated = "1";
+      addBtn.click();
+    });
+  })();
+</script>

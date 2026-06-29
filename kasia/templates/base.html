@@ -324,8 +324,6 @@
   <nav class="mob-nav" aria-label="Hlavní navigace (mobil)">
     <a href="{{ home_url }}"{% if un == 'home' or un == 'branch_dashboard' %} class="active"{% endif %}>Přehled</a>
     <a href="{% url 'inventory:catalogue_index' %}"{% if un == 'catalogue_index' %} class="active"{% endif %}>Katalog</a>
-    <a href="{% url 'inventory:supplier_index' %}"{% if un == 'supplier_index' %} class="active"{% endif %}>Dodavatelé</a>
-    <a href="{% url 'inventory:customer_index' %}"{% if un == 'customer_index' %} class="active"{% endif %}>Odběratelé</a>
     <a href="{% url 'inventory:prijem_create' %}"{% if un == 'prijem_create' %} class="active"{% endif %}>Příjem</a>
     <a href="{% url 'inventory:vydej_create' %}"{% if un == 'vydej_create' %} class="active"{% endif %}>Výdej</a>
     <a href="{% url 'inventory:mixing_job_index' %}"{% if un == 'mixing_job_index' %} class="active"{% endif %}>Míchání</a>
@@ -333,6 +331,8 @@
     <a href="{% url 'inventory:dodaci_list_index' %}"{% if un == 'dodaci_list_index' %} class="active"{% endif %}>Dodací listy</a>
     <a href="{% url 'inventory:movement_history' %}"{% if un == 'movement_history' %} class="active"{% endif %}>Historie</a>
     <a href="{% url 'inventory:support' %}"{% if un == 'support' %} class="active"{% endif %}>Podpora</a>
+    <a href="{% url 'inventory:supplier_index' %}"{% if un == 'supplier_index' %} class="active"{% endif %}>Dodavatelé</a>
+    <a href="{% url 'inventory:customer_index' %}"{% if un == 'customer_index' %} class="active"{% endif %}>Odběratelé</a>
     {% if user.is_vlastnik %}
       <a href="{% url 'inventory:branch_index' %}"{% if un == 'branch_index' %} class="active"{% endif %}>Pobočky</a>
       <a href="{% url 'accounts:user_index' %}"{% if un == 'user_index' %} class="active"{% endif %}>Uživatelé</a>
@@ -358,14 +358,6 @@
       <a href="{% url 'inventory:catalogue_index' %}"{% if un == 'catalogue_index' %} class="active" aria-current="page"{% endif %}>
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h12"/></svg>
         Katalog
-      </a>
-      <a href="{% url 'inventory:supplier_index' %}"{% if un == 'supplier_index' %} class="active" aria-current="page"{% endif %}>
-        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 21V8l6-4 6 4v13"/><path d="M15 21V11l6 4v6"/><path d="M3 21h18"/></svg>
-        Dodavatelé
-      </a>
-      <a href="{% url 'inventory:customer_index' %}"{% if un == 'customer_index' %} class="active" aria-current="page"{% endif %}>
-        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/><path d="M21 21v-1a5 5 0 0 0-4-4.9"/></svg>
-        Odběratelé
       </a>
       <a href="{% url 'inventory:prijem_create' %}"{% if un == 'prijem_create' %} class="active" aria-current="page"{% endif %}>
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
@@ -394,6 +386,15 @@
       <a href="{% url 'inventory:support' %}"{% if un == 'support' %} class="active" aria-current="page"{% endif %}>
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .8-1 1.7"/><path d="M12 17h.01"/></svg>
         Podpora
+      </a>
+      <span class="nav-label">Číselníky</span>
+      <a href="{% url 'inventory:supplier_index' %}"{% if un == 'supplier_index' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 21V8l6-4 6 4v13"/><path d="M15 21V11l6 4v6"/><path d="M3 21h18"/></svg>
+        Dodavatelé
+      </a>
+      <a href="{% url 'inventory:customer_index' %}"{% if un == 'customer_index' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/><path d="M21 21v-1a5 5 0 0 0-4-4.9"/></svg>
+        Odběratelé
       </a>
       {% if user.is_vlastnik %}
         <span class="nav-label">Správa</span>

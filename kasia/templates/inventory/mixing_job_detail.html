@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block title %}Dávka #{{ job.pk }} — {{ job.mixture.name_cs }}{% endblock %}
 
@@ -56,6 +57,11 @@
         Pohyb produkce
       </a>
     {% endif %}
+    <a class="secondary"
+       href="{% url 'inventory:recipe_pdf' pk=job.mixture.pk %}?qty={{ job.target_qty|unlocalize }}"
+       target="_blank" rel="noopener">
+      Stáhnout recepturu (PDF)
+    </a>
   </p>
 </div>
 

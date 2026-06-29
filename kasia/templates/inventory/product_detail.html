@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block title %}{{ product.name_cs }} — Katalog{% endblock %}
 
@@ -94,6 +95,13 @@
   {% if product.notes and product.kind != "mixture" %}
     <p style="margin-top:1rem;color:var(--fg-soft);">{{ product.notes|linebreaksbr }}</p>
   {% endif %}
+  {% if user.is_vlastnik %}
+    <p style="margin-top:1rem;">
+      <a class="secondary" href="{% url 'inventory:stock_adjust_edit' pk=product.pk %}">
+        Upravit stav skladu →
+      </a>
+    </p>
+  {% endif %}
 </div>
 
 {% if product.kind == "mixture" %}
@@ -181,7 +189,7 @@
             {{ rc.ratio }}
           </td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;"
-              class="recipe-scaler-out" data-ratio="{{ rc.ratio }}">
+              class="recipe-scaler-out" data-ratio="{{ rc.ratio|unlocalize }}">
             —
           </td>
         </tr>

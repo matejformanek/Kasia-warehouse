@@ -18,10 +18,12 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import F, Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
@@ -42,7 +44,6 @@ from .forms import (
     SettingsForm,
     SettingsRecipientFormSet,
     SmtpTestForm,
-    StockAdjustmentForm,
     SupplierForm,
     ThresholdOverrideFormSet,
     VydejEditForm,
@@ -2045,6 +2046,18 @@ def product_reactivate(request, pk: int):
 
 
 @require_POST
+def _safe_next(request, default_url: str) -> str:
+    """Return request.POST['next'] if it's a safe internal URL, else default."""
+    candidate = (request.POST.get("next") or "").strip()
+    if candidate and url_has_allowed_host_and_scheme(
+        candidate,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return candidate
+    return default_url
+
+
 def product_branch_add(request, product_id: int, branch_id: int):
     """Mark a branch as carrying this product by creating a 0-kg Stock
     row. Vlastník-only per 0053. Idempotent — second call is a no-op.
@@ -2067,7 +2080,9 @@ def product_branch_add(request, product_id: int, branch_id: int):
             request,
             f"Pobočka {branch.code} už produkt {product.name_cs} drží.",
         )
-    return redirect("inventory:product_edit", pk=product.pk)
+    return redirect(_safe_next(
+        request, reverse("inventory:product_edit", args=[product.pk])
+    ))
 
 
 @require_POST
@@ -2084,7 +2099,9 @@ def product_branch_remove(request, product_id: int, branch_id: int):
         request,
         f"Pobočka {branch.code} už nedrží {product.name_cs}.",
     )
-    return redirect("inventory:product_edit", pk=product.pk)
+    return redirect(_safe_next(
+        request, reverse("inventory:product_edit", args=[product.pk])
+    ))
 
 
 # ---------------------------------------------------------------------------
@@ -2214,85 +2231,132 @@ def branch_reactivate(request, code: str):
 
 
 def stock_adjust_edit(request, pk: int):
-    """Vlastník brings the current Stock(product, branch) to a new value.
-    Writes one synthetic Movement; never touches Stock.quantity directly.
+    """Vlastník brings the current per-branch Stock of one product to new
+    values — table editor: one row per active branch, one shared reason.
+
+    Per [0041](../context/decisions/0041-manual-stock-adjustment.md), every
+    delta goes through `apply_stock_adjustment` → `apply_movement` with the
+    `[STAV]` prefix; never raw UPDATE. Zero-delta rows are skipped.
     """
     _require_vlastnik(request)
     product = get_object_or_404(Product, pk=pk)
 
+    active_branches = list(
+        Branch.objects.filter(is_active=True).order_by("code")
+    )
+    stocks_by_branch = {
+        s.branch_id: s
+        for s in Stock.objects.filter(product=product).select_related("branch")
+    }
+
+    def _row_for(branch: Branch, posted_value: str | None = None) -> dict:
+        stock = stocks_by_branch.get(branch.pk)
+        current = stock.quantity if stock else Decimal("0.000")
+        reserved = reserved_kg(product, branch) if stock else Decimal("0.000")
+        carried = stock is not None
+        if posted_value is None:
+            new_value = f"{current:.3f}"
+        else:
+            new_value = posted_value
+        return {
+            "branch": branch,
+            "current": current,
+            "reserved": reserved,
+            "carried": carried,
+            "field_name": f"qty_{branch.pk}",
+            "new_value": new_value,
+            "error": None,
+        }
+
+    rows = [_row_for(b) for b in active_branches]
+    reason_value = ""
+    reason_error: str | None = None
+    non_field_error: str | None = None
+
     if request.method == "POST":
-        form = StockAdjustmentForm(request.POST, product=product)
-        if form.is_valid():
+        reason_value = (request.POST.get("reason") or "").strip()
+        # Re-build rows from posted values for re-render on validation errors.
+        rows = [
+            _row_for(b, request.POST.get(f"qty_{b.pk}", ""))
+            for b in active_branches
+        ]
+        # Parse + collect (branch, new_qty, has_change) per row.
+        any_change = False
+        parsed: list[tuple[Branch, Decimal]] = []
+        for row, branch in zip(rows, active_branches, strict=True):
+            raw = (row["new_value"] or "").strip().replace(",", ".")
+            if not row["carried"] and raw == "":
+                # Nedrží row with no submitted value — user must use Přidat first.
+                continue
+            if raw == "":
+                row["error"] = "Vyplňte hodnotu."
+                continue
             try:
-                mv = apply_stock_adjustment(
-                    product=product,
-                    branch=form.cleaned_data["branch"],
-                    new_quantity=form.cleaned_data["new_quantity"],
-                    reason=form.cleaned_data["reason"],
-                    user=request.user,
-                )
-            except ValidationError as exc:
-                form.add_error(
-                    None,
-                    "; ".join(exc.messages)
-                    if hasattr(exc, "messages")
-                    else str(exc),
-                )
+                new_qty = Decimal(raw)
+            except (InvalidOperation, ValueError):
+                row["error"] = "Neplatné číslo."
+                continue
+            if new_qty < 0:
+                row["error"] = "Stav nemůže být záporný."
+                continue
+            if new_qty.as_tuple().exponent < -3:
+                new_qty = new_qty.quantize(Decimal("0.001"))
+            if new_qty != row["current"]:
+                any_change = True
+            parsed.append((branch, new_qty))
+
+        if any_change and not reason_value:
+            reason_error = "Důvod úpravy je povinný, když měníte hodnoty."
+        if not any_change and reason_value:
+            # benign — no rows changed; just show info on re-render
+            non_field_error = "Žádná hodnota se nezměnila — nic se nezapsalo."
+
+        any_row_error = any(r["error"] for r in rows)
+
+        if not any_row_error and reason_error is None and any_change:
+            written = 0
+            for branch, new_qty in parsed:
+                try:
+                    mv = apply_stock_adjustment(
+                        product=product,
+                        branch=branch,
+                        new_quantity=new_qty,
+                        reason=reason_value,
+                        user=request.user,
+                    )
+                except ValidationError as exc:
+                    non_field_error = (
+                        "; ".join(exc.messages)
+                        if hasattr(exc, "messages") else str(exc)
+                    )
+                    break
+                if mv is not None:
+                    written += 1
             else:
-                if mv is None:
-                    messages.info(request, "Stav je beze změny — nic se nezapsalo.")
+                if written == 1:
+                    messages.success(
+                        request, "Stav upraven — zapsán 1 pohyb."
+                    )
                 else:
                     messages.success(
                         request,
-                        f"Stav upraven (#{mv.pk}). Pohyb najdete v Historii.",
+                        f"Stav upraven — zapsáno {written} pohybů.",
                     )
                 return redirect("inventory:product_detail", pk=product.pk)
-    else:
-        # Pre-fill branch + current quantity for whichever branch the
-        # operator most recently looked at; default to first active branch.
-        current_stocks = list(
-            Stock.objects.filter(product=product)
-            .select_related("branch")
-            .order_by("branch__code")
-        )
-        default_branch = (
-            current_stocks[0].branch
-            if current_stocks
-            else Branch.objects.filter(is_active=True).first()
-        )
-        default_qty = (
-            current_stocks[0].quantity
-            if current_stocks
-            else Decimal("0.000")
-        )
-        form = StockAdjustmentForm(
-            product=product,
-            initial={
-                "branch": default_branch.pk if default_branch else None,
-                "new_quantity": default_qty,
-            },
-        )
 
-    # Current per-branch stock summary for context on the form page.
-    stocks_by_branch = {
-        s.branch_id: s.quantity
-        for s in Stock.objects.filter(product=product).select_related("branch")
-    }
-    branch_rows = [
-        {
-            "branch": b,
-            "quantity": stocks_by_branch.get(b.pk, Decimal("0.000")),
-        }
-        for b in Branch.objects.filter(is_active=True).order_by("code")
-    ]
+        if not any_change and not any_row_error and reason_error is None:
+            messages.info(request, "Stav je beze změny — nic se nezapsalo.")
+            return redirect("inventory:product_detail", pk=product.pk)
 
     return render(
         request,
         "inventory/stock_adjust_form.html",
         {
             "product": product,
-            "form": form,
-            "branch_rows": branch_rows,
+            "rows": rows,
+            "reason_value": reason_value,
+            "reason_error": reason_error,
+            "non_field_error": non_field_error,
         },
     )
 
@@ -2615,7 +2679,7 @@ def support_view(request):
         form = FeedbackForm()
     feedbacks = (
         Feedback.objects.select_related("created_by", "resolved_by")
-        .order_by("-created_at")[:50]
+        .order_by(F("resolved_at").asc(nulls_first=True), "-created_at")[:50]
     )
     return render(
         request,

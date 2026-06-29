@@ -1760,6 +1760,56 @@
     → 91.98.47.1), confirm via `dig`, merge PR #14, then set
     `DJANGO_SECURE_COOKIES=1` on the box + recreate web.
 
+- **2026-06-29** — **Polish round: sidebar IA, mixing-job recipe PDF,
+  Czech-locale decimal fixes, Podpora sort, per-product stock inventura,
+  custom confirm dialog + dirty-state guard** (branch `ft_wa_polish_round`).
+  Bundle of follow-ups from Matej's walkthrough after PR #7:
+  - **Sidebar IA** — `base.html`: Dodavatelé + Odběratelé moved out of the
+    daily-workflow "Provoz" group into a new always-visible "Číselníky" section
+    placed **above** the vlastník-only "Správa" block (obsluha keeps access;
+    just reordered). Mobile nav: same two anchors moved to the end of the flat
+    list before the vlastník items. No view / permissions / URL change.
+  - **Mixing-job recipe PDF link** — `mixing_job_detail.html`: added
+    "Stáhnout recepturu (PDF)" next to the consumption / production movement
+    links, pointing at the existing `recipe_pdf` endpoint with
+    `?qty=job.target_qty|unlocalize`. Widens the surface of
+    [`0055`](./decisions/0055-recipe-pdf-and-mixing-notes.md) — no new view,
+    route, or test for PDF rendering.
+  - **Podpora history sort** — `inventory/views.py`: support list now orders by
+    `F("resolved_at").asc(nulls_first=True), "-created_at"`, so open items sit
+    above resolved ones; within each group, newest first. Same 50-row limit.
+  - **Recipe scaler "Potřeba (kg)" zeroed bug** — `product_detail.html`:
+    `LANGUAGE_CODE = "cs"` + Django 5 L10N was rendering
+    `data-ratio="{{ rc.ratio }}"` as `0,500000`, so `parseFloat` returned 0 and
+    the live scaler printed 0 in every row. Added `{% load l10n %}` + piped
+    through `|unlocalize`. Same root cause + fix on
+    `inventura_edit.html:data-current` (the "Rozdíl" column miscomputed for
+    fractional stock).
+  - **Per-product stock inventura** — `/sklad/katalog/<pk>/upravit-stav/`
+    converted from "pick one branch via dropdown + edit one row" to a full
+    table editor: one row per active branch with editable "Nový stav (kg)"
+    input, current qty + reserved + Drží/Nedrží chip, per-row Odebrat /
+    Přidat na pobočku (both keep you on the same page via a `?next=` round
+    trip honored by `product_branch_remove` / `product_branch_add`),
+    shared "Důvod úpravy" field, one submit writes a `[STAV]` Movement
+    per changed row. `StockAdjustmentForm` removed; view parses
+    `qty_<branch_pk>` posts directly. Entry points: existing
+    "Upravit stav skladu" links on `product_form.html` (carry table card)
+    + new link on `product_detail.html` (Stav skladu card, vlastník-only).
+  - **Branded confirm dialog + dirty-state guard** — `stock_adjust_form.html`:
+    inline `<dialog>` styled in the project's green/cream palette replaces
+    the browser-default `confirm()` for Odebrat. The Zrušit link and per-row
+    Odebrat / Přidat buttons trigger the same modal when there are unsaved
+    `qty_*` edits ("Opustit beze změn?"). Browser-level navigation (back,
+    tab close) falls back to native `beforeunload` since browsers ignore
+    custom messages there.
+  - **361 pytest green** (+5: scaler dot-decimal, inventura data-current,
+    support open-before-resolved, per-product bulk inventura,
+    all-active-branches rendered as rows; existing stock_adjust tests
+    rewritten to post the new `qty_<branch.pk>` fields); ruff +
+    `manage.py check` clean. No new decision file — this is polish + UX
+    refinement of existing surfaces, not architecture.
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

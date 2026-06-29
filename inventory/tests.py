@@ -2532,6 +2532,24 @@ def test_product_detail_renders_recipe_for_mixture(
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_recipe_scaler_ratio_has_dot_decimal(
+    user_vlastnik, pepper
+) -> None:
+    mixture = Product.objects.create(
+        name_cs="Gulášové koření", kind=Product.Kind.MIXTURE
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper, ratio=Decimal("0.5")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/sklad/katalog/{mixture.pk}/")
+    assert b'data-ratio="0.500000"' in response.content
+    assert b'data-ratio="0,500000"' not in response.content
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_product_detail_shows_mixing_notes_and_pdf_link(user_vlastnik, pepper) -> None:
     mixture = Product.objects.create(
         name_cs="Gulášové koření",
@@ -4065,7 +4083,7 @@ def test_stock_adjust_renders_for_vlastnik(user_vlastnik, pepper, tyn) -> None:
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_stock_adjust_positive_delta_writes_prijem(
-    user_vlastnik, pepper, tyn
+    user_vlastnik, pepper, tyn, sez
 ) -> None:
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
     client = Client()
@@ -4073,8 +4091,8 @@ def test_stock_adjust_positive_delta_writes_prijem(
     response = client.post(
         f"/sklad/katalog/{pepper.pk}/upravit-stav/",
         {
-            "branch": str(tyn.pk),
-            "new_quantity": "12.500",
+            f"qty_{tyn.pk}": "12.500",
+            f"qty_{sez.pk}": "0.000",
             "reason": "inventura — naval o 2,5 kg víc",
         },
     )
@@ -4094,7 +4112,7 @@ def test_stock_adjust_positive_delta_writes_prijem(
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_stock_adjust_negative_delta_writes_vydej(
-    user_vlastnik, pepper, tyn
+    user_vlastnik, pepper, tyn, sez
 ) -> None:
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
     client = Client()
@@ -4102,8 +4120,8 @@ def test_stock_adjust_negative_delta_writes_vydej(
     response = client.post(
         f"/sklad/katalog/{pepper.pk}/upravit-stav/",
         {
-            "branch": str(tyn.pk),
-            "new_quantity": "7.000",
+            f"qty_{tyn.pk}": "7.000",
+            f"qty_{sez.pk}": "0.000",
             "reason": "inventura — chybí 3 kg",
         },
     )
@@ -4121,7 +4139,7 @@ def test_stock_adjust_negative_delta_writes_vydej(
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
-def test_stock_adjust_zero_delta_noop(user_vlastnik, pepper, tyn) -> None:
+def test_stock_adjust_zero_delta_noop(user_vlastnik, pepper, tyn, sez) -> None:
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
     before = Movement.objects.count()
     client = Client()
@@ -4129,9 +4147,9 @@ def test_stock_adjust_zero_delta_noop(user_vlastnik, pepper, tyn) -> None:
     response = client.post(
         f"/sklad/katalog/{pepper.pk}/upravit-stav/",
         {
-            "branch": str(tyn.pk),
-            "new_quantity": "10.000",
-            "reason": "pro jistotu",
+            f"qty_{tyn.pk}": "10.000",
+            f"qty_{sez.pk}": "0.000",
+            "reason": "",
         },
     )
     assert response.status_code == 302
@@ -4141,13 +4159,17 @@ def test_stock_adjust_zero_delta_noop(user_vlastnik, pepper, tyn) -> None:
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
-def test_stock_adjust_requires_reason(user_vlastnik, pepper, tyn) -> None:
+def test_stock_adjust_requires_reason(user_vlastnik, pepper, tyn, sez) -> None:
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
         f"/sklad/katalog/{pepper.pk}/upravit-stav/",
-        {"branch": str(tyn.pk), "new_quantity": "12.000", "reason": ""},
+        {
+            f"qty_{tyn.pk}": "12.000",
+            f"qty_{sez.pk}": "0.000",
+            "reason": "",
+        },
     )
     assert response.status_code == 200  # form re-rendered with error
     s = Stock.objects.get(product=pepper, branch=tyn)
@@ -4157,7 +4179,7 @@ def test_stock_adjust_requires_reason(user_vlastnik, pepper, tyn) -> None:
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_stock_adjust_creates_stock_row_when_missing(
-    user_vlastnik, paprika, tyn
+    user_vlastnik, paprika, tyn, sez
 ) -> None:
     """Adjusting from 0 (no Stock row yet) creates the Stock row implicitly."""
     assert not Stock.objects.filter(product=paprika, branch=tyn).exists()
@@ -4166,8 +4188,8 @@ def test_stock_adjust_creates_stock_row_when_missing(
     response = client.post(
         f"/sklad/katalog/{paprika.pk}/upravit-stav/",
         {
-            "branch": str(tyn.pk),
-            "new_quantity": "5.000",
+            f"qty_{tyn.pk}": "5.000",
+            f"qty_{sez.pk}": "0.000",
             "reason": "počáteční stav",
         },
     )
@@ -4179,7 +4201,7 @@ def test_stock_adjust_creates_stock_row_when_missing(
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_stock_adjust_movement_appears_in_history_with_stav_prefix(
-    user_vlastnik, pepper, tyn
+    user_vlastnik, pepper, tyn, sez
 ) -> None:
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
     client = Client()
@@ -4187,8 +4209,8 @@ def test_stock_adjust_movement_appears_in_history_with_stav_prefix(
     client.post(
         f"/sklad/katalog/{pepper.pk}/upravit-stav/",
         {
-            "branch": str(tyn.pk),
-            "new_quantity": "11.000",
+            f"qty_{tyn.pk}": "11.000",
+            f"qty_{sez.pk}": "0.000",
             "reason": "úprava",
         },
     )
@@ -4201,6 +4223,53 @@ def test_stock_adjust_movement_appears_in_history_with_stav_prefix(
     assert b"Inventura" in response.content
     mv = Movement.objects.filter(branch=tyn).order_by("-id").first()
     assert mv.note.startswith("[STAV] ")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_adjust_per_product_bulk_writes_one_movement_per_changed_branch(
+    user_vlastnik, pepper, tyn, sez
+) -> None:
+    """Per-product inventura: rows for both branches change in one POST → two
+    Movements, one per branch; the shared reason lands on both."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("4.000"))
+    before = Movement.objects.count()
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/sklad/katalog/{pepper.pk}/upravit-stav/",
+        {
+            f"qty_{tyn.pk}": "12.500",
+            f"qty_{sez.pk}": "3.500",
+            "reason": "inventura k 29. 06.",
+        },
+    )
+    assert response.status_code == 302
+    assert Movement.objects.count() == before + 2
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("12.500")
+    assert Stock.objects.get(product=pepper, branch=sez).quantity == Decimal("3.500")
+    for mv in Movement.objects.order_by("-id")[:2]:
+        assert mv.note.startswith("[STAV] ")
+        assert "inventura k 29. 06." in mv.note
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_adjust_renders_all_active_branches_as_rows(
+    user_vlastnik, pepper, tyn, sez
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    # SEZ has no Stock row → still expected as a "Nedrží" row.
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/sklad/katalog/{pepper.pk}/upravit-stav/")
+    assert response.status_code == 200
+    body = response.content
+    assert f'name="qty_{tyn.pk}"'.encode() in body
+    assert f'name="qty_{sez.pk}"'.encode() in body
+    assert b"Dr\xc5\xbe\xc3\xad" in body  # "Drží"
+    assert b"Nedr\xc5\xbe\xc3\xad" in body  # "Nedrží"
 
 
 # ---------------------------------------------------------------------------
@@ -4240,6 +4309,19 @@ def test_inventura_edit_renders_for_vlastnik(
     assert pepper.name_cs.encode() in body
     assert b"10.000" in body
     assert b"5.500" in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_edit_data_current_uses_dot_decimal(
+    user_vlastnik, tyn, pepper
+) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.500"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/katalog/inventura/TYN/")
+    assert b'data-current="1.500"' in response.content
+    assert b'data-current="1,500"' not in response.content
 
 
 @pytest.mark.django_db(transaction=True)
@@ -5302,6 +5384,43 @@ def test_feedback_toggle_reopens_already_resolved_as_vlastnik(
     assert f.resolved_at is None
     assert f.resolved_by is None
     assert f.is_open
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_support_history_lists_open_before_resolved(
+    user_vlastnik,
+) -> None:
+    from django.utils import timezone as _tz
+
+    older_open = Feedback.objects.create(
+        created_by=user_vlastnik, description="OLDER_OPEN_MARKER"
+    )
+    resolved = Feedback.objects.create(
+        created_by=user_vlastnik, description="RESOLVED_MARKER"
+    )
+    resolved.resolved_at = _tz.now()
+    resolved.resolved_by = user_vlastnik
+    resolved.save()
+    newer_open = Feedback.objects.create(
+        created_by=user_vlastnik, description="NEWER_OPEN_MARKER"
+    )
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/podpora/").content.decode("utf-8")
+    pos_newer_open = body.find("NEWER_OPEN_MARKER")
+    pos_older_open = body.find("OLDER_OPEN_MARKER")
+    pos_resolved = body.find("RESOLVED_MARKER")
+    assert pos_newer_open != -1
+    assert pos_older_open != -1
+    assert pos_resolved != -1
+    # Both open rows precede the resolved row.
+    assert pos_newer_open < pos_resolved
+    assert pos_older_open < pos_resolved
+    # Within open: newer comes before older.
+    assert pos_newer_open < pos_older_open
+    assert older_open.pk != newer_open.pk  # sanity
 
 
 @pytest.mark.django_db

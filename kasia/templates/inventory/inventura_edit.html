@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block title %}Inventura — {{ branch.code }} — Kasia vera{% endblock %}
 
@@ -39,7 +40,7 @@
     </thead>
     <tbody>
       {% for row in rows %}
-        <tr class="inventura-row" data-current="{{ row.current }}">
+        <tr class="inventura-row" data-current="{{ row.current|unlocalize }}">
           <td><strong>{{ row.product.name_cs }}</strong></td>
           <td style="color:var(--fg-soft);">{{ row.product.get_kind_display }}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">

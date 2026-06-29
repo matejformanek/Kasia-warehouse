@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load l10n %}
 
 {% block title %}Úprava stavu — {{ product.name_cs }} — Kasia vera{% endblock %}
 
@@ -6,69 +7,284 @@
 <h1>Úprava stavu — {{ product.name_cs }}</h1>
 
 <div class="card" style="background:#fbf3e0;border-left:3px solid var(--warn);">
-  <strong>Ruční úprava stavu.</strong>
-  Tento krok zapíše pohyb s prefixem <code>[STAV]</code> do Historie
-  (per rozhodnutí 0041). Není to nahrazení stávajícího pohybu —
-  pokud chcete opravit chybu v dříve zaznamenaném příjmu/výdeji,
+  <strong>Ruční úprava stavu napříč pobočkami.</strong>
+  Změňte hodnoty v sloupci „Nový stav" — pro každý změněný řádek se
+  zapíše jeden pohyb s prefixem <code>[STAV]</code> do Historie
+  (per rozhodnutí 0041). Beze změny ponechané řádky se nezapíšou.
+  Pokud chcete opravit chybu v dříve zaznamenaném příjmu/výdeji,
   použijte „Upravit pohyb" v Historii.
 </div>
 
-<div class="card">
-  <h2 style="font-size:1.05rem;margin-top:0;">Aktuální stav</h2>
+<form method="post" id="stock-adjust-form">
+  {% csrf_token %}
+
+  {% if non_field_error %}
+    <div class="non-form-errors">{{ non_field_error }}</div>
+  {% endif %}
+
   <table class="lines">
     <thead>
       <tr>
         <th>Pobočka</th>
-        <th style="text-align:right;">Skladem (kg)</th>
+        <th style="text-align:center;">Stav</th>
+        <th style="text-align:right;">Aktuálně (kg)</th>
+        <th style="text-align:right;">Rezervováno (kg)</th>
+        <th style="text-align:right;">Nový stav (kg)</th>
+        <th style="text-align:right;">Akce</th>
       </tr>
     </thead>
     <tbody>
-      {% for row in branch_rows %}
+      {% for row in rows %}
         <tr>
-          <td>{{ row.branch.code }} — {{ row.branch.name }}</td>
+          <td><strong>{{ row.branch.code }}</strong> — {{ row.branch.name }}</td>
+          <td style="text-align:center;">
+            {% if row.carried %}
+              <span class="tab-chip" style="background:var(--ok-soft);color:var(--ok);">✓ Drží</span>
+            {% else %}
+              <span class="tab-chip">— Nedrží</span>
+            {% endif %}
+          </td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            {{ row.quantity|floatformat:"3" }}
+            {{ row.current|floatformat:"3" }}
+          </td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--fg-soft);">
+            {{ row.reserved|floatformat:"3" }}
+          </td>
+          <td style="text-align:right;">
+            <input type="number" step="0.001" min="0"
+                   name="{{ row.field_name }}"
+                   value="{{ row.new_value }}"
+                   {% if not row.carried %}disabled aria-label="Pobočka tento produkt nedrží — nejprve klikněte Přidat"{% endif %}
+                   style="max-width:140px;text-align:right;font-variant-numeric:tabular-nums;">
+            {% if row.error %}
+              <div style="color:var(--error);font-size:0.85rem;">{{ row.error }}</div>
+            {% endif %}
+          </td>
+          <td style="text-align:right;">
+            {% if row.carried %}
+              <button type="submit"
+                      form="row-remove-{{ row.branch.pk }}"
+                      class="row-delete-btn js-row-action"
+                      data-target-form="row-remove-{{ row.branch.pk }}"
+                      data-confirm-title="Odebrat z pobočky?"
+                      data-confirm-body="Odebrat {{ product.name_cs }} z pobočky {{ row.branch.code }}? Aktuálně: {{ row.current|floatformat:3 }} kg, {{ row.reserved|floatformat:3 }} kg rezervováno."
+                      data-confirm-cta="Odebrat">
+                Odebrat z pobočky
+              </button>
+            {% else %}
+              <button type="submit"
+                      form="row-add-{{ row.branch.pk }}"
+                      class="secondary js-row-action"
+                      data-target-form="row-add-{{ row.branch.pk }}">
+                Přidat na pobočku
+              </button>
+            {% endif %}
           </td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
-</div>
 
-<p class="required-legend">povinné pole</p>
-
-<form method="post" class="card">
-  {% csrf_token %}
-
-  {% if form.non_field_errors %}
-    <div class="non-form-errors">{{ form.non_field_errors }}</div>
-  {% endif %}
-
-  <div class="field">
-    <label class="field-required" for="{{ form.branch.id_for_label }}">{{ form.branch.label }}</label>
-    {{ form.branch }}
-    {{ form.branch.errors }}
+  <div class="card" style="margin-top:1.5rem;">
+    <p class="required-legend">povinné pole</p>
+    <div class="field">
+      <label class="field-required" for="id_reason">Důvod úpravy (jeden pro všechny změny)</label>
+      <input type="text" name="reason" id="id_reason" size="60"
+             value="{{ reason_value }}"
+             placeholder="např. inventura k {% now 'd. m. Y' %}">
+      <small style="color:var(--fg-soft); display:block;">
+        Důvod se uloží do poznámky každého zapsaného pohybu
+        (např. <code>inventura — vážil jsem 23 kg</code>).
+      </small>
+      {% if reason_error %}
+        <div style="color:var(--error);font-size:0.9rem;">{{ reason_error }}</div>
+      {% endif %}
+    </div>
+    <p>
+      <button type="submit" class="primary">Uložit všechny změny</button>
+      <a class="secondary" id="stock-adjust-cancel"
+         href="{% url 'inventory:product_detail' pk=product.pk %}">Zrušit</a>
+    </p>
   </div>
-  <div class="field">
-    <label class="field-required" for="{{ form.new_quantity.id_for_label }}">{{ form.new_quantity.label }}</label>
-    {{ form.new_quantity }}
-    <small style="color:var(--fg-soft); display:block;">
-      Zapište požadovaný cílový stav (ne rozdíl). Systém spočítá rozdíl
-      proti aktuálnímu stavu a zapíše ho jako pohyb.
-    </small>
-    {{ form.new_quantity.errors }}
-  </div>
-  <div class="field">
-    <label class="field-required" for="{{ form.reason.id_for_label }}">{{ form.reason.label }}</label>
-    {{ form.reason }}
-    <small style="color:var(--fg-soft); display:block;">
-      Důvod úpravy se uloží do poznámky pohybu (např.
-      <code>inventura — vážil jsem 23 kg</code>).
-    </small>
-    {{ form.reason.errors }}
-  </div>
-
-  <button type="submit" class="primary">Uložit úpravu stavu</button>
-  <a class="secondary" href="{% url 'inventory:product_detail' pk=product.pk %}">Zrušit</a>
 </form>
+
+{% comment %}
+  Per-row Odebrat/Přidat forms live OUTSIDE the main form (HTML disallows
+  nested form). Their buttons live in the table cells, bound by form=.
+{% endcomment %}
+{% for row in rows %}
+  {% if row.carried %}
+    <form method="post" id="row-remove-{{ row.branch.pk }}"
+          action="{% url 'inventory:product_branch_remove' product_id=product.pk branch_id=row.branch.pk %}"
+          style="display:none;">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.path }}">
+    </form>
+  {% else %}
+    <form method="post" id="row-add-{{ row.branch.pk }}"
+          action="{% url 'inventory:product_branch_add' product_id=product.pk branch_id=row.branch.pk %}"
+          style="display:none;">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.path }}">
+    </form>
+  {% endif %}
+{% endfor %}
+
+<dialog id="kasia-confirm" class="kasia-dialog" aria-labelledby="kasia-confirm-title">
+  <h2 id="kasia-confirm-title" class="kasia-dialog-title">Opravdu?</h2>
+  <p id="kasia-confirm-body" class="kasia-dialog-body"></p>
+  <div class="kasia-dialog-actions">
+    <button type="button" class="secondary" data-action="cancel">Zrušit</button>
+    <button type="button" class="primary" data-action="confirm" id="kasia-confirm-cta">Potvrdit</button>
+  </div>
+</dialog>
+
+<style>
+  .kasia-dialog {
+    border: 0;
+    border-radius: 8px;
+    padding: 0;
+    max-width: 460px;
+    width: calc(100% - 2rem);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    background: #fff;
+    color: var(--fg);
+  }
+  .kasia-dialog::backdrop {
+    background: rgba(20, 30, 22, 0.45);
+    backdrop-filter: blur(2px);
+  }
+  .kasia-dialog-title {
+    margin: 0;
+    padding: 1rem 1.25rem 0.5rem;
+    font-size: 1.1rem;
+    color: var(--accent-deep);
+  }
+  .kasia-dialog-body {
+    margin: 0;
+    padding: 0.25rem 1.25rem 1rem;
+    color: var(--fg);
+    line-height: 1.45;
+  }
+  .kasia-dialog-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    padding: 0.75rem 1.25rem 1rem;
+    border-top: 1px solid var(--accent-tint);
+    background: #fafaf8;
+  }
+  .kasia-dialog-actions .primary.danger {
+    background: var(--error);
+    border-color: var(--error);
+  }
+</style>
+
+<script>
+  (function () {
+    const dialog = document.getElementById("kasia-confirm");
+    const titleEl = document.getElementById("kasia-confirm-title");
+    const bodyEl = document.getElementById("kasia-confirm-body");
+    const ctaEl = document.getElementById("kasia-confirm-cta");
+    const cancelBtn = dialog.querySelector('[data-action="cancel"]');
+    let resolveFn = null;
+
+    function openConfirm({ title, body, cta, danger }) {
+      titleEl.textContent = title || "Opravdu?";
+      bodyEl.textContent = body || "";
+      ctaEl.textContent = cta || "Potvrdit";
+      ctaEl.classList.toggle("danger", !!danger);
+      dialog.showModal();
+      return new Promise((resolve) => { resolveFn = resolve; });
+    }
+    function settle(value) {
+      const f = resolveFn; resolveFn = null;
+      if (f) f(value);
+    }
+    ctaEl.addEventListener("click", () => { dialog.close(); settle(true); });
+    cancelBtn.addEventListener("click", () => { dialog.close(); settle(false); });
+    dialog.addEventListener("cancel", () => { settle(false); });
+
+    const form = document.getElementById("stock-adjust-form");
+    const qtyInputs = form.querySelectorAll('input[type="number"][name^="qty_"]');
+    const reasonInput = form.querySelector('#id_reason');
+    const initial = {};
+    qtyInputs.forEach((el) => { initial[el.name] = el.value; });
+    initial["reason"] = reasonInput.value;
+
+    function isDirty() {
+      for (const el of qtyInputs) {
+        if (el.value !== initial[el.name]) return true;
+      }
+      if (reasonInput.value !== initial["reason"]) return true;
+      return false;
+    }
+
+    let intentionalUnload = false;
+
+    form.addEventListener("submit", () => { intentionalUnload = true; });
+
+    // Per-row Odebrat/Přidat: warn on dirty + custom confirm for destructive.
+    document.querySelectorAll(".js-row-action").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const targetFormId = btn.dataset.targetForm;
+        const targetForm = document.getElementById(targetFormId);
+        if (!targetForm) return;
+        const customTitle = btn.dataset.confirmTitle;
+        const customBody = btn.dataset.confirmBody;
+        const customCta = btn.dataset.confirmCta;
+        const needsDirty = isDirty();
+        if (!needsDirty && !customBody) return; // nothing to ask
+        e.preventDefault();
+        if (needsDirty) {
+          const ok = await openConfirm({
+            title: "Opustit beze změn?",
+            body: "Máte rozepsané hodnoty stavu, které ještě nebyly uloženy. Pokračováním je ztratíte.",
+            cta: "Pokračovat",
+            danger: true,
+          });
+          if (!ok) return;
+        }
+        if (customBody) {
+          const ok = await openConfirm({
+            title: customTitle || "Opravdu?",
+            body: customBody,
+            cta: customCta || "Potvrdit",
+            danger: true,
+          });
+          if (!ok) return;
+        }
+        intentionalUnload = true;
+        targetForm.submit();
+      });
+    });
+
+    // Zrušit link: warn if dirty.
+    const cancelLink = document.getElementById("stock-adjust-cancel");
+    cancelLink.addEventListener("click", async (e) => {
+      if (!isDirty()) return;
+      e.preventDefault();
+      const ok = await openConfirm({
+        title: "Opustit beze změn?",
+        body: "Máte rozepsané hodnoty stavu, které ještě nebyly uloženy. Opuštěním stránky je ztratíte.",
+        cta: "Opustit stránku",
+        danger: true,
+      });
+      if (ok) {
+        intentionalUnload = true;
+        window.location.href = cancelLink.href;
+      }
+    });
+
+    // Browser-level navigation (back, tab close, address bar): native beforeunload.
+    // Browsers ignore custom messages here for security; the prompt fires whenever
+    // returnValue is set, which is the best we can do without page-takeover hacks.
+    window.addEventListener("beforeunload", (e) => {
+      if (intentionalUnload) return;
+      if (!isDirty()) return;
+      e.preventDefault();
+      e.returnValue = "";
+    });
+  })();
+</script>
 {% endblock %}

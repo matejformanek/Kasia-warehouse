@@ -236,6 +236,13 @@
       katalogu, do denního e-mailu „Dochází zboží“ a do nedělního
       přehledu (per <code>0053</code>).
     </p>
+    {% if user.is_vlastnik %}
+      <p>
+        <a class="secondary" href="{% url 'inventory:stock_adjust_edit' pk=target.pk %}">
+          Upravit stav skladu pro tento produkt →
+        </a>
+      </p>
+    {% endif %}
 
     <table class="lines">
       <thead>

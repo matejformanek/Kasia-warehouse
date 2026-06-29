@@ -455,6 +455,25 @@ def branch_dashboard(request, code: str):
 # ---------------------------------------------------------------------------
 
 
+_RECENT_MOVEMENTS_ON_FORM_LIMIT = 5
+
+
+def _recent_movements_for_form(user, kind: str):
+    """Last N movements of the given kind, scoped to obsluha's branch
+    when applicable. Rendered under the create form so operators can
+    eyeball what happened on this branch in the last few days without
+    leaving the page."""
+    qs = (
+        Movement.objects.filter(kind=kind)
+        .select_related("branch", "dodavatel", "odberatel", "dodaci_list")
+        .prefetch_related("lines__product")
+        .order_by("-date_issued", "-id")
+    )
+    if user.is_obsluha and user.branch_id:
+        qs = qs.filter(branch_id=user.branch_id)
+    return list(qs[:_RECENT_MOVEMENTS_ON_FORM_LIMIT])
+
+
 @require_http_methods(["GET", "POST"])
 def prijem_create(request):
     if request.method == "POST":
@@ -498,7 +517,13 @@ def prijem_create(request):
     return render(
         request,
         "inventory/prijem_form.html",
-        {"form": form, "formset": formset},
+        {
+            "form": form,
+            "formset": formset,
+            "recent_movements": _recent_movements_for_form(
+                request.user, Movement.Kind.PRIJEM
+            ),
+        },
     )
 
 
@@ -568,6 +593,9 @@ def vydej_create(request):
             "form": form,
             "formset": formset,
             "overdraw_warnings": overdraw_warnings,
+            "recent_movements": _recent_movements_for_form(
+                request.user, Movement.Kind.VYDEJ
+            ),
         },
     )
 

@@ -6552,6 +6552,121 @@ def test_catalogue_filter_state_low_keeps_only_low_rows(
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_prijem_form_shows_recent_movements_panel(
+    user_vlastnik, tyn, supplier, pepper
+) -> None:
+    """The příjem create form renders the last N příjmy underneath
+    with a link to the pre-filtered history page."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("0.000"))
+    apply_movement(
+        movement=Movement(
+            branch=tyn,
+            kind=Movement.Kind.PRIJEM,
+            date_issued=date(2026, 6, 28),
+            dodavatel=supplier,
+        ),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("3.000"))],
+        user=user_vlastnik,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/prijem/novy/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Poslední příjmy" in body
+    assert "/sklad/pohyby/?tab=prijem" in body
+    assert supplier.name in body
+    # The vydej-only tab link must NOT appear in the příjem panel.
+    assert "?tab=vydej" not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_vydej_form_shows_recent_movements_panel(
+    user_vlastnik, tyn, ricany, pepper
+) -> None:
+    """The výdej create form renders the last N výdeje underneath
+    with a link to the pre-filtered history page."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    apply_movement(
+        movement=Movement(
+            branch=tyn,
+            kind=Movement.Kind.VYDEJ,
+            date_issued=date(2026, 6, 28),
+            odberatel=ricany,
+        ),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
+        user=user_vlastnik,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/vydej/novy/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Poslední výdeje" in body
+    assert "/sklad/pohyby/?tab=vydej" in body
+    assert ricany.name in body
+    assert "?tab=prijem" not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recent_movements_panel_scopes_obsluha_to_own_branch(
+    user_obsluha_tyn, user_vlastnik, tyn, sez, supplier, pepper
+) -> None:
+    """Obsluha sees only own-branch movements in the recent panel."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("0.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("0.000"))
+    apply_movement(
+        movement=Movement(
+            branch=tyn,
+            kind=Movement.Kind.PRIJEM,
+            date_issued=date(2026, 6, 28),
+            dodavatel=supplier,
+            note="TYN-PANEL-TEST",
+        ),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
+        user=user_vlastnik,
+    )
+    sez_supplier = Supplier.objects.create(name="SEZ Dodavatel")
+    apply_movement(
+        movement=Movement(
+            branch=sez,
+            kind=Movement.Kind.PRIJEM,
+            date_issued=date(2026, 6, 28),
+            dodavatel=sez_supplier,
+            note="SEZ-PANEL-TEST",
+        ),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
+        user=user_vlastnik,
+    )
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.get("/sklad/prijem/novy/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    # Both suppliers appear in the dodavatel <select> dropdown. The
+    # panel scoping assertion runs on the "Poslední příjmy" snippet
+    # only — that snippet must not include the SEZ supplier name.
+    panel_start = body.index("Poslední příjmy")
+    panel = body[panel_start:]
+    assert supplier.name in panel
+    assert sez_supplier.name not in panel
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recent_movements_panel_hidden_when_empty(user_vlastnik) -> None:
+    """No movements yet → no panel rendered (silent on empty)."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/prijem/novy/")
+    body = response.content.decode("utf-8")
+    assert "Poslední příjmy" not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_catalogue_filter_state_empty_keeps_only_empty_rows(
     user_vlastnik, tyn, sez, pepper, paprika
 ) -> None:

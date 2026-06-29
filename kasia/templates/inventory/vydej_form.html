@@ -106,4 +106,10 @@
     <a class="secondary" href="{% url 'inventory:home' %}">Zrušit</a>
   </p>
 </form>
+
+{% if user.is_obsluha %}
+  {% include "inventory/_recent_movements_panel.html" with panel_kind="vydej" panel_branch=user.branch %}
+{% else %}
+  {% include "inventory/_recent_movements_panel.html" with panel_kind="vydej" panel_branch=None %}
+{% endif %}
 {% endblock %}

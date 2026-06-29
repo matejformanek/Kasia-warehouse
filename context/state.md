@@ -1841,11 +1841,20 @@
     from the cup-on-stand glyph to a two-opposing-curved-arrows
     rotate/cycle glyph, in the same Feather/Lucide 1.8 stroke style
     as the rest of the sidebar.
-  - **371 pytest green** (+5: mixing index row-link, add-line-btn
+  - **Recent-movements panel under Příjem/Výdej** — new
+    `_recent_movements_panel.html` partial included by `prijem_form.html`
+    + `vydej_form.html`: shows the last 5 movements of the matching
+    kind (branch-scoped for obsluha), plus a "Zobrazit celou historii ↗"
+    link straight to `/sklad/pohyby/?tab=prijem|vydej` (opens in a new
+    tab so unsaved form input is preserved). All detail links inside
+    the panel (DL number, "upravit") also `target="_blank"`. Silently
+    hidden when there are no movements yet.
+  - **375 pytest green** (+9 total: mixing index row-link, add-line-btn
     marker present on both Příjem/Výdej, line_row_partial sanity,
-    catalog state=low filter, catalog state=empty filter); ruff +
-    `manage.py check` clean. No new decision file — pure UI polish,
-    nothing schema-shaped.
+    catalog state=low filter, catalog state=empty filter, recent panel
+    on Příjem, recent panel on Výdej, recent panel obsluha-scoped,
+    recent panel hidden on empty); ruff + `manage.py check` clean.
+    No new decision file — pure UI polish, nothing schema-shaped.
 
 ## Hand-off for the next session (post-compact)
 

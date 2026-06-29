@@ -1,24 +1,24 @@
-# Per context/decisions/0024-tls-caddy.md.
+# Per context/decisions/0024-tls-caddy.md + 0056-domain-cutover-https.md.
 #
-# When a domain lands, replace the :80 block below with:
+# HTTPS cutover block. Caddy auto-provisions a Let's Encrypt cert for each
+# host once DNS resolves to the box, and renews them. Canonical host is the
+# apex kasia.cz; www.kasia.cz is a permanent (301) redirect to it.
 #
-#   kasia.example.cz {
-#       reverse_proxy web:8000
-#       encode zstd gzip
-#       log {
-#           output stdout
-#           format console
-#       }
-#   }
-#
-# Caddy auto-provisions Let's Encrypt certs and renews them.
-# Also publish :443 in compose.yaml's `proxy` service.
+# ⚠️ This block only works once `A kasia.cz` / `A www.kasia.cz` point at the
+# box. Activating it before DNS resolves takes the site offline (no :80
+# catch-all) and makes Caddy fail against Let's Encrypt's ACME endpoint,
+# risking the rate limit. Merge the PR that lands this file ONLY after
+# `dig +short kasia.cz` / `www.kasia.cz` return 91.98.47.1. See RUNBOOK § 5.
 
-:80 {
+kasia.cz {
     reverse_proxy web:8000
     encode zstd gzip
     log {
         output stdout
         format console
     }
+}
+
+www.kasia.cz {
+    redir https://kasia.cz{uri} permanent
 }

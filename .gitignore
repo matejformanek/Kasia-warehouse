@@ -229,3 +229,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 backups/
+
+# Claude Code worktrees — local, throwaway git worktrees under .claude/.
+# Each is its own checkout (registered via `git worktree`); never commit them.
+.claude/worktrees/

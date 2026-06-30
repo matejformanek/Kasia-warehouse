@@ -1,4 +1,4 @@
-**UI direction is locked by [`0054`](../../context/decisions/0054-adopt-ui-directions.md). The two surfaces diverge on purpose; the shared CSS class names and the JS/HTMX hooks are a stable contract.**
+**UI direction is locked by [`0054`](../../context/decisions/0054-adopt-ui-directions.md) (sklad) and [`0058`](../../context/decisions/0058-public-redesign-and-produkty-page.md) (public — supersedes 0054's public look). The two surfaces diverge on purpose; the shared CSS class names and the JS/HTMX hooks are a stable contract.**
 
 ## The two systems
 
@@ -7,10 +7,16 @@
   left **sidebar** shell, **Inter** (UI) + **IBM Plex Mono** (numerals/codes/
   kg/dates, tabular-nums), KPI strip on dashboards. Tokens live in the
   `base.html` `:root` (`--accent` green, `--fg*`, `--line*`, `--ok-soft`, …).
-- **Public** (`kasia/templates/web/base.html`, `web` app at `/`) — **centered /
-  curvy**: radius 18px (cards) / 999px (pills), company green
-  (`--green:#235c33` family), soft shadows, **Sora** (headings) + **Inter**
-  (body). Tokens live in the `web/base.html` `:root`.
+- **Public** (`kasia/templates/web/base.html`, `web` app at `/`) — **mono ×
+  centered, green-sections** (decision 0058, supersedes 0054 for the public
+  surface): a **green `#006634` sticky nav bar** (white text + the jpg logo),
+  **Space Grotesk** (display) + **Inter** (body), white body with **deep
+  forest-green `#0a3b20` section bands** (`.proc` / `.closing`), pill buttons,
+  green primary / ink-outline secondary. Tokens live in the `web/base.html`
+  `:root` (`--green`, `--brandbar`, `--lgreen`, `--on-green`, `--ink*`,
+  `--tint*`, …). **Five pages:** Domů · O nás · Sortiment (`/produkty/`) ·
+  Provozovny · Kontakt. Maps are **Google Maps** embeds (`map_embed`/`map_link`
+  from `web/content.py`).
 
 Both carry the jpg Kasia logo (`brand/kasia-logo.jpg`) top-left. Imagery is
 hand-authored green SVG/CSS + marked photo slots — no raster generation.
@@ -26,11 +32,17 @@ or restructure:
   `.recipients`, `.stock-warn`, `.non-form-errors`, `.warnings-banner`,
   `.row-delete-btn`, `.kpis`/`.kpi`. Keep the `:root` vars child templates use:
   `--fg-soft`, `--warn`, `--ok`, `--ok-soft`, `--error`, `--accent`.
-- **Shared public classes:** `.btn`/`.btn-primary`/`.btn-outline`, `.card`,
-  `.eyebrow`, `.stat`, `.lead`, `.grid`/`.cols-3`/`.cols-2`, `.login-card`/
-  `.login-panels`/`.login-aside`/`.login-meta`, `.contact-panel`, `.people`/
-  `.person`, `.badge`/`.badge.hq`, `.branches`/`.branch`, `.map-embed`,
-  `header.site`, `footer.site`.
+- **Shared public classes (0058):** `.wrap`/`.narrow`, `.btn`/`.btn-primary`/
+  `.btn-ghost` (+`.btn-outline` alias), `.site-header`/`.nav`/`.brand-logo`/
+  `.nav-toggle`, `.hero`/`.kicker`/`.hero-cta`, `.photo-band`/`.photo-frame`,
+  `.facts`/`.facts-grid`/`.fact`, `.sec-head`/`.sec-label`, `.band-tint`,
+  `.cap-grid`/`.cap-card`, `.proc`/`.proc-chain`/`.step`/`.proc-cap`,
+  `.seg-grid`/`.seg`, `.sort-chips`/`.chip`/`.brand`/`.brand-sep`,
+  `.story-photo`/`.timeline`, `.closing`/`.contact-card`/`.prov-grid`/`.prov`,
+  `.site-footer`. Auth/form pages reuse `.login-card`/`.login-panels`/
+  `.login-aside`/`.login-meta`/`.card`/`.eyebrow`/`.lead` + `form .field`.
+  Page-specific CSS (e.g. kontakt `.k-split`, produkty `.cat-grid`, provozovny
+  location cards) lives in each template's `{% block extra_head %}`.
 - **JS/HTMX hooks (sklad `base.html`):** the row-delete toggle (`.row-delete-btn`
   + `data-target` + `.line-row`/`.marked-deleted`, `<button type="button">`
   inside a `<td>`); whole-row nav (`tr.row-link[data-href]` + the

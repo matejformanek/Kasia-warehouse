@@ -2,85 +2,108 @@
 {% load static %}
 
 {% block title %}Kontakt — {{ company.legal_name }}{% endblock %}
-{% block meta_description %}Kontakt na {{ company.legal_name }}: {{ company.street }}, {{ company.city }}. Telefon {{ company.phone_primary }}, e-mail {{ company.email }}.{% endblock %}
+{% block meta_description %}Kontaktní a fakturační údaje {{ company.legal_name }} — adresa sídla, telefon, e-mail, IČO, datová schránka, otevírací doba a kontaktní osoby.{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* compact single-view contact: details + map side by side */
+  .kontakt-top { padding: 60px 0 84px; }
+  .k-head { text-align: center; max-width: 58ch; margin: 0 auto 40px; }
+  .k-head h1 { font-size: clamp(36px, 5vw, 54px); font-weight: 600; letter-spacing: -.03em; margin: 14px 0 16px; }
+  .k-head h1 .ac { color: var(--green); }
+  .k-head .k-lead { color: var(--ink-2); font-size: 18px; margin: 0; }
+  .k-split { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: stretch; max-width: 1000px; margin: 0 auto; }
+  .k-info { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 32px 30px; }
+  .k-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 22px; }
+  .k-rows li { display: flex; gap: 16px; align-items: flex-start; }
+  .k-rows .ic { flex: none; width: 42px; height: 42px; border-radius: var(--radius); display: grid; place-items: center; background: var(--tint-2); color: var(--green); border: 1px solid var(--line); }
+  .k-rows .ic svg { width: 21px; height: 21px; }
+  .k-rows .kl { font-family: "Space Grotesk", sans-serif; font-size: 11.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; }
+  .k-rows .kv { font-size: 16.5px; color: var(--ink); line-height: 1.5; }
+  .k-rows .kv.big { font-family: "Space Grotesk", sans-serif; font-weight: 600; font-size: 18px; letter-spacing: -.01em; }
+  .k-rows .kv a { color: var(--ink); } .k-rows .kv a:hover { color: var(--green); }
+  .k-fakt { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .k-fakt b { color: var(--ink-3); font-family: "Space Grotesk", sans-serif; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; margin-right: 5px; }
+  .k-map { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); display: flex; flex-direction: column; min-height: 430px; box-shadow: 0 18px 40px -28px rgba(20,22,15,.45); }
+  .k-map iframe { width: 100%; flex: 1; border: 0; display: block; min-height: 380px; }
+  .k-map-link { display: block; text-align: center; padding: 13px; background: var(--paper); border-top: 1px solid var(--line); font-family: "Space Grotesk", sans-serif; font-weight: 600; font-size: 14.5px; }
+
+  /* contact persons — reuses .cap-grid/.cap-card; photo on top */
+  .person-photo {
+    width: 100%; height: 220px; object-fit: cover; filter: grayscale(.12) contrast(1.03);
+    border-radius: var(--radius); border: 1px solid var(--line); margin-bottom: 20px;
+    background: var(--tint-2);
+  }
+  .cap-card .role {
+    font-family: "Space Grotesk", sans-serif; font-size: 12.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--green); display: block; margin-bottom: 8px;
+  }
+
+  @media (max-width: 680px) {
+    .k-split { grid-template-columns: 1fr; }
+    .k-map { min-height: 320px; }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<section>
+<!-- KONTAKT — vše přehledně na jednom místě (kontakt + mapa vedle sebe) -->
+<section class="kontakt-top">
   <div class="wrap">
-    <p class="eyebrow">Kontakt</p>
-    <h1>Spojte se s námi</h1>
-    <p class="lead" style="max-width:60ch;">
-      Zavolejte nám nebo napište — rádi připravíme nabídku na míru pro váš
-      velkoobchod nebo provoz.
-    </p>
-
-    <div class="grid cols-2" style="margin-top:2rem; align-items:start;">
-      {# --- Contact details --- #}
-      <div class="card">
-        <h3 style="margin-top:0;">{{ company.legal_name }}</h3>
-        <dl class="contact-panel">
-          <dt>Adresa</dt>
-          <dd>
-            {{ company.street }}<br>
-            {{ company.postal_code }} {{ company.city }}<br>
-            {{ company.country }}
-          </dd>
-          <dt>Telefon</dt>
-          <dd>
-            <a href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a><br>
-            <a href="tel:{{ company.phone_secondary|cut:' ' }}">{{ company.phone_secondary }}</a>
-          </dd>
-          {% if company.fax %}
-            <dt>Fax</dt>
-            <dd>{{ company.fax }}</dd>
-          {% endif %}
-          <dt>E-mail</dt>
-          <dd><a href="mailto:{{ company.email }}">{{ company.email }}</a></dd>
-          <dt>Otevírací doba</dt>
-          <dd>{{ company.hours }}</dd>
-          <dt>IČO</dt>
-          <dd>{{ company.ico }}</dd>
-          {% if company.dic %}
-            <dt>DIČ</dt>
-            <dd>{{ company.dic }}</dd>
-          {% endif %}
-          <dt>Datová schránka</dt>
-          <dd>{{ company.datova_schranka }}</dd>
-        </dl>
-      </div>
-
-      {# --- Embedded map of the sídlo (cookie-free OSM) --- #}
-      <div>
-        <div class="map-embed tall">
-          <iframe src="{{ company.map_embed }}" loading="lazy"
-                  title="Mapa — sídlo {{ company.legal_name }}, {{ company.street }}, {{ company.city }}"
-                  referrerpolicy="no-referrer"></iframe>
+    <div class="k-head">
+      <span class="kicker">Kontakt</span>
+      <h1>Spojte se <span class="ac">s námi</span></h1>
+      <p class="k-lead">Ozvěte se nám — rádi probereme možnosti spolupráce. Obvykle odpovídáme do 1–2 pracovních dnů.</p>
+    </div>
+    <div class="k-split">
+      <div class="k-info">
+        <ul class="k-rows">
+          <li>
+            <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h3l2 5-2 1.5a12 12 0 0 0 5 5L15 18l5 2v3a1 1 0 0 1-1 1A16 16 0 0 1 3 5a1 1 0 0 1 1-1z"/></svg></span>
+            <div><div class="kl">Telefon</div><div class="kv big"><a href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a> · <a href="tel:{{ company.phone_secondary|cut:' ' }}">{{ company.phone_secondary }}</a></div></div>
+          </li>
+          <li>
+            <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>
+            <div><div class="kl">E-mail</div><div class="kv big"><a href="mailto:{{ company.email }}">{{ company.email }}</a></div></div>
+          </li>
+          <li>
+            <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.4 7-11a7 7 0 0 0-14 0c0 5.6 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+            <div><div class="kl">Adresa sídla</div><div class="kv">{{ company.legal_name }}, {{ company.street }}, {{ company.postal_code }} {{ company.city }}</div></div>
+          </li>
+          <li>
+            <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+            <div><div class="kl">Otevírací doba</div><div class="kv">{{ company.hours }}</div></div>
+          </li>
+        </ul>
+        <div class="k-fakt">
+          <span><b>IČO</b>{{ company.ico }}</span>
+          <span><b>DIČ</b>{% if company.dic %}{{ company.dic }}{% else %}—{% endif %}</span>
+          <span><b>Datová schránka</b>{{ company.datova_schranka }}</span>
+          <span><b>Fax</b>{{ company.fax }}</span>
         </div>
-        <p class="map-actions">
-          <a href="https://www.google.com/maps/search/?api=1&amp;query={{ company.map_query|urlencode }}"
-             target="_blank" rel="noopener">Otevřít v mapách →</a>
-        </p>
+      </div>
+      <div class="k-map">
+        <iframe title="Mapa sídla {{ company.legal_name }} — {{ company.street }}, {{ company.city }}" loading="lazy" src="{{ company.map_embed }}" referrerpolicy="no-referrer"></iframe>
+        <a class="k-map-link" href="{{ company.map_link }}" target="_blank" rel="noopener">Otevřít v mapách →</a>
       </div>
     </div>
   </div>
 </section>
 
-{# --- Kontaktní osoby / vedení --- #}
-<section class="alt">
+<!-- KONTAKTNÍ OSOBY — below the contact, as on the current site -->
+<section class="band-tint">
   <div class="wrap">
-    <p class="eyebrow">Kontaktní osoby</p>
-    <h2>Kdo se vám ozve</h2>
-    <div class="people" style="margin-top:1.75rem;">
+    <div class="sec-head">
+      <div class="sec-label"><span class="num">02</span> Kontaktní osoby</div>
+      <h2>Na koho se obrátit.</h2>
+    </div>
+    <div class="cap-grid">
       {% for e in executives %}
-        <div class="card person">
-          {% if e.photo %}
-            <img src="{% static e.photo %}" alt="{{ e.name }}" loading="lazy">
-          {% endif %}
-          <p class="name">{{ e.name }}</p>
-          <p class="role">{{ e.role }}</p>
-          {% if e.email %}<a href="mailto:{{ e.email }}">{{ e.email }}</a>{% endif %}
-          {% if e.phone %}<a href="tel:{{ e.phone|cut:' ' }}">{{ e.phone }}</a>{% endif %}
-        </div>
+      <div class="cap-card">
+        <img class="person-photo" src="{% static e.photo %}" alt="Portrét — {{ e.name }}" width="320" height="220" loading="lazy">
+        <span class="role">{{ e.role }}</span>
+        <h3>{{ e.name }}</h3>
+      </div>
       {% endfor %}
     </div>
   </div>

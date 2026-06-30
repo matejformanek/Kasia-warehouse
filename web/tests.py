@@ -40,7 +40,7 @@ def _view_overrides():
 
 @pytest.mark.parametrize(
     "name",
-    ["web:home", "web:o_nas", "web:provozovny", "web:kontakt"],
+    ["web:home", "web:o_nas", "web:produkty", "web:provozovny", "web:kontakt"],
 )
 def test_public_page_renders_anonymously(name) -> None:
     response = Client().get(reverse(name))
@@ -59,20 +59,27 @@ def test_home_renders_proof_stat_and_sklad_link() -> None:
 
 
 def test_home_is_enriched_for_b2b() -> None:
-    """Pass 2 enrichment: capabilities / segments / why-us sections render."""
+    """0058 redesign: capability / process / segment sections render."""
     body = Client().get(reverse("web:home")).content.decode("utf-8")
     assert "Co děláme" in body
+    assert "Jak pracujeme" in body
     assert "Komu dodáváme" in body
-    assert "Proč Kasia" in body
 
 
 def test_o_nas_renders_long_form_history() -> None:
-    """Pass 2: O nás is a real article with heritage + export content."""
+    """0058: O nás keeps the heritage story (founding year + spice position)."""
     body = Client().get(reverse("web:o_nas")).content.decode("utf-8")
     assert "1993" in body
     assert "majoránce" in body  # the spice-position paragraph
-    assert "export" in body.lower()  # dovoz a export section
-    assert "Polsko" in body  # an export market
+
+
+def test_produkty_is_showcase_without_eshop() -> None:
+    """0058: Sortiment is a showcase — brand + categories, no form/prices."""
+    body = Client().get(reverse("web:produkty")).content.decode("utf-8")
+    assert "VERA GURMET" in body  # the brand block
+    assert "Mokrá výroba" in body  # a product category
+    assert "<form" not in body  # no e-shop / no enquiry form
+    assert "na míru" not in body  # Kasia does not do made-to-order (0058)
 
 
 def test_kontakt_is_info_only_with_directory() -> None:
@@ -121,6 +128,7 @@ def test_sitemap_xml() -> None:
     body = response.content.decode("utf-8")
     assert "<urlset" in body
     assert "/o-nas/" in body
+    assert "/produkty/" in body  # new page promoted to the IA (0058)
 
 
 # --- The warehouse app moved under /sklad/ and is still gated ----------------

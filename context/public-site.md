@@ -10,6 +10,14 @@ outside world, not an operator screen for warehouse staff.
   [`decisions/0052-kontakt-info-only-drop-contactinquiry.md`](./decisions/0052-kontakt-info-only-drop-contactinquiry.md)
   (Kontakt is now **info-only** — the poptávkový formulář + `ContactInquiry`
   model were removed; `web` is a clean leaf app with **no models**).
+- **Redesign + 5th page:** [`decisions/0058-public-redesign-and-produkty-page.md`](./decisions/0058-public-redesign-and-produkty-page.md)
+  adopted the **"mono × centered, green-sections"** look (green `#006634` nav
+  bar, Space Grotesk + Inter, deep forest-green `#0a3b20` section bands —
+  supersedes 0054 for the public surface) and promoted **Sortiment/Produkty**
+  to a 5th page. Maps switched to **Google Maps**; "na míru" wording removed
+  (Kasia does not do made-to-order). The visual/section descriptions below
+  predate 0058 — see [`.claude/rules/design-system.md`](../.claude/rules/design-system.md)
+  (public block) + the `design-options/public/28`–`32` mockups for the current look.
 - **Code:** the `web` Django app + templates under
   `kasia/templates/web/`. Curated content lives in `web/content.py`
   (single source for company facts + locations) — **decoupled from the
@@ -24,6 +32,7 @@ Public surface lives at the domain root; the warehouse app is under
 |------|------|------|
 | `/` | `web:home` | Domů |
 | `/o-nas/` | `web:o_nas` | O nás |
+| `/produkty/` | `web:produkty` | Sortiment (showcase; no e-shop) — added 0058 |
 | `/provozovny/` | `web:provozovny` | Provozovny |
 | `/kontakt/` | `web:kontakt` | Kontakt (info-only, GET) |
 | `/robots.txt` | `web:robots_txt` | robots (hand-rolled) |
@@ -46,7 +55,7 @@ already-logged-in visitor hitting `/sklad/prihlaseni/` is bounced straight to
 `LOGIN_REDIRECT_URL` (`inventory:home`, `/sklad/`); `extra_context` feeds
 `company` / `nav` into the public chrome on both GET and invalid POST.
 
-## Page content map (first build — four pages, locked by Matej 2026-06-26)
+## Page content map (5 pages after 0058; the per-section copy below predates the 0058 redesign)
 
 ### Domů (`/`) — enriched for B2B, de-boxed (pass 2, 2026-06-28; section flow
 revised 2026-06-29 on Matej's feedback — refines 0054, not a new direction)

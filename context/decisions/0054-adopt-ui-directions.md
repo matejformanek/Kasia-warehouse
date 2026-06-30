@@ -1,5 +1,7 @@
 # 0054 — Adopt UI directions: sklad sidebar/sharp/green + public centered/curvy/green
 
+> **Superseded by [0058](./0058-public-redesign-and-produkty-page.md) for the PUBLIC surface only** — the public site moves to the "mono × centered, green-sections" system (green `#006634` nav bar, Space Grotesk + Inter, deep forest-green `#0a3b20` section bands). The **sklad** sidebar/sharp/green direction below is unchanged.
+
 ## Context
 
 The `/navrhy/` design gallery (decision [`0047`](./0047-design-gallery.md))

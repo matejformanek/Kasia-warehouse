@@ -144,28 +144,30 @@ PROVOZOVNY = [
     },
 ]
 
-# --- Embedded-map URLs (OpenStreetMap, cookie-free; decision 0052) ----------
-# Built once at import from the hardcoded coords. The bbox is a small box around
-# the marker (~0.6 km). The embed iframe is the site's only external runtime
-# dependency and degrades gracefully — if OSM is unreachable the iframe is blank
-# but the "Otevřít v mapách" link (built in-template from `map_query`) still
-# works. Cookie-free, no JS library, no API key (right-sized).
-def _osm_embed(lat: float, lng: float, delta: float = 0.008) -> str:
-    return (
-        "https://www.openstreetmap.org/export/embed.html"
-        f"?bbox={lng - delta}%2C{lat - delta}%2C{lng + delta}%2C{lat + delta}"
-        f"&layer=mapnik&marker={lat}%2C{lng}"
-    )
+# --- Embedded-map URLs (Google Maps; decision 0058) -------------------------
+# Built once at import from the hardcoded coords. `output=embed` renders a Google
+# Maps iframe with no API key; `map_link` opens the location in a new tab. NOTE
+# (0058): Google's embed sets third-party cookies — the footer privacy note is
+# worded accordingly. A consent shim is deferred (pre-launch, right-sized).
+def _gmaps_embed(lat: float, lng: float) -> str:
+    return f"https://maps.google.com/maps?q={lat},{lng}&z=15&hl=cs&output=embed"
 
 
-COMPANY["map_embed"] = _osm_embed(COMPANY["lat"], COMPANY["lng"])
+def _gmaps_link(lat: float, lng: float) -> str:
+    return f"https://www.google.com/maps/search/?api=1&query={lat},{lng}"
+
+
+COMPANY["map_embed"] = _gmaps_embed(COMPANY["lat"], COMPANY["lng"])
+COMPANY["map_link"] = _gmaps_link(COMPANY["lat"], COMPANY["lng"])
 for _p in PROVOZOVNY:
-    _p["map_embed"] = _osm_embed(_p["lat"], _p["lng"])
+    _p["map_embed"] = _gmaps_embed(_p["lat"], _p["lng"])
+    _p["map_link"] = _gmaps_link(_p["lat"], _p["lng"])
 
-# --- Public navigation (leaves clean room for deferred pages) ---------------
+# --- Public navigation (5 pages after 0058 promoted Sortiment/Produkty) ------
 NAV = [
     {"label": "Domů", "url_name": "web:home"},
     {"label": "O nás", "url_name": "web:o_nas"},
+    {"label": "Sortiment", "url_name": "web:produkty"},
     {"label": "Provozovny", "url_name": "web:provozovny"},
     {"label": "Kontakt", "url_name": "web:kontakt"},
 ]

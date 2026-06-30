@@ -1,226 +1,235 @@
 {% extends "web/base.html" %}
-
-{% block title %}{{ company.legal_name }} — dovoz, zpracování a výroba koření od roku {{ company.founded_year }}{% endblock %}
-{% block meta_description %}{{ company.legal_name }} — přímý dovozce a zpracovatel koření, sušené zeleniny a bylin od roku {{ company.founded_year }}. Vlastní výroba směsí, past, omáček a marinád, značka {{ company.brand }}. Dodáváme velkoobchodům, gastro provozům a výrobcům potravin po celé ČR i na export.{% endblock %}
-
 {% load static %}
+
+{% block title %}{{ company.legal_name }} — dovoz a zpracování koření od roku {{ company.founded_year }}{% endblock %}
+{% block meta_description %}Rodinná firma od roku 1993. Přímý dovoz koření, vlastní zpracování i mokrá výroba pro velkoobchody, gastro a výrobce potravin.{% endblock %}
+
 {% block content %}
+<!-- HERO — centered -->
 <section class="hero">
   <div class="hero-halo" aria-hidden="true"></div>
   <div class="wrap hero-inner">
-    <h1>Koření, které <span class="accent">gurmán</span> ocení</h1>
-    <p class="lead">
-      Dovážíme, zpracováváme a vyrábíme koření už přes třicet let. Dodáváme
-      velkoobchodům, gastro provozům, výrobcům potravin a obchodním řetězcům po
-      celé České republice — i na export — pod značkou {{ company.brand }}.
-    </p>
-
-    <div class="stat" style="margin-top:2.2rem;">
-      <div style="display:flex;align-items:baseline;gap:1.8rem;">
-        <span style="display:flex;flex-direction:column;align-items:center;">
-          <span style="font-size:2rem;line-height:1;">{{ company.spice_count }}+</span>
-          <span style="font-size:.82rem;font-weight:500;color:var(--muted);margin-top:.4rem;">druhů koření</span>
-        </span>
-        <span style="width:1px;align-self:stretch;background:var(--line);" aria-hidden="true"></span>
-        <span style="display:flex;flex-direction:column;align-items:center;">
-          <span style="font-size:2rem;line-height:1;">{{ company.product_count }}</span>
-          <span style="font-size:.82rem;font-weight:500;color:var(--muted);margin-top:.4rem;">kulinářských produktů</span>
-        </span>
-      </div>
-    </div>
-
-    {# Real company logo captured from kasia.cz (owner override of the hand-authored SVG, decision 0054). #}
-    <div class="hero-art">
-      <img src="{% static 'web/hero-logo.png' %}" alt="{{ company.legal_name }}">
-    </div>
-
+    <span class="kicker">Dovoz a zpracování koření</span>
+    <h1>Koření, které <span class="ac">gurmán</span> ocení</h1>
+    <p class="lead">Rodinná firma od roku 1993 pro velkoobchody a obchodní řetězce, gastro provozy, výrobce uzenin a výrobce potravin. Přímý dovoz, vlastní zpracování i mokrá výroba.</p>
     <div class="hero-cta">
+      <a class="btn btn-ghost" href="{% url 'web:produkty' %}">Náš sortiment</a>
       <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
-      <a class="btn btn-outline" href="{% url 'web:provozovny' %}">Naše provozovny</a>
     </div>
   </div>
 </section>
 
-{# §2 — capabilities: the one section where cards earn their place #}
-<section class="alt">
+<!-- HERO PHOTO BAND — full-width, fully covering -->
+<section class="photo-band">
   <div class="wrap">
-    <div class="section-head">
-      <p class="eyebrow">Co děláme</p>
-      <h2>Celý řetězec pod jednou střechou</h2>
-      <p class="lead">
-        Jsme přímý dovozce i zpracovatel — od suroviny po hotové balení.
-      </p>
+    <figure class="photo-frame">
+      <img src="{% static 'web/branch-ricany.jpg' %}" alt="Sídlo Kasia vera v Říčanech u Prahy" width="1080" height="420" fetchpriority="high">
+      <figcaption>Sídlo — Říčany u Prahy</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- FACTS STRIP — centered, on green-tint band -->
+<section class="facts" style="padding:0" aria-label="Klíčová čísla">
+  <div class="wrap">
+    <span class="eyebrow">Tři desetiletí koření</span>
+    <div class="facts-grid">
+      <div class="fact">
+        <div class="n"><em>{{ company.spice_count }}</em></div>
+        <div class="l">druhů koření v nabídce</div>
+      </div>
+      <div class="fact">
+        <div class="n"><em>{{ company.product_count }}</em></div>
+        <div class="l">kulinářských produktů</div>
+      </div>
+      <div class="fact">
+        <div class="n"><em>30+</em> let</div>
+        <div class="l">na trhu, od ledna 1993</div>
+      </div>
     </div>
-    <div class="grid cols-3">
-      <div class="card">
-        <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg></span>
-        <h3>Dovoz a kvalita</h3>
-        <p>Celé koření nakupujeme přímo v zemích původu a kontrolujeme jeho
-        kvalitu, než se dostane do výroby.</p>
+  </div>
+</section>
+
+<!-- CO DĚLÁME -->
+<section id="o-nas">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label"><span class="num">01</span> Co děláme</div>
+      <h2>Od suroviny po hotové balení pod jednou střechou.</h2>
+    </div>
+    <div class="cap-grid">
+      <div class="cap-card">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h13l2 3h3v5h-2"/><path d="M3 7v8h2"/><circle cx="7.5" cy="17" r="2"/><circle cx="17.5" cy="17" r="2"/></svg>
+        </span>
+        <h3>Dovoz a vstupní kontrola</h3>
+        <p>Přímý dovoz celého koření z původních zemí s kontrolou kvality při příjmu.</p>
       </div>
-      <div class="card">
-        <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="2.5"/></svg></span>
-        <h3>Zpracování</h3>
-        <p>Suroviny čistíme, třídíme a mleme — sušené koření, zeleninu i
-        byliny.</p>
+      <div class="cap-card">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M5 8h14M7 16h10"/><path d="M4 4l3 3M20 4l-3 3"/></svg>
+        </span>
+        <h3>Čištění a třídění</h3>
+        <p>Surovinu čistíme a třídíme do stabilní, opakovatelné kvality.</p>
       </div>
-      <div class="card">
-        <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4"/><path d="M8 7h8l-1.2 6.5a3 3 0 0 1-5.6 0L8 7z"/><path d="M7 21h10"/><path d="M9 17h6"/></svg></span>
+      <div class="cap-card">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 5v2M12 17v2M5 12h2M17 12h2"/></svg>
+        </span>
+        <h3>Mletí</h3>
+        <p>Vlastní mletí na požadovanou hrubost — od celého zrna po jemnou mouku.</p>
+      </div>
+      <div class="cap-card">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12l-1.5 7a4.5 4.5 0 0 1-9 0z"/><path d="M9 20h6M12 15v5"/></svg>
+        </span>
         <h3>Míchání směsí</h3>
-        <p>Podle vlastních receptur mícháme koření do směsí na míru gastro
-        provozů i výrobců.</p>
+        <p>Vlastní kořenicí směsi podle vlastních receptur, namíchané ve vlastní míchárně.</p>
       </div>
-      <div class="card">
-        <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg></span>
-        <h3>Balení</h3>
-        <p>Balíme do řady formátů — od velkých gastro balení po menší provozní
-        balení.</p>
-      </div>
-      <div class="card">
-        <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3h4v3l4 4v10a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V10l4-4z"/><path d="M9 14h6M9 18h6"/></svg></span>
+      <div class="cap-card">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8M9 3v4l-4 9a3 3 0 0 0 3 4h8a3 3 0 0 0 3-4l-4-9V3"/><path d="M6.5 15h11"/></svg>
+        </span>
         <h3>Mokrá výroba</h3>
-        <p>Vlastní výroba past, sójové omáčky, tekutého polévkového koření a
-        marinád.</p>
+        <p>Pasty, sójová omáčka, tekuté polévkové koření a marinády z vlastní výroby.</p>
       </div>
-      <div class="card">
-        <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 5.4 5.6.5-4.2 3.7 1.3 5.6L12 19.7 6.9 22.7l1.3-5.6L4 13.4l5.6-.5z"/></svg></span>
-        <h3>Vlajkové produkty</h3>
-        <p>Gastro směsi pod značkou {{ company.brand }}, včetně VEGA a
-        Zlaté kuře.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-{# §3 — prose "O nás" band: text about us, not boxes #}
-<section>
-  <div class="wrap">
-    <div class="about-band">
-      <div class="about-copy">
-        <p class="eyebrow">Rodinná firma od roku {{ company.founded_year }}</p>
-        <h2>Dovozce i zpracovatel pod jednou střechou</h2>
-        <p class="lead">
-          {{ company.legal_name }} je rodinná firma se sídlem v Říčanech u Prahy.
-          Od začátku jsme přímý dovozce a zpracovatel — celé koření nakupujeme
-          v zemích původu a u nás z něj děláme hotové produkty pro velkoobchod
-          a gastronomii.
-        </p>
-        <p style="color:var(--fg-soft);">
-          Krátká cesta od suroviny po balení nám dává lepší kontrolu nad kvalitou
-          a pružnost, na kterou se naši partneři spoléhají přes třicet let.
-        </p>
-        <p style="margin-top:1.2rem;"><a class="btn btn-outline" href="{% url 'web:o_nas' %}">Více o nás →</a></p>
-      </div>
-      <div class="about-media">
-        <img src="{% static 'web/branch-ricany.jpg' %}"
-             alt="Sídlo {{ company.legal_name }} v Říčanech u Prahy" loading="lazy">
+      <div class="cap-card">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4-9 4z"/><path d="M3 8v8l9 4 9-4V8"/><path d="M12 12v8"/></svg>
+        </span>
+        <h3>Balení</h3>
+        <p>Balení do formátů od gastro pytlů po menší balení pro provozy.</p>
       </div>
     </div>
   </div>
 </section>
 
-{# §4 — segments: light inline rows, reads differently from the §2 cards #}
-<section class="alt">
+<!-- JAK PRACUJEME — process chain, dark ground, 6 compact steps -->
+<section class="proc">
   <div class="wrap">
-    <div class="section-head">
-      <p class="eyebrow">Komu dodáváme</p>
-      <h2>B2B partneři napříč potravinářstvím</h2>
-      <p class="lead">
-        Naše produkty najdete u partnerů napříč potravinářstvím, ne na pultě
-        v maloobchodě napřímo.
-      </p>
+    <div class="sec-head">
+      <div class="sec-label"><span class="num">02</span> Jak pracujeme</div>
+      <h2>Jeden řetězec od pole po expedici.</h2>
     </div>
-    <div class="feature-list">
-      <div class="item">
-        <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-4h16l1 4"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/></svg></span>
-        <h3>Velkoobchody</h3>
-        <p>Stabilní dodávky koření a směsí pro distribuci dál.</p>
+    <ol class="proc-chain">
+      <li class="step"><div class="sn">01</div><h3>Přímý dovoz</h3><span class="sa" aria-hidden="true">→</span></li>
+      <li class="step"><div class="sn">02</div><h3>Vstupní kontrola</h3><span class="sa" aria-hidden="true">→</span></li>
+      <li class="step"><div class="sn">03</div><h3>Zpracování</h3><span class="sa" aria-hidden="true">→</span></li>
+      <li class="step"><div class="sn">04</div><h3>Míchárna</h3><span class="sa" aria-hidden="true">→</span></li>
+      <li class="step"><div class="sn">05</div><h3>Mokrá výroba</h3><span class="sa" aria-hidden="true">→</span></li>
+      <li class="step"><div class="sn">06</div><h3>Distribuce</h3></li>
+    </ol>
+    <div class="proc-cap-wrap">
+      <p class="proc-cap">Dohledatelnost od suroviny po balení.</p>
+    </div>
+  </div>
+</section>
+
+<!-- KOMU DODÁVÁME -->
+<section class="band-tint">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label"><span class="num">03</span> Komu dodáváme</div>
+      <h2>B2B dodavatel pro výrobu i gastro.</h2>
+    </div>
+    <div class="seg-grid">
+      <div class="seg">
+        <span class="tag">Distribuce</span>
+        <h3>Velkoobchody a&nbsp;obchodní řetězce</h3>
+        <p>Stálé dodávky koření a směsí pro distribuci i privátní značky.</p>
       </div>
-      <div class="item">
-        <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16v3a8 8 0 0 1-16 0z"/><path d="M3 21h18"/><path d="M9 4c0 1-1 1-1 2s1 1 1 2M15 4c0 1-1 1-1 2s1 1 1 2"/></svg></span>
+      <div class="seg">
+        <span class="tag">Gastro</span>
         <h3>Gastro provozy</h3>
-        <p>Restaurace, vývařovny a provozy, které potřebují stálou kvalitu.</p>
+        <p>Kořenicí směsi a balení pro kuchyně, vývařovny a stravovací provozy.</p>
       </div>
-      <div class="item">
-        <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/><path d="M3 12h18"/></svg></span>
-        <h3>Výrobci uzenin a potravin</h3>
-        <p>Od nejmenších výrobců uzenin po nadnárodní výrobce potravin.</p>
+      <div class="seg">
+        <span class="tag">Masná výroba</span>
+        <h3>Výrobci uzenin</h3>
+        <p>Receptované směsi a jednodruhové koření pro masnou výrobu.</p>
       </div>
-    </div>
-    <p style="margin-top:2rem;text-align:center;color:var(--fg-soft);">
-      Náš sortiment pokrývá koření, vlastní směsi, sušenou zeleninu a byliny i
-      mokrou výrobu (pasty, omáčky, marinády).
-    </p>
-  </div>
-</section>
-
-{# §5 — "Proč Kasia": borderless 2-col checklist, the main de-boxing move #}
-<section>
-  <div class="wrap">
-    <div class="section-head">
-      <p class="eyebrow">Proč Kasia</p>
-      <h2>Proč s námi spolupracovat</h2>
-    </div>
-    <div class="checklist">
-      <div class="check">
-        <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg></span>
-        <div>
-          <h3>30+ let zkušeností</h3>
-          <p>Rodinná firma s vlastním řemeslem od roku {{ company.founded_year }}.</p>
-        </div>
-      </div>
-      <div class="check">
-        <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg></span>
-        <div>
-          <h3>Dovozce i zpracovatel</h3>
-          <p>Přímý dovoz i vlastní výroba — kratší cesta a lepší kontrola nad kvalitou.</p>
-        </div>
-      </div>
-      <div class="check">
-        <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg></span>
-        <div>
-          <h3>Stálá kvalita a dohledatelnost</h3>
-          <p>Spolehlivá kvalita šarží a dohledatelnost od suroviny po balení.</p>
-        </div>
-      </div>
-      <div class="check">
-        <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg></span>
-        <div>
-          <h3>Rychlé a pružné dodávky</h3>
-          <p>Síť provozoven a vlastní sklad zajišťují zboží včas.</p>
-        </div>
-      </div>
-      <div class="check">
-        <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg></span>
-        <div>
-          <h3>Síť obchodních zástupců</h3>
-          <p>Zastoupení po celé ČR — jsme blízko a snadno dostupní.</p>
-        </div>
-      </div>
-      <div class="check">
-        <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg></span>
-        <div>
-          <h3>Dovoz i export</h3>
-          <p>Dovážíme ze zemí původu a vyvážíme do řady evropských i zámořských trhů.</p>
-        </div>
+      <div class="seg">
+        <span class="tag">Potravinářství</span>
+        <h3>Výrobci potravin</h3>
+        <p>Surovina a kořenicí směsi jako vstup do potravinářské výroby.</p>
       </div>
     </div>
   </div>
 </section>
 
-{# §6 — dark-green CTA band closes the page on colour, not more boxes #}
-<section class="alt">
+<!-- NÁŠ SORTIMENT — clean & legible -->
+<section id="sortiment">
   <div class="wrap">
-    <div class="cta-band">
-      <h2>Pojďme spolupracovat</h2>
-      <p>
-        Hledáte spolehlivého dodavatele koření a směsí pro velkoobchod, gastro
-        nebo výrobu? Ozvěte se nám — rádi probereme, co pro vás můžeme udělat.
-      </p>
-      <div class="hero-cta" style="margin-top:0;">
-        <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
-        <a class="btn btn-outline" href="{% url 'web:provozovny' %}">Naše provozovny</a>
+    <div class="sec-head">
+      <div class="sec-label"><span class="num">04</span> Náš sortiment</div>
+      <h2>Koření, směsi a mokrá výroba.</h2>
+      <p class="lead">Celá nabídka jednodruhového koření, sušené zeleniny, bylin, kořenicích směsí i mokré výroby — pod naší značkou.</p>
+    </div>
+    <div class="sort-chips">
+      <span class="chip">Celé i mleté koření</span>
+      <span class="chip">Sušená zelenina</span>
+      <span class="chip">Byliny</span>
+      <span class="chip">Kořenicí směsi</span>
+      <span class="chip">Mokrá výroba</span>
+    </div>
+    <div class="brands-rule">Naše značka</div>
+    <div class="brand-row">
+      <span class="brand">KASIA VERA</span>
+      <span class="brand-sep" aria-hidden="true"></span>
+      <span class="brand">VERA GURMET</span>
+    </div>
+    <div class="sort-cta">
+      <a class="btn btn-primary" href="{% url 'web:produkty' %}">Prohlédnout sortiment</a>
+    </div>
+  </div>
+</section>
+
+<!-- PŘÍBĚH — contained centered column -->
+<section class="band-tint" id="o-nas-pribeh">
+  <div class="wrap narrow">
+    <div class="sec-head" style="margin-bottom:40px">
+      <div class="sec-label"><span class="num">05</span> Příběh od roku 1993</div>
+      <h2>Tři desítky let kořením českou kuchyni.</h2>
+    </div>
+    <figure class="story-photo">
+      <img src="{% static 'web/branch-tyniste.jpg' %}" alt="Provoz Kasia vera v Týništi nad Orlicí" width="760" height="320" loading="lazy">
+    </figure>
+    <p class="story-prose">Začali jsme v lednu 1993 jako rodinná firma. Od dovozu suroviny jsme postupně přidávali vlastní zpracování, míchárnu a mokrou výrobu — dnes pokrýváme cestu od zrna až po hotové balení.</p>
+    <ol class="timeline">
+      <li><span class="yr">1993</span><span class="ev">Založení rodinné firmy, start dovozu koření.</span></li>
+      <li><span class="yr">1995</span><span class="ev">Týniště nad Orlicí — výroba česnekové pasty.</span></li>
+      <li><span class="yr">1998</span><span class="ev">Míchárna ve Strančicích.</span></li>
+      <li><span class="yr">2011</span><span class="ev">Provoz v Sezimově Ústí.</span></li>
+      <li><span class="yr">—</span><span class="ev">Gastro směsi z Toužimi.</span></li>
+    </ol>
+    <div class="story-cta"><a href="{% url 'web:o_nas' %}">Více o nás →</a></div>
+  </div>
+</section>
+
+<!-- CLOSING — contact + provozovny -->
+<section class="closing" id="kontakt">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label"><span class="num">06</span> Spojte se s námi</div>
+      <h2>Spojte se s námi.</h2>
+    </div>
+    <div class="contact-card">
+      <a class="tel" href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a>
+      <p class="contact-meta"><a href="mailto:{{ company.email }}">{{ company.email }}</a> · {{ company.hours }}</p>
+      <div class="closing-actions">
+        <a class="btn btn-ghost" href="{% url 'web:provozovny' %}">Naše provozovny</a>
+        <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Přejít na kontakt</a>
       </div>
+    </div>
+    <div class="prov-grid">
+      {% for p in provozovny %}
+      <div class="prov{% if p.is_hq %} is-hq{% endif %}">
+        <div class="prov-top">
+          <span class="city">{{ p.name }}</span>{% if p.is_hq %}<span class="hq-pill">Sídlo</span>{% endif %}
+        </div>
+        <address>{{ p.street }}<br>{{ p.postal_code }}<br><a href="tel:{{ p.phone|cut:' ' }}">{{ p.phone }}</a></address>
+      </div>
+      {% endfor %}
     </div>
   </div>
 </section>

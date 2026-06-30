@@ -2,47 +2,135 @@
 {% load static %}
 
 {% block title %}Provozovny — {{ company.legal_name }}{% endblock %}
-{% block meta_description %}Provozovny {{ company.legal_name }}: sídlo v Říčanech u Prahy a provozovny v Sezimově Ústí, Toužimi a Týništi nad Orlicí.{% endblock %}
+{% block meta_description %}Čtyři provozovny {{ company.legal_name }} — Říčany u Prahy, Sezimovo Ústí, Toužim a Týniště nad Orlicí — a síť obchodních zástupců po celé České republice. Adresy, telefony, mapy a otevírací doba.{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ---------- Location cards (Provozovny page) — photo + detail + map per card ---------- */
+  .loc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 26px; }
+  .loc-card {
+    background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden; display: flex; flex-direction: column;
+    transition: border-color .18s ease, box-shadow .2s ease, transform .18s ease;
+  }
+  .loc-card:hover { border-color: #c7cabf; box-shadow: 0 14px 34px -22px rgba(20,22,15,.4); transform: translateY(-2px); }
+  .loc-card.is-hq { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+  .loc-photo { position: relative; }
+  .loc-photo img {
+    width: 100%; height: 220px; object-fit: cover; filter: grayscale(.12) contrast(1.03);
+  }
+  .loc-body { padding: 28px 28px 0; }
+  .loc-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .loc-city { font-family: "Space Grotesk", sans-serif; font-weight: 600; font-size: 24px; letter-spacing: -.025em; color: var(--ink); }
+  .loc-pill {
+    font-family: "Space Grotesk", sans-serif; font-size: 11px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: #fff;
+    background: var(--green); border-radius: var(--pill); padding: 4px 12px;
+  }
+  .loc-role { font-family: "Space Grotesk", sans-serif; font-size: 12.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--green); margin: 0 0 18px; }
+  .loc-meta { list-style: none; margin: 0 0 22px; padding: 0; }
+  .loc-meta li { display: flex; gap: 12px; align-items: flex-start; padding: 7px 0; font-size: 15.5px; color: var(--ink-2); border-bottom: 1px solid var(--line-3); }
+  .loc-meta li:last-child { border-bottom: 0; }
+  .loc-meta .mi { flex: none; width: 22px; height: 22px; color: var(--green); margin-top: 1px; }
+  .loc-meta .mi svg { width: 22px; height: 22px; }
+  .loc-meta address { font-style: normal; }
+  .loc-meta a { font-variant-numeric: tabular-nums; }
+  .loc-map { padding: 0 28px 28px; }
+  .loc-map-frame {
+    position: relative; border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden; height: 220px; background: var(--tint);
+  }
+  .loc-map-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .loc-map-link { margin-top: 14px; display: inline-flex; align-items: center; gap: 8px; font-family: "Space Grotesk", sans-serif; font-weight: 600; font-size: 14.5px; letter-spacing: -.01em; }
+  .loc-map-link svg { width: 16px; height: 16px; }
+
+  @media (max-width: 960px) { .loc-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 680px) { .loc-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
 
 {% block content %}
-<section>
-  <div class="wrap">
-    <p class="eyebrow">Kde nás najdete</p>
-    <h1>Provozovny</h1>
-    <p class="lead" style="max-width:62ch;">
-      Sídlo firmy je v Říčanech u Prahy; další provozovny najdete v Sezimově
-      Ústí, Toužimi a Týništi nad Orlicí.
-    </p>
+<!-- HERO — centered -->
+<section class="hero">
+  <div class="hero-halo" aria-hidden="true"></div>
+  <div class="wrap hero-inner">
+    <span class="kicker">Provozovny</span>
+    <h1>Kde nás <span class="ac">najdete</span></h1>
+    <p class="lead">Čtyři provozovny a síť obchodních zástupců po celé České republice — sídlo v Říčanech u Prahy a provozy v Sezimově Ústí, Toužimi a Týništi nad Orlicí.</p>
+    <div class="hero-cta">
+      <a class="btn btn-ghost" href="{% url 'web:o_nas' %}">O nás</a>
+      <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
+    </div>
+  </div>
+</section>
 
-    <div class="branches" style="margin-top:2rem;">
+<!-- LOCATIONS — four cards, each with photo + detail + map -->
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="loc-grid">
       {% for p in provozovny %}
-        <div class="card branch">
-          {% if p.photo %}
-            <img class="photo" src="{% static p.photo %}" alt="{{ p.name }} — {{ p.role }}" loading="lazy">
-          {% endif %}
-          <div class="body">
-            <span class="badge{% if p.is_hq %} hq{% endif %}">{{ p.role }}</span>
-            <h3>{{ p.name }}</h3>
-            <p class="addr">
-              {{ p.street }}<br>
-              {{ p.postal_code }} {{ p.city }}
-            </p>
-            <dl class="meta">
-              <dt>Telefon</dt><dd><a href="tel:{{ p.phone|cut:' ' }}">{{ p.phone }}</a></dd>
-              <dt>Otevřeno</dt><dd>{{ p.hours }}</dd>
-            </dl>
-            <div class="map-embed short" style="margin-top:0.85rem;">
-              <iframe src="{{ p.map_embed }}" loading="lazy"
-                      title="Mapa — {{ p.name }}, {{ p.street }}, {{ p.city }}"
-                      referrerpolicy="no-referrer"></iframe>
-            </div>
-            <p class="map-actions">
-              <a href="https://www.google.com/maps/search/?api=1&amp;query={{ p.map_query|urlencode }}"
-                 target="_blank" rel="noopener">Otevřít v mapách →</a>
-            </p>
-          </div>
+      <div class="loc-card{% if p.is_hq %} is-hq{% endif %}">
+        <div class="loc-photo">
+          <img src="{% static p.photo %}" alt="Provozovna Kasia vera — {{ p.name }}" width="528" height="220" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"{% if forloop.first %} fetchpriority="high"{% endif %}>
         </div>
+        <div class="loc-body">
+          <div class="loc-top">
+            <span class="loc-city">{{ p.name }}</span>
+            {% if p.is_hq %}<span class="loc-pill">Sídlo</span>{% endif %}
+          </div>
+          <p class="loc-role">{{ p.role }}</p>
+          <ul class="loc-meta">
+            <li>
+              <span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+              <address>{{ p.street }}<br>{{ p.postal_code }} {{ p.city }}</address>
+            </li>
+            <li>
+              <span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L20 13l2 5v3a2 2 0 0 1-2 2A16 16 0 0 1 4 6a2 2 0 0 1 1-2z"/></svg></span>
+              <a href="tel:{{ p.phone|cut:' ' }}">{{ p.phone }}</a>
+            </li>
+            <li>
+              <span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+              <span>{{ p.hours }}</span>
+            </li>
+          </ul>
+        </div>
+        <div class="loc-map">
+          <div class="loc-map-frame">
+            <iframe title="Mapa — {{ p.name }}" loading="lazy" src="{{ p.map_embed }}"></iframe>
+          </div>
+          <a class="loc-map-link" href="{{ p.map_link }}" target="_blank" rel="noopener">
+            Otevřít v mapách
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+          </a>
+        </div>
+      </div>
       {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- SÍŤ OBCHODNÍCH ZÁSTUPCŮ — deep-green band -->
+<section class="proc">
+  <div class="wrap">
+    <div class="sec-head" style="margin-bottom:0">
+      <div class="sec-label"><span class="num">→</span> Po celé ČR</div>
+      <h2>Síť obchodních zástupců po celé republice.</h2>
+      <p class="lead" style="color:rgba(255,255,255,.85)">Kromě čtyř provozoven nás po celé České republice zastupuje síť obchodních zástupců — jsme dostupní rychle a pružně, ať jste kdekoli.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CLOSING CTA -->
+<section>
+  <div class="wrap narrow" style="text-align:center">
+    <div class="sec-head" style="margin-bottom:36px">
+      <div class="sec-label"><span class="num">·</span> Pojďme se potkat</div>
+      <h2>Spojte se s námi.</h2>
+      <p class="lead">Napište nebo zavolejte — rádi probereme dodávky koření a směsí pro vaši výrobu či provoz.</p>
+    </div>
+    <div class="hero-cta">
+      <a class="btn btn-ghost" href="{% url 'web:o_nas' %}">O nás</a>
+      <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
     </div>
   </div>
 </section>

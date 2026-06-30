@@ -2,64 +2,175 @@
 {% load static %}
 
 {% block title %}O nás — {{ company.legal_name }}{% endblock %}
-{% block meta_description %}Rodinná firma {{ company.legal_name }} dováží, zpracovává a vyrábí koření, sušenou zeleninu, byliny a kulinářské produkty od ledna {{ company.founded_year }}. Vlastní výroba, značka {{ company.brand }}, dovoz i export. Sídlo v Říčanech u Prahy.{% endblock %}
+{% block meta_description %}Rodinná firma od ledna {{ company.founded_year }}, přímý dovozce i zpracovatel koření — čistíme, třídíme, mleme a podle vlastních receptur mícháme směsi. K tomu mokrá výroba past, omáček a marinád.{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ---------- O nás — people grid (page-specific) ---------- */
+  .people-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .person {
+    background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden; transition: border-color .18s ease, box-shadow .2s ease, transform .18s ease;
+  }
+  .person:hover { border-color: #c7cabf; box-shadow: 0 14px 34px -22px rgba(20,22,15,.4); transform: translateY(-2px); }
+  .person .portrait { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; filter: grayscale(.12) contrast(1.03); border-bottom: 1px solid var(--line); }
+  .person .body { padding: 24px 26px 28px; }
+  .person .role {
+    font-family: "Space Grotesk", sans-serif; font-size: 12.5px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--green); display: block; margin-bottom: 8px;
+  }
+  .person .name { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+
+  /* ---------- O nás — prose block (page-specific) ---------- */
+  .prose-block { font-size: 19px; color: var(--ink-2); }
+  .prose-block p { margin: 0 0 18px; }
+  .prose-block p:last-child { margin-bottom: 0; }
+
+  /* ---------- Deep-green statement band (page-specific) ---------- */
+  .proc .statement {
+    text-align: center; max-width: 22ch; margin: 0 auto;
+    font-family: "Space Grotesk", sans-serif; font-weight: 600; letter-spacing: -.03em;
+    font-size: clamp(30px, 4.4vw, 52px); color: #fff; line-height: 1.08;
+  }
+  .proc .statement-sub {
+    text-align: center; max-width: 50ch; margin: 26px auto 0;
+    font-size: 18px; color: rgba(255,255,255,.85);
+  }
+
+  @media (max-width: 960px) {
+    .people-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 680px) {
+    .people-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
+<!-- HERO — centered, interior -->
+<section class="hero" style="padding:80px 0 56px">
+  <div class="hero-halo" aria-hidden="true"></div>
+  <div class="wrap hero-inner">
+    <span class="kicker">O nás</span>
+    <h1>Koření je naše řemeslo už <span class="ac">přes třicet let</span></h1>
+    <p class="lead">Rodinná firma vznikla v {{ company.founded_cs }}. Od začátku jsme přímý dovozce i zpracovatel koření — surovinu si sami čistíme, mleme a podle vlastních receptur mícháme do směsí.</p>
+  </div>
+</section>
+
+<!-- CONTAINED PHOTO -->
+<section class="photo-band" style="padding:0 0 88px">
+  <div class="wrap narrow">
+    <figure class="story-photo" style="margin:0">
+      <img src="{% static 'web/o-nas-banner.jpg' %}" alt="{{ company.legal_name }} — koření a kulinářské produkty" width="860" height="179" loading="lazy">
+    </figure>
+  </div>
+</section>
+
+<!-- PŘÍBĚH + TIMELINE — contained centered column -->
+<section class="band-tint">
+  <div class="wrap narrow">
+    <div class="sec-head" style="margin-bottom:40px">
+      <div class="sec-label"><span class="num">01</span> Náš příběh</div>
+      <h2>Od dovozu koření k vlastní výrobě.</h2>
+    </div>
+    <div class="prose-block" style="margin-bottom:40px">
+      <p>Začínali jsme v lednu 1993 jako rodinná firma s dovozem koření. Postupně jsme přidávali vlastní zpracování — čištění, třídění, mletí — a později i míchárnu a mokrou výrobu. Dnes pokrýváme cestu od suroviny až po hotové balení.</p>
+      <p>Provozy v Týništi nad Orlicí, ve Strančicích, v Sezimově Ústí a v Toužimi vyrostly z téhle cesty. Gastro směsi vyrábíme pod značkou {{ company.brand }}.</p>
+    </div>
+    <ol class="timeline">
+      <li><span class="yr">{{ company.founded_year }}</span><span class="ev">Založení rodinné firmy, start dovozu koření.</span></li>
+      <li><span class="yr">1995</span><span class="ev">Týniště nad Orlicí — výroba česnekové pasty.</span></li>
+      <li><span class="yr">1998</span><span class="ev">Míchárna ve Strančicích.</span></li>
+      <li><span class="yr">2011</span><span class="ev">Provoz v Sezimově Ústí.</span></li>
+      <li><span class="yr">—</span><span class="ev">Toužim — gastro směsi pod značkou {{ company.brand }}.</span></li>
+    </ol>
+  </div>
+</section>
+
+<!-- OD KOŘENÍ K CELÉMU SORTIMENTU -->
 <section>
-  <div class="wrap article">
-    <p class="eyebrow">O nás</p>
-    <h1>Koření je naše řemeslo už přes třicet let</h1>
-    <p class="lead" style="max-width:none;">
-      {{ company.legal_name }} je rodinná firma, která vznikla v
-      {{ company.founded_cs }}. Od začátku jsme přímý dovozce a zpracovatel
-      koření — celé koření nakupujeme v zemích původu a u nás z něj děláme
-      hotové produkty pro velkoobchod a gastronomii.
-    </p>
+  <div class="wrap narrow">
+    <div class="sec-head" style="margin-bottom:36px">
+      <div class="sec-label"><span class="num">02</span> Co děláme</div>
+      <h2>Od koření k celému sortimentu.</h2>
+    </div>
+    <div class="prose-block">
+      <p>K dovozu a zpracování koření jsme postupně přidali sušenou zeleninu a byliny. Silnou pozici máme v sušeném česneku, cibuli a majoránce.</p>
+      <p>Celé suroviny si sami čistíme, třídíme, mleme a podle vlastních receptur z nich mícháme vlastní kořenicí směsi — od jednodruhového koření po hotové směsi.</p>
+    </div>
+  </div>
+</section>
 
-    <img class="article-photo" src="{% static 'web/branch-ricany.jpg' %}"
-         alt="Sídlo {{ company.legal_name }} v Říčanech u Prahy">
+<!-- VLASTNÍ VÝROBA -->
+<section class="band-tint">
+  <div class="wrap narrow">
+    <div class="sec-head" style="margin-bottom:36px">
+      <div class="sec-label"><span class="num">03</span> Vlastní výroba</div>
+      <h2>Mokrá výroba pod naší střechou.</h2>
+    </div>
+    <div class="prose-block">
+      <p>Vedle suchého koření provozujeme i mokrou výrobu — pasty, sójovou omáčku, tekuté polévkové koření a marinády. Vznikají u nás, ne u dodavatele.</p>
+    </div>
+  </div>
+</section>
 
-    <h2>Od koření k celému sortimentu</h2>
-    <p>
-      Postupně jsme sortiment rozšířili o sušenou zeleninu a byliny. Dnes máme
-      silnou pozici zejména v sušeném česneku, cibuli a majoránce. Celé suroviny
-      na našich provozech čistíme, třídíme, mleme a podle vlastních receptur
-      mícháme do směsí — a balíme do řady formátů, od velkých gastro balení po
-      menší provozní balení.
-    </p>
+<!-- VEDENÍ / LIDÉ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label"><span class="num">04</span> Vedení</div>
+      <h2>Lidé, kteří za firmou stojí.</h2>
+    </div>
+    <div class="people-grid">
+      {% for e in executives %}
+      <article class="person">
+        <img class="portrait" src="{% static e.photo %}" alt="Portrét — {{ e.name }}" width="340" height="255" loading="lazy">
+        <div class="body">
+          <span class="role">{{ e.role }}</span>
+          <div class="name">{{ e.name }}</div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
 
-    <h2>Vlastní výroba</h2>
-    <p>
-      Vedle dovozu a zpracování stojíme i na vlastní výrobě. V roce 1995 jsme
-      v Týništi nad Orlicí začali vyrábět česnekovou pastu a stali se jejím
-      předním dodavatelem na trhu. Rozvinuli jsme i mokrou výrobu — sójovou
-      omáčku, tekuté polévkové koření a marinády. V roce 1998 jsme otevřeli
-      míchárnu ve Strančicích a v roce 2011 novou výrobnu v Sezimově Ústí.
-      Gastro směsi vyrábíme v Toužimi pod značkou <strong>{{ company.brand }}</strong>;
-      mezi vlajkové produkty patří VEGA a Zlaté kuře.
-    </p>
+<!-- DEEP-GREEN STATEMENT BAND -->
+<section class="proc">
+  <div class="wrap">
+    <p class="statement">Dovozce i zpracovatel pod jednou střechou.</p>
+    <p class="statement-sub">Krátká cesta od suroviny po balení — lepší kontrola nad kvalitou.</p>
+  </div>
+</section>
 
-    <h2>Dovoz a export</h2>
-    <p>
-      Koření dovážíme přímo ze zemí původu — mezi klíčové komodity patří kmín,
-      černý pepř a koriandr. Kromě dovozu pro český trh také vyvážíme a
-      reexportujeme do řady zemí:
-      {% for market in company.export_markets %}{{ market }}{% if not forloop.last %}, {% endif %}{% endfor %}.
-    </p>
+<!-- PŘÍMÝ DOVOZ A DOSAH -->
+<section>
+  <div class="wrap narrow">
+    <div class="sec-head" style="margin-bottom:36px">
+      <div class="sec-label"><span class="num">05</span> Dovoz a dosah</div>
+      <h2>Přímý dovoz, dosah po celé ČR.</h2>
+    </div>
+    <div class="prose-block">
+      <p>Vybrané koření dovážíme přímo ze zemí původu — kmín, černý pepř, koriandr. Po celé České republice nás zastupuje síť obchodních zástupců.</p>
+    </div>
+  </div>
+</section>
 
-    <h2>Dostupnost a dosah</h2>
-    <p>
-      Sídlo i hlavní zázemí firmy najdete v Říčanech u Prahy, zhruba 15 km od
-      Prahy přímo u dálnice na Brno. Po celé České republice nás zastupuje síť
-      obchodních zástupců, takže jsme dostupní rychle a pružně. Mezi naše
-      zákazníky patří jak nejmenší výrobci uzenin, tak nadnárodní výrobci
-      potravin.
-    </p>
-
-    <p style="margin-top:2rem;">
-      <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
-      <a class="btn btn-outline" href="{% url 'web:provozovny' %}">Naše provozovny</a>
-    </p>
+<!-- CLOSING CTA -->
+<section class="closing">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label"><span class="num">06</span> Spojte se s námi</div>
+      <h2>Rádi vás provedeme naší nabídkou.</h2>
+    </div>
+    <div class="contact-card">
+      <a class="tel" href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a>
+      <p class="contact-meta"><a href="mailto:{{ company.email }}">{{ company.email }}</a> · Po–Pá 7:00–15:00</p>
+      <div class="closing-actions">
+        <a class="btn btn-ghost" href="{% url 'web:provozovny' %}">Naše provozovny</a>
+        <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
+      </div>
+    </div>
   </div>
 </section>
 {% endblock %}

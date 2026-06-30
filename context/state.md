@@ -5,6 +5,19 @@
 
 ## Done
 
+- **2026-06-30** — Public-site redesign **adopted into production**
+  ([`decisions/0058-public-redesign-and-produkty-page.md`](./decisions/0058-public-redesign-and-produkty-page.md);
+  supersedes 0054 public-only, amends 0051 IA to 5 pages). Ported the
+  "mono × centered, green-sections" look (green `#006634` nav bar, Space
+  Grotesk + Inter, deep forest-green `#0a3b20` bands) into
+  `kasia/templates/web/base.html` + `home`/`o_nas`/`provozovny`/`kontakt`
+  + new `produkty.html` (Sortiment). New `web:produkty` route/view/NAV; sitemap
+  +1; maps switched to **Google Maps** (`web/content.py` `map_embed`/`map_link`);
+  "na míru" removed; VEGA/Zlaté kuře dropped (KASIA VERA | VERA GURMET only).
+  `web/tests.py` updated (363 pass); `design-system.md` public block + this
+  file + `public-site.md` updated. PR #17. Exploration mockups in
+  `design-options/public/` (research in `context/public-site-research.md`).
+  Deferred: Google-Maps consent shim before public launch; `/navrhy/` retirement.
 - **2026-06-02** — Repository created (initial commit).
 - **2026-06-02** — Scaffold pass complete. Directory structure created:
   `context/`, `context/decisions/`, `context/screens/`, `.claude/rules/`,

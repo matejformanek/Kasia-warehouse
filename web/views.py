@@ -25,12 +25,28 @@ def _public_context(active: str, **extra) -> dict:
 
 @login_not_required
 def home(request):
-    return render(request, "web/home.html", _public_context("web:home"))
+    return render(
+        request,
+        "web/home.html",
+        _public_context("web:home", provozovny=PROVOZOVNY),
+    )
 
 
 @login_not_required
 def o_nas(request):
-    return render(request, "web/o_nas.html", _public_context("web:o_nas"))
+    return render(
+        request,
+        "web/o_nas.html",
+        _public_context("web:o_nas", executives=EXECUTIVES),
+    )
+
+
+@login_not_required
+def produkty(request):
+    """Sortiment showcase (decision 0058): categories + brand, no e-shop, no
+    prices, no SKUs. Category markup is presentational and lives in the
+    template (like the homepage capability cards)."""
+    return render(request, "web/produkty.html", _public_context("web:produkty"))
 
 
 @login_not_required
@@ -54,7 +70,7 @@ def kontakt(request):
 
 
 # --- robots.txt + sitemap.xml (hand-rolled; no django.contrib.sitemaps) -----
-# Right-sized for four pages per decision 0051.
+# Right-sized for the handful of public pages (0051; 5 pages after 0058).
 @login_not_required
 def robots_txt(request):
     return TemplateResponse(
@@ -64,7 +80,13 @@ def robots_txt(request):
 
 @login_not_required
 def sitemap_xml(request):
-    pages = ["web:home", "web:o_nas", "web:provozovny", "web:kontakt"]
+    pages = [
+        "web:home",
+        "web:o_nas",
+        "web:produkty",
+        "web:provozovny",
+        "web:kontakt",
+    ]
     urls = [request.build_absolute_uri(reverse(name)) for name in pages]
     return TemplateResponse(
         request,

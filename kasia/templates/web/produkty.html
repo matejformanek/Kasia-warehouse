@@ -1,0 +1,158 @@
+{% extends "web/base.html" %}
+{% load static %}
+
+{% block title %}Sortiment — {{ company.legal_name }}{% endblock %}
+{% block meta_description %}Přehled sortimentu {{ company.legal_name }}: celé i mleté koření, sušená zelenina, byliny, vlastní kořenicí směsi a mokrá výroba. Velkoobchodní dodavatel, specifikace na vyžádání.{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ---------- Sortiment page extras — within the locked system (decision 0058) ---------- */
+  /* category clusters reuse .cap-card but lay out as wider rows with example chips */
+  .cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
+  .cat-grid .cap-card { display: flex; flex-direction: column; }
+  .cat-card .cat-eg { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; }
+  .cat-card .cat-eg .eg {
+    font-family: "Space Grotesk", sans-serif; font-size: 13px; font-weight: 500; letter-spacing: -.01em;
+    color: var(--ink-2); background: var(--tint-2); border: 1px solid var(--line);
+    border-radius: var(--pill); padding: 5px 13px;
+  }
+  .cat-card .cat-proc {
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-2);
+    font-size: 14.5px; color: var(--ink-3);
+  }
+  /* honest B2B note above the closing CTA */
+  .b2b-note {
+    text-align: center; max-width: 56ch; margin: 0 auto 30px;
+    font-size: 15.5px; color: var(--ink-2);
+  }
+  @media (max-width: 960px) {
+    .cat-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- HERO — centered, interior -->
+<section class="hero">
+  <div class="hero-halo" aria-hidden="true"></div>
+  <div class="wrap hero-inner">
+    <span class="kicker">Sortiment</span>
+    <h1>Koření, směsi a <span class="ac">mokrá výroba</span></h1>
+    <p class="lead">Přes {{ company.spice_count }} druhů koření a {{ company.product_count }} kulinářských produktů — od jednodruhového koření přes vlastní kořenicí směsi až po pasty a omáčky z vlastní výroby. Níže najdete přehled hlavních kategorií, ne kompletní katalog; konkrétní specifikace rádi zašleme na vyžádání.</p>
+    <div class="hero-cta">
+      <a class="btn btn-ghost" href="{% url 'web:o_nas' %}">O naší výrobě</a>
+      <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Poptat sortiment</a>
+    </div>
+  </div>
+</section>
+
+<!-- KATEGORIE — the centerpiece: 5 category clusters -->
+<section id="kategorie">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label"><span class="num">01</span> Kategorie sortimentu</div>
+      <h2>Pět skupin produktů pod jednou střechou.</h2>
+      <p class="lead">Každou skupinu dovážíme, čistíme nebo vyrábíme sami — od suroviny po hotové balení.</p>
+    </div>
+    <div class="cat-grid">
+
+      <div class="cap-card cat-card">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 5v2M12 17v2M5 12h2M17 12h2"/></svg>
+        </span>
+        <h3>Celé i mleté koření</h3>
+        <p>Jednodruhové koření v celé i mleté formě. Dovážíme přímo ze zemí původu a meleme na požadovanou hrubost.</p>
+        <div class="cat-eg" aria-label="Příklady komodit">
+          <span class="eg">Kmín</span>
+          <span class="eg">Černý pepř</span>
+          <span class="eg">Koriandr</span>
+        </div>
+        <p class="cat-proc">Přímý dovoz · mletí na požadovanou hrubost</p>
+      </div>
+
+      <div class="cap-card cat-card">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 2.5 4.5 5.5 4.5 8.5a4.5 4.5 0 0 1-9 0C7.5 8.5 9 5.5 12 3z"/><path d="M12 12v8"/><path d="M9 16l3 1 3-1"/></svg>
+        </span>
+        <h3>Sušená zelenina</h3>
+        <p>Silná pozice v sušeném česneku a cibuli. Surovinu čistíme a třídíme do stabilní, opakovatelné kvality.</p>
+        <div class="cat-eg" aria-label="Příklady komodit">
+          <span class="eg">Sušený česnek</span>
+          <span class="eg">Sušená cibule</span>
+        </div>
+        <p class="cat-proc">Vlastní čištění a třídění</p>
+      </div>
+
+      <div class="cap-card cat-card">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c0-5 0-9 0-14"/><path d="M12 11c-2.5-1-4-3-4-6 3 0 5 1.5 5 4"/><path d="M12 13c2.5-1.2 4.5-3 4.5-6.5-3 0-5.5 2-5.5 4.5"/></svg>
+        </span>
+        <h3>Byliny</h3>
+        <p>Sušené byliny, např. majoránka. Sušíme a třídíme ve vlastním provozu.</p>
+        <div class="cat-eg" aria-label="Příklady komodit">
+          <span class="eg">Majoránka</span>
+        </div>
+        <p class="cat-proc">Sušení a třídění</p>
+      </div>
+
+      <div class="cap-card cat-card">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12l-1.5 7a4.5 4.5 0 0 1-9 0z"/><path d="M9 20h6M12 15v5"/></svg>
+        </span>
+        <h3>Kořenicí směsi</h3>
+        <p>Vlastní kořenicí směsi pod značkou {{ company.brand }} — namíchané podle vlastních receptur ve vlastní míchárně.</p>
+        <div class="cat-eg" aria-label="Příklady">
+          <span class="eg">Gastro směsi</span>
+        </div>
+        <p class="cat-proc">Vlastní míchárna · podle vlastních receptur</p>
+      </div>
+
+      <div class="cap-card cat-card">
+        <span class="ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8M9 3v4l-4 9a3 3 0 0 0 3 4h8a3 3 0 0 0 3-4l-4-9V3"/><path d="M6.5 15h11"/></svg>
+        </span>
+        <h3>Mokrá výroba</h3>
+        <p>Pasty, sójová omáčka, tekuté polévkové koření a marinády z vlastní výroby.</p>
+        <div class="cat-eg" aria-label="Příklady komodit">
+          <span class="eg">Pasty</span>
+          <span class="eg">Sójová omáčka</span>
+          <span class="eg">Tekuté polévkové koření</span>
+          <span class="eg">Marinády</span>
+        </div>
+        <p class="cat-proc">Vlastní výroba</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- NAŠE ZNAČKA — KASIA VERA | VERA GURMET divider -->
+<section class="band-tint" id="znacka">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label"><span class="num">02</span> Naše značka</div>
+      <h2>Sortiment dodáváme pod vlastní značkou.</h2>
+    </div>
+    <div class="brand-row">
+      <span class="brand">KASIA VERA</span>
+      <span class="brand-sep" aria-hidden="true"></span>
+      <span class="brand">VERA GURMET</span>
+    </div>
+  </div>
+</section>
+
+<!-- CLOSING CTA — Poptávka -->
+<section id="poptavka">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-label"><span class="num">03</span> Poptávka</div>
+      <h2>Máte zájem o náš sortiment?</h2>
+    </div>
+    <p class="b2b-note">Dodáváme výhradně velkoobchodně — sortiment a specifikace rádi zašleme na vyžádání.</p>
+    <div class="hero-cta">
+      <a class="btn btn-ghost" href="{% url 'web:provozovny' %}">Naše provozovny</a>
+      <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Poptat sortiment</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

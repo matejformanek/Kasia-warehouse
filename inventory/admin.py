@@ -12,6 +12,7 @@ from .models import (
     Movement,
     MovementAudit,
     MovementLine,
+    PlannedOrder,
     PlannedTransfer,
     Product,
     RecipeComponent,
@@ -547,6 +548,36 @@ class PlannedTransferAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request) -> bool:
         return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        return False
+
+
+@admin.register(PlannedOrder)
+class PlannedOrderAdmin(admin.ModelAdmin):
+    """Read-mostly admin per 0057 — created + received via the operator
+    surface at /objednavky/. Admin views; cannot edit fields or delete."""
+
+    list_display = (
+        "pk",
+        "expected_on",
+        "product",
+        "branch",
+        "supplier",
+        "quantity_kg",
+        "received_qty",
+        "state",
+        "created_by",
+    )
+    list_filter = ("state", "branch")
+    search_fields = ("product__name_cs", "notes")
+    readonly_fields = (
+        "state",
+        "received_qty",
+        "received_movement",
+        "created_by",
+        "created_at",
+    )
 
     def has_delete_permission(self, request, obj=None) -> bool:
         return False

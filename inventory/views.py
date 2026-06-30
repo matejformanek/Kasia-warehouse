@@ -35,6 +35,7 @@ from .forms import (
     MovementEditLineFormSet,
     MovementLineForm,
     MovementLineFormSet,
+    PlannedOrderForm,
     PlannedTransferForm,
     PrijemEditForm,
     PrijemForm,
@@ -64,6 +65,7 @@ from .models import (
     Movement,
     MovementAudit,
     MovementLine,
+    PlannedOrder,
     PlannedTransfer,
     Product,
     RecipeComponent,
@@ -77,14 +79,17 @@ from .services import (
     apply_movement,
     apply_stock_adjustment,
     cancel_mixing_job,
+    cancel_planned_order,
     cancel_planned_transfer,
     create_mixture_from_review,
+    create_planned_order,
     edit_movement,
     execute_planned_transfer,
     finish_mixing_job,
     low_stock_rows,
     parse_recipe_xls,
     plan_mixing_job,
+    receive_planned_order,
     record_completed_mixing_job,
     render_dodaci_list_pdf,
     render_recipe_pdf,
@@ -190,6 +195,12 @@ def home(request):
     # "Dochází zboží" panel per 0043 + 0044 — reads the same
     # low_stock_rows() that feeds the daily summary e-mail.
     low_stock = low_stock_rows()
+    # Per 0057: sink rows that already have an open objednávka to the
+    # bottom. Presentation only — membership + the service deficit-DESC
+    # sort are untouched, so this panel and the digest agree on contents.
+    low_stock_display = [r for r in low_stock if r.ordered_kg is None] + [
+        r for r in low_stock if r.ordered_kg is not None
+    ]
 
     # KPI overview strip (decision 0054). All four are derivable from the
     # aggregates already computed above for the per-branch panels.
@@ -204,7 +215,8 @@ def home(request):
             "recent_dodaky": recent_dodaky,
             "failed_dodaky": failed_dodaky,
             "edited_dodaky": edited_dodaky,
-            "low_stock_rows": low_stock,
+            "low_stock_rows": low_stock_display,
+            "can_order": request.user.is_vlastnik,
             "to_resolve_count": len(failed_dodaky) + len(edited_dodaky),
             "kpi_products": kpi_products,
             "kpi_total_mass": kpi_total_mass,
@@ -2089,10 +2101,10 @@ def product_reactivate(request, pk: int):
     return redirect("inventory:product_detail", pk=product.pk)
 
 
-@require_POST
 def _safe_next(request, default_url: str) -> str:
-    """Return request.POST['next'] if it's a safe internal URL, else default."""
-    candidate = (request.POST.get("next") or "").strip()
+    """Return a safe internal `next` (POST first, then GET query) if present
+    and same-site, else default."""
+    candidate = (request.POST.get("next") or request.GET.get("next") or "").strip()
     if candidate and url_has_allowed_host_and_scheme(
         candidate,
         allowed_hosts={request.get_host()},
@@ -2102,6 +2114,7 @@ def _safe_next(request, default_url: str) -> str:
     return default_url
 
 
+@require_POST
 def product_branch_add(request, product_id: int, branch_id: int):
     """Mark a branch as carrying this product by creating a 0-kg Stock
     row. Vlastník-only per 0053. Idempotent — second call is a no-op.
@@ -2406,97 +2419,241 @@ def stock_adjust_edit(request, pk: int):
 
 
 # ---------------------------------------------------------------------------
-# Pass 5e — Bulk stock editor (inventura), per decision 0041
+# Pass 5e — Bulk stock editor (inventura), per decision 0041 + 0057
 #
-# /katalog/inventura/<code>/ — vlastník picks a branch, walks through every
-# product, edits the quantities inline, hits "Uložit všechny změny". Each
-# non-zero delta becomes one synthetic Movement (apply_stock_adjustment),
-# sharing the same batch reason. Zero-delta rows are skipped.
+# /katalog/inventura/<code>/ — vlastník picks a branch (or the special
+# "dochazi" cross-branch low-stock filter per 0057), walks the rows inline,
+# hits "Uložit". Each row carries an optional **Příjezd** date next to its
+# new value:
+#   - date EMPTY  → the value is the absolute new stock level; a non-zero
+#     delta becomes one synthetic `[STAV]` Movement (apply_stock_adjustment),
+#     sharing the one batch reason. Zero-delta rows are skipped.
+#   - date SET    → the value is the ordered amount (kg); a PLANNED objednávka
+#     (per 0057) is created with that expected arrival date. No stock change
+#     now — it lands on confirmation from the Objednávky page.
+# The reason is required only when at least one immediate adjustment is made.
 # ---------------------------------------------------------------------------
+
+_INVENTURA_LOW_CODE = "dochazi"
+_INVENTURA_ALL_CODE = "vse"
 
 
 def inventura_edit(request, code: str):
-    _require_vlastnik(request)
-    branch = get_object_or_404(Branch, code=code.upper(), is_active=True)
+    from datetime import date
 
-    products = list(
-        Product.objects.filter(is_active=True).order_by("name_cs")
-    )
-    stocks_by_product = {
-        s.product_id: s.quantity
-        for s in Stock.objects.filter(branch=branch).select_related("product")
-    }
+    _require_vlastnik(request)
+
+    is_low = code.lower() == _INVENTURA_LOW_CODE
+    is_all = code.lower() == _INVENTURA_ALL_CODE
+    cross_branch = is_low or is_all
+    all_branches = list(Branch.objects.filter(is_active=True).order_by("code"))
+
+    branch = None
+    if not cross_branch:
+        branch = get_object_or_404(Branch, code=code.upper(), is_active=True)
+
+    def _orders_by_pair() -> dict:
+        """All open (PLANNED) orders grouped by (product_id, branch_id) —
+        one query, used by the cross-branch views to show inline orders."""
+        grouped: dict = {}
+        for o in (
+            PlannedOrder.objects.filter(state=PlannedOrder.State.PLANNED)
+            .select_related("product", "branch", "supplier")
+            .order_by("expected_on", "id")
+        ):
+            grouped.setdefault((o.product_id, o.branch_id), []).append(o)
+        return grouped
+
+    def _build_rows() -> list[dict]:
+        """One dict per editable line, each carrying its own POST field
+        names so the processing loop is mode-agnostic."""
+        if is_low:
+            grouped = _orders_by_pair()
+            return [
+                {
+                    "product": r.product,
+                    "branch": r.branch,
+                    "current": r.on_hand,
+                    "qty_field": f"qty_{r.product.pk}_{r.branch.pk}",
+                    "eta_field": f"eta_{r.product.pk}_{r.branch.pk}",
+                    "qty_value": "",  # empty default — blank = no action
+                    "eta_value": "",
+                    "orders": grouped.get((r.product.pk, r.branch.pk), []),
+                }
+                for r in low_stock_rows()
+            ]
+        if is_all:
+            # Everything across all branches: every active product × every
+            # active branch, prefilled with the current stock level.
+            grouped = _orders_by_pair()
+            products = list(Product.objects.filter(is_active=True).order_by("name_cs"))
+            stock_map = {
+                (s.product_id, s.branch_id): s.quantity
+                for s in Stock.objects.all()
+            }
+            out = []
+            for b in all_branches:
+                for p in products:
+                    cur = stock_map.get((p.pk, b.pk), Decimal("0.000"))
+                    out.append(
+                        {
+                            "product": p,
+                            "branch": b,
+                            "current": cur,
+                            "qty_field": f"qty_{p.pk}_{b.pk}",
+                            "eta_field": f"eta_{p.pk}_{b.pk}",
+                            "qty_value": f"{cur:.3f}",
+                            "eta_value": "",
+                            "orders": grouped.get((p.pk, b.pk), []),
+                        }
+                    )
+            return out
+        # Per-branch: every active product, prefilled with current stock.
+        products = list(Product.objects.filter(is_active=True).order_by("name_cs"))
+        stocks_by_product = {
+            s.product_id: s.quantity
+            for s in Stock.objects.filter(branch=branch).select_related("product")
+        }
+        return [
+            {
+                "product": p,
+                "branch": branch,
+                "current": stocks_by_product.get(p.pk, Decimal("0.000")),
+                "qty_field": f"qty_{p.pk}",
+                "eta_field": f"eta_{p.pk}",
+                "qty_value": f"{stocks_by_product.get(p.pk, Decimal('0.000')):.3f}",
+                "eta_value": "",
+                "orders": [],
+            }
+            for p in products
+        ]
+
+    rows = _build_rows()
 
     if request.method == "POST":
         reason = (request.POST.get("reason") or "").strip()
-        if not reason:
-            messages.error(
-                request, "Důvod úpravy (popis inventury) je povinný."
-            )
-        else:
-            written = 0
-            errors: list[str] = []
-            for p in products:
-                raw = request.POST.get(f"qty_{p.pk}", "").strip()
-                if not raw:
+        adjustments: list[tuple] = []  # (product, branch, new_qty)
+        orders: list[tuple] = []  # (product, branch, qty, eta)
+        errors: list[str] = []
+
+        for row in rows:
+            p = row["product"]
+            b = row["branch"]
+            label = f"{p.name_cs} ({b.code})"
+            qty_raw = (request.POST.get(row["qty_field"]) or "").strip().replace(",", ".")
+            eta_raw = (request.POST.get(row["eta_field"]) or "").strip()
+
+            if eta_raw:
+                # Date set → planned objednávka; value is the ordered amount.
+                if not qty_raw:
+                    errors.append(f"{label}: u objednávky vyplňte množství.")
                     continue
                 try:
-                    new_qty = Decimal(raw)
+                    qty = Decimal(qty_raw)
                 except (InvalidOperation, ValueError):
-                    errors.append(
-                        f"{p.name_cs}: neplatné číslo: {raw}"
-                    )
+                    errors.append(f"{label}: neplatné množství: {qty_raw}")
                     continue
-                current = stocks_by_product.get(p.pk, Decimal("0.000"))
-                if new_qty == current:
+                try:
+                    eta = date.fromisoformat(eta_raw)
+                except ValueError:
+                    errors.append(f"{label}: neplatné datum: {eta_raw}")
                     continue
+                if qty <= 0:
+                    errors.append(f"{label}: objednané množství musí být kladné.")
+                    continue
+                orders.append((p, b, qty, eta))
+            else:
+                # No date → absolute new stock level (immediate correction).
+                if not qty_raw:
+                    continue
+                try:
+                    new_qty = Decimal(qty_raw)
+                except (InvalidOperation, ValueError):
+                    errors.append(f"{label}: neplatné číslo: {qty_raw}")
+                    continue
+                if new_qty < 0:
+                    errors.append(f"{label}: stav nemůže být záporný.")
+                    continue
+                if new_qty == row["current"]:
+                    continue
+                adjustments.append((p, b, new_qty))
+
+        if adjustments and not reason:
+            errors.append("Důvod úpravy stavu je povinný, když měníte stav skladu.")
+
+        adjusted = ordered = 0
+        if not errors:
+            for p, b, new_qty in adjustments:
                 try:
                     mv = apply_stock_adjustment(
                         product=p,
-                        branch=branch,
+                        branch=b,
                         new_quantity=new_qty,
                         reason=reason,
                         user=request.user,
                     )
                 except ValidationError as exc:
                     errors.append(
-                        f"{p.name_cs}: "
+                        f"{p.name_cs} ({b.code}): "
                         + ("; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
                     )
                     continue
                 if mv is not None:
-                    written += 1
-            if errors:
-                for err in errors:
-                    messages.error(request, err)
-            if written:
+                    adjusted += 1
+            for p, b, qty, eta in orders:
+                try:
+                    create_planned_order(
+                        product=p,
+                        branch=b,
+                        quantity_kg=qty,
+                        expected_on=eta,
+                        user=request.user,
+                    )
+                except ValidationError as exc:
+                    errors.append(
+                        f"{p.name_cs} ({b.code}): "
+                        + ("; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
+                    )
+                    continue
+                ordered += 1
+
+        for err in errors:
+            messages.error(request, err)
+        if not errors:
+            if adjusted or ordered:
                 messages.success(
                     request,
-                    f"Inventura: zaevidováno {written} pohyb"
-                    f"{'' if written == 1 else 'y' if 2 <= written <= 4 else 'ů'} "
-                    f"na pobočce {branch.code}.",
+                    f"Hotovo — upraveno stavů: {adjusted}, nových objednávek: {ordered}.",
                 )
-            elif not errors:
+            else:
                 messages.info(request, "Žádné změny — nic se nezapsalo.")
-            if not errors:
-                return redirect(
-                    f"/katalog/?branch={branch.code}"
-                )
+            if is_low:
+                return redirect("inventory:home")
+            if is_all:
+                return redirect("inventory:catalogue_index")
+            return redirect(f"/katalog/?branch={branch.code}")
+        # On error: re-render WITHOUT losing anything the user typed.
+        # Repopulate every row's inputs from the POST data (the fresh rows
+        # built above carry DB defaults only).
+        for row in rows:
+            row["qty_value"] = request.POST.get(row["qty_field"], row["qty_value"])
+            row["eta_value"] = request.POST.get(row["eta_field"], "")
+        reason_value = reason
+    else:
+        reason_value = ""
 
-    rows = [
-        {
-            "product": p,
-            "current": stocks_by_product.get(p.pk, Decimal("0.000")),
-        }
-        for p in products
-    ]
     return render(
         request,
         "inventory/inventura_edit.html",
         {
             "branch": branch,
+            "is_low": is_low,
+            "is_all": is_all,
+            "cross_branch": cross_branch,
             "rows": rows,
-            "all_branches": Branch.objects.filter(is_active=True).order_by("code"),
+            "all_branches": all_branches,
+            "today": date.today(),
+            "reason_value": reason_value,
         },
     )
 
@@ -2619,6 +2776,154 @@ def planned_transfer_cancel(request, pk: int):
         return redirect("inventory:planned_transfer_detail", pk=transfer.pk)
     messages.success(request, "Plánovaný převod zrušen.")
     return redirect("inventory:planned_transfer_detail", pk=transfer.pk)
+
+
+# ---------------------------------------------------------------------------
+# Objednávky — planned inbound orders (per decision 0057).
+#
+# All authenticated users (treated like planned transfers per 0040 + 0044).
+# Creation is offered from the owner low-stock box and from this page.
+# ---------------------------------------------------------------------------
+
+
+@require_GET
+def objednavka_list(request):
+    """List of objednávky: open (PLANNED) first, then recent RECEIVED."""
+    base = PlannedOrder.objects.select_related(
+        "product", "branch", "supplier", "created_by"
+    )
+    planned = list(
+        base.filter(state=PlannedOrder.State.PLANNED).order_by(
+            "expected_on", "id"
+        )
+    )
+    recent = list(
+        base.exclude(state=PlannedOrder.State.PLANNED).order_by("-id")[:50]
+    )
+    return render(
+        request,
+        "inventory/objednavka_list.html",
+        {
+            "planned": planned,
+            "recent": recent,
+            "planned_count": len(planned),
+        },
+    )
+
+
+def objednavka_create(request):
+    """Create a PLANNED objednávka. Prefills product + branch from GET
+    (`?product=<pk>&branch=<code>`) when linked from the low-stock panel."""
+    if request.method == "POST":
+        form = PlannedOrderForm(request.POST)
+        if form.is_valid():
+            order = create_planned_order(
+                product=form.cleaned_data["product"],
+                branch=form.cleaned_data["branch"],
+                quantity_kg=form.cleaned_data["quantity_kg"],
+                expected_on=form.cleaned_data["expected_on"],
+                supplier=form.cleaned_data.get("supplier"),
+                notes=form.cleaned_data.get("notes", ""),
+                user=request.user,
+            )
+            messages.success(
+                request,
+                f"Objednávka {order.product.name_cs} "
+                f"{order.quantity_kg} kg → {order.branch.code} zapsána.",
+            )
+            return redirect("inventory:objednavka_list")
+    else:
+        initial: dict = {}
+        product_pk = request.GET.get("product")
+        if product_pk:
+            initial["product"] = product_pk
+        branch_code = request.GET.get("branch")
+        if branch_code:
+            branch = Branch.objects.filter(code=branch_code).first()
+            if branch is not None:
+                initial["branch"] = branch.pk
+        form = PlannedOrderForm(initial=initial)
+    return render(
+        request,
+        "inventory/objednavka_form.html",
+        {"form": form, "mode": "create"},
+    )
+
+
+def objednavka_edit(request, pk: int):
+    """Edit qty / date / supplier / notes while the order is PLANNED.
+
+    Honours a `next` param so the Dochází-zboží screen can send the
+    operator straight back where they came from.
+    """
+    from django.urls import reverse
+
+    order = get_object_or_404(PlannedOrder, pk=pk)
+    next_url = _safe_next(request, reverse("inventory:objednavka_list"))
+    if order.state != PlannedOrder.State.PLANNED:
+        messages.error(request, "Upravit lze pouze čekající objednávku.")
+        return redirect(next_url)
+    if request.method == "POST":
+        form = PlannedOrderForm(request.POST, instance=order)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Objednávka upravena.")
+            return redirect(next_url)
+    else:
+        form = PlannedOrderForm(instance=order)
+    return render(
+        request,
+        "inventory/objednavka_form.html",
+        {"form": form, "mode": "edit", "order": order, "next_url": next_url},
+    )
+
+
+@require_POST
+def objednavka_receive(request, pk: int):
+    """Confirm arrival — writes one PRIJEM via receive_planned_order. The
+    received amount (`received_qty`) is editable; defaults to the ordered
+    quantity in the template."""
+    order = get_object_or_404(PlannedOrder, pk=pk)
+    raw = (request.POST.get("received_qty") or "").strip().replace(",", ".")
+    try:
+        received_qty = Decimal(raw)
+    except (InvalidOperation, ValueError):
+        messages.error(request, "Neplatné přijaté množství.")
+        return redirect("inventory:objednavka_list")
+    try:
+        receive_planned_order(
+            order=order, received_qty=received_qty, user=request.user
+        )
+    except ValidationError as exc:
+        messages.error(
+            request,
+            "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc),
+        )
+        return redirect("inventory:objednavka_list")
+    messages.success(
+        request,
+        f"Příjem zapsán — {received_qty} kg {order.product.name_cs} "
+        f"na pobočku {order.branch.code}.",
+    )
+    return redirect("inventory:objednavka_list")
+
+
+@require_POST
+def objednavka_cancel(request, pk: int):
+    from django.urls import reverse
+
+    order = get_object_or_404(PlannedOrder, pk=pk)
+    next_url = _safe_next(request, reverse("inventory:objednavka_list"))
+    try:
+        cancel_planned_order(order)
+    except ValidationError as exc:
+        messages.error(
+            request,
+            "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc),
+        )
+        return redirect(next_url)
+    messages.success(request, "Objednávka zrušena.")
+    return redirect(next_url)
 
 
 # ---------------------------------------------------------------------------

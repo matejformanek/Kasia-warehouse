@@ -1,30 +1,50 @@
 {% extends "base.html" %}
 {% load l10n %}
 
-{% block title %}Inventura — {{ branch.code }} — Kasia vera{% endblock %}
+{% block title %}{% if is_low %}Dochází zboží — upravit{% elif is_all %}Inventura — vše{% else %}Inventura — {{ branch.code }}{% endif %} — Kasia vera{% endblock %}
 
 {% block content %}
-<h1>Inventura — {{ branch.code }} ({{ branch.name }})</h1>
+{% if is_low %}
+  <h1>Dochází zboží — upravit</h1>
+{% elif is_all %}
+  <h1>Inventura — vše (všechny pobočky)</h1>
+{% else %}
+  <h1>Inventura — {{ branch.code }} ({{ branch.name }})</h1>
+{% endif %}
 
 <div class="card" style="background:#fbf3e0;border-left:3px solid var(--warn);">
-  <strong>Hromadná úprava stavu skladu.</strong>
-  Projděte řádky a zapište skutečně naměřené hodnoty.
-  Změněné řádky se po uložení převedou na pohyby s prefixem
-  <code>[STAV]</code> (per rozhodnutí 0041). Beze změny ponechané
-  řádky se nezapíšou.
+  <strong>Hromadná úprava.</strong>
+  U každého řádku vyplňte hodnotu a volitelně datum příjezdu:
+  <ul style="margin:0.5rem 0 0;padding-left:1.2rem;">
+    <li><strong>Bez data</strong> — hodnota je <em>nový stav skladu</em>; změna se zapíše ihned (pohyb <code>[STAV]</code>, per 0041).</li>
+    <li><strong>S datem</strong> — hodnota je <em>objednané množství</em> (ne nový stav); založí se objednávka s tímto datem příjezdu (per 0057). Stav skladu se teď nemění.</li>
+  </ul>
 </div>
 
 <div style="margin-bottom:1rem;">
   <strong>Pobočka:</strong>
   {% for b in all_branches %}
-    {% if b.code == branch.code %}
+    {% if branch and b.code == branch.code %}
       <span class="primary" style="padding:0.3rem 0.7rem;">{{ b.code }} — {{ b.name }}</span>
     {% else %}
       <a class="secondary" href="{% url 'inventory:inventura_edit' code=b.code %}">{{ b.code }} — {{ b.name }}</a>
     {% endif %}
   {% endfor %}
+  {% if is_all %}
+    <span class="primary" style="padding:0.3rem 0.7rem;">Vše</span>
+  {% else %}
+    <a class="secondary" href="{% url 'inventory:inventura_edit' code='vse' %}">Vše</a>
+  {% endif %}
+  {% if is_low %}
+    <span class="primary" style="padding:0.3rem 0.7rem;">Dochází zboží</span>
+  {% else %}
+    <a class="secondary" href="{% url 'inventory:inventura_edit' code='dochazi' %}">Dochází zboží</a>
+  {% endif %}
 </div>
 
+{% if is_low and not rows %}
+  <p style="color:var(--fg-soft);">Žádné položky pod objednacím bodem. Vše v pořádku.</p>
+{% else %}
 <form method="post">
   {% csrf_token %}
 
@@ -32,28 +52,48 @@
     <thead>
       <tr>
         <th>Produkt</th>
+        {% if cross_branch %}<th>Pobočka</th>{% endif %}
         <th>Druh</th>
         <th style="text-align:right;">Aktuálně skladem (kg)</th>
-        <th style="text-align:right;">Nový stav (kg)</th>
+        <th style="text-align:right;">Nový stav / objednat (kg)</th>
         <th style="text-align:right;">Rozdíl</th>
+        <th>Příjezd (= objednávka)</th>
       </tr>
     </thead>
     <tbody>
       {% for row in rows %}
         <tr class="inventura-row" data-current="{{ row.current|unlocalize }}">
           <td><strong>{{ row.product.name_cs }}</strong></td>
+          {% if cross_branch %}<td>{{ row.branch.code }}</td>{% endif %}
           <td style="color:var(--fg-soft);">{{ row.product.get_kind_display }}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">
             {{ row.current|floatformat:"3" }}
           </td>
           <td style="text-align:right;">
             <input type="number" step="0.001" min="0"
-                   name="qty_{{ row.product.pk }}"
-                   value="{{ row.current|stringformat:'.3f' }}"
+                   name="{{ row.qty_field }}"
+                   value="{{ row.qty_value }}"
                    style="max-width:140px;text-align:right;font-variant-numeric:tabular-nums;">
           </td>
           <td class="inventura-delta" style="text-align:right;font-variant-numeric:tabular-nums;color:var(--fg-soft);">
             —
+          </td>
+          <td style="white-space:nowrap;">
+            <input type="date" name="{{ row.eta_field }}" class="inventura-eta"
+                   value="{{ row.eta_value }}">
+            {% for o in row.orders %}
+              <span style="color:var(--ok);font-size:0.8rem;display:block;margin-top:2px;">
+                objednáno {{ o.quantity_kg|floatformat:"3" }} kg · příjezd {{ o.expected_on|date:"d. m. Y" }}
+                <a href="{% url 'inventory:objednavka_edit' pk=o.pk %}?next={{ request.path|urlencode }}">upravit</a>
+                <span style="color:var(--line);">·</span>
+                <button type="submit" form="ord-cancel-{{ o.pk }}"
+                        class="js-confirm"
+                        data-confirm-title="Zrušit objednávku?"
+                        data-confirm-body="Opravdu zrušit objednávku {{ o.quantity_kg|floatformat:'3' }} kg {{ o.product.name_cs }} na pobočku {{ o.branch.code }} (příjezd {{ o.expected_on|date:'d. m. Y' }})?"
+                        data-confirm-cta="Zrušit objednávku"
+                        style="background:none;border:none;padding:0;color:var(--error);text-decoration:underline;cursor:pointer;font-size:0.8rem;">zrušit</button>
+              </span>
+            {% endfor %}
           </td>
         </tr>
       {% endfor %}
@@ -61,27 +101,61 @@
   </table>
 
   <div class="card" style="margin-top:1.5rem;">
-    <p class="required-legend">povinné pole</p>
     <div class="field">
-      <label class="field-required" for="id_reason">Důvod úpravy (jeden pro celou dávku)</label>
+      <label for="id_reason">
+        Důvod úpravy stavu
+        <span class="req-mark" style="color:var(--error);font-weight:bold;"
+              {% if not reason_value %}hidden{% endif %}>*</span>
+      </label>
       <input type="text" name="reason" id="id_reason" size="60"
+             value="{{ reason_value|default:'' }}"
              placeholder="např. inventura k {% now 'd. m. Y' %}">
+      <p style="color:var(--fg-soft);font-size:0.85rem;margin:0.25rem 0 0;">
+        Povinné jen pokud někde měníte stav skladu (řádek bez data). Objednávky
+        se zakládají bez dodavatele — lze doplnit později na stránce Objednávky.
+      </p>
     </div>
     <p>
-      <button type="submit" class="primary">Uložit všechny změny</button>
-      <a class="secondary" href="{% url 'inventory:catalogue_index' %}?branch={{ branch.code }}">Zrušit</a>
+      <button type="submit" class="primary">Uložit vše</button>
+      {% if is_low %}
+        <a class="secondary" href="{% url 'inventory:home' %}">Zpět</a>
+      {% elif is_all %}
+        <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Zrušit</a>
+      {% else %}
+        <a class="secondary" href="{% url 'inventory:catalogue_index' %}?branch={{ branch.code }}">Zrušit</a>
+      {% endif %}
     </p>
   </div>
 </form>
 
+{# Standalone cancel forms for existing orders — kept OUTSIDE the main form
+   so the in-table "zrušit" buttons (form="ord-cancel-N") don't nest forms. #}
+{% for row in rows %}{% for o in row.orders %}
+  <form id="ord-cancel-{{ o.pk }}" method="post"
+        action="{% url 'inventory:objednavka_cancel' pk=o.pk %}" hidden>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.path }}">
+  </form>
+{% endfor %}{% endfor %}
+
+{% include "inventory/_confirm_dialog.html" %}
+
 <script>
-  // Live "rozdíl" indicator — re-compute new - current as the operator types.
+  // Live "rozdíl" indicator (only meaningful when no date = stock correction);
+  // when a date is set the value is an ordered amount, so we grey the delta.
   (function () {
     function recompute(row) {
       const input = row.querySelector("input[name^=qty_]");
+      const eta = row.querySelector(".inventura-eta");
       const delta = row.querySelector(".inventura-delta");
       const current = parseFloat(row.dataset.current);
       const next = parseFloat(input.value);
+      if (eta && eta.value) {
+        delta.textContent = "objednávka";
+        delta.style.color = "var(--accent)";
+        delta.style.fontWeight = "normal";
+        return;
+      }
       if (!isFinite(next) || !isFinite(current)) {
         delta.textContent = "—";
         delta.style.color = "var(--fg-soft)";
@@ -98,10 +172,57 @@
       delta.style.color = diff > 0 ? "var(--ok)" : "var(--error)";
       delta.style.fontWeight = "bold";
     }
+    // Does any row represent an IMMEDIATE stock change (no date, qty differs
+    // from current)? If so, the reason becomes required.
+    function anyImmediateChange() {
+      let any = false;
+      document.querySelectorAll(".inventura-row").forEach(function (row) {
+        const input = row.querySelector("input[name^=qty_]");
+        const eta = row.querySelector(".inventura-eta");
+        if (eta && eta.value) { return; }          // dated row = order, not a stock change
+        const current = parseFloat(row.dataset.current);
+        const next = parseFloat(input.value);
+        if (!isFinite(next)) { return; }
+        if (Math.abs(next - current) >= 0.0005) { any = true; }
+      });
+      return any;
+    }
+
+    const reason = document.getElementById("id_reason");
+    const reqMark = document.querySelector(".req-mark");
+    const form = reason ? reason.closest("form") : null;
+
+    function syncReasonRequired() {
+      const needed = anyImmediateChange();
+      // Native `required` so the browser blocks submit + keeps the page (and
+      // all typed values) instead of round-tripping and losing work.
+      reason.required = needed;
+      if (reqMark) { reqMark.hidden = !needed; }
+    }
+
+    // ---- unsaved-changes guard ------------------------------------------
+    let dirty = false;
+    function markDirty() { dirty = true; }
+
     document.querySelectorAll(".inventura-row").forEach(function (row) {
       const input = row.querySelector("input[name^=qty_]");
-      input.addEventListener("input", function () { recompute(row); });
+      const eta = row.querySelector(".inventura-eta");
+      input.addEventListener("input", function () { recompute(row); syncReasonRequired(); markDirty(); });
+      if (eta) { eta.addEventListener("input", function () { recompute(row); syncReasonRequired(); markDirty(); }); }
     });
+    if (reason) { reason.addEventListener("input", markDirty); }
+
+    // Any form submit (main save, or an order cancel) is an intentional
+    // navigation — don't fire the unsaved-changes prompt.
+    document.querySelectorAll("form").forEach(function (f) {
+      f.addEventListener("submit", function () { dirty = false; });
+    });
+    window.addEventListener("beforeunload", function (e) {
+      if (dirty) { e.preventDefault(); e.returnValue = ""; return ""; }
+    });
+
+    syncReasonRequired();
   })();
 </script>
+{% endif %}
 {% endblock %}

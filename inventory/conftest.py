@@ -169,6 +169,14 @@ def _ensure_micharna_seed(db) -> None:
         is_internal=False,
         defaults={"address": "interní převod mezi pobočkami"},
     )
+    # Per 0057 — re-seed the internal "Objednávka" supplier (migration
+    # 0015) so receive_planned_order can look it up after a transactional
+    # flush. Supplier-only (PlannedOrder is inbound).
+    Supplier.objects.get_or_create(
+        name="Objednávka",
+        is_internal=True,
+        defaults={"address": "interní přijatá objednávka"},
+    )
 
 
 @pytest.fixture(autouse=True)

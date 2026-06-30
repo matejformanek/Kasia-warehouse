@@ -57,6 +57,24 @@ Branch staff do not see this screen — they land on
   `mail_low_stock_summary` e-mail per
   [`../decisions/0045-low-stock-summary-email.md`](../decisions/0045-low-stock-summary-email.md);
   the panel and the e-mail always agree.
+  - **Interactive per 0057** ([`../decisions/0057-planned-orders-objednavky.md`](../decisions/0057-planned-orders-objednavky.md)):
+    the panel stays read-only but gains a single owner-only **Opravit →**
+    button that opens **inventura** on its new cross-branch **Dochází
+    zboží** filter (`/sklad/katalog/inventura/dochazi/`). There the owner
+    walks each low row and, per row, either sets a new stock level (no
+    date → immediate `[STAV]` correction, reusing 0041) or enters an
+    ordered amount + a **Příjezd** date (→ a planned *objednávka*). The
+    date column is added to all inventura branch views too. Rows that
+    already have an open objednávka show an **`Objednáno X kg · DD. MM.`**
+    badge on the panel and **sink to the bottom**. The sink is
+    *presentation only*, done in the owner `home` view
+    (`unordered + ordered`): membership, the *effective*/*schodek* math,
+    and the service `low_stock_rows()` deficit-DESC sort are
+    **unchanged**, so the panel and the daily digest still agree on
+    *contents* (an order is informational — it does not mask the alert
+    until physically received). Order *arrival* is confirmed manually
+    from the Objednávky page; confirming writes one `[OBJ]` příjem and
+    removes the row once it clears the threshold.
 - A **"K vyřešení"** (things flagged for owner attention) section,
   surfaced from elsewhere in the system. Examples that belong here:
   - Movements that were edited recently and may need a follow-up

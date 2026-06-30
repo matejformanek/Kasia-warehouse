@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Objednávky — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Objednávky</h1>
+
+<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+  <p style="color:var(--fg-soft);margin:0;">
+    Naplánované příjmy zboží. Přijetím se zapíše příjem na sklad.
+    Objednávky nemění efektivní stav, dokud nejsou přijaty.
+  </p>
+  <a class="primary" href="{% url 'inventory:objednavka_create' %}">+ Nová objednávka</a>
+</div>
+
+<h2 style="font-size:1.05rem;">Čekající ({{ planned_count }})</h2>
+{% if planned %}
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Příjezd</th>
+        <th>Produkt</th>
+        <th>Pobočka</th>
+        <th>Dodavatel</th>
+        <th style="text-align:right;">Objednáno (kg)</th>
+        <th style="text-align:right;">Přijmout (kg)</th>
+        <th>Akce</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in planned %}
+        <tr>
+          <td style="font-variant-numeric:tabular-nums;">{{ o.expected_on|date:"d. m. Y" }}</td>
+          <td>{{ o.product.name_cs }}</td>
+          <td>{{ o.branch.code }}</td>
+          <td>{{ o.supplier.name|default:"—" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ o.quantity_kg|floatformat:"3" }}</td>
+          <td style="text-align:right;">
+            <form method="post" action="{% url 'inventory:objednavka_receive' pk=o.pk %}" style="display:flex;gap:0.4rem;justify-content:flex-end;align-items:center;margin:0;">
+              {% csrf_token %}
+              <input type="number" step="0.001" min="0.001" name="received_qty"
+                     value="{{ o.quantity_kg|floatformat:'3' }}"
+                     style="width:7rem;text-align:right;font-variant-numeric:tabular-nums;">
+              <button type="submit" class="primary" style="padding:4px 10px;">Přijmout</button>
+            </form>
+          </td>
+          <td style="white-space:nowrap;">
+            <a href="{% url 'inventory:objednavka_edit' pk=o.pk %}">Upravit</a>
+            <span style="color:var(--line);">·</span>
+            <form method="post" action="{% url 'inventory:objednavka_cancel' pk=o.pk %}" style="display:inline;margin:0;">
+              {% csrf_token %}
+              <button type="submit" class="secondary" style="padding:4px 10px;">Zrušit</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p style="color:var(--fg-soft);">Žádné čekající objednávky.</p>
+{% endif %}
+
+{% if recent %}
+  <h2 style="font-size:1.05rem;margin-top:2rem;">Vyřízené</h2>
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Příjezd</th>
+        <th>Produkt</th>
+        <th>Pobočka</th>
+        <th>Dodavatel</th>
+        <th style="text-align:right;">Objednáno (kg)</th>
+        <th style="text-align:right;">Přijato (kg)</th>
+        <th>Stav</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in recent %}
+        <tr>
+          <td style="font-variant-numeric:tabular-nums;">{{ o.expected_on|date:"d. m. Y" }}</td>
+          <td>{{ o.product.name_cs }}</td>
+          <td>{{ o.branch.code }}</td>
+          <td>{{ o.supplier.name|default:"—" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ o.quantity_kg|floatformat:"3" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ o.received_qty|floatformat:"3"|default:"—" }}</td>
+          <td>
+            {% if o.state == "received" %}
+              <span style="color:var(--ok);">přijato</span>
+            {% else %}
+              <span style="color:var(--fg-soft);">zrušeno</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+{% endblock %}

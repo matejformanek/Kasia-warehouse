@@ -328,6 +328,7 @@
     <a href="{% url 'inventory:vydej_create' %}"{% if un == 'vydej_create' %} class="active"{% endif %}>Výdej</a>
     <a href="{% url 'inventory:mixing_job_index' %}"{% if un == 'mixing_job_index' %} class="active"{% endif %}>Míchání</a>
     <a href="{% url 'inventory:planned_transfer_index' %}"{% if un == 'planned_transfer_index' %} class="active"{% endif %}>Převody</a>
+    <a href="{% url 'inventory:objednavka_list' %}"{% if un == 'objednavka_list' %} class="active"{% endif %}>Objednávky</a>
     <a href="{% url 'inventory:dodaci_list_index' %}"{% if un == 'dodaci_list_index' %} class="active"{% endif %}>Dodací listy</a>
     <a href="{% url 'inventory:movement_history' %}"{% if un == 'movement_history' %} class="active"{% endif %}>Historie</a>
     <a href="{% url 'inventory:support' %}"{% if un == 'support' %} class="active"{% endif %}>Podpora</a>
@@ -374,6 +375,10 @@
       <a href="{% url 'inventory:planned_transfer_index' %}"{% if un == 'planned_transfer_index' %} class="active" aria-current="page"{% endif %}>
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8h13l-3-3m3 3-3 3"/><path d="M20 16H7l3-3m-3 3 3 3"/></svg>
         Převody
+      </a>
+      <a href="{% url 'inventory:objednavka_list' %}"{% if un == 'objednavka_list' %} class="active" aria-current="page"{% endif %}>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h2.5l2.2 12.2a1 1 0 0 0 1 .8h9.1a1 1 0 0 0 1-.78L21 7H6"/></svg>
+        Objednávky
       </a>
       <a href="{% url 'inventory:dodaci_list_index' %}"{% if un == 'dodaci_list_index' %} class="active" aria-current="page"{% endif %}>
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>

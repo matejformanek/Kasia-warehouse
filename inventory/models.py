@@ -1056,6 +1056,108 @@ class PlannedTransfer(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Planned inbound order (per decision 0057)
+# ---------------------------------------------------------------------------
+
+
+class PlannedOrder(models.Model):
+    """One ordered inbound delivery of a product to a branch ("objednávka").
+
+    Per [0057](../context/decisions/0057-planned-orders-objednavky.md):
+    PLANNED orders show as "objednáno" badges on the low-stock panel but
+    do NOT change effective stock (informational, like reservations per
+    0044). Confirming arrival writes one příjem via `apply_movement` and
+    flips state to RECEIVED; `received_qty` records what actually arrived
+    (may differ from the ordered `quantity_kg`). If `supplier` is set the
+    příjem is a real receipt from that supplier; otherwise it uses the
+    seeded internal "Objednávka" counterparty.
+    """
+
+    class State(models.TextChoices):
+        PLANNED = "planned", "objednáno"
+        RECEIVED = "received", "přijato"
+        CANCELLED = "cancelled", "zrušeno"
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.PROTECT,
+        related_name="planned_orders",
+        verbose_name="produkt",
+    )
+    branch = models.ForeignKey(
+        Branch,
+        on_delete=models.PROTECT,
+        related_name="planned_orders",
+        verbose_name="pobočka",
+    )
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="planned_orders",
+        verbose_name="dodavatel",
+    )
+    quantity_kg = models.DecimalField(
+        "objednané množství (kg)",
+        max_digits=10,
+        decimal_places=3,
+    )
+    received_qty = models.DecimalField(
+        "přijaté množství (kg)",
+        max_digits=10,
+        decimal_places=3,
+        null=True,
+        blank=True,
+    )
+    expected_on = models.DateField("očekávaný příjezd")
+    state = models.CharField(
+        "stav",
+        max_length=16,
+        choices=State.choices,
+        default=State.PLANNED,
+    )
+    notes = models.TextField("poznámka", blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_planned_orders",
+        verbose_name="vytvořil",
+    )
+    created_at = models.DateTimeField("vytvořeno", auto_now_add=True)
+    received_movement = models.ForeignKey(
+        Movement,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="from_planned_order",
+        verbose_name="příjem (přijetí)",
+        help_text=(
+            "Set by `receive_planned_order` on confirm — the one PRIJEM"
+            " Movement that added the received kg to stock. NULL while"
+            " the order is still PLANNED or was CANCELLED."
+        ),
+    )
+
+    class Meta:
+        verbose_name = "objednávka"
+        verbose_name_plural = "objednávky"
+        ordering = ("-expected_on", "-id")
+        constraints = [
+            CheckConstraint(
+                condition=Q(quantity_kg__gt=0),
+                name="planned_order_qty_positive",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"{self.product} {self.quantity_kg} kg → "
+            f"{self.branch.code} ({self.expected_on.isoformat()})"
+        )
+
+
+# ---------------------------------------------------------------------------
 # In-app feedback log (per decision 0046)
 # ---------------------------------------------------------------------------
 

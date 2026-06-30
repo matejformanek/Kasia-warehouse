@@ -6689,3 +6689,603 @@ def test_catalogue_filter_state_empty_keeps_only_empty_rows(
     assert pepper.name_cs in body
     assert paprika.name_cs not in body
     assert "Nalezeno: 1" in body
+
+
+# ---------------------------------------------------------------------------
+# Objednávky — planned inbound orders (per decision 0057)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_receive_planned_order_adds_stock_and_keeps_ordered_qty(
+    tyn, pepper, supplier, user_vlastnik
+) -> None:
+    """receive_planned_order adds exactly received_qty to Stock, writes one
+    PRIJEM, flips to RECEIVED, records received_qty + received_movement, and
+    leaves the ordered quantity_kg intact."""
+    from inventory.models import PlannedOrder
+    from inventory.services import (
+        create_planned_order,
+        receive_planned_order,
+    )
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("3.000"))
+    order = create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("10.000"),
+        expected_on=date.today(),
+        supplier=supplier,
+        user=user_vlastnik,
+    )
+    # PLANNED order does not touch stock.
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("3.000")
+
+    before = Movement.objects.count()
+    mv = receive_planned_order(
+        order=order, received_qty=Decimal("8.000"), user=user_vlastnik
+    )
+    order.refresh_from_db()
+
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("11.000")
+    assert Movement.objects.count() == before + 1
+    assert mv.kind == Movement.Kind.PRIJEM
+    assert mv.dodavatel == supplier
+    assert order.state == PlannedOrder.State.RECEIVED
+    assert order.received_qty == Decimal("8.000")
+    assert order.received_movement_id == mv.pk
+    # Ordered amount stays auditable.
+    assert order.quantity_kg == Decimal("10.000")
+
+
+@pytest.mark.django_db
+def test_receive_without_supplier_uses_internal_objednavka(
+    tyn, pepper, user_vlastnik
+) -> None:
+    from inventory.services import (
+        create_planned_order,
+        receive_planned_order,
+    )
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("0.000"))
+    order = create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("5.000"),
+        expected_on=date.today(),
+        user=user_vlastnik,
+    )
+    mv = receive_planned_order(
+        order=order, received_qty=Decimal("5.000"), user=user_vlastnik
+    )
+    assert mv.dodavatel.name == "Objednávka"
+    assert mv.dodavatel.is_internal is True
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("5.000")
+
+
+@pytest.mark.django_db
+def test_cancel_planned_order_touches_no_stock(
+    tyn, pepper, user_vlastnik
+) -> None:
+    from inventory.models import PlannedOrder
+    from inventory.services import cancel_planned_order, create_planned_order
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("2.000"))
+    order = create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("5.000"),
+        expected_on=date.today(),
+        user=user_vlastnik,
+    )
+    cancel_planned_order(order)
+    order.refresh_from_db()
+    assert order.state == PlannedOrder.State.CANCELLED
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("2.000")
+
+
+@pytest.mark.django_db
+def test_receive_guards_state_and_quantity(
+    tyn, pepper, user_vlastnik
+) -> None:
+    from django.core.exceptions import ValidationError
+
+    from inventory.services import (
+        cancel_planned_order,
+        create_planned_order,
+        receive_planned_order,
+    )
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("0.000"))
+    order = create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("5.000"),
+        expected_on=date.today(),
+        user=user_vlastnik,
+    )
+    # received_qty <= 0 refused.
+    with pytest.raises(ValidationError):
+        receive_planned_order(
+            order=order, received_qty=Decimal("0.000"), user=user_vlastnik
+        )
+    # Cancelled order can't be received.
+    cancel_planned_order(order)
+    with pytest.raises(ValidationError):
+        receive_planned_order(
+            order=order, received_qty=Decimal("5.000"), user=user_vlastnik
+        )
+    # Already-received order can't be received twice.
+    order2 = create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("5.000"),
+        expected_on=date.today(),
+        user=user_vlastnik,
+    )
+    receive_planned_order(
+        order=order2, received_qty=Decimal("5.000"), user=user_vlastnik
+    )
+    with pytest.raises(ValidationError):
+        receive_planned_order(
+            order=order2, received_qty=Decimal("5.000"), user=user_vlastnik
+        )
+
+
+@pytest.mark.django_db
+def test_low_stock_row_carries_order_overlay_without_changing_deficit(
+    tyn, pepper, user_vlastnik
+) -> None:
+    """A PLANNED order populates ordered_kg/ordered_eta but leaves the row
+    listed with unchanged effective/deficit."""
+    from inventory.services import create_planned_order, low_stock_rows
+
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+
+    before = low_stock_rows()
+    assert len(before) == 1
+    assert before[0].ordered_kg is None
+    assert before[0].deficit == Decimal("4.000")
+
+    create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("9.000"),
+        expected_on=date(2026, 7, 15),
+        user=user_vlastnik,
+    )
+    after = low_stock_rows()
+    assert len(after) == 1
+    row = after[0]
+    # Still listed, effective/deficit unchanged — order is informational.
+    assert row.effective == Decimal("1.000")
+    assert row.deficit == Decimal("4.000")
+    assert row.ordered_kg == Decimal("9.000")
+    assert row.ordered_eta == date(2026, 7, 15)
+
+
+@pytest.mark.django_db
+def test_non_vlastnik_can_create_and_receive_order(
+    tyn, pepper, user_obsluha_tyn
+) -> None:
+    """All logged-in users may create + receive (0040 + 0057)."""
+    from inventory.models import PlannedOrder
+    from inventory.services import (
+        create_planned_order,
+        receive_planned_order,
+    )
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("0.000"))
+    order = create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("4.000"),
+        expected_on=date.today(),
+        user=user_obsluha_tyn,
+    )
+    receive_planned_order(
+        order=order, received_qty=Decimal("4.000"), user=user_obsluha_tyn
+    )
+    order.refresh_from_db()
+    assert order.state == PlannedOrder.State.RECEIVED
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("4.000")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_objednavka_receive_view_writes_prijem(
+    tyn, pepper, user_obsluha_tyn
+) -> None:
+    """POST to the receive endpoint with an adjusted amount increases Stock."""
+    from inventory.models import PlannedOrder
+    from inventory.services import create_planned_order
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    order = create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("10.000"),
+        expected_on=date.today(),
+        user=user_obsluha_tyn,
+    )
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(
+        f"/sklad/objednavky/{order.pk}/prijmout/",
+        {"received_qty": "7.500"},
+    )
+    assert response.status_code == 302
+    order.refresh_from_db()
+    assert order.state == PlannedOrder.State.RECEIVED
+    assert order.received_qty == Decimal("7.500")
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("8.500")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_objednavka_list_and_create_pages_render(
+    tyn, pepper, supplier, user_vlastnik
+) -> None:
+    from inventory.services import create_planned_order
+
+    create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("6.000"),
+        expected_on=date.today(),
+        supplier=supplier,
+        user=user_vlastnik,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+
+    listing = client.get("/sklad/objednavky/")
+    assert listing.status_code == 200
+    assert "Objednávky" in listing.content.decode("utf-8")
+    assert pepper.name_cs in listing.content.decode("utf-8")
+
+    # Create page prefilled from the low-stock "Objednat" link query.
+    create = client.get(
+        f"/sklad/objednavky/nova/?product={pepper.pk}&branch={tyn.code}"
+    )
+    assert create.status_code == 200
+    assert "Naplánovat objednávku" in create.content.decode("utf-8")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_home_low_stock_panel_shows_resolve_button_and_orders_badge(
+    tyn, pepper, user_vlastnik
+) -> None:
+    """Owner home renders the Vyřídit button; an ordered row shows the badge."""
+    from inventory.services import create_planned_order
+
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/").content.decode("utf-8")
+    assert "Upravit" in body
+    assert "/sklad/katalog/inventura/dochazi/" in body
+
+    create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("9.000"),
+        expected_on=date(2026, 7, 15),
+        user=user_vlastnik,
+    )
+    body2 = client.get("/sklad/").content.decode("utf-8")
+    assert "Objednáno" in body2
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_dochazi_lists_cross_branch_low_rows(
+    tyn, sez, pepper, paprika, user_vlastnik
+) -> None:
+    """The special 'dochazi' inventura lists only below-threshold rows,
+    across all branches, with the pobočka column."""
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    paprika.reorder_threshold_kg = Decimal("5.000")
+    paprika.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("2.000"))
+    # Paprika is healthy → must NOT appear.
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("9.000"))
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.get("/sklad/katalog/inventura/dochazi/")
+    assert resp.status_code == 200
+    body = resp.content.decode("utf-8")
+    assert "Dochází zboží" in body
+    assert pepper.name_cs in body
+    assert paprika.name_cs not in body
+    # Cross-branch field naming (product_branch) is present.
+    assert f"qty_{pepper.pk}_{tyn.pk}" in body
+    assert f"qty_{pepper.pk}_{sez.pk}" in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_dochazi_adjust_and_order_in_one_post(
+    tyn, sez, pepper, paprika, user_vlastnik
+) -> None:
+    """No date → immediate stock correction; date set → planned order. One POST."""
+    from inventory.models import PlannedOrder
+
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    paprika.reorder_threshold_kg = Decimal("5.000")
+    paprika.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("2.000"))
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.post(
+        "/sklad/katalog/inventura/dochazi/",
+        {
+            # Pepper: new absolute stock level 12, no date → immediate.
+            f"qty_{pepper.pk}_{tyn.pk}": "12.000",
+            f"eta_{pepper.pk}_{tyn.pk}": "",
+            # Paprika: order 8 kg arriving 2026-07-20 (value = ordered amount).
+            f"qty_{paprika.pk}_{tyn.pk}": "8.000",
+            f"eta_{paprika.pk}_{tyn.pk}": "2026-07-20",
+            "reason": "doplnění z panelu",
+        },
+    )
+    assert resp.status_code == 302
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("12.000")
+    # Paprika stock unchanged — order is planned, not yet received.
+    assert Stock.objects.get(product=paprika, branch=tyn).quantity == Decimal("2.000")
+    order = PlannedOrder.objects.get(product=paprika, branch=tyn)
+    assert order.quantity_kg == Decimal("8.000")
+    assert order.expected_on == date(2026, 7, 20)
+    assert order.state == PlannedOrder.State.PLANNED
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_per_branch_date_creates_order(
+    tyn, pepper, user_vlastnik
+) -> None:
+    """The date column works on the normal per-branch inventura too: a row
+    with a date becomes a planned order, no stock change."""
+    from inventory.models import PlannedOrder
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.post(
+        "/sklad/katalog/inventura/TYN/",
+        {
+            f"qty_{pepper.pk}": "25.000",  # ordered amount (date set)
+            f"eta_{pepper.pk}": "2026-08-01",
+        },
+    )
+    assert resp.status_code == 302
+    # Stock unchanged — it's a planned order.
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("10.000")
+    order = PlannedOrder.objects.get(product=pepper, branch=tyn)
+    assert order.quantity_kg == Decimal("25.000")
+    assert order.expected_on == date(2026, 8, 1)
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_dochazi_blocked_for_obsluha(
+    tyn, pepper, user_obsluha_tyn
+) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    resp = client.get("/sklad/katalog/inventura/dochazi/")
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_missing_reason_preserves_typed_values(
+    tyn, sez, pepper, paprika, user_vlastnik
+) -> None:
+    """Regression: a missing reason must NOT wipe the operator's input — the
+    error re-render echoes every posted qty + date back into the fields."""
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    paprika.reorder_threshold_kg = Decimal("5.000")
+    paprika.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("2.000"))
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.post(
+        "/sklad/katalog/inventura/dochazi/",
+        {
+            f"qty_{pepper.pk}_{tyn.pk}": "13.000",   # immediate change, no date
+            f"eta_{pepper.pk}_{tyn.pk}": "",
+            f"qty_{paprika.pk}_{tyn.pk}": "7.000",   # planned order
+            f"eta_{paprika.pk}_{tyn.pk}": "2026-09-01",
+            "reason": "",                              # <-- the mistake
+        },
+    )
+    # Re-renders (not a redirect); nothing written.
+    assert resp.status_code == 200
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("1.000")
+    body = resp.content.decode("utf-8")
+    # Typed values echoed back so the work isn't lost.
+    assert 'value="13.000"' in body
+    assert 'value="7.000"' in body
+    assert 'value="2026-09-01"' in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_vse_lists_all_products_all_branches(
+    tyn, sez, pepper, paprika, user_vlastnik
+) -> None:
+    """The 'vse' option shows every active product × every active branch."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("3.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.get("/sklad/katalog/inventura/vse/")
+    assert resp.status_code == 200
+    body = resp.content.decode("utf-8")
+    assert "Inventura — vše" in body
+    # Cross-branch fields for both branches even where no Stock row exists yet.
+    assert f"qty_{pepper.pk}_{tyn.pk}" in body
+    assert f"qty_{pepper.pk}_{sez.pk}" in body
+    assert f"qty_{paprika.pk}_{tyn.pk}" in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_vse_adjust_and_order(
+    tyn, sez, pepper, user_vlastnik
+) -> None:
+    from inventory.models import PlannedOrder
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("3.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("1.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.post(
+        "/sklad/katalog/inventura/vse/",
+        {
+            # TYN pepper unchanged (prefilled current) → skip.
+            f"qty_{pepper.pk}_{tyn.pk}": "3.000",
+            f"eta_{pepper.pk}_{tyn.pk}": "",
+            # SEZ pepper → order 10 kg for a date.
+            f"qty_{pepper.pk}_{sez.pk}": "10.000",
+            f"eta_{pepper.pk}_{sez.pk}": "2026-07-25",
+            "reason": "",
+        },
+    )
+    assert resp.status_code == 302
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("3.000")
+    order = PlannedOrder.objects.get(product=pepper, branch=sez)
+    assert order.quantity_kg == Decimal("10.000")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_inventura_button_always_present(user_vlastnik, tyn) -> None:
+    client = Client()
+    client.force_login(user_vlastnik)
+    # No branch → "vše" button.
+    no_branch = client.get("/sklad/katalog/").content.decode("utf-8")
+    assert "Inventura — vše" in no_branch
+    assert "/sklad/katalog/inventura/vse/" in no_branch
+    # Branch selected → branch-specific button (unchanged behaviour).
+    with_branch = client.get("/sklad/katalog/?branch=TYN").content.decode("utf-8")
+    assert "Inventura TYN" in with_branch
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_dochazi_shows_existing_order_with_year_and_controls(
+    tyn, pepper, user_vlastnik
+) -> None:
+    from inventory.services import create_planned_order
+
+    pepper.reorder_threshold_kg = Decimal("5.000")
+    pepper.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    order = create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("9.000"),
+        expected_on=date(2026, 7, 15),
+        user=user_vlastnik,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/katalog/inventura/dochazi/").content.decode("utf-8")
+    # Year shown + inline edit/cancel controls present.
+    assert "15. 07. 2026" in body
+    assert f"/sklad/objednavky/{order.pk}/upravit/" in body
+    assert f"ord-cancel-{order.pk}" in body
+    # Cancel uses the in-app confirm dialog, not the native window.confirm.
+    assert 'id="kasia-confirm"' in body
+    assert 'class="js-confirm"' in body
+    assert "return confirm(" not in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_objednavka_edit_get_then_save_returns_to_next(
+    tyn, pepper, user_vlastnik
+) -> None:
+    """Regression: editing an order from the Dochází screen must round-trip
+    the `next` target cleanly (the `_safe_next` helper must not be a view —
+    it was once wrongly @require_POST, which 405'd on the GET render)."""
+    from datetime import date as _date
+
+    from inventory.services import create_planned_order
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    order = create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("5.000"),
+        expected_on=_date.today(),
+        user=user_vlastnik,
+    )
+    nxt = "/sklad/katalog/inventura/dochazi/"
+    client = Client()
+    client.force_login(user_vlastnik)
+
+    # GET the edit page WITH ?next= — must render (200), not 405.
+    page = client.get(f"/sklad/objednavky/{order.pk}/upravit/?next={nxt}")
+    assert page.status_code == 200
+    assert f'value="{nxt}"' in page.content.decode("utf-8")
+
+    # Save → redirect back to the Dochází screen, change applied.
+    resp = client.post(
+        f"/sklad/objednavky/{order.pk}/upravit/",
+        {
+            "product": pepper.pk,
+            "branch": tyn.pk,
+            "quantity_kg": "6.000",
+            "expected_on": _date.today().isoformat(),
+            "supplier": "",
+            "notes": "",
+            "next": nxt,
+        },
+    )
+    assert resp.status_code == 302
+    assert resp.url == nxt
+    order.refresh_from_db()
+    assert order.quantity_kg == Decimal("6.000")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_objednavka_cancel_honors_next(tyn, pepper, user_vlastnik) -> None:
+    from inventory.models import PlannedOrder
+    from inventory.services import create_planned_order
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("0.000"))
+    order = create_planned_order(
+        product=pepper,
+        branch=tyn,
+        quantity_kg=Decimal("5.000"),
+        expected_on=date.today(),
+        user=user_vlastnik,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.post(
+        f"/sklad/objednavky/{order.pk}/zrusit/",
+        {"next": "/sklad/katalog/inventura/dochazi/"},
+    )
+    assert resp.status_code == 302
+    assert resp.url == "/sklad/katalog/inventura/dochazi/"
+    order.refresh_from_db()
+    assert order.state == PlannedOrder.State.CANCELLED

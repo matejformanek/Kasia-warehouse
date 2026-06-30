@@ -1868,6 +1868,46 @@
     on Příjem, recent panel on Výdej, recent panel obsluha-scoped,
     recent panel hidden on empty); ruff + `manage.py check` clean.
     No new decision file — pure UI polish, nothing schema-shaped.
+- **2026-06-30** — **Objednávky (planned inbound orders) from the
+  "Dochází zboží" panel** (branch `ft_inv_objednavky`), per
+  [`decisions/0057-planned-orders-objednavky.md`](./decisions/0057-planned-orders-objednavky.md).
+  The owner low-stock panel gains a single owner-only **Upravit →**
+  button opening **inventura** on a new cross-branch **Dochází zboží**
+  filter (`/sklad/katalog/inventura/dochazi/`). Inventura is extended:
+  two new picker options — **Dochází zboží** (`dochazi`, low-stock rows
+  cross-branch) and **Vše** (`vse`, every product × every branch); the
+  katalog inventura button is now always shown for vlastník (→ `vse`
+  with no branch, or that branch when selected). Every row gets an
+  optional **Příjezd** date — no date → value is the new stock level
+  (immediate `[STAV]` correction, 0041); date set → value is the ordered
+  amount, creating a PLANNED objednávka. Rows with an open order show it
+  inline (qty + příjezd incl. year) with **upravit / zrušit** controls
+  (cancel via out-of-form `<form>` + `form=` attr, both carrying `next`).
+  One Uložit vše commits the mix; the reason field is conditionally
+  `required` (native + dynamic asterisk) only when an immediate
+  adjustment is present, and the editor **preserves all typed values on
+  any validation re-render** + warns on unsaved navigation (regression:
+  a missing reason used to wipe the operator's work). New `PlannedOrder`
+  model (mirrors
+  `PlannedTransfer` per 0044) + migration `0014_plannedorder`; seeded
+  internal **"Objednávka"** supplier in `0015_seed_order_supplier`
+  (+ conftest re-seed for transactional tests). Service layer:
+  `create_planned_order` / `receive_planned_order` (one `[OBJ]` PRIJEM
+  via `apply_movement`, flips → RECEIVED, stores `received_qty` +
+  `received_movement`, leaves ordered `quantity_kg` intact) /
+  `cancel_planned_order` / `planned_orders_for`. `low_stock_rows()`
+  gained `ordered_kg` / `ordered_eta` overlay fields — **membership,
+  effective/deficit, and the deficit-DESC sort are untouched**, so the
+  panel and the daily digest still agree on contents; the
+  sink-ordered-rows-to-bottom reorder happens in the owner `home` view
+  only. Full CRUD + receive surface at `/sklad/objednavky/`
+  (`PlannedOrderForm`, 5 views, 5 URLs, list + form templates), nav
+  entry "Objednávky" (sidebar + mobile, after Převody), admin
+  registration (read-mostly, no delete). All-users tier per 0040 + 0044.
+  Glossary: added *objednávka* / *objednat* / *objednáno* + *očekávaný
+  příjezd*. Screen doc 02 updated. **377 pytest green** (+8 objednávka
+  tests; `test_low_stock_rows_sorted_by_deficit` untouched and still
+  passing).
 
 ## Hand-off for the next session (post-compact)
 

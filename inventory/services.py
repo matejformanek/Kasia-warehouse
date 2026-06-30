@@ -37,6 +37,7 @@ from .models import (
     Movement,
     MovementAudit,
     MovementLine,
+    PlannedOrder,
     PlannedTransfer,
     Product,
     RecipeComponent,
@@ -1233,6 +1234,11 @@ class LowStockRow:
     effective: Decimal
     threshold: Decimal
     deficit: Decimal
+    # Per 0057: informational PLANNED-order overlay. None when the pair has
+    # no open objednávka. These do NOT affect effective/deficit/membership
+    # or the deficit-DESC sort — purely a badge + presentation hint.
+    ordered_kg: Decimal | None = None
+    ordered_eta: date | None = None
 
 
 def threshold_for(product: Product, branch: Branch) -> Decimal | None:
@@ -1319,6 +1325,26 @@ def low_stock_rows() -> list[LowStockRow]:
         )
     }
 
+    # Per 0057: overlay open (PLANNED) objednávky per (product, branch) so a
+    # low row can show an "Objednáno" badge. Informational only — does NOT
+    # change effective/deficit/membership or the sort below.
+    from django.db.models import Min, Sum
+
+    orders_by_pair: dict[tuple[int, int], tuple[Decimal, date]] = {}
+    for row in (
+        PlannedOrder.objects.filter(
+            state=PlannedOrder.State.PLANNED,
+            product__in={s.product_id for s in stocks},
+            branch__in={s.branch_id for s in stocks},
+        )
+        .values("product_id", "branch_id")
+        .annotate(total=Sum("quantity_kg"), eta=Min("expected_on"))
+    ):
+        orders_by_pair[(row["product_id"], row["branch_id"])] = (
+            row["total"],
+            row["eta"],
+        )
+
     for stock in stocks:
         product = stock.product
         branch = stock.branch
@@ -1331,6 +1357,7 @@ def low_stock_rows() -> list[LowStockRow]:
         reserved = reserved_kg(product, branch)
         effective = (on_hand - reserved).quantize(Decimal("0.001"))
         if effective < threshold:
+            ordered = orders_by_pair.get((product.pk, branch.pk))
             rows.append(
                 LowStockRow(
                     product=product,
@@ -1340,6 +1367,8 @@ def low_stock_rows() -> list[LowStockRow]:
                     effective=effective,
                     threshold=threshold,
                     deficit=(threshold - effective).quantize(Decimal("0.001")),
+                    ordered_kg=(ordered[0] if ordered else None),
+                    ordered_eta=(ordered[1] if ordered else None),
                 )
             )
     rows.sort(key=lambda r: r.deficit, reverse=True)
@@ -1471,6 +1500,138 @@ def cancel_planned_transfer(
         )
     transfer.state = PlannedTransfer.State.CANCELLED
     transfer.save(update_fields=["state"])
+
+
+# ---------------------------------------------------------------------------
+# PlannedOrder create + receive + cancel (per 0057)
+# ---------------------------------------------------------------------------
+
+
+_ORDER_COUNTERPARTY_NAME = "Objednávka"
+_ORDER_NOTE_PREFIX = "[OBJ] "
+
+
+def _order_counterparty() -> Supplier:
+    """The seeded internal supplier used on the příjem leg of a received
+    objednávka that has no real supplier (mirror of `_adjustment_supplier`)."""
+    return Supplier.objects.get(
+        name=_ORDER_COUNTERPARTY_NAME, is_internal=True
+    )
+
+
+def create_planned_order(
+    *,
+    product: Product,
+    branch: Branch,
+    quantity_kg: Decimal,
+    expected_on: date,
+    supplier: Supplier | None = None,
+    notes: str = "",
+    user,
+) -> PlannedOrder:
+    """Record one PLANNED objednávka per 0057. Touches no stock.
+
+    Informational only — a PLANNED order does NOT change effective stock
+    or the deficit; it surfaces as an "Objednáno" badge on the low-stock
+    panel until arrival is confirmed via `receive_planned_order`.
+    """
+    quantity_kg = Decimal(quantity_kg).quantize(Decimal("0.001"))
+    if quantity_kg <= 0:
+        raise ValidationError(
+            {"quantity_kg": "Objednané množství musí být kladné."}
+        )
+    order = PlannedOrder(
+        product=product,
+        branch=branch,
+        supplier=supplier,
+        quantity_kg=quantity_kg,
+        expected_on=expected_on,
+        notes=notes or "",
+        created_by=user,
+    )
+    order.full_clean()
+    order.save()
+    return order
+
+
+def receive_planned_order(
+    *,
+    order: PlannedOrder,
+    received_qty: Decimal,
+    user,
+    as_of: date | None = None,
+) -> Movement:
+    """Confirm arrival of a PLANNED objednávka per 0057.
+
+    Writes one PRIJEM Movement via `apply_movement` (the single stock
+    write path) adding `received_qty` kg to the order's branch, flips the
+    order to RECEIVED, and records `received_qty` + `received_movement`.
+    The ordered `quantity_kg` is left intact so planned-vs-actual stays
+    auditable. If the order has no real `supplier`, the internal
+    "Objednávka" counterparty is used. PRIJEM never issues a dodák or
+    e-mail, so either counterparty is fine.
+
+    Anyone logged in may confirm (all-users tier per 0040 + 0044).
+    Refuses if the order is not PLANNED, or if `received_qty <= 0`.
+    """
+    if order.state != PlannedOrder.State.PLANNED:
+        raise ValidationError(
+            {"state": "Přijmout lze pouze objednanou (čekající) objednávku."}
+        )
+    received_qty = Decimal(received_qty).quantize(Decimal("0.001"))
+    if received_qty <= 0:
+        raise ValidationError(
+            {"received_qty": "Přijaté množství musí být kladné."}
+        )
+
+    issue_date = as_of or date.today()
+    note = (
+        f"{_ORDER_NOTE_PREFIX}objednávka {order.product.name_cs} "
+        f"{received_qty} kg → {order.branch.code} (obj. #{order.pk})."
+    )
+
+    with transaction.atomic():
+        prijem = Movement(
+            branch=order.branch,
+            kind=Movement.Kind.PRIJEM,
+            dodavatel=order.supplier or _order_counterparty(),
+            date_issued=issue_date,
+            note=note,
+            created_by=user,
+        )
+        line = MovementLine(product=order.product, quantity_kg=received_qty)
+        mv = apply_movement(movement=prijem, lines=[line], user=user)
+
+        order.state = PlannedOrder.State.RECEIVED
+        order.received_qty = received_qty
+        order.received_movement = mv
+        order.save(
+            update_fields=["state", "received_qty", "received_movement"]
+        )
+        return mv
+
+
+def cancel_planned_order(order: PlannedOrder) -> None:
+    """Mark a PLANNED objednávka as CANCELLED. No stock touched.
+
+    All authenticated users may cancel (symmetric with create, per
+    0040 + 0044). Refuses if the order is not PLANNED.
+    """
+    if order.state != PlannedOrder.State.PLANNED:
+        raise ValidationError(
+            {"state": "Zrušit lze pouze objednanou (čekající) objednávku."}
+        )
+    order.state = PlannedOrder.State.CANCELLED
+    order.save(update_fields=["state"])
+
+
+def planned_orders_for(product: Product, branch: Branch):
+    """PLANNED objednávky for one (product, branch) pair, newest ETA first."""
+    return PlannedOrder.objects.filter(
+        state=PlannedOrder.State.PLANNED,
+        product=product,
+        branch=branch,
+    )
 
 
 # ---------------------------------------------------------------------------

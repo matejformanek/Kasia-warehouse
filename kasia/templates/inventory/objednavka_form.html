@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{% if mode == "edit" %}Upravit objednávku{% else %}Nová objednávka{% endif %} — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>{% if mode == "edit" %}Upravit objednávku{% else %}Naplánovat objednávku{% endif %}</h1>
+
+<p class="required-legend">povinné</p>
+
+<form method="post" class="card">
+  {% csrf_token %}
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  {% if form.non_field_errors %}
+    <div class="non-form-errors">
+      {{ form.non_field_errors }}
+    </div>
+  {% endif %}
+
+  <div class="field">
+    <label for="{{ form.product.id_for_label }}" class="field-required">{{ form.product.label }}</label>
+    {{ form.product }}
+    {{ form.product.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.branch.id_for_label }}" class="field-required">{{ form.branch.label }}</label>
+    {{ form.branch }}
+    {{ form.branch.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.quantity_kg.id_for_label }}" class="field-required">{{ form.quantity_kg.label }}</label>
+    {{ form.quantity_kg }}
+    {{ form.quantity_kg.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.expected_on.id_for_label }}" class="field-required">{{ form.expected_on.label }}</label>
+    {{ form.expected_on }}
+    {{ form.expected_on.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.supplier.id_for_label }}">{{ form.supplier.label }}</label>
+    {{ form.supplier }}
+    <p style="color:var(--fg-soft);font-size:0.85rem;margin:0.25rem 0 0;">
+      Nepovinné. Bez dodavatele se příjem zapíše na interní „Objednávka".
+    </p>
+    {{ form.supplier.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+    {{ form.notes }}
+    {{ form.notes.errors }}
+  </div>
+
+  <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+    <button type="submit" class="primary">{% if mode == "edit" %}Uložit{% else %}Objednat{% endif %}</button>
+    <a class="secondary" href="{{ next_url|default:'' }}{% if not next_url %}{% url 'inventory:objednavka_list' %}{% endif %}">Zpět</a>
+  </div>
+</form>
+
+{% if mode == "edit" and order %}
+  <form method="post" action="{% url 'inventory:objednavka_cancel' pk=order.pk %}"
+        style="margin-top:1rem;">
+    {% csrf_token %}
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+    <button type="submit" class="secondary js-confirm"
+            data-confirm-title="Zrušit objednávku?"
+            data-confirm-body="Opravdu zrušit objednávku {{ order.quantity_kg|floatformat:'3' }} kg {{ order.product.name_cs }} na pobočku {{ order.branch.code }}?"
+            data-confirm-cta="Zrušit objednávku">Zrušit objednávku</button>
+  </form>
+  {% include "inventory/_confirm_dialog.html" %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,111 @@
+{% comment %}
+Reusable in-app confirmation dialog (sharp/green sklad system) — replaces the
+native window.confirm() for destructive actions. Mirrors the dialog first used
+in stock_adjust_form.html (per 0041).
+
+Usage:
+  1. Include this partial once on the page: {% include "inventory/_confirm_dialog.html" %}
+  2. Give any submit button the class `js-confirm` plus data-* attributes:
+       <button type="submit" form="some-form" class="js-confirm danger"
+               data-confirm-title="Zrušit?" data-confirm-body="Opravdu …?"
+               data-confirm-cta="Zrušit">…</button>
+     The button may target another form via form="…"; otherwise its closest
+     <form> is submitted. On confirm the form is submitted via requestSubmit()
+     so any page-level submit listeners (e.g. unsaved-changes guards) still fire.
+  3. Or call window.kasiaConfirm({title, body, cta, danger}) → Promise<bool>.
+{% endcomment %}
+<dialog id="kasia-confirm" class="kasia-dialog" aria-labelledby="kasia-confirm-title">
+  <h2 id="kasia-confirm-title" class="kasia-dialog-title">Opravdu?</h2>
+  <p id="kasia-confirm-body" class="kasia-dialog-body"></p>
+  <div class="kasia-dialog-actions">
+    <button type="button" class="secondary" data-action="cancel">Zpět</button>
+    <button type="button" class="primary" data-action="confirm" id="kasia-confirm-cta">Potvrdit</button>
+  </div>
+</dialog>
+
+<style>
+  .kasia-dialog {
+    border: 0;
+    border-radius: 8px;
+    padding: 0;
+    max-width: 460px;
+    width: calc(100% - 2rem);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    background: #fff;
+    color: var(--fg);
+  }
+  .kasia-dialog::backdrop {
+    background: rgba(20, 30, 22, 0.45);
+    backdrop-filter: blur(2px);
+  }
+  .kasia-dialog-title {
+    margin: 0;
+    padding: 1rem 1.25rem 0.5rem;
+    font-size: 1.1rem;
+    color: var(--accent-deep);
+  }
+  .kasia-dialog-body {
+    margin: 0;
+    padding: 0.25rem 1.25rem 1rem;
+    color: var(--fg);
+    line-height: 1.45;
+  }
+  .kasia-dialog-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    padding: 0.75rem 1.25rem 1rem;
+    border-top: 1px solid var(--accent-tint);
+    background: #fafaf8;
+  }
+  .kasia-dialog-actions .primary.danger {
+    background: var(--error);
+    border-color: var(--error);
+  }
+</style>
+
+<script>
+  (function () {
+    const dialog = document.getElementById("kasia-confirm");
+    if (!dialog) return;
+    const titleEl = document.getElementById("kasia-confirm-title");
+    const bodyEl = document.getElementById("kasia-confirm-body");
+    const ctaEl = document.getElementById("kasia-confirm-cta");
+    const cancelBtn = dialog.querySelector('[data-action="cancel"]');
+    let resolveFn = null;
+
+    function settle(value) {
+      const f = resolveFn; resolveFn = null;
+      if (f) f(value);
+    }
+    window.kasiaConfirm = function ({ title, body, cta, danger } = {}) {
+      titleEl.textContent = title || "Opravdu?";
+      bodyEl.textContent = body || "";
+      ctaEl.textContent = cta || "Potvrdit";
+      ctaEl.classList.toggle("danger", !!danger);
+      dialog.showModal();
+      return new Promise((resolve) => { resolveFn = resolve; });
+    };
+    ctaEl.addEventListener("click", () => { dialog.close(); settle(true); });
+    cancelBtn.addEventListener("click", () => { dialog.close(); settle(false); });
+    dialog.addEventListener("cancel", () => { settle(false); });
+
+    // Delegated handler for any submit button opting in via `.js-confirm`.
+    document.addEventListener("click", async function (e) {
+      const btn = e.target.closest(".js-confirm");
+      if (!btn) return;
+      e.preventDefault();
+      const ok = await window.kasiaConfirm({
+        title: btn.dataset.confirmTitle || "Opravdu?",
+        body: btn.dataset.confirmBody || "",
+        cta: btn.dataset.confirmCta || "Potvrdit",
+        danger: true,
+      });
+      if (!ok) return;
+      const formId = btn.getAttribute("form");
+      const form = formId ? document.getElementById(formId) : btn.closest("form");
+      if (!form) return;
+      if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+    });
+  })();
+</script>

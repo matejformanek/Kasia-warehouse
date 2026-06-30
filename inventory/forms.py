@@ -471,7 +471,7 @@ class BranchForm(forms.ModelForm):
 # ---------------------------------------------------------------------------
 
 
-from .models import PlannedTransfer, StockThresholdOverride  # noqa: E402
+from .models import PlannedOrder, PlannedTransfer, StockThresholdOverride  # noqa: E402
 
 
 class ThresholdOverrideForm(forms.ModelForm):
@@ -546,6 +546,59 @@ class PlannedTransferForm(forms.ModelForm):
                 "Cílová pobočka se musí lišit od zdrojové."
             )
         return cleaned
+
+
+class PlannedOrderForm(forms.ModelForm):
+    """Operator-facing form for /objednavky/nova/ + /objednavky/<pk>/upravit/.
+
+    Per [0057](../context/decisions/0057-planned-orders-objednavky.md):
+    all authenticated users may create + receive + cancel. No tier gate
+    beyond login. `product` / `branch` prefill from GET on the create
+    page (from the low-stock panel "Objednat" link). `supplier` is
+    optional — empty falls back to the internal "Objednávka" counterparty
+    on receive.
+    """
+
+    class Meta:
+        model = PlannedOrder
+        fields = (
+            "product",
+            "branch",
+            "supplier",
+            "quantity_kg",
+            "expected_on",
+            "notes",
+        )
+        widgets = {
+            "expected_on": forms.DateInput(
+                attrs={"type": "date"}, format="%Y-%m-%d"
+            ),
+            "notes": forms.Textarea(attrs={"rows": 2}),
+            "quantity_kg": forms.NumberInput(attrs={"step": "0.001"}),
+        }
+        labels = {
+            "product": "Produkt",
+            "branch": "Pobočka",
+            "supplier": "Dodavatel",
+            "quantity_kg": "Objednané množství (kg)",
+            "expected_on": "Očekávaný příjezd",
+            "notes": "Poznámka",
+        }
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["product"].queryset = Product.objects.filter(
+            is_active=True
+        ).order_by("name_cs")
+        self.fields["branch"].queryset = Branch.objects.filter(is_active=True)
+        # Real suppliers only — the internal "Objednávka" counterparty is
+        # applied automatically when this is left blank.
+        self.fields["supplier"].queryset = Supplier.objects.filter(
+            is_active=True, is_internal=False
+        ).order_by("name")
+        self.fields["supplier"].required = False
+        self.fields["quantity_kg"].min_value = Decimal("0.001")
+        self.fields["expected_on"].initial = date.today
 
 
 class MixingPlanForm(forms.Form):

@@ -162,6 +162,29 @@ urlpatterns = [
         views.planned_transfer_cancel,
         name="planned_transfer_cancel",
     ),
+    # Objednávky (per 0057) — all authenticated users. Static before
+    # int-capture, matching the convention elsewhere in this file.
+    path("objednavky/", views.objednavka_list, name="objednavka_list"),
+    path(
+        "objednavky/nova/",
+        views.objednavka_create,
+        name="objednavka_create",
+    ),
+    path(
+        "objednavky/<int:pk>/prijmout/",
+        views.objednavka_receive,
+        name="objednavka_receive",
+    ),
+    path(
+        "objednavky/<int:pk>/upravit/",
+        views.objednavka_edit,
+        name="objednavka_edit",
+    ),
+    path(
+        "objednavky/<int:pk>/zrusit/",
+        views.objednavka_cancel,
+        name="objednavka_cancel",
+    ),
     # Plánované míchání (Pass 6, per 0044).
     path(
         "michani/planovat/",

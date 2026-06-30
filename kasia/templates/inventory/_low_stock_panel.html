@@ -1,8 +1,14 @@
 {% if low_stock_rows %}
 <div class="card">
-  <h2 style="font-size:1.05rem;margin-top:0;">Dochází zboží</h2>
-  <p style="color:var(--fg-soft);margin-top:0;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <h2 style="font-size:1.05rem;margin:0;">Dochází zboží</h2>
+    {% if can_order %}
+      <a class="primary" href="{% url 'inventory:inventura_edit' code='dochazi' %}">Upravit →</a>
+    {% endif %}
+  </div>
+  <p style="color:var(--fg-soft);margin-top:0.5rem;">
     Pod hranicí objednacího bodu (efektivně = stav − rezervováno).
+    {% if can_order %}Klikněte na „Upravit" a projděte řádky najednou.{% endif %}
   </p>
   <table class="lines">
     <thead>
@@ -14,6 +20,7 @@
         <th style="text-align:right;">Efektivně</th>
         <th style="text-align:right;">Práh</th>
         <th style="text-align:right;">Schodek</th>
+        <th>Stav</th>
       </tr>
     </thead>
     <tbody>
@@ -26,6 +33,13 @@
           <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.effective|floatformat:"3" }}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.threshold|floatformat:"3" }}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--warn);">{{ r.deficit|floatformat:"3" }}</td>
+          <td style="white-space:nowrap;">
+            {% if r.ordered_kg %}
+              <span class="stock-warn" style="display:inline-block;background:var(--ok-soft);color:var(--ok);padding:2px 6px;font-size:0.85rem;font-variant-numeric:tabular-nums;">
+                Objednáno {{ r.ordered_kg|floatformat:"3" }} kg · {{ r.ordered_eta|date:"d. m. Y" }}
+              </span>
+            {% endif %}
+          </td>
         </tr>
       {% endfor %}
     </tbody>

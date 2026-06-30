@@ -58,9 +58,9 @@ to escape the generic "AI-template" look with verifiable facts only.
 | `27-mono-final.html` | **★ Final homepage** (from 24) — green `#006634` nav bar + white text + logo, green buttons, hero buttons swapped (left "Náš sortiment" ghost / right green "Poptat sortiment"), "Jak pracujeme" compact 6-step page-21 grid, brand line "KASIA VERA \| VERA GURMET" only, closing adds a "Naše provozovny" button, footer trimmed (no Po–Pá / IČO / datová schránka), bottom strip = © left + "Přihlášení do skladu" right. The basis for the real port. |
 | `28-mono-final-lightgreen.html` | **★ Chosen homepage** — sections 02 "Jak pracujeme" + 06 "Spojte se s námi" on a deep forest-green band (`--lgreen #0a3b20`, white text). Nav links to the sub-pages below. The locked theme all other pages inherit. |
 | `29-o-nas.html` | **Page proposition — O nás** (theme 28): story + milestone timeline, vedení (3 exec portraits), deep-green statement band, dovoz a dosah, CTA. |
-| `30-produkty.html` | **Page proposition — Sortiment** (theme 28): 5 category clusters (hand-authored SVG, no photos/prices/SKUs), KASIA VERA \| VERA GURMET brand, VEGA/Zlaté kuře flagged keep-or-drop, deep-green "balení na míru" band. |
-| `31-provozovny.html` | **Page proposition — Provozovny** (theme 28): 4 location cards (real building photo + address + tel + Po–Pá hours + OSM embed + "Otevřít v mapách"), Říčany marked Sídlo, obchodní zástupci note. |
-| `32-kontakt.html` | **Page proposition — Kontakt** (theme 28, info-only, no form): statutory block (IČO + datová schránka live here), 3 kontaktní osoby (honest empty slots for personal contacts), OSM map of sídlo, deep-green phone CTA band. |
+| `30-produkty.html` | **Page proposition — Sortiment** (theme 28): 5 category clusters (hand-authored SVG, no photos/prices/SKUs), KASIA VERA \| VERA GURMET brand, VEGA/Zlaté kuře flagged keep-or-drop, honest "Poptávka" closing (no "na míru"). |
+| `31-provozovny.html` | **Page proposition — Provozovny** (theme 28): 4 location cards (real building photo + address + tel + Po–Pá hours + Google Maps embed + "Otevřít v mapách"), Říčany marked Sídlo, obchodní zástupci note. |
+| `32-kontakt.html` | **Page proposition — Kontakt** (theme 28, info-only, no form): single compact view — contact details + Google Maps side by side (IČO + datová schránka live here), kontaktní osoby inline. |
 | `assets/` | Local copy of `favicon-32.png`, `kasia-logo.jpg` (01–04), and the real `branch-*.jpg` + `exec-*.jpg` photos (used by 16–17 and the Phase-3 per-page mockups). |
 
 ## Conventions

@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kasia vera — koření a kulinářské produkty od roku 1993</title>
+  <meta name="description" content="Rodinná firma od roku 1993. Dovážíme, zpracováváme, mícháme a balíme koření a kulinářské produkty pro velkoobchody, gastro provozy a výrobce potravin pod značkou VERA GURMET.">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green:      #235c33;
+      --green-700:  #1b4a28;
+      --green-600:  #2a6c3d;
+      --green-soft: #e9f0ea;
+      --green-tint: #f1f6f1;
+      --clay:       #e7ddcb;
+      --clay-soft:  #f2ebde;
+      --sand:       #efe7d6;
+      --orange:     #b34e16;
+      --orange-700: #8f3c10;
+      --orange-soft:#f6e6d8;
+      --cream:      #faf7f1;
+      --cream-2:    #f5efe4;
+      --ink:        #25271f;
+      --ink-2:      #555b4e;   /* AA on cream: ~6.4:1 */
+      --ink-3:      #6c7263;   /* AA on cream: ~4.6:1 */
+      --line:       #e7e1d2;
+      --line-2:     #efe9dc;
+      --paper:      #ffffff;
+      --shadow:     0 18px 40px -28px rgba(40, 50, 30, .35), 0 6px 16px -12px rgba(40, 50, 30, .12);
+      --shadow-sm:  0 8px 22px -18px rgba(40, 50, 30, .30);
+      --r-lg:       16px;
+      --r-md:       14px;
+      --r-sm:       12px;
+      --pill:       999px;
+      --maxw:       1120px;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--ink);
+      background: var(--cream);
+      line-height: 1.65;
+      font-size: 17px;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3 {
+      font-family: "Fraunces", Georgia, "Times New Roman", serif;
+      line-height: 1.12; letter-spacing: -.01em; margin: 0; font-weight: 600;
+    }
+    p { margin: 0; }
+    a { color: var(--green-600); text-decoration: none; }
+    a:hover { color: var(--green-700); }
+    img { max-width: 100%; display: block; }
+
+    .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 26px; }
+
+    .skip {
+      position: absolute; left: -999px; top: 0;
+      background: var(--green); color: #fff; padding: 12px 18px;
+      border-radius: 0 0 12px 0; z-index: 100; font-weight: 600;
+    }
+    .skip:focus { left: 0; color: #fff; }
+
+    /* ---------- Buttons ---------- */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+      font: inherit; font-weight: 600; font-size: 16px;
+      padding: 13px 24px; border-radius: var(--pill);
+      border: 1.5px solid transparent; cursor: pointer; min-height: 48px;
+      transition: background .18s ease, border-color .18s ease, color .18s ease, transform .06s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--green); color: #fff; }
+    .btn-primary:hover { background: var(--green-700); color: #fff; }
+    .btn-outline { background: transparent; color: var(--green-700); border-color: var(--green); }
+    .btn-outline:hover { background: var(--green-soft); color: var(--green-700); }
+    .btn-sm { padding: 10px 18px; font-size: 15px; min-height: 42px; }
+
+    /* ---------- Header ---------- */
+    header.site {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(250, 247, 241, .88);
+      backdrop-filter: saturate(150%) blur(10px);
+      border-bottom: 1px solid var(--line-2);
+    }
+    .header-inner { display: flex; align-items: center; gap: 22px; height: 74px; }
+    .wordmark {
+      font-family: "Fraunces", serif; font-weight: 600;
+      font-size: 23px; letter-spacing: -.01em; color: var(--ink);
+      display: inline-flex; align-items: baseline; gap: 8px;
+    }
+    .wordmark:hover { color: var(--ink); }
+    .wordmark .leaf {
+      width: 10px; height: 10px; border-radius: 0 50% 50% 50%;
+      background: var(--green); display: inline-block; transform: rotate(45deg) translateY(-1px);
+    }
+    .wordmark .vera { color: var(--green-600); font-style: italic; }
+
+    nav.site { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+    nav.site a {
+      color: var(--ink-2); font-weight: 500; font-size: 15.5px;
+      padding: 9px 15px; border-radius: var(--pill);
+    }
+    nav.site a:hover { color: var(--green-700); background: var(--green-tint); }
+    .header-cta { margin-left: 10px; }
+    .nav-toggle { display: none; }
+
+    /* ---------- Hero ---------- */
+    .hero { padding: 80px 0 60px; }
+    .hero-grid {
+      display: grid; grid-template-columns: 1.04fr .96fr; gap: 60px; align-items: center;
+    }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 9px;
+      font-size: 13.5px; font-weight: 600; letter-spacing: .02em;
+      color: var(--green-700); background: var(--green-soft);
+      padding: 7px 15px; border-radius: var(--pill);
+    }
+    .eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--orange); }
+    .hero h1 { font-size: clamp(36px, 5.4vw, 58px); margin: 24px 0 20px; letter-spacing: -.02em; }
+    .hero h1 em { font-style: italic; color: var(--green); }
+    .hero .lead { font-size: 19.5px; color: var(--ink-2); max-width: 40ch; margin: 0 0 30px; }
+    .hero-cta { display: flex; flex-wrap: wrap; gap: 14px; }
+
+    /* softly rounded framed photo */
+    .hero-photo {
+      position: relative; border-radius: 24px; overflow: hidden;
+      box-shadow: var(--shadow); background: var(--cream-2);
+      border: 8px solid var(--paper);
+    }
+    .hero-photo img { width: 100%; height: 100%; object-fit: cover; aspect-ratio: 4 / 4.4; }
+    .hero-photo .tag {
+      position: absolute; left: 18px; bottom: 18px;
+      background: rgba(250, 247, 241, .94); color: var(--ink);
+      font-size: 13.5px; font-weight: 600; padding: 8px 15px;
+      border-radius: var(--pill); box-shadow: var(--shadow-sm);
+    }
+
+    /* ---------- Facts strip ---------- */
+    .facts { padding: 8px 0 56px; }
+    .facts-row {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+      gap: 14px 22px; text-align: center;
+    }
+    .fact {
+      display: inline-flex; align-items: baseline; gap: 9px;
+    }
+    .fact .n {
+      font-family: "Fraunces", serif; font-weight: 600; font-size: 30px; color: var(--green);
+    }
+    .fact .l { font-size: 15.5px; color: var(--ink-2); }
+    .fact-sep { width: 5px; height: 5px; border-radius: 50%; background: var(--clay); }
+
+    /* ---------- Section scaffolding ---------- */
+    section { padding: 80px 0; }
+    .band-cream2 { background: var(--cream-2); }
+    .band-green { background: var(--green); color: #f3f0e8; }
+    .section-head { max-width: 58ch; margin-bottom: 44px; }
+    .section-head.center { margin-left: auto; margin-right: auto; text-align: center; }
+    .kicker {
+      display: inline-block; font-size: 13px; font-weight: 600; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--orange-700); margin-bottom: 14px;
+    }
+    .section-head h2 { font-size: clamp(28px, 3.8vw, 40px); margin: 0; }
+    .section-head .lead { color: var(--ink-2); font-size: 18.5px; margin: 16px 0 0; }
+
+    /* ---------- Co děláme: airy items ---------- */
+    .capabilities { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px 40px; }
+    .cap {
+      padding: 26px 26px 28px; border-radius: var(--r-lg);
+      background: var(--paper); border: 1px solid var(--line);
+      box-shadow: var(--shadow-sm);
+    }
+    .cap .ic {
+      width: 46px; height: 46px; border-radius: 14px;
+      background: var(--green-tint); color: var(--green);
+      display: grid; place-items: center; margin-bottom: 16px;
+    }
+    .cap .ic svg { width: 24px; height: 24px; }
+    .cap h3 { font-size: 20px; margin-bottom: 7px; }
+    .cap p { color: var(--ink-2); font-size: 15.5px; }
+
+    /* ---------- Jak pracujeme: soft sequence ---------- */
+    .process {
+      display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px;
+    }
+    .step {
+      flex: 1 1 150px;
+      background: var(--cream); border: 1px solid var(--line);
+      border-radius: var(--r-md); padding: 20px 18px;
+      position: relative;
+    }
+    .band-green .step {
+      background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.16);
+    }
+    .step .num {
+      font-family: "Fraunces", serif; font-size: 15px; font-weight: 600;
+      color: var(--orange); margin-bottom: 8px;
+    }
+    .band-green .step .num { color: #e9c39a; }
+    .step .t { font-weight: 600; font-size: 16px; line-height: 1.35; }
+    .band-green .step .t { color: #fff; }
+    .arrow { display: grid; place-items: center; color: rgba(255,255,255,.45); flex: 0 0 auto; }
+    .arrow svg { width: 20px; height: 20px; }
+    .process-cap {
+      margin-top: 26px; font-size: 16px; color: #d7e0d2; text-align: center;
+    }
+    .process-cap strong { color: #fff; font-weight: 600; }
+
+    /* ---------- Komu dodáváme: inline rows ---------- */
+    .segments { display: grid; gap: 0; max-width: 880px; }
+    .seg {
+      display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: baseline;
+      padding: 26px 4px; border-bottom: 1px solid var(--line);
+    }
+    .seg:first-child { border-top: 1px solid var(--line); }
+    .seg .sh { font-family: "Fraunces", serif; font-size: 21px; font-weight: 600; color: var(--ink); min-width: 0; }
+    .seg .sd { color: var(--ink-2); font-size: 16px; }
+
+    /* ---------- Náš sortiment ---------- */
+    .assort-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 46px; align-items: start; }
+    .cat-list { list-style: none; padding: 0; margin: 0; }
+    .cat-list li {
+      display: flex; align-items: center; gap: 14px;
+      padding: 15px 0; border-bottom: 1px solid var(--line-2); font-size: 17px; color: var(--ink);
+    }
+    .cat-list li:last-child { border-bottom: 0; }
+    .cat-list .dot {
+      width: 9px; height: 9px; border-radius: 0 50% 50% 50%;
+      background: var(--green); transform: rotate(45deg); flex: 0 0 auto;
+    }
+    .brands {
+      background: var(--green-tint); border: 1px solid var(--green-soft);
+      border-radius: var(--r-lg); padding: 30px 28px;
+    }
+    .brands h3 { font-size: 19px; margin-bottom: 6px; }
+    .brands > p { color: var(--ink-2); font-size: 15px; margin-bottom: 20px; }
+    .brand-pills { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+    .brand-pill {
+      background: var(--paper); border: 1px solid var(--line);
+      border-radius: var(--pill); padding: 9px 18px;
+      font-weight: 600; font-size: 15px; color: var(--green-700);
+    }
+
+    /* ---------- Příběh ---------- */
+    .story-grid { display: grid; grid-template-columns: .92fr 1.08fr; gap: 52px; align-items: center; }
+    .story-photo {
+      border-radius: 24px; overflow: hidden; border: 8px solid var(--paper);
+      box-shadow: var(--shadow); background: var(--cream-2);
+    }
+    .story-photo img { width: 100%; object-fit: cover; aspect-ratio: 4 / 4.3; }
+    .story p.prose { font-size: 18px; color: var(--ink-2); margin-bottom: 26px; max-width: 46ch; }
+    .timeline { list-style: none; padding: 0; margin: 0 0 26px; }
+    .timeline li {
+      display: grid; grid-template-columns: 64px 1fr; gap: 18px; align-items: baseline;
+      padding: 13px 0; border-bottom: 1px dashed var(--line);
+    }
+    .timeline li:last-child { border-bottom: 0; }
+    .timeline .yr { font-family: "Fraunces", serif; font-weight: 600; color: var(--green); font-size: 18px; }
+    .timeline .ev { color: var(--ink-2); font-size: 16px; }
+
+    /* ---------- Export pills ---------- */
+    .export { text-align: center; }
+    .export .pills { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 28px; }
+    .country {
+      background: var(--clay-soft); border: 1px solid var(--clay);
+      border-radius: var(--pill); padding: 11px 22px;
+      font-weight: 600; font-size: 16px; color: var(--ink);
+    }
+
+    /* ---------- Closing CTA band ---------- */
+    .cta-band {
+      background: var(--clay-soft);
+      border: 1px solid var(--clay);
+      border-radius: 26px;
+      padding: 52px 44px; text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+    .cta-band h2 { font-size: clamp(28px, 3.6vw, 38px); margin-bottom: 14px; }
+    .cta-band p { color: var(--ink-2); font-size: 18.5px; margin-bottom: 28px; max-width: 48ch; margin-left: auto; margin-right: auto; }
+    .cta-actions { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; align-items: center; }
+    .cta-phone {
+      font-family: "Fraunces", serif; font-size: 26px; font-weight: 600; color: var(--green-700);
+    }
+    .cta-phone:hover { color: var(--green); }
+
+    /* ---------- Footer ---------- */
+    footer.site {
+      background: var(--green-700); color: #d3ddcf;
+      padding: 64px 0 30px; margin-top: 0;
+    }
+    .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 46px; }
+    .footer-brand .wordmark { color: #fff; font-size: 24px; }
+    .footer-brand .wordmark .vera { color: #a9d3b4; }
+    .footer-brand .wordmark .leaf { background: #a9d3b4; }
+    .footer-brand p { margin: 16px 0 0; color: #a9b8aa; font-size: 15px; max-width: 40ch; }
+    footer.site h4 {
+      font-family: "Inter", sans-serif; color: #fff; font-size: 13px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase; margin: 0 0 16px;
+    }
+    .footer-col address, .footer-col p { font-style: normal; margin: 0 0 6px; font-size: 15px; line-height: 1.75; }
+    .footer-col a { color: #d3ddcf; }
+    .footer-col a:hover { color: #fff; }
+    .footer-col .muted { color: #95a797; }
+    .footer-nav { list-style: none; padding: 0; margin: 0; }
+    .footer-nav li { margin-bottom: 9px; }
+    .footer-nav a { font-size: 15px; }
+    .footer-bottom {
+      margin-top: 46px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.12);
+      display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center;
+      font-size: 13.5px; color: #95a797;
+    }
+    .footer-bottom .sep { color: rgba(255,255,255,.22); }
+    .footer-bottom .skladlink { margin-left: auto; }
+    .footer-bottom .skladlink a { color: #a9b8aa; }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 940px) {
+      .hero-grid, .assort-grid, .story-grid { grid-template-columns: 1fr; gap: 40px; }
+      .hero .lead { max-width: none; }
+      .story-photo { order: 2; }
+      .capabilities { grid-template-columns: 1fr 1fr; }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+      .footer-brand { grid-column: 1 / -1; }
+    }
+    @media (max-width: 720px) {
+      body { font-size: 16px; }
+      nav.site { display: none; }
+      nav.site.open {
+        display: flex; flex-direction: column; align-items: stretch;
+        position: absolute; top: 74px; left: 0; right: 0;
+        background: var(--cream); border-bottom: 1px solid var(--line);
+        padding: 12px 26px 20px; gap: 4px;
+      }
+      nav.site.open a { padding: 12px 14px; }
+      nav.site.open .header-cta { margin: 8px 0 0; }
+      .nav-toggle {
+        display: inline-flex; align-items: center; gap: 8px; margin-left: auto;
+        background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--pill);
+        padding: 10px 16px; cursor: pointer; font: inherit; font-weight: 600; min-height: 44px;
+      }
+      .hero { padding: 52px 0 44px; }
+      section { padding: 56px 0; }
+      .capabilities { grid-template-columns: 1fr; }
+      .seg { grid-template-columns: 1fr; gap: 6px; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .footer-bottom { flex-direction: column; align-items: flex-start; }
+      .footer-bottom .sep { display: none; }
+      .footer-bottom .skladlink { margin-left: 0; }
+      .cta-band { padding: 40px 24px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { scroll-behavior: auto !important; transition: none !important; }
+    }
+    :focus-visible { outline: 3px solid var(--green); outline-offset: 2px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Přeskočit na obsah</a>
+
+  <!-- HEADER -->
+  <header class="site">
+    <div class="wrap header-inner">
+      <a class="wordmark" href="#" aria-label="Kasia vera — domů">
+        <span class="leaf" aria-hidden="true"></span>Kasia&nbsp;<span class="vera">vera</span>
+      </a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="primary-nav" onclick="var n=document.getElementById('primary-nav');var o=n.classList.toggle('open');this.setAttribute('aria-expanded',o);">
+        Menu
+      </button>
+      <nav class="site" id="primary-nav" aria-label="Hlavní navigace">
+        <a href="#">Domů</a>
+        <a href="#o-nas">O nás</a>
+        <a href="#sortiment">Produkty</a>
+        <a href="#provozovny">Provozovny</a>
+        <a href="#kontakt">Kontakt</a>
+        <a class="btn btn-primary btn-sm header-cta" href="#kontakt">Poptat sortiment</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- 1+2. HERO -->
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <span class="eyebrow">Rodinná kořenářská firma od roku 1993</span>
+          <h1>Koření a kulinářské produkty <em>pro profesionální kuchyně</em></h1>
+          <p class="lead">Dovážíme, čistíme, meleme, mícháme a balíme pro velkoobchody a obchodní řetězce, gastro provozy, výrobce uzenin i výrobce potravin — pod značkou VERA GURMET.</p>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="#kontakt">Poptat sortiment</a>
+            <a class="btn btn-outline" href="#provozovny">Naše provozovny</a>
+          </div>
+        </div>
+        <div class="hero-photo">
+          <img src="assets/branch-ricany.jpg" alt="Sídlo Kasia vera v Říčanech u Prahy" width="640" height="704" fetchpriority="high" decoding="async">
+          <span class="tag">Sídlo — Říčany u Prahy</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. FACTS STRIP -->
+    <div class="facts">
+      <div class="wrap">
+        <div class="facts-row">
+          <span class="fact"><span class="n">369</span><span class="l">druhů koření</span></span>
+          <span class="fact-sep" aria-hidden="true"></span>
+          <span class="fact"><span class="n">236</span><span class="l">kulinářských produktů</span></span>
+          <span class="fact-sep" aria-hidden="true"></span>
+          <span class="fact"><span class="n">30+</span><span class="l">let na trhu</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. CO DĚLÁME -->
+    <section class="band-cream2" id="co-delame">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="kicker">Co děláme</span>
+          <h2>Vlastní zpracování od suroviny po hotové balení</h2>
+          <p class="lead">Zvládáme celý řetězec ve vlastní režii — proto držíme stálou kvalitu i u směsí na míru.</p>
+        </div>
+        <div class="capabilities">
+          <article class="cap">
+            <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h13l2 3h3v5h-2"/><path d="M3 7v9h2"/><circle cx="7.5" cy="17.5" r="2"/><circle cx="17.5" cy="17.5" r="2"/></svg></div>
+            <h3>Dovoz a vstupní kontrola</h3>
+            <p>Koření odebíráme přímým dovozem z původních zemí a každou dodávku při příjmu kontrolujeme.</p>
+          </article>
+          <article class="cap">
+            <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20h14"/><path d="M7 20V9l5-4 5 4v11"/><path d="M10 13h4"/></svg></div>
+            <h3>Čištění a třídění</h3>
+            <p>Suroviny čistíme a třídíme, aby do dalšího zpracování šlo jen to nejlepší.</p>
+          </article>
+          <article class="cap">
+            <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg></div>
+            <h3>Mletí</h3>
+            <p>Mleme na vlastních linkách v hrubostech podle potřeb provozu i receptury.</p>
+          </article>
+          <article class="cap">
+            <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v5a6 6 0 0 0 12 0V3"/><path d="M6 21v-3a6 6 0 0 1 12 0v3"/><path d="M5 3h14M5 21h14"/></svg></div>
+            <h3>Míchání směsí na míru</h3>
+            <p>Ve vlastní míchárně připravujeme kořenicí směsi přesně podle zadání zákazníka.</p>
+          </article>
+          <article class="cap">
+            <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8"/><path d="M9 2v5l-4 9a3 3 0 0 0 3 4h8a3 3 0 0 0 3-4l-4-9V2"/><path d="M6.5 14h11"/></svg></div>
+            <h3>Mokrá výroba</h3>
+            <p>Pasty, sójová omáčka, tekuté polévkové koření a marinády z naší mokré výroby.</p>
+          </article>
+          <article class="cap">
+            <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg></div>
+            <h3>Balení</h3>
+            <p>Balíme do formátů od velkých gastro balení po menší spotřebitelská pro provozy.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. JAK PRACUJEME -->
+    <section class="band-green" id="jak-pracujeme">
+      <div class="wrap">
+        <div class="section-head center">
+          <span class="kicker" style="color:#e9c39a">Jak pracujeme</span>
+          <h2 style="color:#fff">Cesta koření naším provozem</h2>
+        </div>
+        <div class="process">
+          <div class="step"><div class="num">01</div><div class="t">Přímý dovoz</div></div>
+          <div class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+          <div class="step"><div class="num">02</div><div class="t">Vstupní kontrola</div></div>
+          <div class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+          <div class="step"><div class="num">03</div><div class="t">Zpracování</div></div>
+          <div class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+          <div class="step"><div class="num">04</div><div class="t">Míchárna</div></div>
+          <div class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+          <div class="step"><div class="num">05</div><div class="t">Mokrá výroba</div></div>
+          <div class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+          <div class="step"><div class="num">06</div><div class="t">Distribuce</div></div>
+        </div>
+        <p class="process-cap"><strong>Dohledatelnost od suroviny po balení.</strong></p>
+      </div>
+    </section>
+
+    <!-- 6. KOMU DODÁVÁME -->
+    <section id="komu">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="kicker">Komu dodáváme</span>
+          <h2>Partner pro profesionály v potravinářství</h2>
+        </div>
+        <div class="segments">
+          <div class="seg">
+            <div class="sh">Velkoobchody a obchodní řetězce</div>
+            <div class="sd">Pravidelné dodávky koření a kulinářských produktů ve velkoobchodních objemech pod značkou VERA GURMET.</div>
+          </div>
+          <div class="seg">
+            <div class="sh">Gastro provozy</div>
+            <div class="sd">Restaurace, vývařovny a catering zásobujeme kořením a směsmi v gastro baleních pro každodenní vaření.</div>
+          </div>
+          <div class="seg">
+            <div class="sh">Výrobci uzenin</div>
+            <div class="sd">Kořenicí směsi a suroviny pro masnou výrobu, včetně směsí připravených přesně na recepturu zákazníka.</div>
+          </div>
+          <div class="seg">
+            <div class="sh">Výrobci potravin</div>
+            <div class="sd">Koření, sušená zelenina a produkty mokré výroby jako vstupní suroviny pro další potravinářskou výrobu.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. NÁŠ SORTIMENT -->
+    <section class="band-cream2" id="sortiment">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="kicker">Náš sortiment</span>
+          <h2>Od celého koření po hotové směsi a mokrou výrobu</h2>
+        </div>
+        <div class="assort-grid">
+          <ul class="cat-list">
+            <li><span class="dot" aria-hidden="true"></span>Celé i mleté koření — kmín, černý pepř, koriandr a další</li>
+            <li><span class="dot" aria-hidden="true"></span>Sušená zelenina — česnek, cibule, majoránka</li>
+            <li><span class="dot" aria-hidden="true"></span>Byliny</li>
+            <li><span class="dot" aria-hidden="true"></span>Kořenicí směsi — i na míru z vlastní míchárny</li>
+            <li><span class="dot" aria-hidden="true"></span>Mokrá výroba — pasty, sójová omáčka, tekuté polévkové koření, marinády</li>
+          </ul>
+          <div class="brands">
+            <h3>Naše značky</h3>
+            <p>Sortiment dodáváme pod vlastními značkami.</p>
+            <div class="brand-pills">
+              <span class="brand-pill">VERA GURMET</span>
+              <span class="brand-pill">VEGA</span>
+              <span class="brand-pill">Zlaté kuře</span>
+            </div>
+            <a class="btn btn-primary" href="#kontakt">Prohlédnout sortiment</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. PŘÍBĚH -->
+    <section id="o-nas">
+      <div class="wrap story">
+        <div class="section-head">
+          <span class="kicker">Náš příběh</span>
+          <h2>Rodinná firma od roku 1993</h2>
+        </div>
+        <div class="story-grid">
+          <div class="story-photo">
+            <img src="assets/branch-tyniste.jpg" alt="Provoz Kasia vera v Týništi nad Orlicí" width="540" height="580" loading="lazy" decoding="async">
+          </div>
+          <div class="story">
+            <p class="prose">Začali jsme v lednu 1993 jako malá rodinná kořenářská firma. Za více než třicet let jsme z dovozu vyrostli do vlastního zpracování, míchárny i mokré výroby — a zůstali jsme rodinní.</p>
+            <ul class="timeline">
+              <li><span class="yr">1993</span><span class="ev">Vznik rodinné firmy, dovoz koření.</span></li>
+              <li><span class="yr">1995</span><span class="ev">Týniště nad Orlicí — výroba česnekové pasty.</span></li>
+              <li><span class="yr">1998</span><span class="ev">Otevření míchárny ve Strančicích.</span></li>
+              <li><span class="yr">2011</span><span class="ev">Provoz v Sezimově Ústí.</span></li>
+              <li><span class="yr">dnes</span><span class="ev">Gastro směsi z Toužimi a export do zahraničí.</span></li>
+            </ul>
+            <a class="btn btn-outline" href="#kontakt">Více o nás <span aria-hidden="true">→</span></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. EXPORT -->
+    <section class="band-cream2">
+      <div class="wrap export">
+        <span class="kicker">Export</span>
+        <h2 style="font-size:clamp(26px,3.4vw,34px)">Vyvážíme do šesti zemí</h2>
+        <div class="pills">
+          <span class="country">Polsko</span>
+          <span class="country">Slovensko</span>
+          <span class="country">Ukrajina</span>
+          <span class="country">Izrael</span>
+          <span class="country">Bělorusko</span>
+          <span class="country">Nizozemsko</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. CLOSING CTA -->
+    <section id="kontakt">
+      <div class="wrap">
+        <div class="cta-band">
+          <h2>Spojte se s námi</h2>
+          <p>Máte zájem o sortiment, směs na míru nebo pravidelné dodávky? Ozvěte se — rádi připravíme nabídku.</p>
+          <div class="cta-actions">
+            <a class="cta-phone" href="tel:+420323601422">+420 323 601 422</a>
+            <a class="btn btn-primary" href="mailto:info@kasia.cz">Napsat na info@kasia.cz</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 11. FOOTER -->
+  <footer class="site" id="provozovny">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <span class="wordmark"><span class="leaf" aria-hidden="true"></span>Kasia&nbsp;<span class="vera">vera</span></span>
+          <p>Dovoz, zpracování, míchání a balení koření a kulinářských produktů od roku 1993. Velkoobchod a gastro — značka VERA GURMET.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Kontakt</h4>
+          <address>
+            Kasia vera s.r.o.<br>
+            Nádražní 1202/5<br>
+            251 01 Říčany u Prahy
+          </address>
+          <p style="margin-top:12px">
+            <a href="tel:+420323601422">+420 323 601 422</a><br>
+            <a href="tel:+420323601424">+420 323 601 424</a>
+          </p>
+          <p><a href="mailto:info@kasia.cz">info@kasia.cz</a></p>
+          <p class="muted">Po–Pá 7:00–15:00</p>
+        </div>
+        <div class="footer-col">
+          <h4>Navigace</h4>
+          <ul class="footer-nav">
+            <li><a href="#">Domů</a></li>
+            <li><a href="#o-nas">O nás</a></li>
+            <li><a href="#sortiment">Produkty</a></li>
+            <li><a href="#kontakt">Kontakt</a></li>
+            <li><a href="#">Přihlášení do skladu</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 Kasia vera s.r.o.</span>
+        <span class="sep" aria-hidden="true">·</span>
+        <span>IČO 25756729</span>
+        <span class="sep" aria-hidden="true">·</span>
+        <span>Datová schránka emye9prc</span>
+        <span class="skladlink"><a href="#">Přihlášení do skladu</a></span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

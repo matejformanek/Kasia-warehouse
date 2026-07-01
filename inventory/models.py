@@ -292,6 +292,10 @@ class Movement(models.Model):
         PRIJEM = "prijem", "příjem"
         VYDEJ = "vydej", "výdej"
 
+    class Status(models.TextChoices):
+        DONE = "done", "hotovo"
+        PLANNED = "planned", "plánováno"
+
     branch = models.ForeignKey(
         Branch,
         on_delete=models.PROTECT,
@@ -299,7 +303,27 @@ class Movement(models.Model):
         verbose_name="pobočka",
     )
     kind = models.CharField("druh pohybu", max_length=16, choices=Kind.choices)
+    status = models.CharField(
+        "stav pohybu",
+        max_length=16,
+        choices=Status.choices,
+        default=Status.DONE,
+        help_text=(
+            "DONE = běžný pohyb (mění sklad). PLANNED = plánovaný příjem"
+            " (objednávka) — sklad se nemění, dokud se příjezd nepotvrdí."
+            " Per rozhodnutí 0059."
+        ),
+    )
     date_issued = models.DateField("datum vystavení")
+    expected_on = models.DateField(
+        "očekávaný příjezd",
+        null=True,
+        blank=True,
+        help_text=(
+            "Vyplněno jen u PLANNED příjmu (promise arrival date). NULL u"
+            " běžných (DONE) pohybů. Per rozhodnutí 0059."
+        ),
+    )
     odberatel = models.ForeignKey(
         Customer,
         on_delete=models.PROTECT,
@@ -344,6 +368,9 @@ class Movement(models.Model):
         verbose_name_plural = "pohyby"
         ordering = ("-date_issued", "-id")
         constraints = [
+            # Per 0059: a DONE příjem still requires a supplier (no
+            # regression); a výdej requires a customer; a PLANNED příjem may
+            # omit the supplier (it is filled at confirm time).
             CheckConstraint(
                 condition=(
                     Q(kind="vydej")
@@ -352,10 +379,21 @@ class Movement(models.Model):
                 )
                 | (
                     Q(kind="prijem")
+                    & Q(status="done")
+                    & Q(odberatel__isnull=True)
                     & Q(dodavatel__isnull=False)
+                )
+                | (
+                    Q(kind="prijem")
+                    & Q(status="planned")
                     & Q(odberatel__isnull=True)
                 ),
                 name="movement_counterparty_matches_kind",
+            ),
+            # PLANNED status only applies to příjem (per 0059).
+            CheckConstraint(
+                condition=Q(status="done") | Q(kind="prijem"),
+                name="movement_planned_implies_prijem",
             ),
         ]
 
@@ -370,7 +408,10 @@ class Movement(models.Model):
                     {"dodavatel": "Výdej nemůže mít dodavatele."}
                 )
         elif self.kind == self.Kind.PRIJEM:
-            if self.dodavatel_id is None:
+            # A supplier is required only once the příjem is DONE; a PLANNED
+            # příjem (objednávka) may still lack one until arrival is
+            # confirmed (per 0059).
+            if self.dodavatel_id is None and self.status == self.Status.DONE:
                 raise ValidationError(
                     {"dodavatel": "Příjem musí mít dodavatele."}
                 )
@@ -1062,6 +1103,13 @@ class PlannedTransfer(models.Model):
 
 class PlannedOrder(models.Model):
     """One ordered inbound delivery of a product to a branch ("objednávka").
+
+    RETIRED, read-only historical (see
+    [0059](../context/decisions/0059-merge-objednavka-into-prijem.md)): planned
+    inbound is now a `Movement` with `status=planned`. This model is no longer
+    written by the operator surface; open rows were migrated to PLANNED
+    Movements (migration 0017). Kept for the 0057 audit trail; the admin has no
+    add permission.
 
     Per [0057](../context/decisions/0057-planned-orders-objednavky.md):
     PLANNED orders show as "objednáno" badges on the low-stock panel but

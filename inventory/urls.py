@@ -8,6 +8,17 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("pobocka/<str:code>/", views.branch_dashboard, name="branch_dashboard"),
     path("prijem/novy/", views.prijem_create, name="prijem_create"),
+    # Planned príjem (objednávka) confirm + cancel (per 0059).
+    path(
+        "prijem/<int:pk>/potvrdit/",
+        views.prijem_confirm,
+        name="prijem_confirm",
+    ),
+    path(
+        "prijem/<int:pk>/zrusit/",
+        views.prijem_plan_cancel,
+        name="prijem_plan_cancel",
+    ),
     path("vydej/novy/", views.vydej_create, name="vydej_create"),
     path(
         "_partials/line-row/",
@@ -161,29 +172,6 @@ urlpatterns = [
         "prevody/<int:pk>/zrusit/",
         views.planned_transfer_cancel,
         name="planned_transfer_cancel",
-    ),
-    # Objednávky (per 0057) — all authenticated users. Static before
-    # int-capture, matching the convention elsewhere in this file.
-    path("objednavky/", views.objednavka_list, name="objednavka_list"),
-    path(
-        "objednavky/nova/",
-        views.objednavka_create,
-        name="objednavka_create",
-    ),
-    path(
-        "objednavky/<int:pk>/prijmout/",
-        views.objednavka_receive,
-        name="objednavka_receive",
-    ),
-    path(
-        "objednavky/<int:pk>/upravit/",
-        views.objednavka_edit,
-        name="objednavka_edit",
-    ),
-    path(
-        "objednavky/<int:pk>/zrusit/",
-        views.objednavka_cancel,
-        name="objednavka_cancel",
     ),
     # Plánované míchání (Pass 6, per 0044).
     path(

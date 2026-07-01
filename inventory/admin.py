@@ -555,8 +555,9 @@ class PlannedTransferAdmin(admin.ModelAdmin):
 
 @admin.register(PlannedOrder)
 class PlannedOrderAdmin(admin.ModelAdmin):
-    """Read-mostly admin per 0057 — created + received via the operator
-    surface at /objednavky/. Admin views; cannot edit fields or delete."""
+    """Read-only historical admin. Per 0059 the objednávka surface is retired;
+    planned inbound is now a PLANNED Movement. Admin views historical rows
+    only — no add, no edit, no delete."""
 
     list_display = (
         "pk",
@@ -578,6 +579,9 @@ class PlannedOrderAdmin(admin.ModelAdmin):
         "created_by",
         "created_at",
     )
+
+    def has_add_permission(self, request) -> bool:
+        return False
 
     def has_delete_permission(self, request, obj=None) -> bool:
         return False

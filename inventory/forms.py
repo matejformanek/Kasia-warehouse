@@ -40,6 +40,19 @@ class PrijemForm(_MovementBaseForm):
     dodavatel = forms.ModelChoiceField(
         label="Dodavatel",
         queryset=Supplier.objects.filter(is_active=True),
+        required=False,  # optional on a planned příjem; enforced in clean()
+    )
+    # Per 0059: an optional arrival date. Empty / today / past = receive
+    # straight away (DONE). A future date = a planned príjem (objednávka) —
+    # stock changes only after the arrival is confirmed.
+    expected_on = forms.DateField(
+        label="Příjezd (kdy dorazí)",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        help_text=(
+            "Prázdné = přijmout hned. Budoucí datum = plánovaný příjem;"
+            " sklad se změní až po potvrzení."
+        ),
     )
 
     def __init__(self, *args, user=None, **kwargs) -> None:
@@ -51,6 +64,19 @@ class PrijemForm(_MovementBaseForm):
             # Branch staff: lock to their branch.
             self.fields["branch"].initial = user.branch_id
             self.fields["branch"].disabled = True
+
+    def clean(self):
+        cleaned = super().clean()
+        exp = cleaned.get("expected_on")
+        is_planned = exp is not None and exp > date.today()
+        if is_planned:
+            # Planned príjem: supplier optional, arrival date required (it is,
+            # since exp is set). Nothing else to enforce.
+            pass
+        elif not cleaned.get("dodavatel"):
+            # Immediate (DONE) príjem still requires a supplier.
+            self.add_error("dodavatel", "Příjem musí mít dodavatele.")
+        return cleaned
 
 
 class VydejForm(_MovementBaseForm):
@@ -471,7 +497,7 @@ class BranchForm(forms.ModelForm):
 # ---------------------------------------------------------------------------
 
 
-from .models import PlannedOrder, PlannedTransfer, StockThresholdOverride  # noqa: E402
+from .models import PlannedTransfer, StockThresholdOverride  # noqa: E402
 
 
 class ThresholdOverrideForm(forms.ModelForm):
@@ -546,59 +572,6 @@ class PlannedTransferForm(forms.ModelForm):
                 "Cílová pobočka se musí lišit od zdrojové."
             )
         return cleaned
-
-
-class PlannedOrderForm(forms.ModelForm):
-    """Operator-facing form for /objednavky/nova/ + /objednavky/<pk>/upravit/.
-
-    Per [0057](../context/decisions/0057-planned-orders-objednavky.md):
-    all authenticated users may create + receive + cancel. No tier gate
-    beyond login. `product` / `branch` prefill from GET on the create
-    page (from the low-stock panel "Objednat" link). `supplier` is
-    optional — empty falls back to the internal "Objednávka" counterparty
-    on receive.
-    """
-
-    class Meta:
-        model = PlannedOrder
-        fields = (
-            "product",
-            "branch",
-            "supplier",
-            "quantity_kg",
-            "expected_on",
-            "notes",
-        )
-        widgets = {
-            "expected_on": forms.DateInput(
-                attrs={"type": "date"}, format="%Y-%m-%d"
-            ),
-            "notes": forms.Textarea(attrs={"rows": 2}),
-            "quantity_kg": forms.NumberInput(attrs={"step": "0.001"}),
-        }
-        labels = {
-            "product": "Produkt",
-            "branch": "Pobočka",
-            "supplier": "Dodavatel",
-            "quantity_kg": "Objednané množství (kg)",
-            "expected_on": "Očekávaný příjezd",
-            "notes": "Poznámka",
-        }
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.fields["product"].queryset = Product.objects.filter(
-            is_active=True
-        ).order_by("name_cs")
-        self.fields["branch"].queryset = Branch.objects.filter(is_active=True)
-        # Real suppliers only — the internal "Objednávka" counterparty is
-        # applied automatically when this is left blank.
-        self.fields["supplier"].queryset = Supplier.objects.filter(
-            is_active=True, is_internal=False
-        ).order_by("name")
-        self.fields["supplier"].required = False
-        self.fields["quantity_kg"].min_value = Decimal("0.001")
-        self.fields["expected_on"].initial = date.today
 
 
 class MixingPlanForm(forms.Form):

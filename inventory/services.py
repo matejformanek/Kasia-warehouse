@@ -37,7 +37,6 @@ from .models import (
     Movement,
     MovementAudit,
     MovementLine,
-    PlannedOrder,
     PlannedTransfer,
     Product,
     RecipeComponent,
@@ -111,6 +110,25 @@ def apply_movement(
     """
     if not lines:
         raise ValidationError({"lines": "Pohyb musí mít alespoň jednu položku."})
+
+    # Per 0059: a PLANNED (objednávka) príjem records the lines but does NOT
+    # touch stock — it is informational until arrival is confirmed via
+    # `confirm_planned_receipt`. No recipients / dodák / e-mail either.
+    # Negative-stock is not checked at plan time; that happens on confirm.
+    if movement.status == Movement.Status.PLANNED:
+        if movement.kind != Movement.Kind.PRIJEM:
+            raise ValidationError(
+                {"status": "Plánovat lze pouze příjem."}
+            )
+        with transaction.atomic():
+            movement.created_by = user
+            movement.full_clean()
+            movement.save()
+            for line in lines:
+                line.movement = movement
+                line.full_clean()
+                line.save()
+            return movement
 
     direction = 1 if movement.kind == Movement.Kind.PRIJEM else -1
 
@@ -1325,22 +1343,24 @@ def low_stock_rows() -> list[LowStockRow]:
         )
     }
 
-    # Per 0057: overlay open (PLANNED) objednávky per (product, branch) so a
+    # Per 0059: overlay open (PLANNED) príjem lines per (product, branch) so a
     # low row can show an "Objednáno" badge. Informational only — does NOT
-    # change effective/deficit/membership or the sort below.
+    # change effective/deficit/membership or the sort below. Re-sourced from
+    # PLANNED príjem Movement lines (was PlannedOrder under 0057).
     from django.db.models import Min, Sum
 
     orders_by_pair: dict[tuple[int, int], tuple[Decimal, date]] = {}
     for row in (
-        PlannedOrder.objects.filter(
-            state=PlannedOrder.State.PLANNED,
+        MovementLine.objects.filter(
+            movement__status=Movement.Status.PLANNED,
+            movement__kind=Movement.Kind.PRIJEM,
             product__in={s.product_id for s in stocks},
-            branch__in={s.branch_id for s in stocks},
+            movement__branch__in={s.branch_id for s in stocks},
         )
-        .values("product_id", "branch_id")
-        .annotate(total=Sum("quantity_kg"), eta=Min("expected_on"))
+        .values("product_id", "movement__branch_id")
+        .annotate(total=Sum("quantity_kg"), eta=Min("movement__expected_on"))
     ):
-        orders_by_pair[(row["product_id"], row["branch_id"])] = (
+        orders_by_pair[(row["product_id"], row["movement__branch_id"])] = (
             row["total"],
             row["eta"],
         )
@@ -1503,7 +1523,13 @@ def cancel_planned_transfer(
 
 
 # ---------------------------------------------------------------------------
-# PlannedOrder create + receive + cancel (per 0057)
+# Planned príjem (objednávka) confirm + query helpers (per 0059)
+#
+# Per 0059 a planned inbound is a Movement with status=PLANNED (created via
+# the normal príjem form / apply_movement). The standalone PlannedOrder
+# create/receive/cancel services of 0057 are retired; PlannedOrder is kept
+# read-only. `_order_counterparty` + the constants below survive as the
+# confirm-time fallback supplier.
 # ---------------------------------------------------------------------------
 
 
@@ -1512,125 +1538,97 @@ _ORDER_NOTE_PREFIX = "[OBJ] "
 
 
 def _order_counterparty() -> Supplier:
-    """The seeded internal supplier used on the příjem leg of a received
-    objednávka that has no real supplier (mirror of `_adjustment_supplier`)."""
+    """The seeded internal supplier used on the príjem leg of a confirmed
+    planned receipt that has no real supplier (mirror of
+    `_adjustment_supplier`)."""
     return Supplier.objects.get(
         name=_ORDER_COUNTERPARTY_NAME, is_internal=True
     )
 
 
-def create_planned_order(
+def confirm_planned_receipt(
     *,
-    product: Product,
-    branch: Branch,
-    quantity_kg: Decimal,
-    expected_on: date,
+    movement: Movement,
+    line_qty_by_id: dict[int, Decimal],
     supplier: Supplier | None = None,
-    notes: str = "",
-    user,
-) -> PlannedOrder:
-    """Record one PLANNED objednávka per 0057. Touches no stock.
-
-    Informational only — a PLANNED order does NOT change effective stock
-    or the deficit; it surfaces as an "Objednáno" badge on the low-stock
-    panel until arrival is confirmed via `receive_planned_order`.
-    """
-    quantity_kg = Decimal(quantity_kg).quantize(Decimal("0.001"))
-    if quantity_kg <= 0:
-        raise ValidationError(
-            {"quantity_kg": "Objednané množství musí být kladné."}
-        )
-    order = PlannedOrder(
-        product=product,
-        branch=branch,
-        supplier=supplier,
-        quantity_kg=quantity_kg,
-        expected_on=expected_on,
-        notes=notes or "",
-        created_by=user,
-    )
-    order.full_clean()
-    order.save()
-    return order
-
-
-def receive_planned_order(
-    *,
-    order: PlannedOrder,
-    received_qty: Decimal,
-    user,
     as_of: date | None = None,
+    user,
 ) -> Movement:
-    """Confirm arrival of a PLANNED objednávka per 0057.
+    """Confirm arrival of a PLANNED príjem (objednávka) per 0059.
 
-    Writes one PRIJEM Movement via `apply_movement` (the single stock
-    write path) adding `received_qty` kg to the order's branch, flips the
-    order to RECEIVED, and records `received_qty` + `received_movement`.
-    The ordered `quantity_kg` is left intact so planned-vs-actual stays
-    auditable. If the order has no real `supplier`, the internal
-    "Objednávka" counterparty is used. PRIJEM never issues a dodák or
-    e-mail, so either counterparty is fine.
+    Reads the movement's existing PLANNED lines, applies the operator-edited
+    quantities from `line_qty_by_id` (keyed by MovementLine pk), deletes any
+    line set to 0, flips the movement to DONE with `date_issued = as_of or
+    today`, sets a supplier (existing → `supplier` arg → internal
+    "Objednávka" fallback), and then applies each remaining line to stock
+    (negative stock is checked here, not at plan time). No dodák / e-mail
+    (PRIJEM never issues one).
 
-    Anyone logged in may confirm (all-users tier per 0040 + 0044).
-    Refuses if the order is not PLANNED, or if `received_qty <= 0`.
+    This is a standalone service, NOT an `apply_movement` call — the lines
+    already exist. Refuses a non-PLANNED movement.
     """
-    if order.state != PlannedOrder.State.PLANNED:
+    if movement.status != Movement.Status.PLANNED:
         raise ValidationError(
-            {"state": "Přijmout lze pouze objednanou (čekající) objednávku."}
+            {"status": "Potvrdit lze pouze plánovaný příjem."}
         )
-    received_qty = Decimal(received_qty).quantize(Decimal("0.001"))
-    if received_qty <= 0:
-        raise ValidationError(
-            {"received_qty": "Přijaté množství musí být kladné."}
-        )
+    if movement.kind != Movement.Kind.PRIJEM:
+        raise ValidationError({"kind": "Plánovaný pohyb musí být příjem."})
 
     issue_date = as_of or date.today()
-    note = (
-        f"{_ORDER_NOTE_PREFIX}objednávka {order.product.name_cs} "
-        f"{received_qty} kg → {order.branch.code} (obj. #{order.pk})."
-    )
 
     with transaction.atomic():
-        prijem = Movement(
-            branch=order.branch,
-            kind=Movement.Kind.PRIJEM,
-            dodavatel=order.supplier or _order_counterparty(),
-            date_issued=issue_date,
-            note=note,
-            created_by=user,
+        lines = list(movement.lines.select_related("product"))
+        remaining: list[MovementLine] = []
+        for line in lines:
+            new_qty = line_qty_by_id.get(line.pk, line.quantity_kg)
+            new_qty = Decimal(new_qty).quantize(Decimal("0.001"))
+            if new_qty < 0:
+                raise ValidationError(
+                    {"quantity_kg": "Přijaté množství nemůže být záporné."}
+                )
+            if new_qty == 0:
+                line.delete()
+                continue
+            if new_qty != line.quantity_kg:
+                line.quantity_kg = new_qty
+                line.full_clean()
+                line.save(update_fields=["quantity_kg"])
+            remaining.append(line)
+
+        if not remaining:
+            raise ValidationError(
+                {"lines": "Příjem musí mít alespoň jednu položku s množstvím."}
+            )
+
+        movement.status = Movement.Status.DONE
+        movement.date_issued = issue_date
+        movement.expected_on = None
+        movement.dodavatel = (
+            movement.dodavatel or supplier or _order_counterparty()
         )
-        line = MovementLine(product=order.product, quantity_kg=received_qty)
-        mv = apply_movement(movement=prijem, lines=[line], user=user)
-
-        order.state = PlannedOrder.State.RECEIVED
-        order.received_qty = received_qty
-        order.received_movement = mv
-        order.save(
-            update_fields=["state", "received_qty", "received_movement"]
+        movement.full_clean()
+        movement.save(
+            update_fields=["status", "date_issued", "expected_on", "dodavatel"]
         )
-        return mv
+
+        for line in remaining:
+            _apply_line_to_stock(line, direction=1)
+        return movement
 
 
-def cancel_planned_order(order: PlannedOrder) -> None:
-    """Mark a PLANNED objednávka as CANCELLED. No stock touched.
-
-    All authenticated users may cancel (symmetric with create, per
-    0040 + 0044). Refuses if the order is not PLANNED.
-    """
-    if order.state != PlannedOrder.State.PLANNED:
-        raise ValidationError(
-            {"state": "Zrušit lze pouze objednanou (čekající) objednávku."}
+def planned_prijem_lines_for(product: Product, branch: Branch):
+    """Open (PLANNED) príjem lines for one (product, branch) pair, soonest
+    arrival first. Replaces `planned_orders_for` (0057) for the inventura
+    inline display."""
+    return (
+        MovementLine.objects.filter(
+            movement__status=Movement.Status.PLANNED,
+            movement__kind=Movement.Kind.PRIJEM,
+            product=product,
+            movement__branch=branch,
         )
-    order.state = PlannedOrder.State.CANCELLED
-    order.save(update_fields=["state"])
-
-
-def planned_orders_for(product: Product, branch: Branch):
-    """PLANNED objednávky for one (product, branch) pair, newest ETA first."""
-    return PlannedOrder.objects.filter(
-        state=PlannedOrder.State.PLANNED,
-        product=product,
-        branch=branch,
+        .select_related("movement", "movement__branch", "product")
+        .order_by("movement__expected_on", "movement_id", "id")
     )
 
 

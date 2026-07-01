@@ -72,9 +72,13 @@ Branch staff do not see this screen — they land on
     and the service `low_stock_rows()` deficit-DESC sort are
     **unchanged**, so the panel and the daily digest still agree on
     *contents* (an order is informational — it does not mask the alert
-    until physically received). Order *arrival* is confirmed manually
-    from the Objednávky page; confirming writes one `[OBJ]` příjem and
-    removes the row once it clears the threshold.
+    until physically received). Per
+    [`../decisions/0059-merge-objednavka-into-prijem.md`](../decisions/0059-merge-objednavka-into-prijem.md)
+    the objednávka is now a **PLANNED příjem `Movement`** — the `Objednáno`
+    badge is sourced from PLANNED príjem movement lines, not `PlannedOrder`,
+    and *arrival* is confirmed manually from **Historie → Plánované**
+    ("Přijmout"), which applies the adjusted quantities to stock; the row
+    clears once it passes the threshold.
 - A **"K vyřešení"** (things flagged for owner attention) section,
   surfaced from elsewhere in the system. Examples that belong here:
   - Movements that were edited recently and may need a follow-up

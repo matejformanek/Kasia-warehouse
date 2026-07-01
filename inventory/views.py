@@ -18,7 +18,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db.models import F, Q
+from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -35,7 +35,6 @@ from .forms import (
     MovementEditLineFormSet,
     MovementLineForm,
     MovementLineFormSet,
-    PlannedOrderForm,
     PlannedTransferForm,
     PrijemEditForm,
     PrijemForm,
@@ -65,7 +64,6 @@ from .models import (
     Movement,
     MovementAudit,
     MovementLine,
-    PlannedOrder,
     PlannedTransfer,
     Product,
     RecipeComponent,
@@ -79,17 +77,15 @@ from .services import (
     apply_movement,
     apply_stock_adjustment,
     cancel_mixing_job,
-    cancel_planned_order,
     cancel_planned_transfer,
+    confirm_planned_receipt,
     create_mixture_from_review,
-    create_planned_order,
     edit_movement,
     execute_planned_transfer,
     finish_mixing_job,
     low_stock_rows,
     parse_recipe_xls,
     plan_mixing_job,
-    receive_planned_order,
     record_completed_mixing_job,
     render_dodaci_list_pdf,
     render_recipe_pdf,
@@ -145,7 +141,7 @@ def home(request):
             or Decimal("0.000")
         )
         recent_movements = list(
-            Movement.objects.filter(branch=b)
+            Movement.objects.filter(branch=b, status=Movement.Status.DONE)
             .select_related("odberatel", "dodavatel", "created_by")
             .prefetch_related("lines__product")
             .order_by("-date_issued", "-id")[:5]
@@ -292,10 +288,6 @@ def movement_history(request):
             return None
 
     df, dt = _parse(date_from), _parse(date_to)
-    if df is not None:
-        base_qs = base_qs.filter(date_issued__gte=df)
-    if dt is not None:
-        base_qs = base_qs.filter(date_issued__lte=dt)
 
     search = (request.GET.get("q") or "").strip()
     if search:
@@ -306,15 +298,35 @@ def movement_history(request):
             | Q(note__icontains=search)
         ).distinct()
 
-    # Compute counts per tab against base (post-branch + post-date + post-q
-    # so the chips reflect the current filter context).
+    # Per 0059: PLANNED príjmy (objednávky) are NOT history — they live only
+    # in the "Plánované" tab. The other tabs are DONE-only (what happened).
+    # The date range filters `date_issued` on the history tabs, but the
+    # promised `expected_on` on Plánované (date_issued there is just "today").
+    def _apply_date(qs, field):
+        if df is not None:
+            qs = qs.filter(**{f"{field}__gte": df})
+        if dt is not None:
+            qs = qs.filter(**{f"{field}__lte": dt})
+        return qs
+
+    done_base = _apply_date(
+        base_qs.filter(status=Movement.Status.DONE), "date_issued"
+    )
+    planned_base = _apply_date(
+        base_qs.filter(
+            status=Movement.Status.PLANNED, kind=Movement.Kind.PRIJEM
+        ),
+        "expected_on",
+    )
+
     inventura_filter = Q(note__startswith="[STAV] ")
     tab_counts = {
-        "all": base_qs.count(),
-        "prijem": base_qs.filter(kind=Movement.Kind.PRIJEM).count(),
-        "vydej": base_qs.filter(kind=Movement.Kind.VYDEJ).count(),
-        "inventura": base_qs.filter(inventura_filter).count(),
-        "edited": base_qs.filter(audit_entries__isnull=False).distinct().count(),
+        "all": done_base.count(),
+        "prijem": done_base.filter(kind=Movement.Kind.PRIJEM).count(),
+        "vydej": done_base.filter(kind=Movement.Kind.VYDEJ).count(),
+        "inventura": done_base.filter(inventura_filter).count(),
+        "edited": done_base.filter(audit_entries__isnull=False).distinct().count(),
+        "planned": planned_base.count(),
     }
 
     # Resolve the active tab. Legacy `?kind=` / `?edited=1` map onto
@@ -330,18 +342,21 @@ def movement_history(request):
         else:
             tab = "all"
 
-    qs = base_qs
-    if tab == Movement.Kind.PRIJEM:
-        qs = qs.filter(kind=Movement.Kind.PRIJEM)
-    elif tab == Movement.Kind.VYDEJ:
-        qs = qs.filter(kind=Movement.Kind.VYDEJ)
-    elif tab == "inventura":
-        qs = qs.filter(inventura_filter)
-    elif tab == "edited":
-        qs = qs.filter(audit_entries__isnull=False).distinct()
-    # tab == "all" → no extra filter.
-
-    qs = qs.order_by("-date_issued", "-id")[:200]
+    if tab == "planned":
+        # Worklist ordering: soonest arrival first.
+        qs = planned_base.order_by("expected_on", "id")[:200]
+    else:
+        qs = done_base
+        if tab == Movement.Kind.PRIJEM:
+            qs = qs.filter(kind=Movement.Kind.PRIJEM)
+        elif tab == Movement.Kind.VYDEJ:
+            qs = qs.filter(kind=Movement.Kind.VYDEJ)
+        elif tab == "inventura":
+            qs = qs.filter(inventura_filter)
+        elif tab == "edited":
+            qs = qs.filter(audit_entries__isnull=False).distinct()
+        # tab == "all" → no extra filter.
+        qs = qs.order_by("-date_issued", "-id")[:200]
     movements = list(qs)
 
     branches = list(Branch.objects.filter(is_active=True).order_by("code"))
@@ -352,6 +367,7 @@ def movement_history(request):
         (Movement.Kind.VYDEJ, "Výdeje", tab_counts["vydej"]),
         ("inventura", "Inventura / úprava stavu", tab_counts["inventura"]),
         ("edited", "Editováno", tab_counts["edited"]),
+        ("planned", "Plánované", tab_counts["planned"]),
     ]
 
     return render(
@@ -428,7 +444,7 @@ def branch_dashboard(request, code: str):
         )
 
     recent_movements = list(
-        Movement.objects.filter(branch=branch)
+        Movement.objects.filter(branch=branch, status=Movement.Status.DONE)
         .select_related("odberatel", "dodavatel", "created_by")
         .prefetch_related("lines__product")
         .order_by("-date_issued", "-id")[:15]
@@ -476,7 +492,7 @@ def _recent_movements_for_form(user, kind: str):
     eyeball what happened on this branch in the last few days without
     leaving the page."""
     qs = (
-        Movement.objects.filter(kind=kind)
+        Movement.objects.filter(kind=kind, status=Movement.Status.DONE)
         .select_related("branch", "dodavatel", "odberatel", "dodaci_list")
         .prefetch_related("lines__product")
         .order_by("-date_issued", "-id")
@@ -503,13 +519,31 @@ def prijem_create(request):
                         ["Pohyb musí mít alespoň jednu položku."]
                     )
                 else:
-                    movement = Movement(
-                        branch=form.cleaned_data["branch"],
-                        kind=Movement.Kind.PRIJEM,
-                        date_issued=form.cleaned_data["date_issued"],
-                        dodavatel=form.cleaned_data["dodavatel"],
-                        note=form.cleaned_data.get("note", ""),
-                    )
+                    from datetime import date as _date
+
+                    exp = form.cleaned_data.get("expected_on")
+                    is_planned = exp is not None and exp > _date.today()
+                    if is_planned:
+                        # Planned príjem (objednávka) — date_issued stays today
+                        # (keeps the not-null field + ordering valid); the
+                        # promised arrival lives in expected_on. No stock now.
+                        movement = Movement(
+                            branch=form.cleaned_data["branch"],
+                            kind=Movement.Kind.PRIJEM,
+                            status=Movement.Status.PLANNED,
+                            date_issued=_date.today(),
+                            expected_on=exp,
+                            dodavatel=form.cleaned_data.get("dodavatel"),
+                            note=form.cleaned_data.get("note", ""),
+                        )
+                    else:
+                        movement = Movement(
+                            branch=form.cleaned_data["branch"],
+                            kind=Movement.Kind.PRIJEM,
+                            date_issued=form.cleaned_data["date_issued"],
+                            dodavatel=form.cleaned_data["dodavatel"],
+                            note=form.cleaned_data.get("note", ""),
+                        )
                     try:
                         mv = apply_movement(
                             movement=movement, lines=lines, user=request.user
@@ -517,10 +551,17 @@ def prijem_create(request):
                     except ValidationError as exc:
                         _push_validation_error_to_formset(exc, formset)
                     else:
-                        messages.success(
-                            request,
-                            f"Příjem byl uložen ({mv.lines.count()} pol.).",
-                        )
+                        if is_planned:
+                            messages.success(
+                                request,
+                                "Plánovaný příjem uložen — sklad se změní po"
+                                " potvrzení příjezdu.",
+                            )
+                        else:
+                            messages.success(
+                                request,
+                                f"Příjem byl uložen ({mv.lines.count()} pol.).",
+                            )
                         return redirect("inventory:movement_saved", pk=mv.pk)
     else:
         form = PrijemForm(user=request.user)
@@ -537,6 +578,107 @@ def prijem_create(request):
             ),
         },
     )
+
+
+@require_http_methods(["GET", "POST"])
+def prijem_confirm(request, pk: int):
+    """Confirm arrival of a PLANNED príjem (objednávka) per 0059.
+
+    All logged-in users. GET renders the planned lines with editable
+    quantities (prefilled with the ordered amount), an actual-arrival date
+    (default today), and an optional supplier picker. POST maps each line's
+    posted quantity into `line_qty_by_id` and calls `confirm_planned_receipt`
+    (a line set to 0 is dropped; negative stock surfaces here).
+    """
+    from datetime import date as _date
+
+    movement = get_object_or_404(
+        Movement.objects.select_related("branch", "dodavatel"), pk=pk
+    )
+    if movement.status != Movement.Status.PLANNED:
+        messages.info(request, "Tento příjem už byl potvrzen nebo zrušen.")
+        return redirect("inventory:movement_saved", pk=movement.pk)
+
+    lines = list(movement.lines.select_related("product").order_by("id"))
+    suppliers = Supplier.objects.filter(
+        is_active=True, is_internal=False
+    ).order_by("name")
+
+    if request.method == "POST":
+        line_qty_by_id: dict[int, Decimal] = {}
+        errors: list[str] = []
+        for line in lines:
+            raw = (request.POST.get(f"qty_{line.pk}") or "").strip().replace(
+                ",", "."
+            )
+            if raw == "":
+                line_qty_by_id[line.pk] = line.quantity_kg
+                continue
+            try:
+                line_qty_by_id[line.pk] = Decimal(raw)
+            except (InvalidOperation, ValueError):
+                errors.append(f"{line.product.name_cs}: neplatné množství: {raw}")
+
+        as_of_raw = (request.POST.get("as_of") or "").strip()
+        as_of = None
+        if as_of_raw:
+            try:
+                as_of = _date.fromisoformat(as_of_raw)
+            except ValueError:
+                errors.append(f"Neplatné datum příjezdu: {as_of_raw}")
+
+        supplier = None
+        supplier_pk = (request.POST.get("supplier") or "").strip()
+        if supplier_pk:
+            supplier = suppliers.filter(pk=supplier_pk).first()
+
+        if not errors:
+            try:
+                confirm_planned_receipt(
+                    movement=movement,
+                    line_qty_by_id=line_qty_by_id,
+                    supplier=supplier,
+                    as_of=as_of,
+                    user=request.user,
+                )
+            except ValidationError as exc:
+                errors.extend(
+                    exc.messages if hasattr(exc, "messages") else [str(exc)]
+                )
+            else:
+                messages.success(
+                    request,
+                    "Příjem potvrzen — stav skladu byl navýšen.",
+                )
+                return redirect("inventory:movement_saved", pk=movement.pk)
+
+        for err in errors:
+            messages.error(request, err)
+
+    return render(
+        request,
+        "inventory/prijem_confirm.html",
+        {
+            "movement": movement,
+            "lines": lines,
+            "suppliers": suppliers,
+            "today": _date.today(),
+        },
+    )
+
+
+@require_POST
+def prijem_plan_cancel(request, pk: int):
+    """Cancel (hard-delete) a PLANNED príjem per 0059. It never touched
+    stock, so a plain delete (cascading its lines) is safe. All logged-in
+    users."""
+    movement = get_object_or_404(Movement, pk=pk)
+    if movement.status != Movement.Status.PLANNED:
+        messages.error(request, "Zrušit lze pouze plánovaný příjem.")
+        return redirect("inventory:movement_history")
+    movement.delete()
+    messages.success(request, "Plánovaný příjem zrušen.")
+    return redirect(_safe_next(request, reverse("inventory:movement_history")))
 
 
 # ---------------------------------------------------------------------------
@@ -970,7 +1112,9 @@ def product_detail(request, pk: int):
         )
 
     recent_movements_qs = (
-        Movement.objects.filter(lines__product=product)
+        Movement.objects.filter(
+            lines__product=product, status=Movement.Status.DONE
+        )
         .select_related("branch", "odberatel", "dodavatel", "created_by")
         .prefetch_related("lines__product")
         .distinct()
@@ -1137,6 +1281,10 @@ def movement_edit(request, pk: int):
         Movement.objects.select_related("branch", "odberatel", "dodavatel"),
         pk=pk,
     )
+    # Per 0059: PLANNED príjmy are edited/confirmed via prijem_confirm, not the
+    # DONE-movement editor (which would apply status-aware stock logic).
+    if movement.status == Movement.Status.PLANNED:
+        return redirect("inventory:prijem_confirm", pk=movement.pk)
     existing_lines = list(
         movement.lines.select_related("product").order_by("id")
     )
@@ -2453,15 +2601,22 @@ def inventura_edit(request, code: str):
         branch = get_object_or_404(Branch, code=code.upper(), is_active=True)
 
     def _orders_by_pair() -> dict:
-        """All open (PLANNED) orders grouped by (product_id, branch_id) —
-        one query, used by the cross-branch views to show inline orders."""
+        """All open (PLANNED) príjem lines grouped by (product_id, branch_id)
+        — one query, used by the cross-branch views to show inline orders.
+        Per 0059 an order is a PLANNED príjem Movement line (was PlannedOrder).
+        """
         grouped: dict = {}
-        for o in (
-            PlannedOrder.objects.filter(state=PlannedOrder.State.PLANNED)
-            .select_related("product", "branch", "supplier")
-            .order_by("expected_on", "id")
+        for line in (
+            MovementLine.objects.filter(
+                movement__status=Movement.Status.PLANNED,
+                movement__kind=Movement.Kind.PRIJEM,
+            )
+            .select_related("product", "movement", "movement__branch")
+            .order_by("movement__expected_on", "movement_id", "id")
         ):
-            grouped.setdefault((o.product_id, o.branch_id), []).append(o)
+            grouped.setdefault(
+                (line.product_id, line.movement.branch_id), []
+            ).append(line)
         return grouped
 
     def _build_rows() -> list[dict]:
@@ -2600,22 +2755,37 @@ def inventura_edit(request, code: str):
                     continue
                 if mv is not None:
                     adjusted += 1
+            # Per 0059: group dated rows by (branch, ETA) and create one
+            # PLANNED príjem Movement per group (its lines share the header
+            # arrival date). No stock touched until confirmation.
+            groups: dict[tuple, list[tuple]] = {}
             for p, b, qty, eta in orders:
+                groups.setdefault((b.pk, eta), []).append((p, b, qty))
+            for (_branch_pk, eta), group_rows in groups.items():
+                g_branch = group_rows[0][1]
+                movement = Movement(
+                    branch=g_branch,
+                    kind=Movement.Kind.PRIJEM,
+                    status=Movement.Status.PLANNED,
+                    date_issued=date.today(),
+                    expected_on=eta,
+                    note="",
+                )
+                mv_lines = [
+                    MovementLine(product=p, quantity_kg=qty)
+                    for (p, _b, qty) in group_rows
+                ]
                 try:
-                    create_planned_order(
-                        product=p,
-                        branch=b,
-                        quantity_kg=qty,
-                        expected_on=eta,
-                        user=request.user,
+                    apply_movement(
+                        movement=movement, lines=mv_lines, user=request.user
                     )
                 except ValidationError as exc:
                     errors.append(
-                        f"{p.name_cs} ({b.code}): "
+                        f"{g_branch.code} (příjezd {eta.isoformat()}): "
                         + ("; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
                     )
                     continue
-                ordered += 1
+                ordered += len(group_rows)
 
         for err in errors:
             messages.error(request, err)
@@ -2642,6 +2812,13 @@ def inventura_edit(request, code: str):
     else:
         reason_value = ""
 
+    # Distinct PLANNED-movement pks referenced by inline orders — the
+    # out-of-form cancel forms are emitted once per movement (a planned
+    # receipt may span several rows).
+    cancelable_movement_pks = sorted(
+        {o.movement_id for row in rows for o in row["orders"]}
+    )
+
     return render(
         request,
         "inventory/inventura_edit.html",
@@ -2654,6 +2831,7 @@ def inventura_edit(request, code: str):
             "all_branches": all_branches,
             "today": date.today(),
             "reason_value": reason_value,
+            "cancelable_movement_pks": cancelable_movement_pks,
         },
     )
 
@@ -2779,154 +2957,6 @@ def planned_transfer_cancel(request, pk: int):
 
 
 # ---------------------------------------------------------------------------
-# Objednávky — planned inbound orders (per decision 0057).
-#
-# All authenticated users (treated like planned transfers per 0040 + 0044).
-# Creation is offered from the owner low-stock box and from this page.
-# ---------------------------------------------------------------------------
-
-
-@require_GET
-def objednavka_list(request):
-    """List of objednávky: open (PLANNED) first, then recent RECEIVED."""
-    base = PlannedOrder.objects.select_related(
-        "product", "branch", "supplier", "created_by"
-    )
-    planned = list(
-        base.filter(state=PlannedOrder.State.PLANNED).order_by(
-            "expected_on", "id"
-        )
-    )
-    recent = list(
-        base.exclude(state=PlannedOrder.State.PLANNED).order_by("-id")[:50]
-    )
-    return render(
-        request,
-        "inventory/objednavka_list.html",
-        {
-            "planned": planned,
-            "recent": recent,
-            "planned_count": len(planned),
-        },
-    )
-
-
-def objednavka_create(request):
-    """Create a PLANNED objednávka. Prefills product + branch from GET
-    (`?product=<pk>&branch=<code>`) when linked from the low-stock panel."""
-    if request.method == "POST":
-        form = PlannedOrderForm(request.POST)
-        if form.is_valid():
-            order = create_planned_order(
-                product=form.cleaned_data["product"],
-                branch=form.cleaned_data["branch"],
-                quantity_kg=form.cleaned_data["quantity_kg"],
-                expected_on=form.cleaned_data["expected_on"],
-                supplier=form.cleaned_data.get("supplier"),
-                notes=form.cleaned_data.get("notes", ""),
-                user=request.user,
-            )
-            messages.success(
-                request,
-                f"Objednávka {order.product.name_cs} "
-                f"{order.quantity_kg} kg → {order.branch.code} zapsána.",
-            )
-            return redirect("inventory:objednavka_list")
-    else:
-        initial: dict = {}
-        product_pk = request.GET.get("product")
-        if product_pk:
-            initial["product"] = product_pk
-        branch_code = request.GET.get("branch")
-        if branch_code:
-            branch = Branch.objects.filter(code=branch_code).first()
-            if branch is not None:
-                initial["branch"] = branch.pk
-        form = PlannedOrderForm(initial=initial)
-    return render(
-        request,
-        "inventory/objednavka_form.html",
-        {"form": form, "mode": "create"},
-    )
-
-
-def objednavka_edit(request, pk: int):
-    """Edit qty / date / supplier / notes while the order is PLANNED.
-
-    Honours a `next` param so the Dochází-zboží screen can send the
-    operator straight back where they came from.
-    """
-    from django.urls import reverse
-
-    order = get_object_or_404(PlannedOrder, pk=pk)
-    next_url = _safe_next(request, reverse("inventory:objednavka_list"))
-    if order.state != PlannedOrder.State.PLANNED:
-        messages.error(request, "Upravit lze pouze čekající objednávku.")
-        return redirect(next_url)
-    if request.method == "POST":
-        form = PlannedOrderForm(request.POST, instance=order)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Objednávka upravena.")
-            return redirect(next_url)
-    else:
-        form = PlannedOrderForm(instance=order)
-    return render(
-        request,
-        "inventory/objednavka_form.html",
-        {"form": form, "mode": "edit", "order": order, "next_url": next_url},
-    )
-
-
-@require_POST
-def objednavka_receive(request, pk: int):
-    """Confirm arrival — writes one PRIJEM via receive_planned_order. The
-    received amount (`received_qty`) is editable; defaults to the ordered
-    quantity in the template."""
-    order = get_object_or_404(PlannedOrder, pk=pk)
-    raw = (request.POST.get("received_qty") or "").strip().replace(",", ".")
-    try:
-        received_qty = Decimal(raw)
-    except (InvalidOperation, ValueError):
-        messages.error(request, "Neplatné přijaté množství.")
-        return redirect("inventory:objednavka_list")
-    try:
-        receive_planned_order(
-            order=order, received_qty=received_qty, user=request.user
-        )
-    except ValidationError as exc:
-        messages.error(
-            request,
-            "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc),
-        )
-        return redirect("inventory:objednavka_list")
-    messages.success(
-        request,
-        f"Příjem zapsán — {received_qty} kg {order.product.name_cs} "
-        f"na pobočku {order.branch.code}.",
-    )
-    return redirect("inventory:objednavka_list")
-
-
-@require_POST
-def objednavka_cancel(request, pk: int):
-    from django.urls import reverse
-
-    order = get_object_or_404(PlannedOrder, pk=pk)
-    next_url = _safe_next(request, reverse("inventory:objednavka_list"))
-    try:
-        cancel_planned_order(order)
-    except ValidationError as exc:
-        messages.error(
-            request,
-            "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc),
-        )
-        return redirect(next_url)
-    messages.success(request, "Objednávka zrušena.")
-    return redirect(next_url)
-
-
-# ---------------------------------------------------------------------------
 # Plánované míchání (per 0044). Wraps plan_mixing_job.
 # ---------------------------------------------------------------------------
 
@@ -3026,14 +3056,33 @@ def support_view(request):
             return redirect("inventory:support")
     else:
         form = FeedbackForm()
-    feedbacks = (
-        Feedback.objects.select_related("created_by", "resolved_by")
-        .order_by(F("resolved_at").asc(nulls_first=True), "-created_at")[:50]
+    # Per 0059-part-B: resolved (vyřešená) reports are hidden by default (the
+    # list grows long and slows the page). Open reports always render; resolved
+    # rows are fetched only when explicitly requested via ?show_resolved=1.
+    open_feedbacks = list(
+        Feedback.objects.select_related("created_by")
+        .filter(resolved_at__isnull=True)
+        .order_by("-created_at")
     )
+    resolved_count = Feedback.objects.filter(resolved_at__isnull=False).count()
+    show_resolved = request.GET.get("show_resolved") == "1"
+    resolved_feedbacks = []
+    if show_resolved:
+        resolved_feedbacks = list(
+            Feedback.objects.select_related("created_by", "resolved_by")
+            .filter(resolved_at__isnull=False)
+            .order_by("-resolved_at", "-created_at")
+        )
     return render(
         request,
         "inventory/support.html",
-        {"form": form, "feedbacks": feedbacks},
+        {
+            "form": form,
+            "open_feedbacks": open_feedbacks,
+            "resolved_feedbacks": resolved_feedbacks,
+            "resolved_count": resolved_count,
+            "show_resolved": show_resolved,
+        },
     )
 
 

@@ -1,5 +1,10 @@
 # 0057 — Objednávky: planned inbound orders from the low-stock panel
 
+> **Superseded in part by 0059** — the `PlannedOrder` model, the
+> `/sklad/objednavky/` write surface, and its nav entry are retired; planned
+> inbound is now a `Movement` with `status=planned`. The informational-only
+> invariant below is preserved.
+
 **Date:** 2026-06-30
 **Decider:** Matej (relaying Petr's ask)
 **Status:** Active

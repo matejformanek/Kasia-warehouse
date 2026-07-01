@@ -90,14 +90,32 @@ row-delete button.
 
 ## Quantities display at 1 dp, comma from the locale (per 0061)
 
-Quantity displays use **`floatformat:1`** (never `:3`); the Czech comma comes
-free from the active `cs` locale — **no custom filter**. Operator quantity
-entry uses `step="0.1"` on `type="number"` inputs (browser shows the comma,
-submits a dot — no server comma-parsing). JS-truth / native-input attributes
-(`data-current`, `value=` on `type=number`) keep the **dot** via `|unlocalize`
-or a view-side `f"{x:.1f}"` string. The recipe-PDF **percentages** stay at
-`floatformat:"2"` (proportions, not kg; the PDF has its own styling). Model
-`decimal_places` stays 3 — no migration; values round to 0.1 on the next save.
+Quantity displays use **`floatformat:1`** (never `:3`, never raw
+`{{ x }}` — raw output localizes the comma but keeps 3 dp); the Czech comma
+comes free from the active `cs` locale — **no custom filter**. This applies to
+**every kg display on every page**, including the dodací-list PDF
+(`{{ line.quantity_kg|floatformat:1 }}`). Operator quantity entry uses
+`step="0.1"` on `type="number"` inputs (browser shows the comma, submits a dot —
+no server comma-parsing). JS-truth / native-input attributes (`data-current`,
+`value=` on `type=number`) keep the **dot** — via `|unlocalize` (JS-math /
+URL params) or **`|stringformat:'.1f'`** / a view-side `f"{x:.1f}"` string for
+prefills. **Never `floatformat` inside a `type=number` `value=`** — it emits a
+comma the browser rejects, blanking the field. The **recipe** is the only
+exception to 1 dp: recipe-PDF **percentages** stay at `floatformat:"2"` and the
+component **ratios** (`rc.ratio`, proportions not kg) render raw — both may need
+more precision. Model `decimal_places` stays 3 — no migration; values round to
+0.1 on the next save.
+
+The inventura **Dochází** view prefills the nový-stav cell with current stock
+(1 dp), same as the per-branch and *Vše* views — it is **not** left blank.
+
+Stock-correction saves (inventura, upravit-stav) **compare edits at 1 dp** — a
+value equal to current at 1 dp is a no-op (no movement, no reason required); the
+client-side delta/dirty check rounds to 1 dp (`Math.round(x*10)`) to match the
+server (`quantize(Decimal("0.1"), ROUND_HALF_UP)`). Stored values are left
+untouched (sub-0.1 residue from historical 3dp entry is harmless and invisible).
+Do not restore full-precision comparison — it resurfaces phantom `+0.00x`
+corrections that demand a spurious reason.
 
 ## Don't hardcode what rots
 

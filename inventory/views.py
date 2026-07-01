@@ -14,7 +14,7 @@ Pass 3a screens:
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -1033,6 +1033,13 @@ def catalogue_index(request):
             r
             for r in rows
             if r["effective"] <= 0 and r["threshold"] is not None
+        ]
+    elif state_filter == "ok":
+        rows = [
+            r
+            for r in rows
+            if not r["is_low"]
+            and not (r["effective"] <= 0 and r["threshold"] is not None)
         ]
 
     return render(
@@ -2492,7 +2499,7 @@ def stock_adjust_edit(request, pk: int):
         reserved = reserved_kg(product, branch) if stock else Decimal("0.000")
         carried = stock is not None
         if posted_value is None:
-            new_value = f"{current:.3f}"
+            new_value = f"{current:.1f}"
         else:
             new_value = posted_value
         return {
@@ -2536,11 +2543,10 @@ def stock_adjust_edit(request, pk: int):
             if new_qty < 0:
                 row["error"] = "Stav nemůže být záporný."
                 continue
-            if new_qty.as_tuple().exponent < -3:
-                new_qty = new_qty.quantize(Decimal("0.001"))
-            if new_qty != row["current"]:
+            new_qty = new_qty.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+            if new_qty != row["current"].quantize(Decimal("0.1")):
                 any_change = True
-            parsed.append((branch, new_qty))
+                parsed.append((branch, new_qty))
 
         if any_change and not reason_value:
             reason_error = "Důvod úpravy je povinný, když měníte hodnoty."
@@ -2676,7 +2682,7 @@ def inventura_edit(request, code: str):
                     "current": r.on_hand,
                     "qty_field": f"qty_{r.product.pk}_{r.branch.pk}",
                     "eta_field": f"eta_{r.product.pk}_{r.branch.pk}",
-                    "qty_value": "",  # empty default — blank = no action
+                    "qty_value": f"{r.on_hand:.1f}",  # prefill current stock
                     "eta_value": "",
                     "orders": grouped.get((r.product.pk, r.branch.pk), []),
                 }
@@ -2765,6 +2771,7 @@ def inventura_edit(request, code: str):
                 if qty <= 0:
                     errors.append(f"{label}: objednané množství musí být kladné.")
                     continue
+                qty = qty.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
                 orders.append((p, b, qty, eta))
             else:
                 # No date → absolute new stock level (immediate correction).
@@ -2778,7 +2785,8 @@ def inventura_edit(request, code: str):
                 if new_qty < 0:
                     errors.append(f"{label}: stav nemůže být záporný.")
                     continue
-                if new_qty == row["current"]:
+                new_qty = new_qty.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+                if new_qty == row["current"].quantize(Decimal("0.1")):
                     continue
                 adjustments.append((p, b, new_qty))
 

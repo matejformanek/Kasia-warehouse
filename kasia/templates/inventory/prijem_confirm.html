@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Potvrdit příjezd — Kasia vera{% endblock %}
+
+{% block content %}
+<h1>Potvrdit příjezd zboží</h1>
+
+<div class="card" style="background:#fbf3e0;border-left:3px solid var(--warn);">
+  <strong>Plánovaný příjem</strong> na pobočku {{ movement.branch.code }} —
+  očekávaný příjezd <strong>{{ movement.expected_on|date:"d. m. Y" }}</strong>.
+  Upravte množství podle toho, co skutečně dorazilo (řádek s nulou se vynechá),
+  a potvrďte. Teprve teď se navýší stav skladu.
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  <div class="card">
+    <div class="field">
+      <label for="id_as_of">Skutečný příjezd</label>
+      <input type="date" name="as_of" id="id_as_of" value="{{ today|date:'Y-m-d' }}">
+    </div>
+    <div class="field">
+      <label for="id_supplier">Dodavatel (volitelné)</label>
+      <select name="supplier" id="id_supplier">
+        <option value="">— interní „Objednávka" —</option>
+        {% for s in suppliers %}
+          <option value="{{ s.pk }}" {% if movement.dodavatel_id == s.pk %}selected{% endif %}>
+            {{ s.name }}
+          </option>
+        {% endfor %}
+      </select>
+      <p style="color:var(--fg-soft);font-size:0.85rem;margin:0.25rem 0 0;">
+        Prázdné = použije se interní protistrana „Objednávka".
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:1.1rem;margin-top:0;">Položky</h2>
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Produkt</th>
+          <th style="text-align:right;">Objednáno (kg)</th>
+          <th style="text-align:right;">Přijato (kg)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in lines %}
+          <tr>
+            <td><strong>{{ line.product.name_cs }}</strong></td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--fg-soft);">
+              {{ line.quantity_kg|floatformat:"3" }}
+            </td>
+            <td style="text-align:right;">
+              <input type="number" step="0.001" min="0"
+                     name="qty_{{ line.pk }}"
+                     value="{{ line.quantity_kg|stringformat:'.3f' }}"
+                     style="max-width:140px;text-align:right;font-variant-numeric:tabular-nums;">
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p style="color:var(--fg-soft);font-size:0.85rem;">
+      Množství 0 = položka se do příjmu nezahrne.
+    </p>
+  </div>
+
+  <p>
+    <button class="primary" type="submit">Potvrdit příjem</button>
+    <a class="secondary" href="{% url 'inventory:movement_history' %}?tab=planned">Zpět</a>
+  </p>
+</form>
+{% endblock %}

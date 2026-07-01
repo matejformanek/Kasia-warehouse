@@ -16,7 +16,7 @@
       {{ form.branch.errors }}
     </div>
     <div class="field">
-      <label class="field-required" for="id_dodavatel">Dodavatel</label>
+      <label for="id_dodavatel">Dodavatel</label>
       {{ form.dodavatel }}
       <a class="secondary" href="{% url 'inventory:supplier_create' %}" target="_blank"
          style="margin-left:0.5rem;font-size:0.85rem;padding:0.2rem 0.5rem;"
@@ -29,6 +29,14 @@
       <label class="field-required" for="id_date_issued">Datum vystavení</label>
       {{ form.date_issued }}
       {{ form.date_issued.errors }}
+    </div>
+    <div class="field">
+      <label for="id_expected_on">{{ form.expected_on.label }}</label>
+      {{ form.expected_on }}
+      <p style="color:var(--fg-soft);font-size:0.85rem;margin:0.25rem 0 0;">
+        {{ form.expected_on.help_text }}
+      </p>
+      {{ form.expected_on.errors }}
     </div>
     <div class="field">
       <label for="id_note">Poznámka</label>

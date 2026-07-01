@@ -232,24 +232,27 @@ a typo and prefer "rezervace" as the standard Czech spelling.)
 
 **EN:** (planned) order. *Verb:* **objednat** (to order). *Status:*
 **objednáno** (ordered).
-A recorded intention to receive an inbound delivery of one product to one
-branch, with an ordered quantity and an **očekávaný příjezd** (expected
-arrival date). Created from the "Dochází zboží" panel (or the Objednávky
-page) per
-[`decisions/0057-planned-orders-objednavky.md`](./decisions/0057-planned-orders-objednavky.md).
-A PLANNED objednávka is **informational only** — like **rezervace** above,
-it does NOT change effective stock or the deficit; it surfaces as an
-`Objednáno` badge on the low row. Confirming arrival ("Přijmout") writes one
-*příjem* via `apply_movement` that adds the received kilograms to the
-branch's sklad and flips the order to **přijato** (received). The received
-amount may differ from the ordered amount (real deliveries slip), so both are
-stored. Model: `PlannedOrder`.
+A recorded intention to receive an inbound delivery of goods to one branch,
+with an **očekávaný příjezd** (expected arrival date). Per
+[`decisions/0059-merge-objednavka-into-prijem.md`](./decisions/0059-merge-objednavka-into-prijem.md)
+an objednávka is now a **plánovaný příjem** — a `Movement` with
+`status=planned, kind=prijem` (multi-line, like any příjem), **not** a
+separate model. It is created from the *příjem* form by entering a future
+**Příjezd** date (supersedes the standalone `/sklad/objednavky/` page of 0057).
+A PLANNED příjem is **informational only** — like **rezervace** above, it does
+NOT change effective stock or the deficit; it surfaces as an `Objednáno` badge
+on the low row. Confirming arrival ("Přijmout", from **Historie → Plánované**)
+adjusts per-line quantities to what actually arrived (a 0-qty line is dropped),
+flips the Movement to `status=done`, and adds the received kilograms to the
+branch's sklad. (Legacy note: the retired 0057 `PlannedOrder` model is kept
+read-only for historical rows.)
 
 ### očekávaný příjezd
 
 **EN:** expected arrival (date).
-The date an **objednávka** is expected to arrive at the branch. Stored on
-`PlannedOrder.expected_on`. Purely informational — arrival is confirmed
+The date an **objednávka** (plánovaný příjem) is expected to arrive at the
+branch. Stored on `Movement.expected_on` (NULL on ordinary DONE movements;
+required on a PLANNED příjem). Purely informational — arrival is confirmed
 manually (anyone logged in), never auto-applied on this date.
 
 ### objednací bod

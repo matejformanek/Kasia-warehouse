@@ -57,6 +57,23 @@ or restructure:
   the movement form such that `.closest("form")` / `[name=branch]` resolution
   changes.
 
+## Movement.status (planned príjem) — per 0059
+
+`Movement` carries a `status` (`done` / `planned`). A **PLANNED** row is a
+planned příjem (objednávka) and behaves differently in the UI:
+
+- It routes to **`prijem_confirm`** (Přijmout), **not** `movement_edit` — the
+  Historie "Plánované" tab and the inventura inline "upravit" link both point
+  there. A PLANNED row must never open the DONE-movement editor.
+- Its cancel (`prijem_plan_cancel`) is an **out-of-form** `<button
+  form="plan-cancel-{pk}">` driven by `_confirm_dialog.html`, so no `<form>`
+  nests inside `tr.row-link` (same locked-hook gotcha as inventura).
+- The low-stock **"Objednáno"** badge is sourced from **PLANNED příjem movement
+  lines** (`Sum(quantity_kg)`/`Min(expected_on)`), not `PlannedOrder`. It stays
+  badge-only — informational, never changing effective/deficit/membership.
+
+See [`0059`](../../context/decisions/0059-merge-objednavka-into-prijem.md).
+
 ## Don't hardcode what rots
 
 Reference the tokens (`var(--accent)`, `var(--green)`, …), not raw hex, in new
@@ -71,5 +88,6 @@ blocks and in `0054` — point there rather than copying hex into this rule.
 ## Cross-references
 
 - [`0054-adopt-ui-directions.md`](../../context/decisions/0054-adopt-ui-directions.md) — the decision
+- [`0059-merge-objednavka-into-prijem.md`](../../context/decisions/0059-merge-objednavka-into-prijem.md) — Movement.status + planned príjem UI
 - [`context/public-site.md`](../../context/public-site.md) — public visual assets
 - [`no-premature-tech-choices.md`](./no-premature-tech-choices.md) — why design direction is gated

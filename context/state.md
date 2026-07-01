@@ -1908,6 +1908,33 @@
   příjezd*. Screen doc 02 updated. **377 pytest green** (+8 objednávka
   tests; `test_low_stock_rows_sorted_by_deficit` untouched and still
   passing).
+- **2026-07-01** — **Merged objednávka into příjem** (branch
+  `ft_inv_objednavky`), per
+  [`decisions/0059-merge-objednavka-into-prijem.md`](./decisions/0059-merge-objednavka-into-prijem.md)
+  (0057 superseded in part). Planned inbound is now a `Movement` with a new
+  `status` (`done`/`planned`) + nullable `expected_on` — **no second model**.
+  The příjem form gained one optional **Příjezd** date: empty/today/past →
+  ordinary DONE příjem (hits stock now); a **future** date → a PLANNED
+  multi-line receipt that touches no stock until confirmed. Migration
+  `0016_movement_status_expected_on` (fields + 3-branch counterparty CHECK
+  allowing supplier-less PLANNED príjem + `planned⇒prijem` CHECK);
+  `0017_migrate_open_planned_orders` (open `PlannedOrder` → PLANNED Movement,
+  source cancelled). Services: `apply_movement` early PLANNED branch (skip
+  stock/dodák/e-mail); new `confirm_planned_receipt` (per-line editable qty,
+  0-qty dropped, whole receipt → DONE + applied to stock, supplier fallback)
+  + `planned_prijem_lines_for`; `low_stock_rows()` overlay **re-sourced from
+  PLANNED príjem lines** (membership/deficit/sort untouched — invariant held).
+  Views: `prijem_create` planned branch, `prijem_confirm` + `prijem_plan_cancel`
+  (all-users), `movement_edit` redirects PLANNED → confirm, DONE-only filters on
+  home/branch/product/recent-form panels, Historie **"Plánované"** tab
+  (`expected_on ASC`, DONE-only on other tabs), inventura dated rows now group
+  into **one PLANNED Movement per (branch, ETA)**. **Retired the objednávka
+  surface**: `/sklad/objednavky/` routes + 5 views + `PlannedOrderForm` + 2
+  templates + nav entry deleted; `PlannedOrder` model + migrations 0014/0015
+  kept **read-only** (admin add disabled). **Part B**: Podpora hides resolved
+  feedback by default (reveal via `?show_resolved=1`). Rules
+  `design-system.md`, glossary, screen 02 updated. **390 pytest green**
+  (full suite); ruff + `manage.py check` clean; migrations apply clean.
 
 ## Hand-off for the next session (post-compact)
 

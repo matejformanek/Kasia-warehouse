@@ -17,7 +17,7 @@
   U každého řádku vyplňte hodnotu a volitelně datum příjezdu:
   <ul style="margin:0.5rem 0 0;padding-left:1.2rem;">
     <li><strong>Bez data</strong> — hodnota je <em>nový stav skladu</em>; změna se zapíše ihned (pohyb <code>[STAV]</code>, per 0041).</li>
-    <li><strong>S datem</strong> — hodnota je <em>objednané množství</em> (ne nový stav); založí se objednávka s tímto datem příjezdu (per 0057). Stav skladu se teď nemění.</li>
+    <li><strong>S datem</strong> — hodnota je <em>objednané množství</em> (ne nový stav); založí se plánovaný příjem s tímto datem příjezdu (per 0059). Stav skladu se teď nemění.</li>
   </ul>
 </div>
 
@@ -83,14 +83,14 @@
                    value="{{ row.eta_value }}">
             {% for o in row.orders %}
               <span style="color:var(--ok);font-size:0.8rem;display:block;margin-top:2px;">
-                objednáno {{ o.quantity_kg|floatformat:"3" }} kg · příjezd {{ o.expected_on|date:"d. m. Y" }}
-                <a href="{% url 'inventory:objednavka_edit' pk=o.pk %}?next={{ request.path|urlencode }}">upravit</a>
+                objednáno {{ o.quantity_kg|floatformat:"3" }} kg · příjezd {{ o.movement.expected_on|date:"d. m. Y" }}
+                <a href="{% url 'inventory:prijem_confirm' pk=o.movement.pk %}?next={{ request.path|urlencode }}">upravit</a>
                 <span style="color:var(--line);">·</span>
-                <button type="submit" form="ord-cancel-{{ o.pk }}"
+                <button type="submit" form="plan-cancel-{{ o.movement.pk }}"
                         class="js-confirm"
-                        data-confirm-title="Zrušit objednávku?"
-                        data-confirm-body="Opravdu zrušit objednávku {{ o.quantity_kg|floatformat:'3' }} kg {{ o.product.name_cs }} na pobočku {{ o.branch.code }} (příjezd {{ o.expected_on|date:'d. m. Y' }})?"
-                        data-confirm-cta="Zrušit objednávku"
+                        data-confirm-title="Zrušit plánovaný příjem?"
+                        data-confirm-body="Opravdu zrušit celý plánovaný příjem s příjezdem {{ o.movement.expected_on|date:'d. m. Y' }} na pobočku {{ row.branch.code }}?"
+                        data-confirm-cta="Zrušit plánovaný příjem"
                         style="background:none;border:none;padding:0;color:var(--error);text-decoration:underline;cursor:pointer;font-size:0.8rem;">zrušit</button>
               </span>
             {% endfor %}
@@ -111,8 +111,9 @@
              value="{{ reason_value|default:'' }}"
              placeholder="např. inventura k {% now 'd. m. Y' %}">
       <p style="color:var(--fg-soft);font-size:0.85rem;margin:0.25rem 0 0;">
-        Povinné jen pokud někde měníte stav skladu (řádek bez data). Objednávky
-        se zakládají bez dodavatele — lze doplnit později na stránce Objednávky.
+        Povinné jen pokud někde měníte stav skladu (řádek bez data). Plánované
+        příjmy se zakládají bez dodavatele — lze doplnit při potvrzení příjezdu
+        (Historie → Plánované).
       </p>
     </div>
     <p>
@@ -128,15 +129,17 @@
   </div>
 </form>
 
-{# Standalone cancel forms for existing orders — kept OUTSIDE the main form
-   so the in-table "zrušit" buttons (form="ord-cancel-N") don't nest forms. #}
-{% for row in rows %}{% for o in row.orders %}
-  <form id="ord-cancel-{{ o.pk }}" method="post"
-        action="{% url 'inventory:objednavka_cancel' pk=o.pk %}" hidden>
+{% comment %}Standalone cancel forms for existing planned príjmy — kept OUTSIDE
+   the main form so the in-table "zrušit" buttons (form="plan-cancel-N") don't
+   nest forms. Deduped by movement pk (a planned receipt may span several rows).
+{% endcomment %}
+{% for pk in cancelable_movement_pks %}
+  <form id="plan-cancel-{{ pk }}" method="post"
+        action="{% url 'inventory:prijem_plan_cancel' pk=pk %}" hidden>
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ request.path }}">
   </form>
-{% endfor %}{% endfor %}
+{% endfor %}
 
 {% include "inventory/_confirm_dialog.html" %}
 

@@ -140,7 +140,7 @@
 
 <h2 style="margin-top:2rem;">Historie hlášení</h2>
 
-{% if feedbacks %}
+{% if open_feedbacks %}
   <table class="lines">
     <thead>
       <tr>
@@ -153,27 +153,20 @@
       </tr>
     </thead>
     <tbody>
-      {% for f in feedbacks %}
+      {% for f in open_feedbacks %}
         <tr>
           <td style="white-space:nowrap;">{{ f.created_at|date:"d. m. Y H:i" }}</td>
           <td>{{ f.created_by.email }}</td>
           <td>{% if f.page_url %}<code>{{ f.page_url }}</code>{% else %}<span style="color:var(--fg-soft);">—</span>{% endif %}</td>
           <td>{{ f.description|linebreaksbr }}</td>
-          <td style="white-space:nowrap;{% if not f.is_open %}opacity:0.6;text-decoration:line-through;{% endif %}">
-            {% if f.is_open %}
-              <span style="color:var(--warn);">● Otevřené</span>
-            {% else %}
-              <span style="color:var(--ok);">✓ Vyřešené</span>
-              {% if f.resolved_by %}<br><small style="color:var(--fg-soft);">{{ f.resolved_by.email }}<br>{{ f.resolved_at|date:"d. m. Y H:i" }}</small>{% endif %}
-            {% endif %}
+          <td style="white-space:nowrap;">
+            <span style="color:var(--warn);">● Otevřené</span>
           </td>
           {% if user.is_vlastnik %}
             <td style="white-space:nowrap;">
               <form method="post" action="{% url 'inventory:feedback_toggle' pk=f.pk %}" style="display:inline;">
                 {% csrf_token %}
-                <button class="secondary" type="submit">
-                  {% if f.is_open %}Vyřešit{% else %}Otevřít znovu{% endif %}
-                </button>
+                <button class="secondary" type="submit">Vyřešit</button>
               </form>
             </td>
           {% endif %}
@@ -182,6 +175,55 @@
     </tbody>
   </table>
 {% else %}
-  <p style="color:var(--fg-soft);"><em>Zatím žádná hlášení.</em></p>
+  <p style="color:var(--fg-soft);"><em>Žádná otevřená hlášení.</em></p>
+{% endif %}
+
+{% if show_resolved %}
+  <h3 style="margin-top:1.5rem;">Vyřešená hlášení ({{ resolved_count }})</h3>
+  {% if resolved_feedbacks %}
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Kdo</th>
+          <th>Stránka</th>
+          <th>Popis</th>
+          <th>Stav</th>
+          {% if user.is_vlastnik %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in resolved_feedbacks %}
+          <tr>
+            <td style="white-space:nowrap;">{{ f.created_at|date:"d. m. Y H:i" }}</td>
+            <td>{{ f.created_by.email }}</td>
+            <td>{% if f.page_url %}<code>{{ f.page_url }}</code>{% else %}<span style="color:var(--fg-soft);">—</span>{% endif %}</td>
+            <td>{{ f.description|linebreaksbr }}</td>
+            <td style="white-space:nowrap;opacity:0.6;text-decoration:line-through;">
+              <span style="color:var(--ok);">✓ Vyřešené</span>
+              {% if f.resolved_by %}<br><small style="color:var(--fg-soft);">{{ f.resolved_by.email }}<br>{{ f.resolved_at|date:"d. m. Y H:i" }}</small>{% endif %}
+            </td>
+            {% if user.is_vlastnik %}
+              <td style="white-space:nowrap;">
+                <form method="post" action="{% url 'inventory:feedback_toggle' pk=f.pk %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button class="secondary" type="submit">Otevřít znovu</button>
+                </form>
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="color:var(--fg-soft);"><em>Žádná vyřešená hlášení.</em></p>
+  {% endif %}
+  <p style="margin-top:0.75rem;">
+    <a href="{% url 'inventory:support' %}">← Skrýt vyřešená</a>
+  </p>
+{% elif resolved_count %}
+  <p style="margin-top:1rem;">
+    <a href="{% url 'inventory:support' %}?show_resolved=1">Zobrazit vyřešená ({{ resolved_count }}) →</a>
+  </p>
 {% endif %}
 {% endblock %}

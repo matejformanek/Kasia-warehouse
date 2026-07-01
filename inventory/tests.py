@@ -1475,7 +1475,7 @@ def test_stock_warn_partial_over_and_under(user_tyn, tyn, pepper) -> None:
     )
     assert under.status_code == 200
     body = under.content.decode("utf-8")
-    assert "3,000" in body or "3.000" in body
+    assert "3,0" in body  # 1 dp, Czech comma (per 0061)
 
 
 @pytest.mark.django_db
@@ -2432,6 +2432,33 @@ def test_catalogue_kind_filter(user_vlastnik) -> None:
     body = response.content.decode("utf-8")
     assert "Směs" in body
     assert "Surovina" not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_state_ok_filter(user_vlastnik, tyn) -> None:
+    """?state=ok lists only rows that are neither low nor empty."""
+    ok = Product.objects.create(
+        name_cs="OK zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    low = Product.objects.create(
+        name_cs="Dochazi zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    empty = Product.objects.create(
+        name_cs="Prazdne zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    Stock.objects.create(product=ok, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=low, branch=tyn, quantity=Decimal("3.000"))
+    Stock.objects.create(product=empty, branch=tyn, quantity=Decimal("0.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/katalog/?state=ok").content.decode("utf-8")
+    assert ok.name_cs in body
+    assert low.name_cs not in body
+    assert empty.name_cs not in body
 
 
 @pytest.mark.django_db
@@ -4123,7 +4150,54 @@ def test_stock_adjust_renders_for_vlastnik(user_vlastnik, pepper, tyn) -> None:
     response = client.get(f"/sklad/katalog/{pepper.pk}/upravit-stav/")
     assert response.status_code == 200
     assert b"\xc3\x9aprava stavu" in response.content  # "Úprava stavu"
-    assert b"10.000" in response.content
+    assert b'value="10.0"' in response.content
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_stock_adjust_prefills_1dp_and_subunit_save_is_noop(
+    user_vlastnik, pepper, tyn, sez
+) -> None:
+    """A sub-0.1 stored value (9.997) prefills as 10.0; saving it unchanged
+    writes no movement and demands no reason. A genuine edit still writes one."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("9.997"))
+    client = Client()
+    client.force_login(user_vlastnik)
+
+    # GET prefills the 1dp rounded value, not the raw 3dp residue.
+    response = client.get(f"/sklad/katalog/{pepper.pk}/upravit-stav/")
+    assert response.status_code == 200
+    assert b'value="10.0"' in response.content
+    assert b"9.997" not in response.content
+
+    # POSTing that prefilled value unchanged → no-op, no reason required.
+    before = Movement.objects.count()
+    response = client.post(
+        f"/sklad/katalog/{pepper.pk}/upravit-stav/",
+        {
+            f"qty_{tyn.pk}": "10.0",
+            f"qty_{sez.pk}": "0.000",
+            "reason": "",
+        },
+    )
+    assert response.status_code == 302
+    assert Movement.objects.count() == before  # no phantom correction
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("9.997")
+
+    # A genuine edit still writes exactly one [STAV] movement + rewrites to 1dp.
+    response = client.post(
+        f"/sklad/katalog/{pepper.pk}/upravit-stav/",
+        {
+            f"qty_{tyn.pk}": "12",
+            f"qty_{sez.pk}": "0.000",
+            "reason": "inventura",
+        },
+    )
+    assert response.status_code == 302
+    assert Movement.objects.count() == before + 1
+    mv = Movement.objects.order_by("-id").first()
+    assert mv.note.startswith("[STAV] ")
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("12.0")
 
 
 @pytest.mark.django_db(transaction=True)
@@ -4460,6 +4534,26 @@ def test_inventura_edit_writes_movements_for_changed_rows_only(
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_subunit_prefill_save_is_noop(
+    user_vlastnik, tyn, pepper
+) -> None:
+    """Posting the 1dp prefill (10.0) for a sub-0.1 stored row (9.997) writes
+    no movement and requires no reason — the compare happens at 1 dp."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("9.997"))
+    before = Movement.objects.count()
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/sklad/katalog/inventura/TYN/",
+        {"reason": "", f"qty_{pepper.pk}": "10.0"},
+    )
+    assert response.status_code == 302  # redirect, no reason demanded
+    assert Movement.objects.count() == before  # no phantom change
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("9.997")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_inventura_edit_requires_reason(
     user_vlastnik, tyn, pepper
 ) -> None:
@@ -4570,9 +4664,9 @@ def test_overdraw_warning_card_shows_with_correction_button_for_vlastnik(
     assert response.status_code == 200
     body = response.content
     assert b"Nedostatek na skladu" in body or b"Nedostatek na sklad" in body
-    assert b"12.000" in body
-    assert b"5.000" in body
-    assert b"7.000" in body  # shortfall
+    assert b"12,0" in body  # 1 dp, Czech comma (per 0061)
+    assert b"5,0" in body
+    assert b"7,0" in body  # shortfall
     assert b"Upravit stav skladu" in body
     # Movement should NOT have been created.
     assert not Movement.objects.filter(
@@ -4655,9 +4749,9 @@ def test_overdraw_warning_lists_all_insufficient_lines(
     body = response.content
     assert pepper.name_cs.encode() in body
     assert paprika.name_cs.encode() in body
-    # Both shortfalls appear.
-    assert b"3.000" in body
-    assert b"7.000" in body
+    # Both shortfalls appear (1 dp, Czech comma per 0061).
+    assert b"3,0" in body
+    assert b"7,0" in body
 
 
 @pytest.mark.django_db(transaction=True)
@@ -4697,8 +4791,8 @@ def test_overdraw_aggregates_multiple_lines_of_same_product(
     )
     assert response.status_code == 200
     assert b"Nedostatek na sklad" in response.content
-    assert b"12.000" in response.content  # combined requested
-    assert b"2.000" in response.content  # shortfall
+    assert b"12,0" in response.content  # combined requested (1 dp, comma)
+    assert b"2,0" in response.content  # shortfall
 
 
 @pytest.mark.django_db(transaction=True)
@@ -7116,6 +7210,10 @@ def test_inventura_dochazi_lists_cross_branch_low_rows(
     assert paprika.name_cs not in body
     assert f"qty_{pepper.pk}_{tyn.pk}" in body
     assert f"qty_{pepper.pk}_{sez.pk}" in body
+    # Dochází now prefills the nový-stav cell with current stock (1 dp, dot in
+    # the type=number value=), matching the per-branch / Vše views.
+    assert 'value="1.0"' in body  # TYN pepper 1.000 → 1.0
+    assert 'value="2.0"' in body  # SEZ pepper 2.000 → 2.0
 
 
 @pytest.mark.django_db(transaction=True)

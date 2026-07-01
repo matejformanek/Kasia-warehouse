@@ -4,11 +4,11 @@ HTMX partial: returned by stock_warn_partial. Empty when no issue.
 {% if qty %}
   {% if over %}
     <div class="stock-warn over">
-      Na skladě je pouze {{ on_hand }} kg — výdej {{ qty }} kg překračuje stav.
+      Na skladě je pouze {{ on_hand|floatformat:1 }} kg — výdej {{ qty|floatformat:1 }} kg překračuje stav.
     </div>
   {% else %}
     <div class="stock-warn">
-      Na skladě: {{ on_hand }} kg.
+      Na skladě: {{ on_hand|floatformat:1 }} kg.
     </div>
   {% endif %}
 {% endif %}

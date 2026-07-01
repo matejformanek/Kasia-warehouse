@@ -1963,6 +1963,44 @@
   from employees (nav links + Podpora how-to removed; views/urls/tests kept in
   repo, unlinked). **396 pytest green** (full suite); `manage.py check` clean.
 
+- **2026-07-01** — **1 dp polish: stock-adjust prefill, no-op saves, katalog
+  "V pořádku"** (branch `ft_inv_dp_polish`; refinement inside
+  [`0061`](./decisions/0061-display-1dp-comma.md) — no new decision, no schema
+  or stored-data change). Follow-ups from the live walkthrough after 0061:
+  (1) `stock_adjust_edit` prefill was the one `:.3f` the 1dp sweep missed →
+  `f"{current:.1f}"` (matches the `floatformat:1` row display; a `9.997` row now
+  prefills `10.0`, not `9,997`). (2) **Stock-correction saves compare edits at
+  1 dp** so an untouched save is a true no-op (no phantom `+0.00x` movement, no
+  spurious reason): `stock_adjust_edit` + `inventura_edit` correction/order
+  branches `quantize(Decimal("0.1"), ROUND_HALF_UP)` before comparing against
+  `row["current"].quantize(Decimal("0.1"))`; `any_change`/`parsed.append` moved
+  into one guard. `inventura_edit.html` JS delta/dirty check rounds both sides
+  to 1 dp (`Math.round(x*10)`) to match the server. Stored values left untouched
+  (sub-0.1 residue is harmless/invisible; only a genuine edit rewrites a row, to
+  1 dp). (3) Katalog **"Stav skladu"** filter gains **"V pořádku"**
+  (`state=ok` = neither low nor empty). Dochází inventura prefill stays **blank**
+  by design (order-oriented; confirmed no change). `design-system.md` gains a
+  hard-constraint line pinning the 1dp compare. **399 pytest green** (full
+  suite; +3 new tests: stock-adjust subunit no-op, inventura subunit no-op,
+  catalogue `state=ok`).
+
+- **2026-07-01** — **1 dp sweep round 2 + Dochází prefill** (same branch
+  `ft_inv_dp_polish`; walkthrough follow-ups, still inside
+  [`0061`](./decisions/0061-display-1dp-comma.md)). (1) **Dochází inventura now
+  prefills the nový-stav cell** with current stock (1 dp), matching per-branch /
+  Vše — no longer blank (reverses the earlier "blank = no action" intent per
+  Matej). (2) **Killed remaining dotted / 3-dp displays**: `vydej_form.html`
+  overdraw card (`stringformat:".3f"`→`floatformat:1`), `_stock_warn.html`
+  (raw→`floatformat:1`), `dodaci_list_index.html` total, **`dodaci_list.html`
+  PDF** line qty. (3) **Fixed comma-in-number-input bugs**: `prijem_confirm.html`
+  value `.3f`→`.1f`; `mixing_job_detail.html` finish-form inputs used
+  `floatformat:1` inside `type=number` `value=` (emits comma → browser blanks
+  the field) → `stringformat:'.1f'` (dot). `design-system.md` 1dp section
+  expanded (all pages incl. dodák PDF; never `floatformat` in a number `value=`;
+  recipe ratios/percentages the only >1dp exception; Dochází prefills).
+  **399 pytest green** (full suite; +1 Dochází-prefill assertion, 4 overdraw/
+  stock-warn assertions updated to 1dp comma).
+
 ## Hand-off for the next session (post-compact)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main

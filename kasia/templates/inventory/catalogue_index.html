@@ -33,6 +33,7 @@
       <option value="" {% if not filter_state %}selected{% endif %}>— vše —</option>
       <option value="low" {% if filter_state == "low" %}selected{% endif %}>Dochází</option>
       <option value="empty" {% if filter_state == "empty" %}selected{% endif %}>Prázdné</option>
+      <option value="ok" {% if filter_state == "ok" %}selected{% endif %}>V pořádku</option>
     </select>
   </div>
   {% if not obsluha_branch %}

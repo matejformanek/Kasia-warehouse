@@ -99,7 +99,7 @@ Usage:
         title: btn.dataset.confirmTitle || "Opravdu?",
         body: btn.dataset.confirmBody || "",
         cta: btn.dataset.confirmCta || "Potvrdit",
-        danger: true,
+        danger: btn.dataset.confirmDanger !== "false",
       });
       if (!ok) return;
       const formId = btn.getAttribute("form");

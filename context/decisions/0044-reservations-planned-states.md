@@ -1,5 +1,7 @@
 # 0044 — Reservations: planned mixing + planned inter-branch transfers
 
+> **Superseded in part by 0060** — the PLANNED míchání job state is retired; míchání is immediate-only. PlannedTransfer reservations remain. reserved_kg() keeps its mixing source only for legacy in-flight jobs.
+
 **Date:** 2026-06-14
 **Decider:** Matej (relaying Petr's 2026-06-14 ask)
 **Status:** Active

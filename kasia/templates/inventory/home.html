@@ -18,7 +18,7 @@
   </div>
   <div class="kpi">
     <span class="lbl">Celková zásoba</span>
-    <span class="k-val">{{ kpi_total_mass|floatformat:"3" }} <span class="k-unit">kg</span></span>
+    <span class="k-val">{{ kpi_total_mass|floatformat:1 }} <span class="k-unit">kg</span></span>
     <span class="k-sub">součet všech poboček</span>
   </div>
   <div class="kpi">
@@ -92,7 +92,7 @@
       {% endif %}
       <p>
         <strong>{{ panel.product_count }}</strong> produktů skladem,
-        celkem <strong style="font-variant-numeric:tabular-nums;">{{ panel.total_mass|floatformat:"3" }}</strong> kg.
+        celkem <strong style="font-variant-numeric:tabular-nums;">{{ panel.total_mass|floatformat:1 }}</strong> kg.
       </p>
 
       {% if panel.top_stocks %}
@@ -104,7 +104,7 @@
             {% for s in panel.top_stocks %}
               <tr>
                 <td>{{ s.product.name_cs }}</td>
-                <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ s.quantity|floatformat:"3" }}</td>
+                <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ s.quantity|floatformat:1 }}</td>
               </tr>
             {% endfor %}
           </tbody>

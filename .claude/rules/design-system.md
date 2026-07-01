@@ -74,6 +74,31 @@ planned příjem (objednávka) and behaves differently in the UI:
 
 See [`0059`](../../context/decisions/0059-merge-objednavka-into-prijem.md).
 
+## Native browser dialogs are forbidden in sklad (per 0061)
+
+**No `confirm()` / `alert()` / `prompt()` in any sklad template or script.**
+Every confirm/alert uses the in-app dialog: give a submit button
+`class="js-confirm"` plus `data-confirm-title` / `data-confirm-body` /
+`data-confirm-cta`, or call `window.kasiaConfirm({...})` → `Promise<bool>`.
+The partial (`inventory/_confirm_dialog.html`) is included once globally at the
+bottom of `base.html`. Destructive confirms are red by default; a
+non-destructive confirm ("Provést převod?", "Spustit dávku?") sets
+`data-confirm-danger="false"`. The delegated handler submits the button's
+`form=` (or closest `<form>`) via `requestSubmit()`, so a `.js-confirm` button
+must never sit inside a `tr.row-link` (whole-row-nav hook) — same gotcha as the
+row-delete button.
+
+## Quantities display at 1 dp, comma from the locale (per 0061)
+
+Quantity displays use **`floatformat:1`** (never `:3`); the Czech comma comes
+free from the active `cs` locale — **no custom filter**. Operator quantity
+entry uses `step="0.1"` on `type="number"` inputs (browser shows the comma,
+submits a dot — no server comma-parsing). JS-truth / native-input attributes
+(`data-current`, `value=` on `type=number`) keep the **dot** via `|unlocalize`
+or a view-side `f"{x:.1f}"` string. The recipe-PDF **percentages** stay at
+`floatformat:"2"` (proportions, not kg; the PDF has its own styling). Model
+`decimal_places` stays 3 — no migration; values round to 0.1 on the next save.
+
 ## Don't hardcode what rots
 
 Reference the tokens (`var(--accent)`, `var(--green)`, …), not raw hex, in new
@@ -89,5 +114,7 @@ blocks and in `0054` — point there rather than copying hex into this rule.
 
 - [`0054-adopt-ui-directions.md`](../../context/decisions/0054-adopt-ui-directions.md) — the decision
 - [`0059-merge-objednavka-into-prijem.md`](../../context/decisions/0059-merge-objednavka-into-prijem.md) — Movement.status + planned príjem UI
+- [`0060-michani-immediate-only.md`](../../context/decisions/0060-michani-immediate-only.md) — míchání immediate action + inventura `?products=`/`next` contract
+- [`0061-display-1dp-comma.md`](../../context/decisions/0061-display-1dp-comma.md) — 1 dp comma display + banned native dialogs
 - [`context/public-site.md`](../../context/public-site.md) — public visual assets
 - [`no-premature-tech-choices.md`](./no-premature-tech-choices.md) — why design direction is gated

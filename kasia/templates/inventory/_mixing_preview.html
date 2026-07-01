@@ -6,12 +6,18 @@ mixing_preview_partial. Empty body when inputs missing/invalid.
 <div class="card">
   <h2 style="font-size:1.05rem;margin-top:0;">
     Odvozená spotřeba pro {{ mixture.name_cs }}
-    ({{ target_qty|floatformat:"3" }} kg)
+    ({{ target_qty|floatformat:1 }} kg)
   </h2>
   {% if any_overdraw %}
     <div class="non-form-errors">
-      Některá surovina nemá na skladě dost — dávku nelze zahájit, dokud se příjmem nedoplní.
+      Některá surovina nemá na skladě dost. Můžete nejdřív
+      <a href="{{ inventura_link }}"><strong>upravit stav surovin</strong></a>
+      (inventura jen pro suroviny této směsi) a pak se sem vrátit a namíchat.
     </div>
+  {% else %}
+    <p style="margin:0 0 0.5rem;">
+      <a class="secondary" href="{{ inventura_link }}">Upravit stav surovin</a>
+    </p>
   {% endif %}
   <table class="lines">
     <thead>
@@ -28,8 +34,8 @@ mixing_preview_partial. Empty body when inputs missing/invalid.
         <tr>
           <td>{{ row.component.name_cs }}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.ratio }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.derived|floatformat:"3" }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.on_hand|floatformat:"3" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.derived|floatformat:1 }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.on_hand|floatformat:1 }}</td>
           <td>
             {% if row.over %}
               <span style="color:var(--error);font-weight:bold;">nedostatek</span>

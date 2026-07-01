@@ -45,13 +45,13 @@
             {% endif %}
           </td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            {{ row.current|floatformat:"3" }}
+            {{ row.current|floatformat:1 }}
           </td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--fg-soft);">
-            {{ row.reserved|floatformat:"3" }}
+            {{ row.reserved|floatformat:1 }}
           </td>
           <td style="text-align:right;">
-            <input type="number" step="0.001" min="0"
+            <input type="number" step="0.1" min="0"
                    name="{{ row.field_name }}"
                    value="{{ row.new_value }}"
                    {% if not row.carried %}disabled aria-label="Pobočka tento produkt nedrží — nejprve klikněte Přidat"{% endif %}
@@ -67,7 +67,7 @@
                       class="row-delete-btn js-row-action"
                       data-target-form="row-remove-{{ row.branch.pk }}"
                       data-confirm-title="Odebrat z pobočky?"
-                      data-confirm-body="Odebrat {{ product.name_cs }} z pobočky {{ row.branch.code }}? Aktuálně: {{ row.current|floatformat:3 }} kg, {{ row.reserved|floatformat:3 }} kg rezervováno."
+                      data-confirm-body="Odebrat {{ product.name_cs }} z pobočky {{ row.branch.code }}? Aktuálně: {{ row.current|floatformat:1 }} kg, {{ row.reserved|floatformat:1 }} kg rezervováno."
                       data-confirm-cta="Odebrat">
                 Odebrat z pobočky
               </button>
@@ -130,80 +130,13 @@
   {% endif %}
 {% endfor %}
 
-<dialog id="kasia-confirm" class="kasia-dialog" aria-labelledby="kasia-confirm-title">
-  <h2 id="kasia-confirm-title" class="kasia-dialog-title">Opravdu?</h2>
-  <p id="kasia-confirm-body" class="kasia-dialog-body"></p>
-  <div class="kasia-dialog-actions">
-    <button type="button" class="secondary" data-action="cancel">Zrušit</button>
-    <button type="button" class="primary" data-action="confirm" id="kasia-confirm-cta">Potvrdit</button>
-  </div>
-</dialog>
-
-<style>
-  .kasia-dialog {
-    border: 0;
-    border-radius: 8px;
-    padding: 0;
-    max-width: 460px;
-    width: calc(100% - 2rem);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-    background: #fff;
-    color: var(--fg);
-  }
-  .kasia-dialog::backdrop {
-    background: rgba(20, 30, 22, 0.45);
-    backdrop-filter: blur(2px);
-  }
-  .kasia-dialog-title {
-    margin: 0;
-    padding: 1rem 1.25rem 0.5rem;
-    font-size: 1.1rem;
-    color: var(--accent-deep);
-  }
-  .kasia-dialog-body {
-    margin: 0;
-    padding: 0.25rem 1.25rem 1rem;
-    color: var(--fg);
-    line-height: 1.45;
-  }
-  .kasia-dialog-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-    padding: 0.75rem 1.25rem 1rem;
-    border-top: 1px solid var(--accent-tint);
-    background: #fafaf8;
-  }
-  .kasia-dialog-actions .primary.danger {
-    background: var(--error);
-    border-color: var(--error);
-  }
-</style>
+{# The confirm dialog is provided globally by base.html (per 0061); this page
+   drives it through window.kasiaConfirm() below. #}
 
 <script>
   (function () {
-    const dialog = document.getElementById("kasia-confirm");
-    const titleEl = document.getElementById("kasia-confirm-title");
-    const bodyEl = document.getElementById("kasia-confirm-body");
-    const ctaEl = document.getElementById("kasia-confirm-cta");
-    const cancelBtn = dialog.querySelector('[data-action="cancel"]');
-    let resolveFn = null;
-
-    function openConfirm({ title, body, cta, danger }) {
-      titleEl.textContent = title || "Opravdu?";
-      bodyEl.textContent = body || "";
-      ctaEl.textContent = cta || "Potvrdit";
-      ctaEl.classList.toggle("danger", !!danger);
-      dialog.showModal();
-      return new Promise((resolve) => { resolveFn = resolve; });
-    }
-    function settle(value) {
-      const f = resolveFn; resolveFn = null;
-      if (f) f(value);
-    }
-    ctaEl.addEventListener("click", () => { dialog.close(); settle(true); });
-    cancelBtn.addEventListener("click", () => { dialog.close(); settle(false); });
-    dialog.addEventListener("cancel", () => { settle(false); });
+    // Delegates to the globally-included dialog (base.html / _confirm_dialog.html).
+    const openConfirm = (opts) => window.kasiaConfirm(opts);
 
     const form = document.getElementById("stock-adjust-form");
     const qtyInputs = form.querySelectorAll('input[type="number"][name^="qty_"]');

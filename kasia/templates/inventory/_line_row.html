@@ -27,7 +27,7 @@ Context variables:
     {% if line_form.product.errors %}<div class="errorlist">{{ line_form.product.errors }}</div>{% endif %}
   </td>
   <td>
-    <input type="number" step="0.001" min="0.001"
+    <input type="number" step="0.1" min="0.001"
            name="lines-{{ index }}-quantity_kg"
            value="{{ line_form.quantity_kg.value|default_if_none:'' }}"
            {% if show_stock_warn %}hx-get="{% url 'inventory:stock_warn_partial' %}"

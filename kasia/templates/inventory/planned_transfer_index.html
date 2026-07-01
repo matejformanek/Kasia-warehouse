@@ -41,7 +41,7 @@
           <td>{{ t.source_branch.code }}</td>
           <td>{{ t.target_branch.code }}</td>
           <td>{{ t.product.name_cs }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ t.quantity_kg|floatformat:"3" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ t.quantity_kg|floatformat:1 }}</td>
           <td>
             {% if t.state == "planned" %}
               <span style="color:var(--accent);">naplánováno</span>

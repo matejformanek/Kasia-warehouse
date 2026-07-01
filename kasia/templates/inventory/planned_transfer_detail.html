@@ -20,7 +20,7 @@
       <tr><th style="width:200px;">Z (zdrojová pobočka)</th><td>{{ transfer.source_branch.code }} — {{ transfer.source_branch.name }}</td></tr>
       <tr><th>Do (cílová pobočka)</th><td>{{ transfer.target_branch.code }} — {{ transfer.target_branch.name }}</td></tr>
       <tr><th>Produkt</th><td><a href="{% url 'inventory:product_detail' pk=transfer.product.pk %}">{{ transfer.product.name_cs }}</a></td></tr>
-      <tr><th>Množství</th><td style="font-variant-numeric:tabular-nums;">{{ transfer.quantity_kg|floatformat:"3" }} kg</td></tr>
+      <tr><th>Množství</th><td style="font-variant-numeric:tabular-nums;">{{ transfer.quantity_kg|floatformat:1 }} kg</td></tr>
       <tr><th>Plánováno na</th><td>{{ transfer.scheduled_for|date:"d. m. Y" }}</td></tr>
       <tr><th>Poznámka</th><td>{{ transfer.notes|linebreaksbr|default:"—" }}</td></tr>
       <tr><th>Vytvořil</th><td>{{ transfer.created_by.email }} ({{ transfer.created_at|date:"d. m. Y H:i" }})</td></tr>
@@ -32,15 +32,20 @@
   <div class="card">
     <h2 style="margin-top:0;font-size:1.05rem;">Akce</h2>
     <div style="display:flex;gap:0.75rem;">
-      <form method="post" action="{% url 'inventory:planned_transfer_execute' pk=transfer.pk %}"
-            onsubmit="return confirm('Provést převod? Vznikne výdej na {{ transfer.source_branch.code }} (s dodacím listem) a příjem na {{ transfer.target_branch.code }}.');">
+      <form method="post" action="{% url 'inventory:planned_transfer_execute' pk=transfer.pk %}">
         {% csrf_token %}
-        <button type="submit" class="primary">Provést teď</button>
+        <button type="submit" class="primary js-confirm"
+                data-confirm-title="Provést převod?"
+                data-confirm-body="Vznikne výdej na {{ transfer.source_branch.code }} (s dodacím listem) a příjem na {{ transfer.target_branch.code }}."
+                data-confirm-cta="Provést"
+                data-confirm-danger="false">Provést teď</button>
       </form>
-      <form method="post" action="{% url 'inventory:planned_transfer_cancel' pk=transfer.pk %}"
-            onsubmit="return confirm('Opravdu zrušit tento plánovaný převod?');">
+      <form method="post" action="{% url 'inventory:planned_transfer_cancel' pk=transfer.pk %}">
         {% csrf_token %}
-        <button type="submit" class="secondary">Zrušit plán</button>
+        <button type="submit" class="secondary js-confirm"
+                data-confirm-title="Zrušit převod?"
+                data-confirm-body="Opravdu zrušit tento plánovaný převod?"
+                data-confirm-cta="Zrušit plán">Zrušit plán</button>
       </form>
     </div>
     <p style="color:var(--fg-soft);font-size:0.9rem;margin-top:0.5rem;">

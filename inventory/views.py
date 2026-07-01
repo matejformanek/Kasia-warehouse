@@ -23,7 +23,7 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
@@ -1457,12 +1457,13 @@ def mixing_job_index(request):
 
 @require_http_methods(["GET", "POST"])
 def mixing_job_create(request):
-    """Pick a mixture + target qty → start (default) or one-shot record.
+    """Pick a mixture + target qty → one immediate DONE míchání (per 0060).
 
     GET shows the form + (after HTMX preview swap) the derived
     consumption per component vs. on-hand stock.
-    POST starts (or records-completed if mode=record) and lands on
-    the job detail / branch dashboard.
+    POST consumes the recipe inputs and adds the blend in one atomic
+    action via record_completed_mixing_job() and lands on the job detail.
+    On error the form re-renders with every typed value preserved.
     """
     mixtures = list(
         Product.objects.filter(
@@ -1486,6 +1487,25 @@ def mixing_job_create(request):
         if request.method == "POST"
         else request.GET.get("mixture")
     ) or ""
+    # On POST these carry the operator's typed values back into the form so
+    # a shortage (or any error) doesn't wipe the entry (per 0060, 3b). On GET
+    # they also honour a `?branch=&target_qty=` round-trip from the inventura
+    # "Upravit stav surovin" jump so the selection is restored on return.
+    selected_branch_id = (
+        request.POST.get("branch")
+        if request.method == "POST"
+        else request.GET.get("branch", "")
+        or (str(default_branch.pk) if default_branch else "")
+    ) or ""
+    target_qty_value = (
+        request.POST.get("target_qty", "")
+        if request.method == "POST"
+        else request.GET.get("target_qty", "")
+    )
+    actual_produced_value = (
+        request.POST.get("actual_produced_qty", "") if request.method == "POST" else ""
+    )
+    note_value = request.POST.get("note", "") if request.method == "POST" else ""
 
     error: str | None = None
     if request.method == "POST":
@@ -1507,7 +1527,6 @@ def mixing_job_create(request):
             error = error or "Cílové množství musí být číslo."
             target_qty = None
         note = request.POST.get("note", "").strip()
-        mode = request.POST.get("mode", "start")
 
         if branch is not None and mixture is not None and target_qty is not None:
             if (
@@ -1516,38 +1535,26 @@ def mixing_job_create(request):
             ):
                 error = "Nemáte oprávnění pro tuto pobočku."
             else:
+                # "Skutečně vyrobeno" is an optional override; blank → target.
                 try:
-                    if mode == "record":
-                        try:
-                            actual_produced_qty = Decimal(
-                                request.POST.get("actual_produced_qty", "")
-                            )
-                        except (InvalidOperation, ValueError):
-                            actual_produced_qty = target_qty
-                        job = record_completed_mixing_job(
-                            branch=branch,
-                            mixture=mixture,
-                            target_qty=target_qty,
-                            actual_produced_qty=actual_produced_qty,
-                            user=request.user,
-                            note=note,
-                        )
-                        messages.success(
-                            request,
-                            f"Dávka zaznamenána ({job.actual_produced_qty} kg).",
-                        )
-                    else:
-                        job = start_mixing_job(
-                            branch=branch,
-                            mixture=mixture,
-                            target_qty=target_qty,
-                            user=request.user,
-                            note=note,
-                        )
-                        messages.success(
-                            request,
-                            "Dávka zahájena — pokračujte k dokončení po smíchání.",
-                        )
+                    actual_produced_qty = Decimal(
+                        request.POST.get("actual_produced_qty", "")
+                    )
+                except (InvalidOperation, ValueError):
+                    actual_produced_qty = target_qty
+                try:
+                    job = record_completed_mixing_job(
+                        branch=branch,
+                        mixture=mixture,
+                        target_qty=target_qty,
+                        actual_produced_qty=actual_produced_qty,
+                        user=request.user,
+                        note=note,
+                    )
+                    messages.success(
+                        request,
+                        f"Namícháno — {job.actual_produced_qty} kg {mixture.name_cs}.",
+                    )
                     return redirect("inventory:mixing_job_detail", pk=job.pk)
                 except ValidationError as exc:
                     error = "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
@@ -1563,6 +1570,10 @@ def mixing_job_create(request):
                 request.user.is_obsluha and request.user.branch_id
             ),
             "selected_mixture_id": str(selected_mixture_id),
+            "selected_branch_id": str(selected_branch_id),
+            "target_qty_value": target_qty_value,
+            "actual_produced_value": actual_produced_value,
+            "note_value": note_value,
             "error": error,
         },
     )
@@ -1618,6 +1629,26 @@ def mixing_preview_partial(request):
                 "over": over,
             }
         )
+    # "Upravit stav surovin" jump: per-branch inventura pre-filtered to this
+    # blend's components (?products=…), with a `next=` back to the míchání
+    # form carrying the current selection (per 0060, 3c).
+    component_ids = ",".join(str(rc.component_product_id) for rc in recipe)
+    michani_next = (
+        reverse("inventory:mixing_job_create")
+        + "?"
+        + urlencode(
+            {
+                "branch": branch.pk,
+                "mixture": mixture.pk,
+                "target_qty": target_qty,
+            }
+        )
+    )
+    inventura_link = (
+        reverse("inventory:inventura_edit", args=[branch.code])
+        + "?"
+        + urlencode({"products": component_ids, "next": michani_next})
+    )
     return render(
         request,
         "inventory/_mixing_preview.html",
@@ -1626,6 +1657,7 @@ def mixing_preview_partial(request):
             "any_overdraw": any_overdraw,
             "target_qty": target_qty,
             "mixture": mixture,
+            "inventura_link": inventura_link,
         },
     )
 
@@ -2600,6 +2632,19 @@ def inventura_edit(request, code: str):
     if not cross_branch:
         branch = get_object_or_404(Branch, code=code.upper(), is_active=True)
 
+    # Optional per-branch component pre-filter (per 0060): the míchání
+    # "Upravit stav surovin" jump passes ?products=<pk,pk,…> to restrict the
+    # editable rows to a blend's inputs. Ignored by is_low / is_all.
+    product_filter_pks: set[int] | None = None
+    raw_products = (request.GET.get("products") or "").strip()
+    if raw_products and not cross_branch:
+        parsed = set()
+        for chunk in raw_products.split(","):
+            chunk = chunk.strip()
+            if chunk.isdigit():
+                parsed.add(int(chunk))
+        product_filter_pks = parsed or None
+
     def _orders_by_pair() -> dict:
         """All open (PLANNED) príjem lines grouped by (product_id, branch_id)
         — one query, used by the cross-branch views to show inline orders.
@@ -2657,14 +2702,18 @@ def inventura_edit(request, code: str):
                             "current": cur,
                             "qty_field": f"qty_{p.pk}_{b.pk}",
                             "eta_field": f"eta_{p.pk}_{b.pk}",
-                            "qty_value": f"{cur:.3f}",
+                            "qty_value": f"{cur:.1f}",
                             "eta_value": "",
                             "orders": grouped.get((p.pk, b.pk), []),
                         }
                     )
             return out
         # Per-branch: every active product, prefilled with current stock.
-        products = list(Product.objects.filter(is_active=True).order_by("name_cs"))
+        # A ?products= pre-filter (per 0060) narrows this to a blend's inputs.
+        products_qs = Product.objects.filter(is_active=True)
+        if product_filter_pks is not None:
+            products_qs = products_qs.filter(pk__in=product_filter_pks)
+        products = list(products_qs.order_by("name_cs"))
         stocks_by_product = {
             s.product_id: s.quantity
             for s in Stock.objects.filter(branch=branch).select_related("product")
@@ -2676,7 +2725,7 @@ def inventura_edit(request, code: str):
                 "current": stocks_by_product.get(p.pk, Decimal("0.000")),
                 "qty_field": f"qty_{p.pk}",
                 "eta_field": f"eta_{p.pk}",
-                "qty_value": f"{stocks_by_product.get(p.pk, Decimal('0.000')):.3f}",
+                "qty_value": f"{stocks_by_product.get(p.pk, Decimal('0.000')):.1f}",
                 "eta_value": "",
                 "orders": [],
             }
@@ -2801,7 +2850,14 @@ def inventura_edit(request, code: str):
                 return redirect("inventory:home")
             if is_all:
                 return redirect("inventory:catalogue_index")
-            return redirect(f"/katalog/?branch={branch.code}")
+            # Per-branch: honour a `next=` round-trip (e.g. back to the míchání
+            # form per 0060), else land on the branch-filtered catalogue.
+            return redirect(
+                _safe_next(
+                    request,
+                    f"{reverse('inventory:catalogue_index')}?branch={branch.code}",
+                )
+            )
         # On error: re-render WITHOUT losing anything the user typed.
         # Repopulate every row's inputs from the POST data (the fresh rows
         # built above carry DB defaults only).
@@ -2832,6 +2888,11 @@ def inventura_edit(request, code: str):
             "today": date.today(),
             "reason_value": reason_value,
             "cancelable_movement_pks": cancelable_movement_pks,
+            # Round-trip back to the míchání form (per 0060); empty for a
+            # plain inventura visit. Kept as a hidden field so it survives POST.
+            "next_value": (
+                request.POST.get("next") or request.GET.get("next") or ""
+            ),
         },
     )
 

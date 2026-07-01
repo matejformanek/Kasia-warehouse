@@ -24,8 +24,7 @@
     <li><strong>Výdej (/vydej/novy/)</strong> — výdejka odběrateli (výchozí Říčany). Po uložení se zásoby sníží, <strong>automaticky se vystaví dodací list a&nbsp;odešle e-mailem</strong> Petrovi a&nbsp;Karolíně.</li>
     <li><strong>Dodací listy (/dodaky/)</strong> — přehled vystavených dodáků, filtr podle pobočky a&nbsp;období, znovuodeslání PDF e-mailem.</li>
     <li><strong>Historie pohybů (/pohyby/)</strong> — kompletní log všech pohybů. Filtry podle druhu, pobočky, období; možnost vyfiltrovat jen editované záznamy.</li>
-    <li><strong>Plánované převody (/prevody/)</strong> — plánování přesunu zboží mezi pobočkami na konkrétní datum. Po fyzickém přesunu klikněte „Provést“ — vystaví se dodací list.</li>
-    <li><strong>Míchání (/michani/)</strong> — receptury směsí a&nbsp;dávky. Lze spustit hned, nebo naplánovat (suroviny se rezervují).</li>
+    <li><strong>Míchání (/michani/)</strong> — receptury směsí a&nbsp;dávky. Vyberte směs a&nbsp;cílové množství — suroviny se odečtou a&nbsp;směs se přidá na sklad jedním krokem. Chybí-li surovina, můžete rovnou upravit její stav a&nbsp;vrátit se namíchat.</li>
     <li><strong>Dodavatelé (/dodavatele/) · Odběratelé (/odberatele/)</strong> — seznam partnerů, přidávání, archivace, editace.</li>
     <li><strong>Pobočky (/pobocky/)</strong> — vlastník: přidání a&nbsp;editace fyzických poboček.</li>
     <li><strong>Uživatelé (/uzivatele/)</strong> — vlastník: správa účtů, rolí, pobočková příslušnost.</li>
@@ -54,24 +53,16 @@
     <li>Klikněte „Vystavit výdej“. Zásoby se sníží, vygeneruje se <strong>dodací list (PDF)</strong> a&nbsp;<strong>automaticky se odešle e-mailem</strong> Petrovi a&nbsp;Karolíně. Zákazník PDF e-mailem nedostává.</li>
   </ol>
 
-  <h3>3. Plánovaný převod mezi pobočkami</h3>
+  <h3>3. Míchání směsi</h3>
   <ol>
-    <li>Menu → „Převody“ → „Nový převod“.</li>
-    <li>Vyberte zdrojovou a&nbsp;cílovou pobočku, produkt, hmotnost a&nbsp;plánované datum.</li>
-    <li>Uložte. Suroviny se na zdrojové pobočce <strong>rezervují</strong> (jsou vidět ve sloupci „Rezerv.“ v&nbsp;Katalogu).</li>
-    <li>Až proběhne fyzický přesun, otevřete detail převodu a&nbsp;klikněte „Provést“. Vystaví se dodací list, zásoby se přepočítají na obou pobočkách.</li>
+    <li>Menu → „Míchání“ → „+ Nová dávka“.</li>
+    <li>Vyberte pobočku, recepturu a&nbsp;cílovou hmotnost směsi.</li>
+    <li>Volitelně zadejte „Skutečně vyrobeno“, pokud se výsledek liší od cíle (prázdné = cíl).</li>
+    <li>Klikněte „Namíchat“. Suroviny se <strong>odečtou</strong> a&nbsp;směs se <strong>přidá na sklad</strong> jedním krokem.</li>
+    <li>Chybí-li některá surovina, systém nabídne odkaz „Upravit stav surovin“ — otevře inventuru jen pro suroviny této směsi; po uložení se vrátíte zpět a&nbsp;namícháte.</li>
   </ol>
 
-  <h3>4. Míchání směsi — plánované</h3>
-  <ol>
-    <li>Menu → „Míchání“ → „Naplánovat dávku“.</li>
-    <li>Vyberte recepturu a&nbsp;cílovou hmotnost směsi.</li>
-    <li>Uložte. Suroviny se rezervují — vidíte je v&nbsp;Katalogu.</li>
-    <li>Než začnete míchat, klikněte „Spustit teď“ — to skutečně ubere suroviny ze skladu.</li>
-    <li>Po fyzickém zamíchání klikněte „Dokončit“ a&nbsp;zadejte skutečně vyrobené množství. Mix se přidá na sklad.</li>
-  </ol>
-
-  <h3>5. Ruční úprava stavu (rychlá korekce, ne formální inventura)</h3>
+  <h3>4. Ruční úprava stavu (rychlá korekce, ne formální inventura)</h3>
   <ol>
     <li>V&nbsp;Katalogu otevřete detail produktu.</li>
     <li>Klikněte „Upravit stav ručně“.</li>
@@ -84,7 +75,7 @@
     přepočítání. Podrobnosti v&nbsp;rozhodnutí 0041.
   </p>
 
-  <h3>6. Oprava starší příjemky nebo výdejky</h3>
+  <h3>5. Oprava starší příjemky nebo výdejky</h3>
   <ol>
     <li>Menu → „Historie“.</li>
     <li>Najděte chybný pohyb a&nbsp;klikněte na řádek.</li>

@@ -47,6 +47,7 @@
 {% else %}
 <form method="post">
   {% csrf_token %}
+  {% if next_value %}<input type="hidden" name="next" value="{{ next_value }}">{% endif %}
 
   <table class="lines">
     <thead>
@@ -67,10 +68,10 @@
           {% if cross_branch %}<td>{{ row.branch.code }}</td>{% endif %}
           <td style="color:var(--fg-soft);">{{ row.product.get_kind_display }}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            {{ row.current|floatformat:"3" }}
+            {{ row.current|floatformat:1 }}
           </td>
           <td style="text-align:right;">
-            <input type="number" step="0.001" min="0"
+            <input type="number" step="0.1" min="0"
                    name="{{ row.qty_field }}"
                    value="{{ row.qty_value }}"
                    style="max-width:140px;text-align:right;font-variant-numeric:tabular-nums;">
@@ -83,7 +84,7 @@
                    value="{{ row.eta_value }}">
             {% for o in row.orders %}
               <span style="color:var(--ok);font-size:0.8rem;display:block;margin-top:2px;">
-                objednáno {{ o.quantity_kg|floatformat:"3" }} kg · příjezd {{ o.movement.expected_on|date:"d. m. Y" }}
+                objednáno {{ o.quantity_kg|floatformat:1 }} kg · příjezd {{ o.movement.expected_on|date:"d. m. Y" }}
                 <a href="{% url 'inventory:prijem_confirm' pk=o.movement.pk %}?next={{ request.path|urlencode }}">upravit</a>
                 <span style="color:var(--line);">·</span>
                 <button type="submit" form="plan-cancel-{{ o.movement.pk }}"
@@ -141,7 +142,7 @@
   </form>
 {% endfor %}
 
-{% include "inventory/_confirm_dialog.html" %}
+{# _confirm_dialog.html is included globally in base.html (per 0061) #}
 
 <script>
   // Live "rozdíl" indicator (only meaningful when no date = stock correction);
@@ -171,7 +172,7 @@
         return;
       }
       const sign = diff > 0 ? "+" : "−";
-      delta.textContent = `${sign}${Math.abs(diff).toFixed(3)}`;
+      delta.textContent = `${sign}${Math.abs(diff).toFixed(1)}`;
       delta.style.color = diff > 0 ? "var(--ok)" : "var(--error)";
       delta.style.fontWeight = "bold";
     }

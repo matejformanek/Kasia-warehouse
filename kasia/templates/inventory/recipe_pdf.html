@@ -89,14 +89,14 @@
 </div>
 
 <h1>Receptura — {{ product.name_cs }}</h1>
-<p class="subtitle">Směs · spotřeba surovin pro dávku {{ target_qty|floatformat:"3" }} kg a poznámky k míchání. Interní dokument.</p>
+<p class="subtitle">Směs · spotřeba surovin pro dávku {{ target_qty|floatformat:1 }} kg a poznámky k míchání. Interní dokument.</p>
 
 <table class="lines">
   <thead>
     <tr>
       <th>Surovina</th>
       <th class="num">Podíl (%)</th>
-      <th class="num">Potřeba na {{ target_qty|floatformat:"3" }} kg</th>
+      <th class="num">Potřeba na {{ target_qty|floatformat:1 }} kg</th>
     </tr>
   </thead>
   <tbody>
@@ -104,7 +104,7 @@
       <tr>
         <td>{{ row.name }}</td>
         <td class="num">{{ row.pct|floatformat:"2" }} %</td>
-        <td class="num">{{ row.kg|floatformat:"3" }} kg</td>
+        <td class="num">{{ row.kg|floatformat:1 }} kg</td>
       </tr>
     {% endfor %}
   </tbody>
@@ -112,7 +112,7 @@
     <tr>
       <td>Celkem</td>
       <td class="num">{{ total_pct|floatformat:"2" }} %</td>
-      <td class="num">{{ target_qty|floatformat:"3" }} kg</td>
+      <td class="num">{{ target_qty|floatformat:1 }} kg</td>
     </tr>
   </tfoot>
 </table>

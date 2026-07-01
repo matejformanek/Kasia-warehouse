@@ -62,10 +62,12 @@
             <a class="secondary" href="{% url 'inventory:customer_edit' pk=cust.pk %}">Upravit</a>
             {% if cust.is_active %}
               {% if not cust.is_default_recipient %}
-                <form method="post" action="{% url 'inventory:customer_archive' pk=cust.pk %}" style="display:inline;"
-                      onsubmit="return confirm('Opravdu archivovat odběratele {{ cust.name }}?');">
+                <form method="post" action="{% url 'inventory:customer_archive' pk=cust.pk %}" style="display:inline;">
                   {% csrf_token %}
-                  <button class="secondary" type="submit">Archivovat</button>
+                  <button class="secondary js-confirm" type="submit"
+                          data-confirm-title="Archivovat odběratele?"
+                          data-confirm-body="Opravdu archivovat odběratele {{ cust.name }}?"
+                          data-confirm-cta="Archivovat">Archivovat</button>
                 </form>
               {% endif %}
             {% else %}

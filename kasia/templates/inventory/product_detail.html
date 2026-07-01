@@ -20,7 +20,7 @@
   <h2 style="font-size:1.05rem;margin-top:0;">Stav skladu</h2>
   {% if product.reorder_threshold_kg is not None %}
     <p style="color:var(--fg-soft);">
-      Objednací bod: <strong>{{ product.reorder_threshold_kg|floatformat:"3" }} kg</strong>
+      Objednací bod: <strong>{{ product.reorder_threshold_kg|floatformat:1 }} kg</strong>
       (výchozí pro produkt).
     </p>
   {% endif %}
@@ -40,29 +40,29 @@
           <tr {% if r.is_low %}style="background:#fbf3e0;"{% endif %}>
             <td>{{ r.branch.code }} — {{ r.branch.name }}</td>
             <td style="text-align:right;font-variant-numeric:tabular-nums;">
-              {{ r.on_hand|floatformat:"3" }}
+              {{ r.on_hand|floatformat:1 }}
             </td>
             <td style="text-align:right;font-variant-numeric:tabular-nums;">
-              {{ r.reserved|floatformat:"3" }}
+              {{ r.reserved|floatformat:1 }}
             </td>
             <td style="text-align:right;font-variant-numeric:tabular-nums;{% if r.is_low %}color:var(--warn);font-weight:bold;{% endif %}">
-              {{ r.effective|floatformat:"3" }}
+              {{ r.effective|floatformat:1 }}
             </td>
             <td style="text-align:right;font-variant-numeric:tabular-nums;">
-              {% if r.threshold is not None %}{{ r.threshold|floatformat:"3" }}{% else %}—{% endif %}
+              {% if r.threshold is not None %}{{ r.threshold|floatformat:1 }}{% else %}—{% endif %}
             </td>
           </tr>
         {% endfor %}
         <tr>
           <td><strong>Celkem</strong></td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            <strong>{{ total_quantity|floatformat:"3" }}</strong>
+            <strong>{{ total_quantity|floatformat:1 }}</strong>
           </td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            <strong>{{ total_reserved|floatformat:"3" }}</strong>
+            <strong>{{ total_reserved|floatformat:1 }}</strong>
           </td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            <strong>{{ total_effective|floatformat:"3" }}</strong>
+            <strong>{{ total_effective|floatformat:1 }}</strong>
           </td>
           <td></td>
         </tr>

@@ -126,16 +126,16 @@
           </td>
           <td>{{ row.product.get_kind_display }}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            {{ row.total|floatformat:"3" }}
+            {{ row.total|floatformat:1 }}
           </td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;color:{% if row.reserved > 0 %}var(--accent){% else %}var(--fg-soft){% endif %};">
-            {{ row.reserved|floatformat:"3" }}
+            {{ row.reserved|floatformat:1 }}
           </td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;{% if row.is_low %}color:var(--warn);font-weight:bold;{% endif %}">
-            {{ row.effective|floatformat:"3" }}
+            {{ row.effective|floatformat:1 }}
           </td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            {% if row.threshold is not None %}{{ row.threshold|floatformat:"3" }}{% else %}—{% endif %}
+            {% if row.threshold is not None %}{{ row.threshold|floatformat:1 }}{% else %}—{% endif %}
           </td>
           <td>
             {% if row.effective <= 0 and row.threshold is not None %}

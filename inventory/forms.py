@@ -543,7 +543,7 @@ class PlannedTransferForm(forms.ModelForm):
                 attrs={"type": "date"}, format="%Y-%m-%d"
             ),
             "notes": forms.Textarea(attrs={"rows": 2}),
-            "quantity_kg": forms.NumberInput(attrs={"step": "0.001"}),
+            "quantity_kg": forms.NumberInput(attrs={"step": "0.1"}),
         }
         labels = {
             "source_branch": "Zdrojová pobočka",
@@ -688,7 +688,7 @@ class XLSImportReviewHeaderForm(forms.Form):
     total_kg = forms.DecimalField(
         max_digits=10,
         decimal_places=3,
-        widget=forms.NumberInput(attrs={"readonly": "readonly", "step": "0.001"}),
+        widget=forms.NumberInput(attrs={"readonly": "readonly", "step": "0.1"}),
         label="Celková hmotnost (z XLS)",
     )
 

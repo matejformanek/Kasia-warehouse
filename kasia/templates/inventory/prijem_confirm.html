@@ -51,10 +51,10 @@
           <tr>
             <td><strong>{{ line.product.name_cs }}</strong></td>
             <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--fg-soft);">
-              {{ line.quantity_kg|floatformat:"3" }}
+              {{ line.quantity_kg|floatformat:1 }}
             </td>
             <td style="text-align:right;">
-              <input type="number" step="0.001" min="0"
+              <input type="number" step="0.1" min="0"
                      name="qty_{{ line.pk }}"
                      value="{{ line.quantity_kg|stringformat:'.3f' }}"
                      style="max-width:140px;text-align:right;font-variant-numeric:tabular-nums;">

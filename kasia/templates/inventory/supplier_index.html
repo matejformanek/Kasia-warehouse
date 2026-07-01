@@ -48,10 +48,12 @@
           <td style="white-space:nowrap;">
             <a class="secondary" href="{% url 'inventory:supplier_edit' pk=sup.pk %}">Upravit</a>
             {% if sup.is_active %}
-              <form method="post" action="{% url 'inventory:supplier_archive' pk=sup.pk %}" style="display:inline;"
-                    onsubmit="return confirm('Opravdu archivovat dodavatele {{ sup.name }}?');">
+              <form method="post" action="{% url 'inventory:supplier_archive' pk=sup.pk %}" style="display:inline;">
                 {% csrf_token %}
-                <button class="secondary" type="submit">Archivovat</button>
+                <button class="secondary js-confirm" type="submit"
+                        data-confirm-title="Archivovat dodavatele?"
+                        data-confirm-body="Opravdu archivovat dodavatele {{ sup.name }}?"
+                        data-confirm-cta="Archivovat">Archivovat</button>
               </form>
             {% else %}
               <form method="post" action="{% url 'inventory:supplier_reactivate' pk=sup.pk %}" style="display:inline;">

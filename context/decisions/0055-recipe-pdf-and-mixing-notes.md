@@ -1,5 +1,7 @@
 # 0055 — Recipe PDF export + surface mixing notes on product detail
 
+> **Affected by 0060** — the "Zahájit míchání →" link into mixing_job_create is dropped with the mixing modes; the recipe PDF export + mixing notes are unchanged.
+
 - **Date:** 2026-06-29
 - **By:** Matej (owner stand-in), implemented by agent
 

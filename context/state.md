@@ -1935,6 +1935,33 @@
   feedback by default (reveal via `?show_resolved=1`). Rules
   `design-system.md`, glossary, screen 02 updated. **390 pytest green**
   (full suite); ruff + `manage.py check` clean; migrations apply clean.
+- **2026-07-01** — **Live-app Podpora fixes** (branch `ft_inv_objednavky`,
+  builds on 0059), per
+  [`decisions/0060-michani-immediate-only.md`](./decisions/0060-michani-immediate-only.md),
+  [`0061-display-1dp-comma.md`](./decisions/0061-display-1dp-comma.md),
+  [`0062-hide-prevody-from-employees.md`](./decisions/0062-hide-prevody-from-employees.md).
+  (1) **Custom dialogs everywhere** — `_confirm_dialog.html` now included once
+  globally in `base.html`; the 10 native `confirm()` calls across 8 templates
+  migrated to `.js-confirm` + `data-confirm-*` (partial honours
+  `data-confirm-danger="false"` for non-destructive "Provést převod?"/"Spustit
+  dávku?"); removed the now-redundant local includes (inventura,
+  movement_history) and stock_adjust's inline dialog copy (delegates to
+  `window.kasiaConfirm`). (2) **Redirect fix** — inventura per-branch save was
+  `redirect("/katalog/?branch=…")` (404); now `reverse('catalogue_index')` via
+  `_safe_next` (+ `next=` round-trip). (3) **Míchání = one immediate action** —
+  `mixing_job_create` drops the mode radios, always calls
+  `record_completed_mixing_job()` (immediate DONE consume+produce), preserves
+  every typed value on error; optional "Skutečně vyrobeno" override; new
+  **"Upravit stav surovin"** jump → per-branch inventura pre-filtered to the
+  blend's components (`?products=`) with a `next=` back. Legacy
+  PLANNED/RUNNING job machinery (`mixing_plan_create`/`start`/`finish`/`cancel`
+  + detail branches) retained for in-flight jobs; `reserved_kg()` unchanged.
+  (4) **1 dp + Czech comma** — `floatformat:"3"`→`floatformat:1` across ~15
+  templates; entry `step`→`0.1` (templates + `forms.py`); inventura prefill
+  `f"{cur:.1f}"`; comma comes free from the `cs` locale (no custom filter,
+  no migration; `data-current`/type=number values stay dot). **Prevody hidden**
+  from employees (nav links + Podpora how-to removed; views/urls/tests kept in
+  repo, unlinked). **396 pytest green** (full suite); `manage.py check` clean.
 
 ## Hand-off for the next session (post-compact)
 

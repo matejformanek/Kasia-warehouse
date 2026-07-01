@@ -171,7 +171,7 @@
         <input type="hidden" name="next" value="{{ request.get_full_path }}">
       </form>
     {% endfor %}
-    {% include "inventory/_confirm_dialog.html" %}
+    {# _confirm_dialog.html is included globally in base.html (per 0061) #}
   {% endif %}
 {% elif filter_q or filter_kind or filter_date_from or filter_date_to or filter_edited or filter_branch %}
   <p>Žádné pohyby neodpovídají filtrům.

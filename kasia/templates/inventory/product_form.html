@@ -267,17 +267,19 @@
                 <span class="tab-chip">— Nedrží</span>
               {% endif %}
             </td>
-            <td style="text-align:right;">{{ row.quantity|floatformat:3 }}</td>
-            <td style="text-align:right;">{{ row.reserved|floatformat:3 }}</td>
+            <td style="text-align:right;">{{ row.quantity|floatformat:1 }}</td>
+            <td style="text-align:right;">{{ row.reserved|floatformat:1 }}</td>
             {% if user.is_vlastnik %}
               <td style="text-align:right;">
                 {% if row.carried %}
                   <form method="post"
                         action="{% url 'inventory:product_branch_remove' product_id=target.pk branch_id=row.branch.pk %}"
-                        style="display:inline;"
-                        onsubmit="return confirm('Odebrat {{ target.name_cs }} z {{ row.branch.code }}? Nyní: {{ row.quantity|floatformat:3 }} kg, {{ row.reserved|floatformat:3 }} kg rezervováno.');">
+                        style="display:inline;">
                     {% csrf_token %}
-                    <button type="submit" class="row-delete-btn">Odebrat</button>
+                    <button type="submit" class="row-delete-btn js-confirm"
+                            data-confirm-title="Odebrat produkt z pobočky?"
+                            data-confirm-body="Odebrat {{ target.name_cs }} z {{ row.branch.code }}? Nyní: {{ row.quantity|floatformat:1 }} kg, {{ row.reserved|floatformat:1 }} kg rezervováno."
+                            data-confirm-cta="Odebrat">Odebrat</button>
                   </form>
                 {% else %}
                   <form method="post"
@@ -304,10 +306,12 @@
         Archivace nesmaže produkt — pouze ho skryje z výběrů.
         Historické pohyby zůstanou.
       </p>
-      <form method="post" action="{% url 'inventory:product_archive' pk=target.pk %}"
-            onsubmit="return confirm('Opravdu archivovat produkt {{ target.name_cs }}?');">
+      <form method="post" action="{% url 'inventory:product_archive' pk=target.pk %}">
         {% csrf_token %}
-        <button class="secondary" type="submit">Archivovat produkt</button>
+        <button class="secondary js-confirm" type="submit"
+                data-confirm-title="Archivovat produkt?"
+                data-confirm-body="Opravdu archivovat produkt {{ target.name_cs }}?"
+                data-confirm-cta="Archivovat">Archivovat produkt</button>
       </form>
     {% else %}
       <form method="post" action="{% url 'inventory:product_reactivate' pk=target.pk %}">

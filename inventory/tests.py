@@ -1833,10 +1833,10 @@ def test_dashboard_shows_branch_stock(user_tyn, tyn, sez, pepper, paprika) -> No
     client.force_login(user_tyn)
     response = client.get("/sklad/")
     body = response.content.decode("utf-8")
-    # TYN total = 11.000 kg with 2 products; SEZ total = 1.500 kg with 1
-    # product. Both numbers should appear somewhere in the body.
-    assert "11,000" in body or "11.000" in body
-    assert "1,500" in body or "1.500" in body
+    # TYN total = 11.0 kg with 2 products; SEZ total = 1.5 kg with 1
+    # product. Displayed at 1 dp with a Czech comma (per 0061).
+    assert "11,0" in body
+    assert "1,5" in body
     assert pepper.name_cs in body
 
 
@@ -2445,8 +2445,8 @@ def test_catalogue_shows_total_kg_for_vlastnik(
     client.force_login(user_vlastnik)
     response = client.get("/sklad/katalog/")
     body = response.content.decode("utf-8")
-    # 11.500 → Czech "11,500"
-    assert "11,500" in body
+    # 11.5 → Czech "11,5" at 1 dp (per 0061)
+    assert "11,5" in body
     # New (Pass 6) header "Na skladě" + scope hint over both branches.
     assert "Na skladě" in body
     # Copy updated per Podpora feedback #4 — N-branch ready.
@@ -2466,8 +2466,8 @@ def test_catalogue_shows_branch_kg_for_obsluha(
     body = response.content.decode("utf-8")
     # Pass 6: scope hint replaces the column header for branch scoping.
     assert "pro pobočku" in body and "TYN" in body
-    assert "8,000" in body
-    assert "99,000" not in body and "99.000" not in body
+    assert "8,0" in body
+    assert "99,0" not in body and "99.0" not in body
 
 
 @pytest.mark.django_db
@@ -2500,9 +2500,9 @@ def test_product_detail_renders_for_raw_spice(
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert pepper.name_cs in body
-    assert "8,000" in body
-    assert "3,500" in body
-    assert "11,500" in body
+    assert "8,0" in body
+    assert "3,5" in body
+    assert "11,5" in body
     # Recipe section absent for raw spice.
     assert "Receptura" not in body
 
@@ -2682,8 +2682,8 @@ def test_product_detail_obsluha_sees_only_own_branch_stock(
     client.force_login(user_obsluha_tyn)
     response = client.get(f"/sklad/katalog/{pepper.pk}/")
     body = response.content.decode("utf-8")
-    assert "8,000" in body
-    assert "99,000" not in body and "99.000" not in body
+    assert "8,0" in body
+    assert "99,0" not in body and "99.0" not in body
 
 
 # ---------------------------------------------------------------------------
@@ -3029,7 +3029,9 @@ def test_mixing_create_get_lists_only_mixtures_with_recipe(
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
-def test_mixing_create_post_starts_job(user_vlastnik, tyn, pepper) -> None:
+def test_mixing_create_post_records_done_job(user_vlastnik, tyn, pepper) -> None:
+    # Per 0060 there are no modes: a create is one immediate DONE míchání —
+    # consume the recipe inputs + add the blend + immediate stock delta.
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
     client = Client()
@@ -3040,20 +3042,28 @@ def test_mixing_create_post_starts_job(user_vlastnik, tyn, pepper) -> None:
             "branch": tyn.pk,
             "mixture": mixture.pk,
             "target_qty": "2.000",
-            "mode": "start",
             "note": "",
         },
     )
     assert response.status_code == 302, response.content[:500]
     assert response.headers["Location"].startswith("/sklad/michani/")
     job = MixingJob.objects.get()
-    assert job.state == MixingJob.State.RUNNING
+    assert job.state == MixingJob.State.DONE
     assert job.target_qty == Decimal("2.000")
+    # Blank "skutečně vyrobeno" → defaults to the target.
+    assert job.actual_produced_qty == Decimal("2.000")
+    assert job.consume_movement is not None
+    assert job.produce_movement is not None
+    # Immediate stock delta: inputs drop, blend rises.
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("3.000")
+    assert Stock.objects.get(product=mixture, branch=tyn).quantity == Decimal("2.000")
 
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
-def test_mixing_create_post_record_mode(user_vlastnik, tyn, pepper) -> None:
+def test_mixing_create_post_actual_produced_override(user_vlastnik, tyn, pepper) -> None:
+    # The optional "skutečně vyrobeno" override records a produced qty that
+    # differs from the target (per 0060).
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
     client = Client()
@@ -3064,14 +3074,13 @@ def test_mixing_create_post_record_mode(user_vlastnik, tyn, pepper) -> None:
             "branch": tyn.pk,
             "mixture": mixture.pk,
             "target_qty": "2.000",
-            "actual_produced_qty": "1.950",
-            "mode": "record",
+            "actual_produced_qty": "1.900",
         },
     )
     assert response.status_code == 302
     job = MixingJob.objects.get()
     assert job.state == MixingJob.State.DONE
-    assert job.actual_produced_qty == Decimal("1.950")
+    assert job.actual_produced_qty == Decimal("1.900")
 
 
 @pytest.mark.django_db
@@ -3089,18 +3098,28 @@ def test_mixing_create_overdraw_keeps_form(
             "branch": tyn.pk,
             "mixture": mixture.pk,
             "target_qty": "5.000",
-            "mode": "start",
+            "actual_produced_qty": "4.800",
+            "note": "poznámka k dávce",
         },
     )
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "pod nulu" in body or "Skladová" in body
     assert MixingJob.objects.count() == 0
+    # Per 0060 (3b): every POSTed value is echoed back so nothing is lost.
+    assert 'value="5.000"' in body  # target_qty
+    assert 'value="4.800"' in body  # actual_produced_qty
+    assert "poznámka k dávce" in body  # note
+    assert f'value="{tyn.pk}" selected' in body  # branch stays selected
+    assert f'value="{mixture.pk}" selected' in body  # směs stays selected
 
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_mixing_finish_view(user_vlastnik, tyn, pepper) -> None:
+    # LEGACY PATH (per 0060): the UI no longer creates RUNNING jobs, but the
+    # finish view is retained to complete a legacy in-flight job. Build one
+    # directly via start_mixing_job() rather than through the create screen.
     from inventory.services import start_mixing_job
 
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
@@ -3129,6 +3148,8 @@ def test_mixing_finish_view(user_vlastnik, tyn, pepper) -> None:
 def test_mixing_cancel_view_requires_reason(
     user_vlastnik, tyn, pepper
 ) -> None:
+    # LEGACY PATH (per 0060): cancel is retained for a legacy in-flight job;
+    # build a RUNNING job directly via start_mixing_job().
     from inventory.services import start_mixing_job
 
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
@@ -3185,7 +3206,32 @@ def test_mixing_preview_partial(user_vlastnik, tyn, pepper) -> None:
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "nedostatek" in body
-    assert "5,000" in body or "5.000" in body
+    # Quantities render at 1 dp with a Czech comma (per 0061).
+    assert "5,0" in body
+    assert "5,000" not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_preview_builds_inventura_component_link(
+    user_vlastnik, tyn, pepper
+) -> None:
+    # Per 0060 (3c): the preview offers a jump into the per-branch inventura
+    # pre-filtered to the blend's components, with a `next=` back to míchání.
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(
+        f"/sklad/_partials/mixing-preview/?branch={tyn.pk}"
+        f"&mixture={mixture.pk}&target_qty=5.000"
+    )
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert f"/sklad/katalog/inventura/{tyn.code}/?products=" in body
+    assert f"products={pepper.pk}" in body
+    # `next=` round-trip back to the míchání form (HTML-escaped &amp;).
+    assert "next=" in body
 
 
 # ---------------------------------------------------------------------------
@@ -4322,6 +4368,62 @@ def test_inventura_edit_data_current_uses_dot_decimal(
     response = client.get("/sklad/katalog/inventura/TYN/")
     assert b'data-current="1.500"' in response.content
     assert b'data-current="1,500"' not in response.content
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_per_branch_save_redirects_to_catalogue(
+    user_vlastnik, tyn, sez, pepper
+) -> None:
+    # Regression: the per-branch save must land on the /sklad/-prefixed
+    # catalogue (was a bare /katalog/?branch=… → 404). Checked for both
+    # branches. An empty POST is a no-op that still redirects.
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("5.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    for code in ("TYN", "SEZ"):
+        response = client.post(f"/sklad/katalog/inventura/{code}/", {})
+        assert response.status_code == 302
+        assert response.headers["Location"].startswith(
+            f"/sklad/katalog/?branch={code}"
+        )
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_products_filter_restricts_rows(
+    user_vlastnik, tyn, pepper, paprika
+) -> None:
+    # Per 0060: ?products=<pk,…> narrows the per-branch inventura to those
+    # products (a blend's inputs). Other products drop out.
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("5.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(f"/sklad/katalog/inventura/TYN/?products={pepper.pk}")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert pepper.name_cs in body
+    assert paprika.name_cs not in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_per_branch_honours_next_round_trip(
+    user_vlastnik, tyn, pepper
+) -> None:
+    # Per 0060: a `next=` (e.g. back to the míchání form) is honoured on a
+    # per-branch save via _safe_next.
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/sklad/katalog/inventura/TYN/",
+        {"next": "/sklad/michani/novy/?branch=1"},
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/sklad/michani/novy/?branch=1"
 
 
 @pytest.mark.django_db(transaction=True)

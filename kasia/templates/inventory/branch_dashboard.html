@@ -16,7 +16,7 @@
   </div>
   <div class="kpi">
     <span class="lbl">Celková zásoba</span>
-    <span class="k-val">{{ kpi_total_mass|floatformat:"3" }} <span class="k-unit">kg</span></span>
+    <span class="k-val">{{ kpi_total_mass|floatformat:1 }} <span class="k-unit">kg</span></span>
     <span class="k-sub">{{ branch.code }}</span>
   </div>
   <div class="kpi">
@@ -70,9 +70,9 @@
         {% for row in stock_rows %}
           <tr>
             <td>{{ row.stock.product.name_cs }}</td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.stock.quantity|floatformat:"3" }}</td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.reserved|floatformat:"3" }}</td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.effective|floatformat:"3" }}</td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.stock.quantity|floatformat:1 }}</td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.reserved|floatformat:1 }}</td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.effective|floatformat:1 }}</td>
             <td>
               {% if row.status == "prazdne" %}
                 <span style="color:var(--error);font-weight:bold;">prázdné</span>

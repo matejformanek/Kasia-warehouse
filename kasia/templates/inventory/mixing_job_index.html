@@ -6,7 +6,6 @@
 <h1>Míchací dávky</h1>
 <p>
   <a class="primary" href="{% url 'inventory:mixing_job_create' %}">+ Nová dávka</a>
-  <a class="secondary" href="{% url 'inventory:mixing_plan_create' %}">Naplánovat dávku</a>
 </p>
 
 <p style="color:var(--fg-soft);">Nalezeno: {{ count }} dávek.</p>
@@ -30,9 +29,9 @@
           <td>{{ j.started_at|date:"d. m. Y H:i" }}</td>
           <td>{{ j.branch.code }}</td>
           <td>{{ j.mixture.name_cs }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ j.target_qty|floatformat:"3" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ j.target_qty|floatformat:1 }}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            {% if j.actual_produced_qty is not None %}{{ j.actual_produced_qty|floatformat:"3" }}{% endif %}
+            {% if j.actual_produced_qty is not None %}{{ j.actual_produced_qty|floatformat:1 }}{% endif %}
           </td>
           <td>
             {% if j.state == "planned" %}

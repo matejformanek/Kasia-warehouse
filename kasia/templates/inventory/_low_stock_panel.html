@@ -28,15 +28,15 @@
         <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=r.product.pk %}">
           <td>{{ r.product.name_cs }}</td>
           <td>{{ r.branch.code }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.on_hand|floatformat:"3" }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.reserved|floatformat:"3" }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.effective|floatformat:"3" }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.threshold|floatformat:"3" }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--warn);">{{ r.deficit|floatformat:"3" }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.on_hand|floatformat:1 }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.reserved|floatformat:1 }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.effective|floatformat:1 }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.threshold|floatformat:1 }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--warn);">{{ r.deficit|floatformat:1 }}</td>
           <td style="white-space:nowrap;">
             {% if r.ordered_kg %}
               <span class="stock-warn" style="display:inline-block;background:var(--ok-soft);color:var(--ok);padding:2px 6px;font-size:0.85rem;font-variant-numeric:tabular-nums;">
-                Objednáno {{ r.ordered_kg|floatformat:"3" }} kg · {{ r.ordered_eta|date:"d. m. Y" }}
+                Objednáno {{ r.ordered_kg|floatformat:1 }} kg · {{ r.ordered_eta|date:"d. m. Y" }}
               </span>
             {% endif %}
           </td>

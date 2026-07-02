@@ -2,23 +2,39 @@
 
 {% block title %}Míchací dávky — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Míchání — historie dávek (mixing_job_index). Sharp/technical per 0054. */
+  .intro { color: var(--fg-soft); max-width: 66ch; margin: 0 0 1.4rem; }
+  .toolbar { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; margin: 0 0 1.4rem; }
+  .toolbar .count { color: var(--fg-soft); font-size: .9rem; margin-left: auto; }
+  .col-date { white-space: nowrap; font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--fg-soft); font-size: .9rem; }
+  .branch-code { font-family: var(--mono); font-weight: 600; letter-spacing: .03em; }
+  .op { color: var(--fg-soft); font-size: .9rem; }
+</style>
+{% endblock %}
+
 {% block content %}
-<h1>Míchací dávky</h1>
-<p>
-  <a class="primary" href="{% url 'inventory:mixing_job_create' %}">+ Nová dávka</a>
+<h1>Míchání — historie dávek</h1>
+<p class="intro">
+  Míchání je okamžité — nová dávka rovnou odečte suroviny a&nbsp;přidá
+  směs na sklad. Níže je záznam všech dávek.
 </p>
 
-<p style="color:var(--fg-soft);">Nalezeno: {{ count }} dávek.</p>
+<div class="toolbar">
+  <a class="primary" href="{% url 'inventory:mixing_job_create' %}">+ Nová výrobní dávka</a>
+  <span class="count">Nalezeno: {{ count }}</span>
+</div>
 
 {% if jobs %}
   <table class="lines">
     <thead>
       <tr>
-        <th>Zahájeno</th>
-        <th>Pobočka</th>
+        <th style="width:9.5rem;">Datum</th>
         <th>Směs</th>
-        <th style="text-align:right;">Cíl (kg)</th>
-        <th style="text-align:right;">Vyrobeno (kg)</th>
+        <th>Pobočka</th>
+        <th style="text-align:right;">Cílové množství (kg)</th>
+        <th style="text-align:right;">Skutečně vyrobeno (kg)</th>
         <th>Stav</th>
         <th>Operátor</th>
       </tr>
@@ -26,11 +42,11 @@
     <tbody>
       {% for j in jobs %}
         <tr class="row-link" data-href="{% url 'inventory:mixing_job_detail' pk=j.pk %}">
-          <td>{{ j.started_at|date:"d. m. Y H:i" }}</td>
-          <td>{{ j.branch.code }}</td>
+          <td class="col-date">{{ j.started_at|date:"d. m. Y H:i" }}</td>
           <td>{{ j.mixture.name_cs }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ j.target_qty|floatformat:1 }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">
+          <td><span class="branch-code">{{ j.branch.code }}</span></td>
+          <td class="num">{{ j.target_qty|floatformat:1 }}</td>
+          <td class="num">
             {% if j.actual_produced_qty is not None %}{{ j.actual_produced_qty|floatformat:1 }}{% endif %}
           </td>
           <td>
@@ -44,12 +60,12 @@
               <span style="color:var(--fg-soft);">{{ j.get_state_display }}</span>
             {% endif %}
           </td>
-          <td style="color:var(--fg-soft);">{{ j.created_by.email }}</td>
+          <td class="op">{{ j.created_by.email }}</td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
 {% else %}
-  <p style="color:var(--fg-soft);">Zatím žádné dávky.</p>
+  <p class="muted">Zatím žádné dávky.</p>
 {% endif %}
 {% endblock %}

@@ -1,0 +1,191 @@
+<!-- Sklad mockup 07 — Branch dashboard (obsluha home). Makes stock rows clickable → product detail
+     (screen-doc 03 mandate, safe row-link hook); keeps branch-wide KPI strip + as-of line; adds
+     empty-state nudges. Obsluha sidebar (no Správa section). Restyle within decision 0054. -->
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TYN — Týniště nad Orlicí — Kasia sklad (návrh)</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #1f6b3a; --accent-deep: #16432a; --accent-tint: #eef4ee;
+    --fg: #141719; --fg-soft: #565b66; --fg-faint: #868c97;
+    --bg: #f6f7f5; --bg-card: #ffffff; --line: #d9dcd9; --line-soft: #eef0ee;
+    --error: #a02525; --error-tint: #fbebea;
+    --warn: #c2410c; --warn-tint: #fdeee3;
+    --ok: #1f6b3a; --ok-soft: #e7f1ea;
+    --sidebar-w: 244px;
+    --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { font-family: var(--ui); color: var(--fg); background: var(--bg); margin: 0; font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -.01em; }
+  h1 { font-size: 1.45rem; margin: 0 0 .3rem; }
+
+  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+  .sidebar { position: sticky; top: 0; align-self: start; height: 100vh; background: var(--bg-card); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 14px; }
+  .sidebar .brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 16px; margin-bottom: 6px; border-bottom: 1px solid var(--line-soft); text-decoration: none; }
+  .sidebar .brand img { height: 34px; width: auto; display: block; }
+  .sidebar .brand .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .sidebar .brand .brand-name { font-weight: 700; font-size: 16px; letter-spacing: .06em; color: var(--fg); }
+  .sidebar .brand .brand-sub { font-size: 11px; color: var(--fg-faint); letter-spacing: .14em; text-transform: uppercase; }
+  .nav { display: flex; flex-direction: column; gap: 1px; margin-top: 10px; flex: 1 1 auto; overflow-y: auto; }
+  .nav .nav-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); padding: 12px 10px 5px; font-weight: 600; }
+  .nav a { display: flex; align-items: center; gap: 10px; padding: 8px 11px; color: var(--fg-soft); font-weight: 500; font-size: 14px; text-decoration: none; border-left: 3px solid transparent; }
+  .nav a:hover { background: var(--line-soft); color: var(--fg); }
+  .nav a.active { background: var(--accent-tint); color: var(--accent-deep); font-weight: 600; border-left-color: var(--accent); }
+  .nav a .ic { width: 17px; height: 17px; flex: 0 0 17px; color: var(--fg-faint); }
+  .nav a.active .ic { color: var(--accent); }
+  .sidebar .user { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+  .sidebar .user .email { font-size: 12.5px; color: var(--fg-soft); text-decoration: none; }
+  .sidebar .user .logout { font-size: 13px; font-weight: 600; color: var(--fg); background: none; border: 1px solid var(--line); padding: 6px 10px; cursor: pointer; font-family: inherit; width: 100%; text-align: left; }
+
+  .content { padding: 30px 34px 56px; max-width: 1180px; width: 100%; min-width: 0; margin: 0 auto; }
+  .asof { color: var(--fg-faint); font-size: 12.5px; margin: 0 0 1.1rem; font-family: var(--mono); }
+  .muted { color: var(--fg-soft); }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; background: var(--bg-card); border: 1px solid var(--line); margin-bottom: 1.2rem; }
+  .kpi { padding: 16px 18px; border-left: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 7px; }
+  .kpi:first-child { border-left: 0; }
+  .kpi.accent { border-top: 2px solid var(--accent); }
+  .kpi.warn { border-top: 2px solid var(--warn); }
+  .kpi .lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: var(--fg-faint); }
+  .kpi .k-val { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 31px; font-weight: 600; line-height: 1; letter-spacing: -.02em; color: var(--fg); display: flex; align-items: baseline; gap: 5px; }
+  .kpi.accent .k-val { color: var(--accent); }
+  .kpi.warn .k-val { color: var(--warn); }
+  .kpi .k-unit { font-size: 13px; font-weight: 500; color: var(--fg-faint); letter-spacing: 0; }
+  .kpi .k-sub { font-size: 11.5px; color: var(--fg-soft); }
+
+  .card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 0; padding: 1.2rem 1.35rem; margin-bottom: 1.2rem; }
+  .card h2 { font-size: 1.05rem; margin-top: 0; }
+  .row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+  .between { justify-content: space-between; }
+  .actions { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+
+  .primary, a.primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); padding: 0.5rem 1.1rem; border-radius: 0; font: inherit; font-weight: 600; text-decoration: none; display: inline-block; line-height: 1.4; }
+  .primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  a.secondary, button.secondary { background: #fff; color: var(--fg); border: 1px solid var(--line); padding: 0.5rem 0.9rem; border-radius: 0; font: inherit; font-weight: 500; text-decoration: none; display: inline-block; cursor: pointer; line-height: 1.4; }
+  input[type=search] { font: inherit; padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 0; background: #fcfdfc; max-width: 280px; }
+
+  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; }
+  table.lines th, table.lines td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  table.lines th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600; }
+  table.lines tbody tr:hover td { background: #fafbfa; }
+  .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  tr.row-link { cursor: pointer; }
+  tr.row-link:hover td { background: var(--line-soft); }
+  tr.row-link td a { color: var(--fg); }
+  tr.low td { background: var(--warn-tint); }
+  tr.low:hover td { background: var(--warn-tint); }
+  .tab-chip { padding: 0.3rem 0.8rem; border-radius: 0; font-size: 0.85rem; display: inline-block; border: 1px solid var(--line); background: #fff; }
+  .chip-warn { background: var(--warn); border-color: var(--warn); color: var(--on-warn,#fff); font-weight: 600; }
+  .empty-nudge { border: 1px dashed var(--line); background: #fbfcfb; padding: 1rem 1.1rem; color: var(--fg-soft); font-size: .92rem; }
+  .empty-nudge a { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="index.html">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="brand-text"><span class="brand-name">KASIA</span><span class="brand-sub">sklad</span></span>
+    </a>
+    <nav class="nav" aria-label="Hlavní navigace">
+      <span class="nav-label">Provoz</span>
+      <a href="07-branch-dashboard.html" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Přehled</a>
+      <a href="01b-katalog-grouped.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Katalog</a>
+      <a href="03-inventura.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M9 13l2 2 4-4"/></svg>Inventura</a>
+      <a href="08-prijem.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Příjem</a>
+      <a href="05-vydej.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>Výdej</a>
+      <a href="06-michani.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 0 1 15-6.7L21 6"/><path d="M21 3v3h-3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 18"/><path d="M3 21v-3h3"/></svg>Míchání</a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h13l-3-3m3 3-3 3"/><path d="M20 16H7l3-3m-3 3 3 3"/></svg>Převody</a>
+      <a href="10-dodaci-listy.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>Dodací listy</a>
+      <a href="09-historie.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/></svg>Historie</a>
+      <span class="nav-label">Číselníky</span>
+      <a href="12-dodavatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V8l6-4 6 4v13"/><path d="M15 21V11l6 4v6"/><path d="M3 21h18"/></svg>Dodavatelé</a>
+      <a href="13-odberatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/><path d="M21 21v-1a5 5 0 0 0-4-4.9"/></svg>Odběratelé</a>
+    </nav>
+    <div class="user">
+      <a href="#" class="email">obsluha.tyn@kasia.cz</a>
+      <button class="logout">Odhlásit</button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <h1>TYN — Týniště nad Orlicí</h1>
+    <p class="muted" style="margin-top:0;">Náměstí 90, Týniště nad Orlicí</p>
+    <p class="asof">Stav skladu k 01. 07. 2026 08:42.</p>
+
+    <section class="kpis" aria-label="Klíčové ukazatele pobočky">
+      <div class="kpi accent"><span class="lbl">Produktů skladem</span><span class="k-val">41</span><span class="k-sub">s nenulovým stavem</span></div>
+      <div class="kpi"><span class="lbl">Celková zásoba</span><span class="k-val">712,5 <span class="k-unit">kg</span></span><span class="k-sub">TYN</span></div>
+      <div class="kpi warn"><span class="lbl">Dochází zboží</span><span class="k-val">2</span><span class="k-sub">pod nastaveným prahem</span></div>
+      <div class="kpi"><span class="lbl">Nedávné pohyby</span><span class="k-val">7</span><span class="k-sub">posledních evidovaných</span></div>
+    </section>
+
+    <div class="card row between">
+      <div class="muted">Zboží na této pobočce. Klikněte na řádek pro detail produktu.</div>
+      <div class="actions">
+        <a class="secondary" href="#">Nový příjem</a>
+        <a class="primary" href="05-vydej.html">Nový výdej</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Stav skladu</h2>
+      <form style="margin-bottom:.75rem;" onsubmit="return false;">
+        <input type="search" placeholder="Hledat produkt…">
+        <button class="secondary" type="button">Hledat</button>
+      </form>
+      <table class="lines">
+        <thead>
+          <tr><th>Produkt</th><th style="text-align:right;">Na skladě (kg)</th><th style="text-align:right;">Rezerv.</th><th style="text-align:right;">Efektivně</th><th></th></tr>
+        </thead>
+        <tbody>
+          <!-- Stock rows now clickable → product detail (screen-doc 03). -->
+          <tr class="row-link" data-href="04-detail-produktu.html"><td>Pepř černý mletý</td><td class="num">104,2</td><td class="num">0,0</td><td class="num">104,2</td><td></td></tr>
+          <tr class="row-link" data-href="04-detail-produktu.html"><td>Grilovací koření</td><td class="num">78,0</td><td class="num">25,0</td><td class="num">53,0</td><td></td></tr>
+          <tr class="row-link" data-href="04-detail-produktu.html"><td>Paprika sladká mletá</td><td class="num">55,4</td><td class="num">0,0</td><td class="num">55,4</td><td></td></tr>
+          <tr class="row-link low" data-href="04-detail-produktu.html"><td>Kmín celý</td><td class="num">14,2</td><td class="num">6,0</td><td class="num">8,2</td><td><span class="tab-chip chip-warn">dochází</span></td></tr>
+          <tr class="row-link low" data-href="04-detail-produktu.html"><td>Muškátový oříšek mletý</td><td class="num">4,1</td><td class="num">0,0</td><td class="num">4,1</td><td><span class="tab-chip chip-warn">dochází</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Nedávné pohyby</h2>
+      <table class="lines">
+        <thead><tr><th>Datum</th><th>Druh</th><th>Protistrana</th><th style="text-align:right;">Položky</th><th>Operátor</th></tr></thead>
+        <tbody>
+          <tr class="row-link" data-href="#"><td>30. 06. 2026</td><td>Výdej</td><td>Restaurace U Kotvy</td><td class="num">4</td><td class="muted">obsluha.tyn@kasia.cz</td></tr>
+          <tr class="row-link" data-href="#"><td>29. 06. 2026</td><td>Příjem</td><td>Fuchs s.r.o.</td><td class="num">2</td><td class="muted">obsluha.tyn@kasia.cz</td></tr>
+          <tr class="row-link" data-href="#"><td>28. 06. 2026</td><td>Výdej</td><td>Lahůdky Vávra</td><td class="num">6</td><td class="muted">obsluha.tyn@kasia.cz</td></tr>
+        </tbody>
+      </table>
+      <p><a class="secondary" href="#">Celá historie</a></p>
+    </div>
+
+    <!-- Example empty-state nudge (shown when a branch has no movements yet). -->
+    <div class="card">
+      <h2>Plánované převody</h2>
+      <div class="empty-nudge">Žádné plánované převody na TYN. Nový převod založíte v sekci <a href="#">Převody</a>.</div>
+    </div>
+  </main>
+</div>
+<script>
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("a, button, input, select, label")) return;
+    const tr = e.target.closest("tr.row-link[data-href]");
+    if (tr) window.location = tr.dataset.href;
+  });
+</script>
+</body>
+</html>

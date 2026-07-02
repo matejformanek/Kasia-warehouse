@@ -1,0 +1,461 @@
+<!-- Sklad mockup 16 — Nastavení (spacing/clarity redesign). 1:1 Phase-2 port target for
+     kasia/templates/inventory/settings_form.html. Shell (head/style/sidebar/scripts) reused
+     from 01b-katalog-grouped.html; airy field/section styling from 05-vydej.html. All prod
+     content preserved — split into separate section .cards (Společnost / SMTP / Příjemci /
+     Šablony) each with a muted subtitle, a 2-col field grid for compact fields, capped input
+     widths, an anchor-chip section index, and a sticky "Uložit nastavení" bar. Standalone
+     .cards for Otestovat odeslání, Dodací list — formát, Pobočky follow. -->
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nastavení — Kasia sklad (návrh)</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #1f6b3a; --accent-deep: #16432a; --accent-tint: #eef4ee;
+    --fg: #141719; --fg-soft: #565b66; --fg-faint: #868c97;
+    --bg: #f6f7f5; --bg-card: #ffffff; --line: #d9dcd9; --line-soft: #eef0ee;
+    --error: #a02525; --error-tint: #fbebea;
+    --warn: #c2410c; --warn-tint: #fdeee3;
+    --ok: #1f6b3a; --ok-soft: #e7f1ea;
+    --sidebar-w: 244px;
+    --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { font-family: var(--ui); color: var(--fg); background: var(--bg); margin: 0; font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -.01em; }
+  h1 { font-size: 1.55rem; margin: 0 0 .5rem; }
+
+  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+  .sidebar { position: sticky; top: 0; align-self: start; height: 100vh; background: var(--bg-card); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 14px; }
+  .sidebar .brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 16px; margin-bottom: 6px; border-bottom: 1px solid var(--line-soft); text-decoration: none; }
+  .sidebar .brand img { height: 34px; width: auto; display: block; }
+  .sidebar .brand .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .sidebar .brand .brand-name { font-weight: 700; font-size: 16px; letter-spacing: .06em; color: var(--fg); }
+  .sidebar .brand .brand-sub { font-size: 11px; color: var(--fg-faint); letter-spacing: .14em; text-transform: uppercase; }
+  .nav { display: flex; flex-direction: column; gap: 1px; margin-top: 10px; flex: 1 1 auto; overflow-y: auto; }
+  .nav .nav-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); padding: 12px 10px 5px; font-weight: 600; }
+  .nav a { display: flex; align-items: center; gap: 10px; padding: 8px 11px; color: var(--fg-soft); font-weight: 500; font-size: 14px; text-decoration: none; border-left: 3px solid transparent; }
+  .nav a:hover { background: var(--line-soft); color: var(--fg); }
+  .nav a.active { background: var(--accent-tint); color: var(--accent-deep); font-weight: 600; border-left-color: var(--accent); }
+  .nav a .ic { width: 17px; height: 17px; flex: 0 0 17px; color: var(--fg-faint); }
+  .nav a.active .ic { color: var(--accent); }
+  .sidebar .user { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+  .sidebar .user .email { font-size: 12.5px; color: var(--fg-soft); text-decoration: none; }
+  .sidebar .user .logout { font-size: 13px; font-weight: 600; color: var(--fg); background: none; border: 1px solid var(--line); padding: 6px 10px; cursor: pointer; font-family: inherit; width: 100%; text-align: left; }
+
+  .content { padding: 40px 46px 72px; max-width: 1040px; width: 100%; min-width: 0; margin: 0 auto; }
+  .page-intro { color: var(--fg-soft); font-size: .96rem; margin: 0 0 1.3rem; max-width: 640px; }
+
+  /* Section index / anchor chips under the H1. */
+  .anchor-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 2rem; padding: 0 0 1.3rem; border-bottom: 1px solid var(--line-soft); }
+  .anchor-chips a { font-size: .82rem; font-weight: 600; color: var(--fg-soft); background: var(--bg-card); border: 1px solid var(--line); padding: .4rem .8rem; border-radius: 0; text-decoration: none; line-height: 1.2; }
+  .anchor-chips a:hover { border-color: var(--accent); color: var(--accent-deep); background: var(--accent-tint); }
+
+  /* Airy section cards (from 05-vydej): generous padding + big gap between topics. */
+  .card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 0; padding: 2rem 2.2rem; margin-bottom: 2.4rem; scroll-margin-top: 24px; }
+  .card > h2 { font-size: 1.3rem; margin: 0 0 .25rem; }
+  .card .sub { color: var(--fg-soft); font-size: .92rem; margin: 0 0 1.6rem; max-width: 640px; }
+
+  .muted { color: var(--fg-soft); }
+  .note { color: var(--fg-soft); font-size: 0.9rem; margin: -.6rem 0 1.4rem; max-width: 640px; }
+  code { font-family: var(--mono); font-size: .86em; background: var(--line-soft); padding: .05rem .3rem; }
+
+  /* Form fields (05-vydej airy styling): label above input, roomy vertical rhythm. */
+  form .field { margin-bottom: 1.5rem; }
+  form label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--fg); font-size: .95rem; }
+  .field-required::after { content: " *"; color: var(--error); font-weight: bold; }
+  form input[type=text], form input[type=email], form input[type=password],
+  form input[type=number], form input[type=file], form select, form textarea {
+    font: inherit; padding: 0.6rem 0.75rem; border: 1px solid var(--line); border-radius: 0;
+    width: 100%; max-width: 420px; background: #fcfdfc; color: var(--fg);
+  }
+  /* Addresses + template bodies get more room. */
+  form textarea { resize: vertical; min-height: 3.4rem; font-family: inherit; max-width: 640px; }
+  form input:focus, form select:focus, form textarea:focus { outline: none; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .field small { color: var(--fg-soft); display: block; margin-top: .35rem; font-size: .85rem; }
+  .check-inline { display: flex; align-items: center; gap: .55rem; }
+  .check-inline input[type=checkbox] { width: auto; max-width: none; }
+  .check-inline label { margin-bottom: 0; }
+
+  /* 2-column grid for the compact company/SMTP fields; .field-grid .field cancels its own bottom margin. */
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2rem; }
+  .field-grid .field { margin-bottom: 0; }
+  .field-grid .full { grid-column: 1 / -1; }
+  .field-grid .full input, .field-grid .full textarea { max-width: 640px; }
+  @media (max-width: 720px) { .field-grid { grid-template-columns: 1fr; } }
+
+  .primary, a.primary, button.primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); padding: 0.6rem 1.3rem; border-radius: 0; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; vertical-align: middle; }
+  .primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  a.secondary, button.secondary { background: #fff; color: var(--fg); border: 1px solid var(--line); padding: 0.5rem 1rem; border-radius: 0; font: inherit; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; vertical-align: middle; }
+  a.secondary:hover, button.secondary:hover { border-color: var(--fg-faint); }
+
+  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+  table.lines th, table.lines td { padding: 0.65rem 0.7rem; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  table.lines th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600; }
+  table.lines td input[type=email], table.lines td input[type=text] { padding: .45rem .55rem; width: 100%; max-width: none; }
+  table.lines td input[type=number] { padding: .45rem .55rem; width: 5rem; max-width: none; text-align: right; font-family: var(--mono); }
+  .row-delete-btn { background: #fff; color: var(--error); border: 1px solid var(--line); padding: .4rem .75rem; border-radius: 0; font: inherit; font-weight: 500; cursor: pointer; }
+  .row-delete-btn:hover { border-color: var(--error); background: var(--error-tint); }
+  tr.marked-deleted td { opacity: .45; text-decoration: line-through; }
+  .non-form-errors { color: var(--error); font-size: .9rem; margin-bottom: .6rem; }
+
+  /* Sticky-ish, clearly separated save bar for the primary action. */
+  .save-bar { position: sticky; bottom: 0; background: var(--bg-card); border: 1px solid var(--line); border-top: 2px solid var(--accent); padding: 1rem 1.4rem; margin-bottom: 2.4rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .save-bar .save-hint { color: var(--fg-soft); font-size: .88rem; margin-left: auto; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="index.html">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="brand-text"><span class="brand-name">KASIA</span><span class="brand-sub">sklad</span></span>
+    </a>
+    <nav class="nav" aria-label="Hlavní navigace">
+      <span class="nav-label">Provoz</span>
+      <a href="02a-prehled.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Přehled</a>
+      <a href="01b-katalog-grouped.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Katalog</a>
+      <a href="03-inventura.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M9 13l2 2 4-4"/></svg>Inventura</a>
+      <a href="08-prijem.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Příjem</a>
+      <a href="05-vydej.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>Výdej</a>
+      <a href="06-michani.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 0 1 15-6.7L21 6"/><path d="M21 3v3h-3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 18"/><path d="M3 21v-3h3"/></svg>Míchání</a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h13l-3-3m3 3-3 3"/><path d="M20 16H7l3-3m-3 3 3 3"/></svg>Převody</a>
+      <a href="10-dodaci-listy.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>Dodací listy</a>
+      <a href="09-historie.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/></svg>Historie</a>
+      <a href="17-podpora.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .8-1 1.7"/><path d="M12 17h.01"/></svg>Podpora</a>
+      <span class="nav-label">Číselníky</span>
+      <a href="12-dodavatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V8l6-4 6 4v13"/><path d="M15 21V11l6 4v6"/><path d="M3 21h18"/></svg>Dodavatelé</a>
+      <a href="13-odberatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/><path d="M21 21v-1a5 5 0 0 0-4-4.9"/></svg>Odběratelé</a>
+      <span class="nav-label">Správa</span>
+      <a href="14-pobocky.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 9l3-5h12l3 5"/><path d="M9 21v-6h6v6"/></svg>Pobočky</a>
+      <a href="15-uzivatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/></svg>Uživatelé</a>
+      <a href="16-nastaveni.html" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-2.88 1.2V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 7 19.6a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 2.6 14H2.5a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.4 9Z"/></svg>Nastavení</a>
+    </nav>
+    <div class="user">
+      <a href="#" class="email">petr@kasia.cz</a>
+      <button class="logout">Odhlásit</button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <h1>Nastavení</h1>
+    <p class="page-intro">Firemní hlavička dokumentů, odesílání dodacích listů e-mailem a šablony zpráv. Změny se ukládají tlačítkem <strong>Uložit nastavení</strong> dole.</p>
+
+    <!-- Section index / anchor chips — smooth-scroll to each card. -->
+    <nav class="anchor-chips" aria-label="Rychlá navigace v nastavení">
+      <a href="#sec-spolecnost">Společnost</a>
+      <a href="#sec-smtp">SMTP</a>
+      <a href="#sec-prijemci">Příjemci</a>
+      <a href="#sec-sablony">Šablony</a>
+      <a href="#sec-test">Test</a>
+      <a href="#sec-dodak">Dodací list</a>
+      <a href="#sec-pobocky">Pobočky</a>
+    </nav>
+
+    <form onsubmit="return false;">
+
+      <!-- ===== Společnost / hlavička dokumentu ===== -->
+      <section class="card" id="sec-spolecnost">
+        <h2>Společnost / hlavička dokumentu</h2>
+        <p class="sub">Údaje se tisknou do hlavičky a patičky dodacího listu. Logo se použije jako obrázek dokumentu.</p>
+
+        <div class="field-grid">
+          <div class="field">
+            <label for="company_name">Název firmy</label>
+            <input type="text" id="company_name" value="Kasia vera s.r.o.">
+          </div>
+          <div class="field">
+            <label for="company_ico">IČO</label>
+            <input type="text" id="company_ico" value="25756729">
+          </div>
+          <div class="field">
+            <label for="company_dic">DIČ</label>
+            <input type="text" id="company_dic" value="CZ25756729">
+          </div>
+          <div class="field">
+            <label for="company_phone">Telefon</label>
+            <input type="text" id="company_phone" value="+420 323 601 500">
+          </div>
+          <div class="field">
+            <label for="company_email">E-mail</label>
+            <input type="email" id="company_email" value="info@kasia.cz">
+          </div>
+          <div class="field">
+            <label for="logo">Logo</label>
+            <input type="file" id="logo">
+            <small>Aktuální: <a href="assets/kasia-logo.jpg" target="_blank">kasia-logo.jpg</a></small>
+          </div>
+          <div class="field full">
+            <label for="company_address">Adresa</label>
+            <textarea id="company_address" rows="3">Nádražní 1202/5
+251 01 Říčany u Prahy</textarea>
+          </div>
+          <div class="field full">
+            <label for="footer_text">Patička dokumentu</label>
+            <input type="text" id="footer_text" value="Kasia vera s.r.o. · IČO 25756729 · zapsáno v OR vedeném Městským soudem v Praze">
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SMTP ===== -->
+      <section class="card" id="sec-smtp">
+        <h2>Odeslání dodacích listů — SMTP</h2>
+        <p class="sub">Konfigurace poštovního serveru pro odesílání dodacích listů a souhrnů.</p>
+        <p class="note">
+          Pole jsou volitelná. Pokud necháte prázdná, použije se konfigurace
+          z <code>.env</code> souboru na serveru. Změna polí se projeví okamžitě.
+        </p>
+
+        <div class="field-grid">
+          <div class="field">
+            <label for="smtp_host">SMTP host</label>
+            <input type="text" id="smtp_host" placeholder="např. smtp.seznam.cz">
+          </div>
+          <div class="field">
+            <label for="smtp_port">Port</label>
+            <input type="number" id="smtp_port" placeholder="587">
+          </div>
+          <div class="field">
+            <label for="smtp_user">Uživatel</label>
+            <input type="text" id="smtp_user" placeholder="přihlašovací jméno SMTP">
+          </div>
+          <div class="field">
+            <label for="smtp_password">Heslo</label>
+            <input type="password" id="smtp_password" placeholder="••••••••">
+            <small>Heslo se nikdy nezobrazuje. Prázdný vstup ponechá uložené heslo beze změny.</small>
+          </div>
+          <div class="field">
+            <label for="email_from_address">Odesílatel — adresa</label>
+            <input type="email" id="email_from_address" placeholder="dodaky@kasia.cz">
+          </div>
+          <div class="field">
+            <label for="email_from_name">Odesílatel — jméno</label>
+            <input type="text" id="email_from_name" placeholder="Kasia vera — sklad">
+          </div>
+          <div class="field full check-inline">
+            <input type="checkbox" id="smtp_use_tls" checked>
+            <label for="smtp_use_tls">Použít TLS</label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Příjemci dodacího listu ===== -->
+      <section class="card" id="sec-prijemci">
+        <h2>Příjemci dodacího listu</h2>
+        <p class="sub">Seznam interních adres, na které míří každý dodací list a souhrn „dochází zboží".</p>
+        <p class="note">
+          Každý dodací list se odesílá na všechny aktivní adresy v seznamu níže.
+          Adresy odběratelů nejsou nikdy v cestě e-mailu (rozhodnutí
+          <code>0031</code> + <code>0052</code>). Souhrn „dochází zboží"
+          chodí jen příjemcům s odpovídajícím zaškrtnutím.
+        </p>
+        <table class="lines" id="recipient-table">
+          <thead>
+            <tr>
+              <th class="field-required">E-mail</th>
+              <th>Popisek</th>
+              <th style="text-align:center;">Aktivní</th>
+              <th style="text-align:center;">Souhrn dochází zboží</th>
+              <th style="text-align:right;">Pořadí</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="recipient-body">
+            <tr class="line-row" data-index="0">
+              <td><input type="email" value="petr@kasia.cz"></td>
+              <td><input type="text" value="Petr"></td>
+              <td style="text-align:center;"><input type="checkbox" checked></td>
+              <td style="text-align:center;"><input type="checkbox" checked></td>
+              <td style="text-align:right;"><input type="number" value="1" min="0"></td>
+              <td><button type="button" class="row-delete-btn">× Smazat</button></td>
+            </tr>
+            <tr class="line-row" data-index="1">
+              <td><input type="email" value="karolina@kasia.cz"></td>
+              <td><input type="text" value="Karolína"></td>
+              <td style="text-align:center;"><input type="checkbox" checked></td>
+              <td style="text-align:center;"><input type="checkbox" checked></td>
+              <td style="text-align:right;"><input type="number" value="2" min="0"></td>
+              <td><button type="button" class="row-delete-btn">× Smazat</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          <button type="button" class="secondary" id="recipient-add-row">+ Přidat příjemce</button>
+        </p>
+      </section>
+
+      <!-- ===== Šablony e-mailů ===== -->
+      <section class="card" id="sec-sablony">
+        <h2>Šablony e-mailů</h2>
+        <p class="sub">Předmět a tělo automatických zpráv. Delší texty mají širší pole pro pohodlnou úpravu.</p>
+        <p class="note">
+          Zástupné značky: <code>&lt;číslo&gt;</code>, <code>&lt;datum&gt;</code>,
+          <code>&lt;text zdůvodnění od operátorky&gt;</code>. Systém je při
+          odeslání dosadí automaticky.
+        </p>
+        <div class="field">
+          <label for="tpl_init_subj">Předmět — nový dodák</label>
+          <input type="text" id="tpl_init_subj" value="Dodací list <číslo> — Kasia vera">
+        </div>
+        <div class="field">
+          <label for="tpl_init_body">Tělo — nový dodák</label>
+          <textarea id="tpl_init_body" rows="5">Dobrý den,
+
+v příloze zasíláme dodací list <číslo> ze dne <datum>.
+
+S pozdravem
+Kasia vera s.r.o.</textarea>
+        </div>
+        <div class="field">
+          <label for="tpl_oprava_subj">Předmět — oprava</label>
+          <input type="text" id="tpl_oprava_subj" value="[OPRAVA] Dodací list <číslo> — Kasia vera">
+        </div>
+        <div class="field">
+          <label for="tpl_oprava_body">Tělo — oprava</label>
+          <textarea id="tpl_oprava_body" rows="5">Dobrý den,
+
+zasíláme opravenou verzi dodacího listu <číslo> ze dne <datum>.
+Důvod opravy: <text zdůvodnění od operátorky>
+
+S pozdravem
+Kasia vera s.r.o.</textarea>
+        </div>
+        <div class="field">
+          <label for="tpl_low_subj">Předmět — souhrn „dochází zboží"</label>
+          <input type="text" id="tpl_low_subj" value="Dochází zboží — souhrn <datum>">
+        </div>
+        <div class="field">
+          <label for="tpl_low_body">Tělo — souhrn „dochází zboží"</label>
+          <textarea id="tpl_low_body" rows="5">Dobrý den,
+
+následující produkty jsou pod objednacím bodem k <datum>. Přehled je v příloze.
+
+S pozdravem
+Kasia vera — sklad</textarea>
+        </div>
+      </section>
+
+      <!-- Sticky, prominent primary action for the whole form. -->
+      <div class="save-bar">
+        <button type="submit" class="primary">Uložit nastavení</button>
+        <span class="save-hint">Uloží Společnost, SMTP, Příjemce i Šablony najednou.</span>
+      </div>
+    </form>
+
+    <!-- ===== Otestovat odeslání ===== -->
+    <section class="card" id="sec-test">
+      <h2>Otestovat odeslání</h2>
+      <p class="sub">Ověří, že SMTP nastavení funguje, bez vystavení skutečného dodacího listu.</p>
+      <p class="note">
+        Odešle krátký testovací e-mail přes výše uložené SMTP nastavení.
+        Pokud SMTP ještě nebylo uloženo, použijí se uložené hodnoty z databáze.
+      </p>
+      <form onsubmit="return false;">
+        <div class="field">
+          <label for="to_email">Komu (e-mail)</label>
+          <input type="email" id="to_email" placeholder="petr@kasia.cz">
+        </div>
+        <button type="submit" class="secondary">Odeslat testovací e-mail</button>
+      </form>
+    </section>
+
+    <!-- ===== Dodací list — formát ===== -->
+    <section class="card" id="sec-dodak">
+      <h2>Dodací list — formát</h2>
+      <p class="sub">Přehled číselné řady dodacích listů podle poboček. Formát je pevně daný.</p>
+      <p class="note">
+        Číslování je pevně <code>&lt;BRANCH&gt;-&lt;YYYY&gt;-&lt;NNNN&gt;</code>
+        podle rozhodnutí <code>0008</code>. Formát není uživatelsky
+        konfigurovatelný — je součástí schématu databáze.
+      </p>
+      <table class="lines">
+        <thead>
+          <tr><th>Pobočka</th><th>Rok</th><th>Poslední vystavený dodák</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>TYN — Týniště nad Orlicí</td><td>2026</td><td><code>TYN-2026-0142</code></td></tr>
+          <tr><td>SEZ — Sezimovo Ústí</td><td>2026</td><td><code>SEZ-2026-0089</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ===== Pobočky ===== -->
+    <section class="card" id="sec-pobocky">
+      <h2>Pobočky</h2>
+      <p class="sub">Evidované pobočky a jejich stabilní třípísmenné kódy.</p>
+      <p class="note">
+        Třípísmenný kód je stabilní po prvním vystavení dodacího listu —
+        editace identit poboček mimo název / adresu není v MVP.
+      </p>
+      <table class="lines">
+        <thead>
+          <tr><th>Kód</th><th>Název</th><th>Adresa</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>TYN</strong></td><td>Týniště nad Orlicí</td><td>Voděradská 122, 517 21 Týniště nad Orlicí</td></tr>
+          <tr><td><strong>SEZ</strong></td><td>Sezimovo Ústí</td><td>Průmyslová 1050, 391 02 Sezimovo Ústí</td></tr>
+          <tr style="color:var(--fg-soft);">
+            <td>—</td><td>Říčany</td><td>HQ; bez evidence skladu (výchozí odběratel na výdeji).</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p style="color:var(--fg-soft); font-size:0.85rem; text-align:center;">
+      Kasia vera — sklad · MVP
+    </p>
+  </main>
+</div>
+
+<script>
+  // Smooth scroll for the anchor chips (scroll-margin-top on .card handles the offset).
+  document.querySelectorAll('.anchor-chips a').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      const target = document.querySelector(a.getAttribute('href'));
+      if (!target) return;
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  // + Přidat příjemce — clones an empty recipient row (inline JS append).
+  (function () {
+    const btn = document.getElementById("recipient-add-row");
+    const body = document.getElementById("recipient-body");
+    if (!btn || !body) return;
+    btn.addEventListener("click", function () {
+      const idx = body.querySelectorAll("tr.line-row").length;
+      const tr = document.createElement("tr");
+      tr.className = "line-row";
+      tr.dataset.index = idx;
+      tr.innerHTML =
+        '<td><input type="email" placeholder="jmeno@kasia.cz"></td>' +
+        '<td><input type="text" placeholder="popisek"></td>' +
+        '<td style="text-align:center;"><input type="checkbox" checked></td>' +
+        '<td style="text-align:center;"><input type="checkbox"></td>' +
+        '<td style="text-align:right;"><input type="number" value="0" min="0"></td>' +
+        '<td><button type="button" class="row-delete-btn">× Smazat</button></td>';
+      body.appendChild(tr);
+    });
+  })();
+
+  // Row-delete toggle (base.html contract): mark the row deleted, don't remove.
+  document.addEventListener("click", function (e) {
+    const del = e.target.closest(".row-delete-btn");
+    if (!del) return;
+    const row = del.closest("tr.line-row");
+    if (row) row.classList.toggle("marked-deleted");
+  });
+</script>
+</body>
+</html>

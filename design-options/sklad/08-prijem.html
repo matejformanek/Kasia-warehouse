@@ -1,0 +1,275 @@
+<!-- Sklad mockup 08 — Příjem (prijem_form). Same airy numbered-step ideology as the
+     LOCKED Výdej 05-vydej.html: step 1 Dodavatel a pobočka, step 2 Položky (line table +
+     auto-append + running summary), step 3 Uložit. Adapted to příjem: NO overdraw block,
+     NO recipients (receiving adds stock, never short). Adds Očekávaný příjezd (planned).
+     Decision 0059: filled Očekávaný příjezd (expected_on) = planned/ordered receipt. -->
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nový příjem — vzdušný (návrh)</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #1f6b3a; --accent-deep: #16432a; --accent-tint: #eef4ee;
+    --fg: #141719; --fg-soft: #565b66; --fg-faint: #868c97;
+    --bg: #f6f7f5; --bg-card: #ffffff; --line: #d9dcd9; --line-soft: #eef0ee;
+    --error: #a02525; --error-tint: #fbebea;
+    --warn: #c2410c; --warn-tint: #fdeee3;
+    --ok: #1f6b3a; --ok-soft: #e7f1ea;
+    --sidebar-w: 244px;
+    --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { font-family: var(--ui); color: var(--fg); background: var(--bg); margin: 0; font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -.01em; }
+  h1 { font-size: 1.55rem; margin: 0 0 1.6rem; }
+
+  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+  .sidebar { position: sticky; top: 0; align-self: start; height: 100vh; background: var(--bg-card); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 14px; }
+  .sidebar .brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 16px; margin-bottom: 6px; border-bottom: 1px solid var(--line-soft); text-decoration: none; }
+  .sidebar .brand img { height: 34px; width: auto; display: block; }
+  .sidebar .brand .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .sidebar .brand .brand-name { font-weight: 700; font-size: 16px; letter-spacing: .06em; color: var(--fg); }
+  .sidebar .brand .brand-sub { font-size: 11px; color: var(--fg-faint); letter-spacing: .14em; text-transform: uppercase; }
+  .nav { display: flex; flex-direction: column; gap: 1px; margin-top: 10px; flex: 1 1 auto; overflow-y: auto; }
+  .nav .nav-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); padding: 12px 10px 5px; font-weight: 600; }
+  .nav a { display: flex; align-items: center; gap: 10px; padding: 8px 11px; color: var(--fg-soft); font-weight: 500; font-size: 14px; text-decoration: none; border-left: 3px solid transparent; }
+  .nav a:hover { background: var(--line-soft); color: var(--fg); }
+  .nav a.active { background: var(--accent-tint); color: var(--accent-deep); font-weight: 600; border-left-color: var(--accent); }
+  .nav a .ic { width: 17px; height: 17px; flex: 0 0 17px; color: var(--fg-faint); }
+  .nav a.active .ic { color: var(--accent); }
+  .sidebar .user { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+  .sidebar .user .email { font-size: 12.5px; color: var(--fg-soft); text-decoration: none; }
+  .sidebar .user .logout { font-size: 13px; font-weight: 600; color: var(--fg); background: none; border: 1px solid var(--line); padding: 6px 10px; cursor: pointer; font-family: inherit; width: 100%; text-align: left; }
+
+  .content { padding: 40px 46px 72px; max-width: 1180px; width: 100%; min-width: 0; margin: 0 auto; }
+
+  /* Generous card padding + big gap between the 3 steps (same as 05). */
+  .card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 0; padding: 2rem 2.2rem; margin-bottom: 2.4rem; }
+  .card h2 { font-size: 1.1rem; margin-top: 0; }
+  .muted { color: var(--fg-soft); }
+
+  .intro-note { background: var(--accent-tint); border-left: 3px solid var(--accent); padding: 0.8rem 1rem; margin-bottom: 1.6rem; font-size: 0.92rem; }
+
+  .primary, a.primary, button.primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); padding: 0.6rem 1.3rem; border-radius: 0; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; }
+  .primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  a.secondary, button.secondary { background: #fff; color: var(--fg); border: 1px solid var(--line); padding: 0.5rem 1rem; border-radius: 0; font: inherit; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; }
+  a.secondary:hover { border-color: var(--fg-faint); }
+
+  /* Header fields in a 2-column grid, roomy spacing (same as 05). */
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem 2rem; }
+  .field { margin-bottom: 0; }
+  .field label { display:block; font-weight:600; margin-bottom:.5rem; font-size: 0.95rem; }
+  .field-required::after { content: " *"; color: var(--error); font-weight: bold; }
+  .field-help { font-size: 0.85rem; color: var(--fg-soft); margin: .4rem 0 0; }
+  .field-link { font-size: 0.85rem; margin-left: .5rem; font-weight: 500; }
+  .required-legend { font-size: 0.88rem; color: var(--fg-soft); margin-bottom: 0.7rem; }
+  .required-legend::before { content: "* "; color: var(--error); font-weight: bold; }
+  input, select { font: inherit; padding: 0.6rem 0.75rem; border: 1px solid var(--line); border-radius: 0; background: #fcfdfc; color: var(--fg); max-width: 320px; width: 100%; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+  /* Roomy table rows + line-height (same as 05). */
+  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 1.1rem; }
+  table.lines th, table.lines td { padding: 0.7rem 0.75rem; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  table.lines th { font-size: 0.74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600; padding-bottom: .55rem; }
+  table.lines td input, table.lines td select { padding: 0.5rem 0.6rem; }
+  .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  td input.line-qty { max-width: 120px; text-align: right; font-family: var(--mono); }
+  td select.line-prod { max-width: 100%; }
+  td input.line-sarze { max-width: 130px; font-family: var(--mono); }
+  td input.line-exp { max-width: 160px; font-family: var(--mono); }
+  td input.line-note { max-width: 220px; }
+  tr.marked-deleted td { opacity: .45; text-decoration: line-through; }
+
+  .line-summary { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 1rem; color: var(--fg); padding: .8rem 1rem; background: var(--accent-tint); border-left: 3px solid var(--accent); margin: 0 0 1rem; }
+
+  /* Larger step headings (same as 05). */
+  .step-head { display: flex; align-items: center; gap: .85rem; margin: 0 0 1.4rem; }
+  .step-head .step-no { flex: 0 0 auto; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; font-family: var(--mono); font-weight: 600; font-size: 1.05rem; }
+  .step-head h2 { margin: 0; font-size: 1.3rem; }
+
+  .line-summary.final { font-size: 1.25rem; font-weight: 600; padding: 1rem 1.2rem; margin-bottom: 1.3rem; }
+  .submit-bar { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; margin: 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="index.html">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="brand-text"><span class="brand-name">KASIA</span><span class="brand-sub">sklad</span></span>
+    </a>
+    <nav class="nav" aria-label="Hlavní navigace">
+      <span class="nav-label">Provoz</span>
+      <a href="02a-prehled.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Přehled</a>
+      <a href="01b-katalog-grouped.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Katalog</a>
+      <a href="03-inventura.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M9 13l2 2 4-4"/></svg>Inventura</a>
+      <a href="08-prijem.html" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Příjem</a>
+      <a href="05-vydej.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>Výdej</a>
+      <a href="06-michani.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 0 1 15-6.7L21 6"/><path d="M21 3v3h-3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 18"/><path d="M3 21v-3h3"/></svg>Míchání</a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h13l-3-3m3 3-3 3"/><path d="M20 16H7l3-3m-3 3 3 3"/></svg>Převody</a>
+      <a href="10-dodaci-listy.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>Dodací listy</a>
+      <a href="09-historie.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/></svg>Historie</a>
+      <a href="17-podpora.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .8-1 1.7"/><path d="M12 17h.01"/></svg>Podpora</a>
+      <span class="nav-label">Číselníky</span>
+      <a href="12-dodavatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V8l6-4 6 4v13"/><path d="M15 21V11l6 4v6"/><path d="M3 21h18"/></svg>Dodavatelé</a>
+      <a href="13-odberatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/><path d="M21 21v-1a5 5 0 0 0-4-4.9"/></svg>Odběratelé</a>
+      <span class="nav-label">Správa</span>
+      <a href="14-pobocky.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 9l3-5h12l3 5"/><path d="M9 21v-6h6v6"/></svg>Pobočky</a>
+      <a href="15-uzivatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/></svg>Uživatelé</a>
+      <a href="16-nastaveni.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-2.88 1.2V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 7 19.6a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 2.6 14H2.5a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.4 9Z"/></svg>Nastavení</a>
+    </nav>
+    <div class="user">
+      <a href="#" class="email">karolina@kasia.cz</a>
+      <button class="logout">Odhlásit</button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <h1>Nový příjem zboží</h1>
+
+    <div class="intro-note">
+      Příjem přičítá zboží na sklad. Vyplníte-li <strong>Očekávaný příjezd</strong>, uloží se jako
+      plánovaný (objednaný) příjem a na sklad se přičte až po potvrzení. Prázdné pole = ihned na sklad.
+    </div>
+
+    <p class="required-legend">povinné pole</p>
+
+    <form onsubmit="return false;">
+
+      <!-- STEP 1: dodavatel a pobočka -->
+      <div class="card">
+        <div class="step-head"><span class="step-no">1</span><h2>Dodavatel a pobočka</h2></div>
+        <div class="field-grid">
+          <div class="field"><label class="field-required">Pobočka</label>
+            <select id="branch"><option>TYN — Týniště nad Orlicí</option><option>SEZ — Sezimovo Ústí</option></select>
+          </div>
+          <div class="field"><label class="field-required">Dodavatel</label>
+            <select id="dodavatel"><option>Koření Kučera s.r.o.</option><option>SpiceImport a.s.</option></select>
+            <a class="field-link" href="12-dodavatele.html">+ Nový dodavatel ↗</a>
+          </div>
+          <div class="field"><label class="field-required">Datum vystavení</label>
+            <input type="text" value="02. 07. 2026">
+          </div>
+          <div class="field"><label>Očekávaný příjezd</label>
+            <input type="text" placeholder="nepovinné — např. 10. 07. 2026">
+            <p class="field-help">Vyplňte pro plánovaný (objednaný) příjem — zboží se přičte na sklad až po potvrzení. Prázdné = ihned na sklad.</p>
+          </div>
+          <div class="field"><label>Poznámka</label>
+            <input type="text" placeholder="nepovinné"></div>
+        </div>
+      </div>
+
+      <!-- STEP 2: položky + running summary (NO overdraw — příjem přidává, nikdy nechybí) -->
+      <div class="card">
+        <div class="step-head"><span class="step-no">2</span><h2>Položky</h2></div>
+        <table class="lines">
+          <thead><tr><th>Produkt</th><th style="text-align:right;">Množství (kg)</th><th>Šarže</th><th>Expirace</th><th>Poznámka</th><th></th></tr></thead>
+          <tbody id="lines-body">
+            <tr class="line-row" data-index="0">
+              <td><select class="line-prod"><option selected>Pepř černý mletý</option><option>Kmín celý</option><option>Paprika sladká mletá</option></select></td>
+              <td style="text-align:right;"><input class="line-qty" type="text" inputmode="decimal" value="50,0"></td>
+              <td><input class="line-sarze" type="text" value="L240702" placeholder="nepovinné"></td>
+              <td><input class="line-exp" type="date" value="2027-06-30"></td>
+              <td><input class="line-note" type="text" placeholder="nepovinné"></td>
+              <td><button type="button" class="secondary">× Smazat</button></td>
+            </tr>
+            <tr class="line-row" data-index="1">
+              <td><select class="line-prod"><option selected>Kmín celý</option><option>Pepř černý mletý</option><option>Paprika sladká mletá</option></select></td>
+              <td style="text-align:right;"><input class="line-qty" type="text" inputmode="decimal" value="20,0"></td>
+              <td><input class="line-sarze" type="text" placeholder="nepovinné"></td>
+              <td><input class="line-exp" type="date"></td>
+              <td><input class="line-note" type="text" placeholder="nepovinné"></td>
+              <td><button type="button" class="secondary">× Smazat</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <button type="button" class="secondary" id="add-line-btn">+ Přidat řádek</button>
+
+        <p class="line-summary" id="summary-mid" style="margin-top:1.2rem;margin-bottom:0;">2 položky · celkem 70,0 kg</p>
+      </div>
+
+      <!-- STEP 3: final summary + submit -->
+      <div class="card">
+        <div class="step-head"><span class="step-no">3</span><h2>Uložit</h2></div>
+        <p class="muted" style="font-size:.95rem;margin-top:0;">
+          Zkontrolujte položky a uložte příjem. Vyplněný <strong>Očekávaný příjezd</strong> uloží
+          příjem jako plánovaný (objednáno) — zboží se přičte na sklad až po potvrzení příjezdu.
+        </p>
+        <p class="line-summary final" id="summary">2 položky · celkem 70,0 kg</p>
+        <p class="submit-bar">
+          <button class="primary" type="button">Uložit příjem</button>
+          <a class="secondary" href="02a-prehled.html">Zrušit</a>
+        </p>
+      </div>
+
+    </form>
+  </main>
+</div>
+
+<script>
+  // Summary recompute + auto-append (parses "," → "." , skips .marked-deleted, 1dp comma).
+  (function () {
+    const body = document.getElementById("lines-body");
+    const targets = [document.getElementById("summary"), document.getElementById("summary-mid")].filter(Boolean);
+    function parse(v) { return parseFloat(String(v).replace(",", ".").trim()); }
+    function fmt(n) { return n.toFixed(1).replace(".", ","); }
+    function refresh() {
+      const rows = Array.from(body.querySelectorAll(".line-row"));
+      let total = 0, count = 0;
+      rows.forEach(function (r) {
+        if (r.classList.contains("marked-deleted")) return;
+        const q = parse(r.querySelector(".line-qty").value);
+        if (!isFinite(q) || q <= 0) return;
+        count++; total += q;
+      });
+      const noun = count === 1 ? "položka" : (count >= 2 && count <= 4 ? "položky" : "položek");
+      const text = count + " " + noun + " · celkem " + fmt(total) + " kg";
+      targets.forEach(function (t) { t.textContent = text; });
+    }
+    body.addEventListener("input", refresh);
+    refresh();
+
+    function emptyRow() {
+      const idx = body.querySelectorAll("tr").length;
+      const tr = document.createElement("tr");
+      tr.className = "line-row";
+      tr.dataset.index = idx;
+      tr.innerHTML =
+        '<td><select class="line-prod"><option value="">— vyberte produkt —</option>' +
+        '<option>Pepř černý mletý</option><option>Kmín celý</option><option>Paprika sladká mletá</option></select></td>' +
+        '<td style="text-align:right;"><input class="line-qty" type="text" inputmode="decimal"></td>' +
+        '<td><input class="line-sarze" type="text" placeholder="nepovinné"></td>' +
+        '<td><input class="line-exp" type="date"></td>' +
+        '<td><input class="line-note" type="text" placeholder="nepovinné"></td>' +
+        '<td><button type="button" class="secondary">× Smazat</button></td>';
+      return tr;
+    }
+    body.addEventListener("input", function (e) {
+      const row = e.target.closest("tr.line-row");
+      if (!row || row.classList.contains("marked-deleted")) return;
+      const visible = body.querySelectorAll("tr.line-row:not(.marked-deleted)");
+      if (row !== visible[visible.length - 1]) return;
+      if (row.dataset.autopopulated === "1") return;
+      const prod = row.querySelector(".line-prod");
+      const qty = row.querySelector(".line-qty");
+      const prodFilled = prod && prod.value;
+      const qtyFilled = qty && qty.value && parseFloat(qty.value.replace(",", ".")) > 0;
+      if (!prodFilled && !qtyFilled) return;
+      row.dataset.autopopulated = "1";
+      body.appendChild(emptyRow());
+    });
+    const addBtn = document.getElementById("add-line-btn");
+    if (addBtn) addBtn.addEventListener("click", function () { body.appendChild(emptyRow()); });
+  })();
+</script>
+</body>
+</html>

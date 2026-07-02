@@ -3,6 +3,34 @@
 
 {% block title %}{{ product.name_cs }} — Katalog{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Detail produktu — two-column: main + sticky rail (návrh B, fakta jako dlaždice). */
+  .two-col { display: grid; grid-template-columns: 1fr 320px; gap: 1.2rem; align-items: start; }
+  .two-col .rail { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 1.2rem; }
+  .scope-note { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1rem; padding: .5rem .75rem; background: var(--accent-tint); border-left: 3px solid var(--accent); }
+  .chip { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; letter-spacing: .01em; }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); }
+  .chip.warn { background: var(--warn-tint); color: var(--warn); }
+  .chip.err { background: var(--error-tint); color: var(--error); }
+  .rail .card h2 { font-size: .95rem; }
+  .rail-actions { display: flex; flex-direction: column; gap: .55rem; }
+  .rail-actions .primary, .rail-actions .secondary { text-align: center; width: 100%; }
+  .fact-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+  .fact-tile { border: 1px solid var(--line); background: var(--bg-card); padding: .7rem .8rem; display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
+  .fact-tile .ft-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); }
+  .fact-tile .ft-val { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em; color: var(--fg); }
+  .fact-tile .ft-val .ft-unit { font-size: 12px; font-weight: 500; color: var(--fg-faint); }
+  .fact-tile .ft-val.plain { font-family: var(--ui); font-size: 16px; }
+  .fact-tile.accent { border-top: 2px solid var(--accent); }
+  .fact-tile.accent .ft-val { color: var(--accent); }
+  @media (max-width: 1000px) {
+    .two-col { grid-template-columns: 1fr; }
+    .two-col .rail { position: static; }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>
   {{ product.name_cs }}
@@ -16,95 +44,155 @@
   {% endif %}
 </h1>
 
-<div class="card">
-  <h2 style="font-size:1.05rem;margin-top:0;">Stav skladu</h2>
-  {% if product.reorder_threshold_kg is not None %}
-    <p style="color:var(--fg-soft);">
-      Objednací bod: <strong>{{ product.reorder_threshold_kg|floatformat:1 }} kg</strong>
-      (výchozí pro produkt).
-    </p>
-  {% endif %}
-  {% if branch_rows %}
-    <table class="lines">
-      <thead>
-        <tr>
-          <th>Pobočka</th>
-          <th style="text-align:right;">Na skladě</th>
-          <th style="text-align:right;">Rezervováno</th>
-          <th style="text-align:right;">Efektivně</th>
-          <th style="text-align:right;">Práh</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in branch_rows %}
-          <tr {% if r.is_low %}style="background:var(--warn-tint);"{% endif %}>
-            <td>{{ r.branch.code }} — {{ r.branch.name }}</td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">
-              {{ r.on_hand|floatformat:1 }}
-            </td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">
-              {{ r.reserved|floatformat:1 }}
-            </td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;{% if r.is_low %}color:var(--warn);font-weight:bold;{% endif %}">
-              {{ r.effective|floatformat:1 }}
-            </td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">
-              {% if r.threshold is not None %}{{ r.threshold|floatformat:1 }}{% else %}—{% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-        <tr>
-          <td><strong>Celkem</strong></td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            <strong>{{ total_quantity|floatformat:1 }}</strong>
-          </td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            <strong>{{ total_reserved|floatformat:1 }}</strong>
-          </td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            <strong>{{ total_effective|floatformat:1 }}</strong>
-          </td>
-          <td></td>
-        </tr>
-      </tbody>
-    </table>
-  {% else %}
-    <table class="lines">
-      <thead>
-        <tr>
-          <th>Pobočka</th>
-          <th style="text-align:right;">Na skladě</th>
-          <th style="text-align:right;">Rezervováno</th>
-          <th style="text-align:right;">Efektivně</th>
-          <th style="text-align:right;">Práh</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td colspan="5" style="text-align:center;color:var(--fg-soft);font-style:italic;">
-            Tento produkt nedrží žádná pobočka.
-            {% if user.is_vlastnik %}
-              Přidat ho lze v
-              <a href="{% url 'inventory:product_edit' pk=product.pk %}">úpravě produktu</a>.
-            {% endif %}
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  {% endif %}
-  {% if product.notes and product.kind != "mixture" %}
-    <p style="margin-top:1rem;color:var(--fg-soft);">{{ product.notes|linebreaksbr }}</p>
-  {% endif %}
-  {% if user.is_vlastnik %}
-    <p style="margin-top:1rem;">
-      <a class="secondary" href="{% url 'inventory:stock_adjust_edit' pk=product.pk %}">
-        Upravit stav skladu →
-      </a>
-    </p>
-  {% endif %}
+<div class="two-col">
+  <!-- LEFT: Stav skladu — KPI strip + per-branch table + scope note -->
+  <div class="col-main">
+    <div class="card">
+      <h2 style="font-size:1.05rem;margin-top:0;">Stav skladu</h2>
+      {% if product.reorder_threshold_kg is not None %}
+        <p class="muted" style="margin-top:0;">
+          Objednací bod: <strong>{{ product.reorder_threshold_kg|floatformat:1 }} kg</strong>
+          (výchozí pro produkt).
+        </p>
+      {% endif %}
+
+      {% if branch_rows %}
+        <section class="kpis" aria-label="Souhrn skladu produktu">
+          <div class="kpi">
+            <span class="lbl">Na skladě</span>
+            <span class="k-val">{{ total_quantity|floatformat:1 }} <span class="k-unit">kg</span></span>
+            <span class="k-sub">celkem</span>
+          </div>
+          <div class="kpi">
+            <span class="lbl">Rezervováno</span>
+            <span class="k-val">{{ total_reserved|floatformat:1 }} <span class="k-unit">kg</span></span>
+            <span class="k-sub">plánované míchání/převody</span>
+          </div>
+          <div class="kpi accent">
+            <span class="lbl">Efektivně</span>
+            <span class="k-val">{{ total_effective|floatformat:1 }} <span class="k-unit">kg</span></span>
+            <span class="k-sub">na skladě − rezervováno</span>
+          </div>
+          <div class="kpi">
+            <span class="lbl">Práh</span>
+            <span class="k-val">
+              {% if product.reorder_threshold_kg is not None %}{{ product.reorder_threshold_kg|floatformat:1 }}{% else %}—{% endif %}
+              <span class="k-unit">kg</span>
+            </span>
+            <span class="k-sub">objednací bod</span>
+          </div>
+        </section>
+
+        <table class="lines">
+          <thead>
+            <tr>
+              <th>Pobočka</th>
+              <th style="text-align:right;">Na skladě</th>
+              <th style="text-align:right;">Rezervováno</th>
+              <th style="text-align:right;">Efektivně</th>
+              <th style="text-align:right;">Práh</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in branch_rows %}
+              <tr {% if r.is_low %}style="background:var(--warn-tint);"{% endif %}>
+                <td>{{ r.branch.code }} — {{ r.branch.name }}</td>
+                <td class="num">{{ r.on_hand|floatformat:1 }}</td>
+                <td class="num">{{ r.reserved|floatformat:1 }}</td>
+                <td class="num"{% if r.is_low %} style="color:var(--warn);font-weight:bold;"{% endif %}>
+                  {{ r.effective|floatformat:1 }}
+                </td>
+                <td class="num">
+                  {% if r.threshold is not None %}{{ r.threshold|floatformat:1 }}{% else %}—{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            <tr>
+              <td><strong>Celkem</strong></td>
+              <td class="num"><strong>{{ total_quantity|floatformat:1 }}</strong></td>
+              <td class="num"><strong>{{ total_reserved|floatformat:1 }}</strong></td>
+              <td class="num"><strong>{{ total_effective|floatformat:1 }}</strong></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="scope-note" style="margin-bottom:0;">
+          Obsluha vidí obě pobočky; úpravy stavu skladu smí provádět jen vlastník.
+        </p>
+      {% else %}
+        <table class="lines">
+          <thead>
+            <tr>
+              <th>Pobočka</th>
+              <th style="text-align:right;">Na skladě</th>
+              <th style="text-align:right;">Rezervováno</th>
+              <th style="text-align:right;">Efektivně</th>
+              <th style="text-align:right;">Práh</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="5" style="text-align:center;color:var(--fg-soft);font-style:italic;">
+                Tento produkt nedrží žádná pobočka.
+                {% if user.is_vlastnik %}
+                  Přidat ho lze v
+                  <a href="{% url 'inventory:product_edit' pk=product.pk %}">úpravě produktu</a>.
+                {% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      {% endif %}
+      {% if product.notes and product.kind != "mixture" %}
+        <p style="margin-top:1rem;color:var(--fg-soft);">{{ product.notes|linebreaksbr }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- RIGHT: sticky rail — Rychlá fakta as bordered mini-tiles + actions -->
+  <aside class="rail">
+    <div class="card">
+      <h2>Rychlá fakta</h2>
+      <div class="fact-tiles">
+        <div class="fact-tile">
+          <span class="ft-lbl">Typ</span>
+          <span class="ft-val plain">{{ product.get_kind_display }}</span>
+        </div>
+        <div class="fact-tile">
+          <span class="ft-lbl">Stav</span>
+          <span class="ft-val plain">
+            {% if stock_state == "empty" %}<span class="chip err">prázdné</span>
+            {% elif stock_state == "low" %}<span class="chip warn">dochází</span>
+            {% else %}<span class="chip ok">v pořádku</span>{% endif %}
+          </span>
+        </div>
+        <div class="fact-tile">
+          <span class="ft-lbl">Na skladě</span>
+          <span class="ft-val">{{ total_quantity|floatformat:1 }} <span class="ft-unit">kg</span></span>
+        </div>
+        <div class="fact-tile accent">
+          <span class="ft-lbl">Efektivně</span>
+          <span class="ft-val">{{ total_effective|floatformat:1 }} <span class="ft-unit">kg</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Akce</h2>
+      <div class="rail-actions">
+        <a class="primary" href="{% url 'inventory:product_edit' pk=product.pk %}">Upravit produkt</a>
+        {% if user.is_vlastnik %}
+          <a class="secondary" href="{% url 'inventory:stock_adjust_edit' pk=product.pk %}">Upravit stav skladu</a>
+        {% endif %}
+        {% if product.kind == "mixture" and recipe %}
+          <a class="secondary" href="{% url 'inventory:mixing_job_create' %}?mixture={{ product.pk }}">Zahájit míchání</a>
+        {% endif %}
+      </div>
+    </div>
+  </aside>
 </div>
 
 {% if product.kind == "mixture" %}
+<!-- BELOW full-width: Receptura -->
 <div class="card">
   <h2 style="font-size:1.05rem;margin-top:0;">Receptura</h2>
   {% if recipe %}
@@ -123,9 +211,7 @@
                 {{ rc.component_product.name_cs }}
               </a>
             </td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">
-              {{ rc.ratio }}
-            </td>
+            <td class="num">{{ rc.ratio }}</td>
           </tr>
         {% endfor %}
       </tbody>
@@ -185,11 +271,8 @@
       {% for rc in recipe %}
         <tr>
           <td>{{ rc.component_product.name_cs }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            {{ rc.ratio }}
-          </td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;"
-              class="recipe-scaler-out" data-ratio="{{ rc.ratio|unlocalize }}">
+          <td class="num">{{ rc.ratio }}</td>
+          <td class="num recipe-scaler-out" data-ratio="{{ rc.ratio|unlocalize }}">
             —
           </td>
         </tr>
@@ -287,10 +370,14 @@
   {% endif %}
 </div>
 
-<p>
+<!-- Actions repeated at the bottom (also in the right rail) so a long page doesn't force a scroll up. -->
+<p class="actions">
   <a class="primary" href="{% url 'inventory:product_edit' pk=product.pk %}">Upravit produkt</a>
   {% if user.is_vlastnik %}
     <a class="secondary" href="{% url 'inventory:stock_adjust_edit' pk=product.pk %}">Upravit stav skladu</a>
+  {% endif %}
+  {% if product.kind == "mixture" and recipe %}
+    <a class="secondary" href="{% url 'inventory:mixing_job_create' %}?mixture={{ product.pk }}">Zahájit míchání</a>
   {% endif %}
   <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Zpět na katalog</a>
 </p>

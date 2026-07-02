@@ -1133,6 +1133,14 @@ def product_detail(request, pk: int):
         )
     recent_movements = list(recent_movements_qs.order_by("-date_issued", "-id")[:20])
 
+    # Overall stock state for the detail-page "Stav" chip (rail fact tile).
+    if total <= 0:
+        stock_state = "empty"
+    elif any(r["is_low"] for r in branch_rows):
+        stock_state = "low"
+    else:
+        stock_state = "ok"
+
     return render(
         request,
         "inventory/product_detail.html",
@@ -1142,6 +1150,7 @@ def product_detail(request, pk: int):
             "total_quantity": total,
             "total_reserved": total_reserved,
             "total_effective": total_effective,
+            "stock_state": stock_state,
             "branch_rows": branch_rows,
             "recipe": recipe,
             "used_in": used_in,

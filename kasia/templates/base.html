@@ -316,6 +316,7 @@
     .kpi:first-child { border-top: 0; }
   }
 </style>
+{% block extra_head %}{% endblock %}
 <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>

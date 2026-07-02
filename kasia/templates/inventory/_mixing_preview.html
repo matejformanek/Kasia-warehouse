@@ -2,23 +2,41 @@
 HTMX partial: derived consumption table for the current
 (branch, mixture, target_qty) selection. Returned by
 mixing_preview_partial. Empty body when inputs missing/invalid.
+
+Rendered standalone via HTMX swap (no {% block extra_head %}), so the
+few page-specific styles are inlined here. They reference base.html tokens.
 {% endcomment %}
+<style>
+  #mixing-preview .card-sub { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1rem; }
+  #mixing-preview tr.short td { background: var(--error-tint); }
+  #mixing-preview .short-txt { color: var(--error); font-weight: bold; }
+  #mixing-preview .stav-ok { color: var(--ok); font-weight: 600; }
+  #mixing-preview .stav-short { color: var(--error); font-weight: 700; }
+  #mixing-preview .fix-stock-cta { margin-top: .6rem; }
+  #mixing-preview .fix-stock-cta a { color: #fff; }
+</style>
 <div class="card">
   <h2 style="font-size:1.05rem;margin-top:0;">
     Odvozená spotřeba pro {{ mixture.name_cs }}
     ({{ target_qty|floatformat:1 }} kg)
   </h2>
+  <p class="card-sub">Potřeba = podíl × cílové množství. Receptura se snapshotuje při zápisu dávky.</p>
+
   {% if any_overdraw %}
     <div class="non-form-errors">
-      Některá surovina nemá na skladě dost. Můžete nejdřív
-      <a href="{{ inventura_link }}"><strong>upravit stav surovin</strong></a>
-      (inventura jen pro suroviny této směsi) a pak se sem vrátit a namíchat.
+      Některá surovina nemá na skladě dost. Upravte nejdřív stav surovin
+      (inventura jen pro suroviny této směsi), pak se sem vraťte a namíchejte.
+      Vyplněné hodnoty výše zůstanou zachovány.
+      <div class="fix-stock-cta">
+        <a class="primary" href="{{ inventura_link }}">Upravit stav surovin →</a>
+      </div>
     </div>
   {% else %}
     <p style="margin:0 0 0.5rem;">
       <a class="secondary" href="{{ inventura_link }}">Upravit stav surovin</a>
     </p>
   {% endif %}
+
   <table class="lines">
     <thead>
       <tr>
@@ -26,19 +44,21 @@ mixing_preview_partial. Empty body when inputs missing/invalid.
         <th style="text-align:right;">Podíl</th>
         <th style="text-align:right;">Spotřebuje se (kg)</th>
         <th style="text-align:right;">Na skladě (kg)</th>
-        <th></th>
+        <th>Stav</th>
       </tr>
     </thead>
     <tbody>
       {% for row in rows %}
-        <tr>
+        <tr{% if row.over %} class="short"{% endif %}>
           <td>{{ row.component.name_cs }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.ratio }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.derived|floatformat:1 }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.on_hand|floatformat:1 }}</td>
+          <td class="num">{{ row.ratio }}</td>
+          <td class="num">{{ row.derived|floatformat:1 }}</td>
+          <td class="num{% if row.over %} short-txt{% endif %}">{{ row.on_hand|floatformat:1 }}</td>
           <td>
             {% if row.over %}
-              <span style="color:var(--error);font-weight:bold;">nedostatek</span>
+              <span class="stav-short">nedostatek</span>
+            {% else %}
+              <span class="stav-ok">ok</span>
             {% endif %}
           </td>
         </tr>

@@ -19,10 +19,19 @@
   </div>
 </form>
 
+{# Standalone (out-of-form) live name filter per 0063 — kept outside the
+   status <form> so an accidental Enter can't submit + lose the typed text. #}
+<div style="margin-bottom:0.75rem;">
+  <input type="search" placeholder="Hledat podle názvu nebo IČO…"
+         style="min-width:280px;"
+         data-filter-rows="#supplier-table tbody"
+         data-filter-empty="#supplier-empty">
+</div>
+
 <p style="color:var(--fg-soft);">Nalezeno: {{ suppliers|length }} dodavatelů.</p>
 
 {% if suppliers %}
-  <table class="lines">
+  <table class="lines" id="supplier-table">
     <thead>
       <tr>
         <th>Název</th>
@@ -34,7 +43,7 @@
     </thead>
     <tbody>
       {% for sup in suppliers %}
-        <tr {% if not sup.is_active %}style="opacity:0.55;"{% endif %}>
+        <tr data-filter-text="{{ sup.name }} {{ sup.ico }}" {% if not sup.is_active %}style="opacity:0.55;"{% endif %}>
           <td><strong>{{ sup.name }}</strong></td>
           <td>{{ sup.ico|default:"—" }}</td>
           <td>{{ sup.address|default:"—"|linebreaksbr }}</td>
@@ -66,6 +75,7 @@
       {% endfor %}
     </tbody>
   </table>
+  <p id="supplier-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá hledání.</p>
 {% else %}
   <p style="color:var(--fg-soft);">Žádní dodavatelé v tomto filtru.</p>
 {% endif %}

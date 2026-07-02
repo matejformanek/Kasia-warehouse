@@ -19,10 +19,19 @@
   </div>
 </form>
 
+{# Standalone (out-of-form) live name filter per 0063 — kept outside the
+   status <form> so an accidental Enter can't submit + lose the typed text. #}
+<div style="margin-bottom:0.75rem;">
+  <input type="search" placeholder="Hledat podle kódu nebo názvu…"
+         style="min-width:280px;"
+         data-filter-rows="#branch-table tbody"
+         data-filter-empty="#branch-empty">
+</div>
+
 <p style="color:var(--fg-soft);">Nalezeno: {{ rows|length }} poboček.</p>
 
 {% if rows %}
-  <table class="lines">
+  <table class="lines" id="branch-table">
     <thead>
       <tr>
         <th>Kód</th>
@@ -35,7 +44,7 @@
     </thead>
     <tbody>
       {% for row in rows %}
-        <tr {% if not row.branch.is_active %}style="opacity:0.55;"{% endif %}>
+        <tr data-filter-text="{{ row.branch.code }} {{ row.branch.name }}" {% if not row.branch.is_active %}style="opacity:0.55;"{% endif %}>
           <td><strong>{{ row.branch.code }}</strong>
             {% if row.code_locked %}
               <small style="color:var(--fg-soft);">· kód zamčen</small>
@@ -72,6 +81,7 @@
       {% endfor %}
     </tbody>
   </table>
+  <p id="branch-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá hledání.</p>
 {% else %}
   <p style="color:var(--fg-soft);">Žádné pobočky v tomto filtru.</p>
 {% endif %}

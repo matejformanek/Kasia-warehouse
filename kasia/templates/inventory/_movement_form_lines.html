@@ -18,7 +18,7 @@ Context:
     <tr>
       <th class="field-required">Produkt</th>
       <th class="field-required">Množství (kg)</th>
-      <th>Šarže</th>
+      <th>{% if show_stock_warn %}Sklad{% else %}Šarže{% endif %}</th>
       <th>Expirace</th>
       <th>Poznámka</th>
       <th></th>
@@ -33,7 +33,7 @@ Context:
 
 <p>
   <button type="button" id="add-line-btn" class="secondary"
-          hx-get="{% url 'inventory:line_row_partial' %}"
+          hx-get="{% url 'inventory:line_row_partial' %}{% if show_stock_warn %}?warn=1{% endif %}"
           hx-target="#lines-body"
           hx-swap="beforeend"
           hx-vals='js:{index: document.querySelectorAll("#lines-body tr").length}'
@@ -66,3 +66,146 @@ Context:
     });
   })();
 </script>
+
+{% if show_stock_warn %}
+<script>
+  // Pure-JS live over-stock check for výdej. No htmx round-trip: the page
+  // embeds the per-(branch, product) on-hand map as a #vydej-stock-map JSON
+  // blob; we read the selected branch + each line's product/qty, aggregate
+  // the requested amount per product (mirroring the server _compute_overdraw
+  // aggregation, decision 0042), write each row's #stock-warn-cell box,
+  // toggle .over-stock on offending rows, and disable #vydej-submit + show
+  // #stock-block-banner while any non-deleted line is over. For a vlastník the
+  // banner also links to inventura pre-filtered to the flagged products.
+  (function () {
+    const body = document.getElementById("lines-body");
+    if (!body) return;
+    const mapEl = document.getElementById("vydej-stock-map");
+    const STOCK = mapEl ? JSON.parse(mapEl.textContent) : {};
+    // Per-branch inventura base URL (vlastník only) — the block banner offers
+    // a "fix the stock" jump for the flagged products (per 0060 ?products=&next=).
+    const invEl = document.getElementById("vydej-inventura-urls");
+    const INV_URLS = invEl ? JSON.parse(invEl.textContent) : {};
+
+    const round3 = (x) => Math.round(x * 1000) / 1000;
+    const formatKg = (x) => x.toFixed(1).replace(".", ","); // 1 dp, Czech comma (0061)
+
+    function recompute() {
+      const submit = document.getElementById("vydej-submit");
+      const banner = document.getElementById("stock-block-banner");
+      const branch =
+        document.querySelector("[name=branch]") &&
+        document.querySelector("[name=branch]").value || "";
+      const branchStock = STOCK[branch] || {};
+
+      // Gather live rows: sum requested qty per product; remember the rows and
+      // every selected product (the inventura jump opens for all of them).
+      const rows = [];
+      const sumByProduct = {};
+      const selectedProducts = new Set();
+      body.querySelectorAll(".line-row:not(.marked-deleted)").forEach((row) => {
+        const productEl = row.querySelector('select[name$="-product"]');
+        const qtyEl = row.querySelector('input[name$="-quantity_kg"]');
+        const product = (productEl && productEl.value) || "";
+        const qty = qtyEl ? parseFloat((qtyEl.value || "").replace(",", ".")) : NaN;
+        const hasQty = !isNaN(qty) && qty > 0;
+        rows.push({ row, product, qty, hasQty });
+        if (product) selectedProducts.add(product);
+        if (product && hasQty) {
+          sumByProduct[product] = (sumByProduct[product] || 0) + qty;
+        }
+      });
+
+      let anyOver = false;
+      rows.forEach(({ row, product, hasQty }) => {
+        const cell = row.querySelector(".stock-warn-cell");
+        if (!cell) return;
+        if (!product) {
+          // No product chosen yet — faint placeholder in the Sklad column.
+          cell.innerHTML = '<div class="stock-warn stock-hint">Na skladě: —</div>';
+          row.classList.remove("over-stock");
+          return;
+        }
+        const avail = parseFloat(branchStock[product] != null ? branchStock[product] : "0");
+        if (!hasQty) {
+          // Product chosen, no quantity yet — show what's on hand right away.
+          cell.innerHTML =
+            '<div class="stock-warn">Na skladě: ' + formatKg(avail) + " kg.</div>";
+          row.classList.remove("over-stock");
+          return;
+        }
+        const sum = sumByProduct[product] || 0;
+        const over = round3(sum) > round3(avail);
+        if (over) {
+          cell.innerHTML =
+            '<div class="stock-warn over">Na skladě je pouze ' +
+            formatKg(avail) + " kg.</div>";
+          row.classList.add("over-stock");
+          anyOver = true;
+        } else {
+          cell.innerHTML =
+            '<div class="stock-warn">Na skladě: ' + formatKg(avail) + " kg.</div>";
+          row.classList.remove("over-stock");
+        }
+      });
+
+      if (submit) submit.disabled = anyOver;
+      if (banner) banner.hidden = !anyOver;
+
+      // Point the "fix the stock" jump at inventura pre-filtered to ALL
+      // products on this výdej (same as míchání), for the selected branch,
+      // with next= back here.
+      const invLink = document.getElementById("stock-block-inventura");
+      if (invLink) {
+        const base = INV_URLS[branch];
+        if (anyOver && base && selectedProducts.size) {
+          invLink.href =
+            base + "?products=" + [...selectedProducts].join(",") +
+            "&next=" + encodeURIComponent(location.pathname);
+          invLink.hidden = false;
+        } else {
+          invLink.hidden = true;
+        }
+      }
+    }
+
+    // Výdej issues each product once (Šarže is unused here) — disable a product
+    // in every OTHER row's dropdown once it's chosen, so it can't be picked
+    // twice. Příjem keeps duplicates (multiple batches) — it never runs this.
+    function refreshProductOptions() {
+      const selects = [
+        ...body.querySelectorAll('.line-row:not(.marked-deleted) select[name$="-product"]'),
+      ];
+      const taken = new Set(selects.map((s) => s.value).filter(Boolean));
+      selects.forEach((sel) => {
+        [...sel.options].forEach((opt) => {
+          if (!opt.value) return; // keep the empty "— vyberte produkt —" option
+          opt.disabled = opt.value !== sel.value && taken.has(opt.value);
+        });
+      });
+    }
+
+    function refresh() { refreshProductOptions(); recompute(); }
+
+    // Delegated on stable elements, so rows added later are covered with no
+    // observers. input + change both bubble from every row's product/qty.
+    body.addEventListener("input", refresh);
+    body.addEventListener("change", refresh);
+    // A row added via htmx (Přidat řádek) arrives empty — re-disable the
+    // already-taken products in its fresh dropdown before the user touches it.
+    body.addEventListener("htmx:afterSwap", refresh);
+    // .row-delete-btn toggles .marked-deleted in base.html's handler — recount
+    // after that runs (deferred microtask), so the deleted row drops out and
+    // frees its product for reuse.
+    body.addEventListener("click", (e) => {
+      if (e.target.closest(".row-delete-btn")) queueMicrotask(refresh);
+    });
+    // The branch select lives outside #lines-body — re-evaluate every row
+    // against the new branch's stock when it changes.
+    const branchEl = document.querySelector("[name=branch]");
+    if (branchEl) branchEl.addEventListener("change", recompute);
+
+    refresh();
+  })();
+</script>
+{% endif %}

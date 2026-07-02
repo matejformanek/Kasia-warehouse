@@ -5,6 +5,50 @@
 
 ## Done
 
+- **2026-07-02** — Výdej live over-stock check **rewritten as pure client-side
+  JS** (supersedes the htmx approach in the entry below, same session). The
+  htmx round-trip (`stock_warn_partial`) reliably swapped the per-line box in but
+  the htmx→JS bridge failed to fire the row-highlight / banner / Save-block in
+  the walkthrough. Now the výdej view embeds a `{{ stock_map|json_script:
+  "vydej-stock-map" }}` blob (raw `Stock.quantity` per active-branch × product,
+  3-dp dot strings); a script in `_movement_form_lines.html` reads `[name=branch]`
+  + each `.line-row`'s product/qty, **aggregates per product** (mirrors the 0042
+  server `_compute_overdraw`), writes each `#stock-warn-cell-{idx}` box, toggles
+  `.over-stock`, and disables `#vydej-submit` + shows `#stock-block-banner` while
+  any line is over — all live on `input`/`change` with no server round-trip.
+  The box renders **in the Šarže column cell** (výdej never uses Šarže — its
+  header becomes "Sklad", sarze kept as a hidden input) so it no longer stacks
+  under the qty input and grows the row. Empty rows show a faint "Na skladě: —"
+  placeholder; picking a product shows "Na skladě: X kg" immediately; the
+  over-stock box is short ("Na skladě je pouze X kg."). For a **vlastník** the
+  block banner also links to inventura pre-filtered to **all products on the
+  výdej** (same as míchání; `?products=&next=` back to výdej, same-tab per 0060)
+  via a `vydej-inventura-urls` blob — so a wrong system count can be corrected
+  inline. A product already chosen on one výdej line is **disabled in the other
+  rows' dropdowns** (výdej issues each product once — Šarže is unused here;
+  příjem keeps repeatable products for batches). Server aggregate-duplicates
+  overdraw check (0042) unchanged as a safety net.
+  **Removed:** `stock_warn_partial` view + route, `_stock_warn.html`,
+  `stockWarnVals` in `base.html`, per-input `hx-target`. Kept: round-number
+  `min="0.1"`, the 0042 overdraw card, `line_row_partial` `?warn=1` add-row
+  gate. No schema/forms/decision change (mechanism swap within the same feature);
+  `design-system.md` hook contract rewritten. `inventory/tests.py` reworked (2
+  htmx-partial tests removed, form/add-row tests rewritten for the JS path).
+  401 tests pass.
+- **2026-07-02** — Výdej form bug fixes (live-walkthrough): (1) round-number
+  entry — line qty input `min="0.001"`→`min="0.1"` in `_line_row.html` (aligned
+  with 0061's `step="0.1"`, so `10000`/`10`/`12,5` are valid, `12,55` still
+  rejected); `mixing_job_detail.html` actual-qty `min`→`0`. (2) live over-stock
+  warning — fixed the broken htmx target (`closest tr .stock-warn-cell`→null) to
+  id-based `#stock-warn-cell-{idx}`; `line_row_partial` now reads `?warn=1` so
+  **added** výdej rows get the hooks; add-line button appends `?warn=1` only for
+  výdej. (3) prominent block-save — `_stock_warn.html` over wrapper gets
+  `data-over="1"`; a script in `_movement_form_lines.html` disables
+  `#vydej-submit` + shows red `#stock-block-banner` (`vydej_form.html`) while any
+  non-deleted line is over stock (progressive enhancement; the 0042 server
+  overdraw card stays the real guardrail). No schema/forms/decision change —
+  form/HTMX bug fix. `inventory/tests.py` +5 tests; `design-system.md` hook
+  contract corrected. 403 tests pass.
 - **2026-07-02** — **Diacritic-insensitive, typo-tolerant, live-as-you-type
   list filtering** across the sklad text filters
   ([`decisions/0063-diacritic-insensitive-client-filtering.md`](./decisions/0063-diacritic-insensitive-client-filtering.md)).

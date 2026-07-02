@@ -2,47 +2,102 @@
 
 {% block title %}Dodací list {{ dodaci_list.cislo }} — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Dodací list — detail. Two-party header, meta row, lines + Celkem, verze. */
+  .cislo { font-family: var(--mono); }
+
+  /* Two-column header (dodavatel | odběratel). */
+  .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .party { padding: .2rem 1.35rem .2rem 0; }
+  .party + .party { border-left: 1px solid var(--line-soft); padding-left: 1.35rem; padding-right: 0; }
+  .party .p-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--fg-faint); margin: 0 0 .5rem; }
+  .party .p-name { font-weight: 700; font-size: 1.02rem; margin: 0 0 .25rem; }
+  .party address { font-style: normal; color: var(--fg-soft); font-size: .92rem; line-height: 1.5; }
+
+  /* Meta row under parties. */
+  .meta { display: flex; flex-wrap: wrap; gap: 1.4rem 2rem; margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--line-soft); }
+  .meta .m { display: flex; flex-direction: column; gap: 3px; }
+  .meta .m-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); }
+  .meta .m-val { font-weight: 600; }
+  .meta .m-val.mono { font-family: var(--mono); }
+
+  .ver { display: inline-block; font-family: var(--mono); font-size: .82rem; font-weight: 600; padding: .1rem .45rem; border: 1px solid var(--warn); background: var(--warn-tint); color: var(--warn); }
+  .mail { display: inline-block; font-size: .82rem; font-weight: 600; padding: .1rem .5rem; }
+  .mail-ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
+  .mail-fail { background: var(--error-tint); color: var(--error); border: 1px solid var(--error); }
+
+  .fail-note { background: var(--error-tint); border-left: 3px solid var(--error); padding: .65rem .85rem; font-size: .9rem; margin: 0 0 1.2rem; color: var(--fg); }
+  .fail-note strong { color: var(--error); }
+
+  .edit-note { background: var(--warn-tint); border-left: 3px solid var(--warn); padding: .65rem .85rem; font-size: .9rem; margin: 0 0 1.2rem; color: var(--fg); }
+  .edit-note strong { color: var(--warn); }
+
+  table.lines tfoot td { border-top: 2px solid var(--line); border-bottom: 0; font-weight: 700; }
+</style>
+{% endblock %}
+
 {% block content %}
-<h1>Dodací list {{ dodaci_list.cislo }}</h1>
+<h1>Dodací list <span class="cislo">{{ dodaci_list.cislo }}</span></h1>
+<p class="muted" style="margin:0 0 1.1rem;">Detail vystaveného dodacího listu. Aktuální verze v{{ dodaci_list.current_version }}.</p>
 
 {% if dodaci_list.is_edited %}
-  <div class="msg warning" style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:var(--warn-tint);color:var(--warn);">
-    Editováno — aktuální verze: <strong>v{{ dodaci_list.current_version }}</strong>.
-    Předchozí verze byla nahrazena `[OPRAVA]` e-mailem; trail níže.
-  </div>
+  <p class="edit-note">
+    <strong>Editováno — aktuální verze v{{ dodaci_list.current_version }}.</strong>
+    Předchozí verze byla nahrazena opravným e-mailem; historie odeslání je níže.
+  </p>
 {% endif %}
 
 {% if current_version_unresolved %}
-  <div class="card" style="border-left:4px solid var(--error);background:#fbe8e8;margin-bottom:1rem;">
-    <strong style="color:var(--error);">Poslední odeslání selhalo.</strong>
+  <p class="fail-note">
+    <strong>Poslední odeslání selhalo.</strong>
     Klikněte na <em>Znovu odeslat</em> níže pro nový pokus. Podrobnosti chyby viz tabulka „Verze a odeslání".
-  </div>
+  </p>
 {% endif %}
 
+<!-- Header: dodavatel + odběratel + meta row. -->
 <div class="card">
-  <h2 style="font-size:1.05rem;margin-top:0;">Metadata</h2>
-  <p>
-    <strong>Číslo:</strong> {{ dodaci_list.cislo }}<br>
-    <strong>Datum vystavení:</strong> {{ dodaci_list.date_issued|date:"d. m. Y" }}<br>
-    <strong>Pobočka:</strong> {{ dodaci_list.branch.code }} — {{ dodaci_list.branch.name }}<br>
-    <strong>Odběratel:</strong> {{ dodaci_list.odberatel.name }}
-    {% if dodaci_list.odberatel.ico %}(IČO {{ dodaci_list.odberatel.ico }}){% endif %}<br>
-    {% if dodaci_list.odberatel.address %}<span style="color:var(--fg-soft);">{{ dodaci_list.odberatel.address|linebreaksbr }}</span><br>{% endif %}
-    <strong>Vystavil:</strong> {{ dodaci_list.created_by.email }}<br>
-    <strong>Aktuální verze:</strong> {{ dodaci_list.current_version }}
-  </p>
-  <p>
-    <a class="secondary" href="{% url 'inventory:dodaci_list_pdf' cislo=dodaci_list.cislo %}">Stáhnout PDF</a>
+  <div class="parties">
+    <div class="party">
+      <p class="p-lbl">Dodavatel / vystavil</p>
+      <p class="p-name">{{ dodaci_list.branch.code }} — {{ dodaci_list.branch.name }}</p>
+      <address>
+        <span class="muted">Vystavil: {{ dodaci_list.created_by.email }}</span>
+      </address>
+    </div>
+    <div class="party">
+      <p class="p-lbl">Odběratel</p>
+      <p class="p-name">{{ dodaci_list.odberatel.name }}</p>
+      <address>
+        {% if dodaci_list.odberatel.ico %}IČO {{ dodaci_list.odberatel.ico }}<br>{% endif %}
+        {% if dodaci_list.odberatel.address %}{{ dodaci_list.odberatel.address|linebreaksbr }}{% endif %}
+      </address>
+    </div>
+  </div>
+
+  <div class="meta">
+    <div class="m"><span class="m-lbl">Datum vystavení</span><span class="m-val mono">{{ dodaci_list.date_issued|date:"d. m. Y" }}</span></div>
+    <div class="m"><span class="m-lbl">Pobočka</span><span class="m-val">{{ dodaci_list.branch.code }} — {{ dodaci_list.branch.name }}</span></div>
+    <div class="m"><span class="m-lbl">Verze</span><span class="m-val"><span class="ver">v{{ dodaci_list.current_version }}</span></span></div>
+  </div>
+</div>
+
+<!-- Actions. -->
+<div class="card">
+  <div class="actions">
+    <a class="primary" href="{% url 'inventory:dodaci_list_pdf' cislo=dodaci_list.cislo %}">Stáhnout PDF</a>
     <a class="secondary" href="{% url 'inventory:movement_edit' pk=movement.pk %}">Otevřít výdej</a>
     <form method="post" action="{% url 'inventory:dodaci_list_resend' cislo=dodaci_list.cislo %}" style="display:inline;">
       {% csrf_token %}
       <button class="secondary" type="submit">Znovu odeslat</button>
     </form>
-  </p>
+    <a class="secondary" href="{% url 'inventory:dodaci_list_index' %}">Zpět na seznam</a>
+  </div>
 </div>
 
+<!-- Lines. -->
 <div class="card">
-  <h2 style="font-size:1.05rem;margin-top:0;">Položky</h2>
+  <h2>Položky</h2>
   <table class="lines">
     <thead>
       <tr>
@@ -58,8 +113,8 @@
         <tr>
           <td style="color:var(--fg-soft);">{{ forloop.counter }}.</td>
           <td>{{ line.product.name_cs }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ line.quantity_kg }}</td>
-          <td>{{ line.sarze }}</td>
+          <td class="num">{{ line.quantity_kg|floatformat:1 }}</td>
+          <td class="cislo">{{ line.sarze }}</td>
           <td>{{ line.note }}</td>
         </tr>
       {% endfor %}
@@ -67,8 +122,9 @@
   </table>
 </div>
 
+<!-- Version + e-mail history. -->
 <div class="card">
-  <h2 style="font-size:1.05rem;margin-top:0;">Verze a odeslání</h2>
+  <h2>Verze a odeslání</h2>
   {% if email_logs %}
     <table class="lines">
       <thead>
@@ -88,12 +144,12 @@
             <td>v{{ log.version }}</td>
             <td>
               {% if log.status == "sent" %}
-                <span style="color:var(--ok);">odesláno</span>
+                <span class="mail mail-ok">odesláno</span>
               {% else %}
-                <span style="color:var(--error);font-weight:bold;">SELHALO</span>
+                <span class="mail mail-fail">selhalo</span>
               {% endif %}
             </td>
-            <td style="color:var(--fg-soft);">{{ log.recipients }}</td>
+            <td class="muted">{{ log.recipients }}</td>
             <td>{{ log.trigger_reason }}</td>
             <td style="color:var(--error);">{{ log.error_message }}</td>
           </tr>
@@ -101,11 +157,7 @@
       </tbody>
     </table>
   {% else %}
-    <p style="color:var(--fg-soft);">Žádné záznamy o odeslání zatím nejsou.</p>
+    <p class="muted">Žádné záznamy o odeslání zatím nejsou.</p>
   {% endif %}
 </div>
-
-<p>
-  <a class="secondary" href="{% url 'inventory:dodaci_list_index' %}">Zpět na seznam</a>
-</p>
 {% endblock %}

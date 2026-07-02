@@ -289,14 +289,13 @@ def movement_history(request):
 
     df, dt = _parse(date_from), _parse(date_to)
 
+    # Per 0063: text search (`q`) is filtered client-side in the browser
+    # (diacritic-insensitive, typo-tolerant, as-you-type) over the rendered
+    # rows. The server only echoes the term back into the input. Date, branch,
+    # and tab stay server-side and pre-narrow the (200-capped) set as before;
+    # the "Nalezeno" / tab counts therefore reflect server totals, not the
+    # client-typed text.
     search = (request.GET.get("q") or "").strip()
-    if search:
-        base_qs = base_qs.filter(
-            Q(odberatel__name__icontains=search)
-            | Q(dodavatel__name__icontains=search)
-            | Q(lines__product__name_cs__icontains=search)
-            | Q(note__icontains=search)
-        ).distinct()
 
     # Per 0059: PLANNED príjmy (objednávky) are NOT history — they live only
     # in the "Plánované" tab. The other tabs are DONE-only (what happened).
@@ -416,9 +415,11 @@ def branch_dashboard(request, code: str):
         .select_related("product")
         .order_by("product__name_cs")
     )
+    # Per 0063: the product search (`q`) is filtered client-side in the browser
+    # over the rendered stock rows. The server only echoes the term back into
+    # the input. KPIs are branch-wide (not search-scoped), so they are
+    # unaffected.
     search = (request.GET.get("q") or "").strip()
-    if search:
-        stocks_qs = stocks_qs.filter(product__name_cs__icontains=search)
     stocks = list(stocks_qs)
     # Threshold-aware status per 0043 + 0044. Replaces the old hardcoded
     # `< 1 kg` near-empty marker.
@@ -923,9 +924,12 @@ def catalogue_index(request):
     if kind in (Product.Kind.RAW_SPICE, Product.Kind.MIXTURE):
         qs = qs.filter(kind=kind)
 
+    # Per 0063: text search (`q`) is filtered client-side in the browser
+    # (diacritic-insensitive, typo-tolerant, as-you-type). The server only
+    # echoes the term back into the input so it round-trips in the URL and the
+    # JS re-applies it on load. Structured filters (kind/status/state/branch)
+    # stay server-side.
     search = (request.GET.get("q") or "").strip()
-    if search:
-        qs = qs.filter(name_cs__icontains=search)
 
     products = list(qs)
 

@@ -9,7 +9,9 @@
   <div class="field" style="margin-bottom:0;">
     <label for="id_filter_q">Hledat</label>
     <input type="search" name="q" id="id_filter_q" value="{{ filter_q }}"
-           placeholder="česky, např. „pepř"…" style="min-width:240px;">
+           placeholder="česky, např. „pepř"…" style="min-width:240px;"
+           data-filter-rows="#catalogue-table tbody"
+           data-filter-empty="#catalogue-empty">
   </div>
   <div class="field" style="margin-bottom:0;">
     <label for="id_filter_kind">Typ</label>
@@ -98,7 +100,7 @@
       Pro per-branch pohled vyberte pobočku ve filtru výše.
     </p>
   {% endif %}
-  <table class="lines">
+  <table class="lines" id="catalogue-table">
     <thead>
       <tr>
         <th>Název</th>
@@ -115,6 +117,7 @@
     <tbody>
       {% for row in rows %}
         <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=row.product.pk %}"
+            data-filter-text="{{ row.product.name_cs }}"
             {% if row.is_low %}style="background:#fbf3e0;"{% endif %}>
           <td>
             <strong>{{ row.product.name_cs }}</strong>
@@ -165,6 +168,7 @@
       {% endfor %}
     </tbody>
   </table>
+  <p id="catalogue-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá filtru.</p>
 {% elif filter_q or filter_kind or filter_status != "active" or filter_state %}
   <p>Nic neodpovídá filtru.
     <a href="{% url 'inventory:catalogue_index' %}">Vymazat filtry</a>

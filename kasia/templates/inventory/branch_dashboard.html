@@ -46,7 +46,9 @@
   <form method="get" style="margin-bottom:0.75rem;">
     <input type="search" name="q" value="{{ search }}"
            placeholder="Hledat produkt…"
-           style="max-width:280px;">
+           style="max-width:280px;"
+           data-filter-rows="#stock-table tbody"
+           data-filter-empty="#stock-empty">
     <button class="secondary" type="submit">Hledat</button>
     {% if search %}
       <a class="secondary" href="{% url 'inventory:branch_dashboard' code=branch.code %}">
@@ -56,7 +58,7 @@
   </form>
 
   {% if stock_rows %}
-    <table class="lines">
+    <table class="lines" id="stock-table">
       <thead>
         <tr>
           <th>Produkt</th>
@@ -68,7 +70,7 @@
       </thead>
       <tbody>
         {% for row in stock_rows %}
-          <tr>
+          <tr data-filter-text="{{ row.stock.product.name_cs }}">
             <td>{{ row.stock.product.name_cs }}</td>
             <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.stock.quantity|floatformat:1 }}</td>
             <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.reserved|floatformat:1 }}</td>
@@ -84,6 +86,7 @@
         {% endfor %}
       </tbody>
     </table>
+    <p id="stock-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá hledání.</p>
   {% elif search %}
     <p style="color:var(--fg-soft);">Nic neodpovídá hledání „{{ search }}".</p>
   {% else %}

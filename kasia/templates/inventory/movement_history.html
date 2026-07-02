@@ -48,7 +48,9 @@
   <div class="field" style="margin-bottom:0;">
     <label for="id_filter_q">Hledat</label>
     <input type="search" name="q" id="id_filter_q" value="{{ filter_q }}"
-           placeholder="produkt, protistrana, poznámka…" style="min-width:240px;">
+           placeholder="produkt, protistrana, poznámka…" style="min-width:240px;"
+           data-filter-rows="#history-table tbody"
+           data-filter-empty="#history-empty">
   </div>
   <div>
     <button class="primary" type="submit">Filtrovat</button>
@@ -62,7 +64,7 @@
 </p>
 
 {% if movements %}
-  <table class="lines">
+  <table class="lines" id="history-table">
     <thead>
       <tr>
         <th>Datum</th>
@@ -80,7 +82,8 @@
         {% with first_line=mv.lines.first lines_count=mv.lines.count %}
         {% if mv.status == "planned" %}
         {# Per 0059: a PLANNED príjem — confirm/cancel, not edit. #}
-        <tr class="row-link" data-href="{% url 'inventory:prijem_confirm' pk=mv.pk %}">
+        <tr class="row-link" data-href="{% url 'inventory:prijem_confirm' pk=mv.pk %}"
+            data-filter-text="{% if first_line %}{{ first_line.product.name_cs }}{% endif %} {% if mv.dodavatel %}{{ mv.dodavatel.name }}{% endif %} {{ mv.note }}">
           <td style="font-variant-numeric:tabular-nums;">{{ mv.expected_on|date:"d. m. Y" }}</td>
           <td>
             <span class="stock-warn" style="display:inline-block;background:var(--ok-soft);color:var(--warn);padding:2px 6px;font-size:0.85rem;">
@@ -110,7 +113,8 @@
           </td>
         </tr>
         {% else %}
-        <tr class="row-link" data-href="{% url 'inventory:movement_edit' pk=mv.pk %}">
+        <tr class="row-link" data-href="{% url 'inventory:movement_edit' pk=mv.pk %}"
+            data-filter-text="{% if first_line %}{{ first_line.product.name_cs }}{% endif %} {% if mv.kind == 'vydej' %}{{ mv.odberatel.name }}{% else %}{{ mv.dodavatel.name }}{% endif %} {{ mv.note }}">
           <td>{{ mv.date_issued|date:"d. m. Y" }}</td>
           <td>
             {% if mv.note|slice:":7" == "[STAV] " %}
@@ -159,6 +163,7 @@
       {% endfor %}
     </tbody>
   </table>
+  <p id="history-empty" style="display:none;color:var(--fg-soft);">Žádné pohyby neodpovídají hledání.</p>
 
   {% if active_tab == "planned" %}
     {% comment %}Out-of-table cancel forms so the in-row "Zrušit" button never

@@ -56,6 +56,18 @@ or restructure:
   operator types in the trailing row. The `.app` wrapper must not nest
   the movement form such that `.closest("form")` / `[name=branch]` resolution
   changes.
+- **Live list filter (`base.html`, per [`0063`](../../context/decisions/0063-diacritic-insensitive-client-filtering.md)):**
+  the attribute-driven, diacritic-insensitive, typo-tolerant as-you-type row
+  filter. A search `<input data-filter-rows="<tbody selector>">` (optionally
+  `data-filter-count` / `data-filter-empty`, both element selectors) filters
+  every `tr[data-filter-text="…"]` in that tbody. The row text is built from
+  Django's **default auto-escaping** — do **not** apply `escapejs` (it would
+  emit `\"` that `dataset` reads literally). Renaming `data-filter-rows` /
+  `-count` / `-empty` / `-text`, or the `foldText` / `levenshtein` /
+  `matchesQuery` helpers, is a new decision. Used on `#catalogue-table` /
+  `#history-table` / `#stock-table` / `#supplier-table` / `#customer-table` /
+  `#branch-table` (+ matching `-count` / `-empty`). Do **not** reuse the
+  reserved ids `#lines-table` / `#lines-body` (movement-form hook above).
 
 ## Movement.status (planned príjem) — per 0059
 

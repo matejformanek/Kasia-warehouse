@@ -133,9 +133,9 @@
             <td>{{ line.component_product.name_cs }}</td>
             <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ line.derived_qty|floatformat:1 }}</td>
             <td style="text-align:right;">
-              <input type="number" step="0.1" min="0.001"
+              <input type="number" step="0.1" min="0"
                      name="line-{{ line.pk }}-actual_qty"
-                     value="{{ line.actual_qty|floatformat:1 }}">
+                     value="{{ line.actual_qty|stringformat:'.1f' }}">
             </td>
           </tr>
         {% endfor %}
@@ -145,7 +145,7 @@
       <label for="id_actual_produced_qty">Skutečně vyrobeno (kg)</label>
       <input type="number" step="0.1" min="0"
              name="actual_produced_qty" id="id_actual_produced_qty"
-             value="{{ job.target_qty|floatformat:1 }}">
+             value="{{ job.target_qty|stringformat:'.1f' }}">
     </div>
     <p>
       <button class="primary" type="submit">Dokončit</button>

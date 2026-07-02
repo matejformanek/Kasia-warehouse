@@ -46,16 +46,68 @@ or restructure:
 - **JS/HTMX hooks (sklad `base.html`):** the row-delete toggle (`.row-delete-btn`
   + `data-target` + `.line-row`/`.marked-deleted`, `<button type="button">`
   inside a `<td>`); whole-row nav (`tr.row-link[data-href]` + the
-  `a,button,input,select,label` ignore-list); `stockWarnVals(row)` (row stays
-  `<tr class="line-row" data-index>`, form is the `.closest("form")` with
-  `[name=branch]`, inputs `lines-{idx}-product` / `lines-{idx}-quantity_kg`);
-  HTMX targets `.stock-warn-cell` / `#lines-table` / `#lines-body` (beforeend)
-  and the `.secondary` "Přidat řádek" button — the button additionally carries
-  `id="add-line-btn"` so the auto-append `<script>` in
-  `_movement_form_lines.html` can programmatically `.click()` it when the
-  operator types in the trailing row. The `.app` wrapper must not nest
-  the movement form such that `.closest("form")` / `[name=branch]` resolution
-  changes.
+  `a,button,input,select,label` ignore-list); the `line_row_partial` add-row
+  HTMX targets `#lines-table` / `#lines-body` (beforeend) and the `.secondary`
+  "Přidat řádek" button — the button additionally carries `id="add-line-btn"` so
+  the auto-append `<script>` in `_movement_form_lines.html` can programmatically
+  `.click()` it when the operator types in the trailing row. On **výdej**
+  (`show_stock_warn=True`) the add-line button appends `?warn=1` to the
+  `line_row_partial` URL so added rows get the `#stock-warn-cell-{idx}` div (the
+  JS render target below) too.
+- **Výdej live over-stock check — pure JS (no htmx round-trip; server overdraw
+  card per 0042 is the real guardrail):** the výdej view embeds a
+  `{{ stock_map|json_script:"vydej-stock-map" }}` blob — a
+  `dict[branch_id → dict[product_id → "qty" (3-dp dot string)]]` of raw
+  `Stock.quantity` for active branches. A script in `_movement_form_lines.html`
+  (inside `{% if show_stock_warn %}`) parses it once, then on any
+  `#lines-body` `input`/`change`, any deferred (`queueMicrotask`)
+  `.row-delete-btn` click, and any `[name=branch]` `change` re-runs `recompute()`:
+  it reads the selected `[name=branch]`, walks each
+  `.line-row:not(.marked-deleted)`'s `select[name$="-product"]` +
+  `input[name$="-quantity_kg"]`, **aggregates requested qty per product**
+  (mirroring the server `_compute_overdraw`), compares `round3(sum) >
+  round3(avail)`, and writes each row's `#stock-warn-cell-{idx}` div (over → red
+  `.stock-warn.over` box; product picked, within stock or no qty yet →
+  `.stock-warn` "Na skladě: X kg" shown the moment the product is selected; no
+  product yet → faint `.stock-warn.stock-hint` "Na skladě: —" placeholder),
+  toggles `.over-stock` on offending `tr.line-row` (red-fill, CSS in
+  `base.html`). On výdej that `.stock-warn-cell` div lives **in the Šarže column
+  cell** (`_line_row.html`) — výdej never uses Šarže, so its column header reads
+  "Sklad" and the sarze field becomes a hidden input; this keeps the warning out
+  of the Množství cell so it can't stack under the qty input and grow the row.
+  The JS finds it by `row.querySelector(".stock-warn-cell")` / the
+  `#stock-warn-cell-{idx}` id regardless of which `<td>` holds it. While any line
+  is over it disables `#vydej-submit` + un-hides
+  the red `#stock-block-banner` in `vydej_form.html`. For a **vlastník** that
+  banner also carries a `#stock-block-inventura` link the JS points at inventura
+  pre-filtered to **all products on the výdej** (not just the flagged ones —
+  same as míchání: `?products=<all selected ids>&next=<výdej path>`, the 0060
+  contract, same-tab); the per-branch base URLs come from a
+  `{{ branch_inventura|json_script:"vydej-inventura-urls" }}` blob emitted only
+  for vlastník (obsluha can't open inventura). A second výdej-only helper,
+  `refreshProductOptions()`, **disables an already-chosen product in every other
+  row's dropdown** so a product can't be issued on two lines (výdej never uses
+  Šarže, so it has no reason to repeat a product); it runs on the same
+  `input`/`change` + `htmx:afterSwap` (fresh added rows) + row-delete events.
+  **Příjem does not run any of this** (`show_stock_warn=False`) — it keeps
+  repeatable products for multiple batches. Missing (branch, product)
+  ⇒ `0` avail. The server aggregate-duplicates overdraw check (0042) stays as a
+  harmless safety net. The
+  old htmx machinery (`stock_warn_partial` view/route, `_stock_warn.html`,
+  `stockWarnVals` in `base.html`, per-input `hx-target="#stock-warn-cell-{idx}"`)
+  is **removed** — do not reintroduce it.
+- **Live list filter (`base.html`, per [`0063`](../../context/decisions/0063-diacritic-insensitive-client-filtering.md)):**
+  the attribute-driven, diacritic-insensitive, typo-tolerant as-you-type row
+  filter. A search `<input data-filter-rows="<tbody selector>">` (optionally
+  `data-filter-count` / `data-filter-empty`, both element selectors) filters
+  every `tr[data-filter-text="…"]` in that tbody. The row text is built from
+  Django's **default auto-escaping** — do **not** apply `escapejs` (it would
+  emit `\"` that `dataset` reads literally). Renaming `data-filter-rows` /
+  `-count` / `-empty` / `-text`, or the `foldText` / `levenshtein` /
+  `matchesQuery` helpers, is a new decision. Used on `#catalogue-table` /
+  `#history-table` / `#stock-table` / `#supplier-table` / `#customer-table` /
+  `#branch-table` (+ matching `-count` / `-empty`). Do **not** reuse the
+  reserved ids `#lines-table` / `#lines-body` (movement-form hook above).
 
 ## Movement.status (planned príjem) — per 0059
 
@@ -90,14 +142,32 @@ row-delete button.
 
 ## Quantities display at 1 dp, comma from the locale (per 0061)
 
-Quantity displays use **`floatformat:1`** (never `:3`); the Czech comma comes
-free from the active `cs` locale — **no custom filter**. Operator quantity
-entry uses `step="0.1"` on `type="number"` inputs (browser shows the comma,
-submits a dot — no server comma-parsing). JS-truth / native-input attributes
-(`data-current`, `value=` on `type=number`) keep the **dot** via `|unlocalize`
-or a view-side `f"{x:.1f}"` string. The recipe-PDF **percentages** stay at
-`floatformat:"2"` (proportions, not kg; the PDF has its own styling). Model
-`decimal_places` stays 3 — no migration; values round to 0.1 on the next save.
+Quantity displays use **`floatformat:1`** (never `:3`, never raw
+`{{ x }}` — raw output localizes the comma but keeps 3 dp); the Czech comma
+comes free from the active `cs` locale — **no custom filter**. This applies to
+**every kg display on every page**, including the dodací-list PDF
+(`{{ line.quantity_kg|floatformat:1 }}`). Operator quantity entry uses
+`step="0.1"` on `type="number"` inputs (browser shows the comma, submits a dot —
+no server comma-parsing). JS-truth / native-input attributes (`data-current`,
+`value=` on `type=number`) keep the **dot** — via `|unlocalize` (JS-math /
+URL params) or **`|stringformat:'.1f'`** / a view-side `f"{x:.1f}"` string for
+prefills. **Never `floatformat` inside a `type=number` `value=`** — it emits a
+comma the browser rejects, blanking the field. The **recipe** is the only
+exception to 1 dp: recipe-PDF **percentages** stay at `floatformat:"2"` and the
+component **ratios** (`rc.ratio`, proportions not kg) render raw — both may need
+more precision. Model `decimal_places` stays 3 — no migration; values round to
+0.1 on the next save.
+
+The inventura **Dochází** view prefills the nový-stav cell with current stock
+(1 dp), same as the per-branch and *Vše* views — it is **not** left blank.
+
+Stock-correction saves (inventura, upravit-stav) **compare edits at 1 dp** — a
+value equal to current at 1 dp is a no-op (no movement, no reason required); the
+client-side delta/dirty check rounds to 1 dp (`Math.round(x*10)`) to match the
+server (`quantize(Decimal("0.1"), ROUND_HALF_UP)`). Stored values are left
+untouched (sub-0.1 residue from historical 3dp entry is harmless and invisible).
+Do not restore full-precision comparison — it resurfaces phantom `+0.00x`
+corrections that demand a spurious reason.
 
 ## Don't hardcode what rots
 

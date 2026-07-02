@@ -166,13 +166,13 @@
         return;
       }
       const diff = next - current;
-      if (Math.abs(diff) < 0.0005) {
+      if (Math.round(next * 10) === Math.round(current * 10)) {
         delta.textContent = "—";
         delta.style.color = "var(--fg-soft)";
         return;
       }
       const sign = diff > 0 ? "+" : "−";
-      delta.textContent = `${sign}${Math.abs(diff).toFixed(1)}`;
+      delta.textContent = `${sign}${Math.abs(diff).toFixed(1).replace(".", ",")}`;
       delta.style.color = diff > 0 ? "var(--ok)" : "var(--error)";
       delta.style.fontWeight = "bold";
     }
@@ -187,7 +187,7 @@
         const current = parseFloat(row.dataset.current);
         const next = parseFloat(input.value);
         if (!isFinite(next)) { return; }
-        if (Math.abs(next - current) >= 0.0005) { any = true; }
+        if (Math.round(next * 10) !== Math.round(current * 10)) { any = true; }
       });
       return any;
     }

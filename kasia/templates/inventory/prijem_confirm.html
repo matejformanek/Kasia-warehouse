@@ -56,7 +56,7 @@
             <td style="text-align:right;">
               <input type="number" step="0.1" min="0"
                      name="qty_{{ line.pk }}"
-                     value="{{ line.quantity_kg|stringformat:'.3f' }}"
+                     value="{{ line.quantity_kg|stringformat:'.1f' }}"
                      style="max-width:140px;text-align:right;font-variant-numeric:tabular-nums;">
             </td>
           </tr>

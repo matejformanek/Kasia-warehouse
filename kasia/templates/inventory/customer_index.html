@@ -19,10 +19,19 @@
   </div>
 </form>
 
+{# Standalone (out-of-form) live name filter per 0063 — kept outside the
+   status <form> so an accidental Enter can't submit + lose the typed text. #}
+<div style="margin-bottom:0.75rem;">
+  <input type="search" placeholder="Hledat podle názvu, IČO nebo e-mailu…"
+         style="min-width:280px;"
+         data-filter-rows="#customer-table tbody"
+         data-filter-empty="#customer-empty">
+</div>
+
 <p style="color:var(--fg-soft);">Nalezeno: {{ customers|length }} odběratelů.</p>
 
 {% if customers %}
-  <table class="lines">
+  <table class="lines" id="customer-table">
     <thead>
       <tr>
         <th>Název</th>
@@ -35,7 +44,7 @@
     </thead>
     <tbody>
       {% for cust in customers %}
-        <tr {% if not cust.is_active %}style="opacity:0.55;"{% endif %}>
+        <tr data-filter-text="{{ cust.name }} {{ cust.ico }} {{ cust.email }}" {% if not cust.is_active %}style="opacity:0.55;"{% endif %}>
           <td>
             <strong>{{ cust.name }}</strong>
             {% if cust.is_default_recipient %}
@@ -81,6 +90,7 @@
       {% endfor %}
     </tbody>
   </table>
+  <p id="customer-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá hledání.</p>
 {% else %}
   <p style="color:var(--fg-soft);">Žádní odběratelé v tomto filtru.</p>
 {% endif %}

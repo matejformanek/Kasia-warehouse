@@ -11,11 +11,7 @@ Context variables:
 {% endcomment %}
 <tr class="line-row" data-index="{{ index }}">
   <td>
-    <select name="lines-{{ index }}-product"
-            {% if show_stock_warn %}hx-get="{% url 'inventory:stock_warn_partial' %}"
-            hx-trigger="change"
-            hx-target="closest tr .stock-warn-cell"
-            hx-vals='js:stockWarnVals(this.closest("tr"))'{% endif %}>
+    <select name="lines-{{ index }}-product">
       <option value="">— vyberte produkt —</option>
       {% for product in line_form.fields.product.queryset %}
         <option value="{{ product.pk }}"
@@ -27,19 +23,25 @@ Context variables:
     {% if line_form.product.errors %}<div class="errorlist">{{ line_form.product.errors }}</div>{% endif %}
   </td>
   <td>
-    <input type="number" step="0.1" min="0.001"
+    <input type="number" step="0.1" min="0.1"
            name="lines-{{ index }}-quantity_kg"
-           value="{{ line_form.quantity_kg.value|default_if_none:'' }}"
-           {% if show_stock_warn %}hx-get="{% url 'inventory:stock_warn_partial' %}"
-           hx-trigger="input changed delay:300ms"
-           hx-target="closest tr .stock-warn-cell"
-           hx-vals='js:stockWarnVals(this.closest("tr"))'{% endif %}>
+           value="{{ line_form.quantity_kg.value|default_if_none:'' }}">
     {% if line_form.quantity_kg.errors %}<div class="errorlist">{{ line_form.quantity_kg.errors }}</div>{% endif %}
-    {% if show_stock_warn %}<div class="stock-warn-cell"></div>{% endif %}
   </td>
   <td>
-    <input type="text" name="lines-{{ index }}-sarze"
-           value="{{ line_form.sarze.value|default_if_none:'' }}" maxlength="64">
+    {% if show_stock_warn %}
+      {% comment %}
+      Výdej never uses Šarže — reuse this column cell for the live JS
+      over-stock warning so it doesn't stack under the qty input and
+      grow the row. The formset field is kept as a hidden input.
+      {% endcomment %}
+      <input type="hidden" name="lines-{{ index }}-sarze"
+             value="{{ line_form.sarze.value|default_if_none:'' }}">
+      <div class="stock-warn-cell" id="stock-warn-cell-{{ index }}"></div>
+    {% else %}
+      <input type="text" name="lines-{{ index }}-sarze"
+             value="{{ line_form.sarze.value|default_if_none:'' }}" maxlength="64">
+    {% endif %}
   </td>
   <td>
     <input type="date" name="lines-{{ index }}-expiry"

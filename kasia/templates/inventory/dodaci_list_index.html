@@ -62,7 +62,7 @@
           <td>{{ dl.branch.code }}</td>
           <td>{{ dl.odberatel.name }}</td>
           <td>{{ dl.movement.lines.count }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ dl.total_quantity_kg }}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ dl.total_quantity_kg|floatformat:1 }}</td>
           <td>{% if dl.is_edited %}v{{ dl.current_version }}{% endif %}</td>
           <td>
             <a class="secondary" href="{% url 'inventory:dodaci_list_pdf' cislo=dl.cislo %}">PDF</a>

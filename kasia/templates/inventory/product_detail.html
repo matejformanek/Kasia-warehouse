@@ -219,7 +219,11 @@
       const ok = isFinite(t) && t > 0;
       outs.forEach(function (el) {
         const r = parseFloat(el.dataset.ratio);
-        el.textContent = (ok && isFinite(r)) ? (t * r).toFixed(3) : "—";
+        // kg need → 1 dp with Czech comma (per 0061). The Podíl column keeps
+        // full ratio precision (recipe proportion, the 1 dp exception).
+        el.textContent = (ok && isFinite(r))
+          ? (t * r).toFixed(1).replace(".", ",")
+          : "—";
       });
       if (pdf && pdfBase) {
         pdf.href = ok ? pdfBase + "?qty=" + encodeURIComponent(t) : pdfBase;

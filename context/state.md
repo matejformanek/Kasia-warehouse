@@ -27,6 +27,67 @@
     developer text from the UI (decision refs "per rozhodnutí NNNN", the
     "z přibližně N plánovaných" note) → code comments only. `make test` = **396
     pass**, `manage.py check` clean. Live via `make up`.
+- **2026-07-02** — Výdej live over-stock check **rewritten as pure client-side
+  JS** (supersedes the htmx approach in the entry below, same session). The
+  htmx round-trip (`stock_warn_partial`) reliably swapped the per-line box in but
+  the htmx→JS bridge failed to fire the row-highlight / banner / Save-block in
+  the walkthrough. Now the výdej view embeds a `{{ stock_map|json_script:
+  "vydej-stock-map" }}` blob (raw `Stock.quantity` per active-branch × product,
+  3-dp dot strings); a script in `_movement_form_lines.html` reads `[name=branch]`
+  + each `.line-row`'s product/qty, **aggregates per product** (mirrors the 0042
+  server `_compute_overdraw`), writes each `#stock-warn-cell-{idx}` box, toggles
+  `.over-stock`, and disables `#vydej-submit` + shows `#stock-block-banner` while
+  any line is over — all live on `input`/`change` with no server round-trip.
+  The box renders **in the Šarže column cell** (výdej never uses Šarže — its
+  header becomes "Sklad", sarze kept as a hidden input) so it no longer stacks
+  under the qty input and grows the row. Empty rows show a faint "Na skladě: —"
+  placeholder; picking a product shows "Na skladě: X kg" immediately; the
+  over-stock box is short ("Na skladě je pouze X kg."). For a **vlastník** the
+  block banner also links to inventura pre-filtered to **all products on the
+  výdej** (same as míchání; `?products=&next=` back to výdej, same-tab per 0060)
+  via a `vydej-inventura-urls` blob — so a wrong system count can be corrected
+  inline. A product already chosen on one výdej line is **disabled in the other
+  rows' dropdowns** (výdej issues each product once — Šarže is unused here;
+  příjem keeps repeatable products for batches). Server aggregate-duplicates
+  overdraw check (0042) unchanged as a safety net.
+  **Removed:** `stock_warn_partial` view + route, `_stock_warn.html`,
+  `stockWarnVals` in `base.html`, per-input `hx-target`. Kept: round-number
+  `min="0.1"`, the 0042 overdraw card, `line_row_partial` `?warn=1` add-row
+  gate. No schema/forms/decision change (mechanism swap within the same feature);
+  `design-system.md` hook contract rewritten. `inventory/tests.py` reworked (2
+  htmx-partial tests removed, form/add-row tests rewritten for the JS path).
+  401 tests pass.
+- **2026-07-02** — Výdej form bug fixes (live-walkthrough): (1) round-number
+  entry — line qty input `min="0.001"`→`min="0.1"` in `_line_row.html` (aligned
+  with 0061's `step="0.1"`, so `10000`/`10`/`12,5` are valid, `12,55` still
+  rejected); `mixing_job_detail.html` actual-qty `min`→`0`. (2) live over-stock
+  warning — fixed the broken htmx target (`closest tr .stock-warn-cell`→null) to
+  id-based `#stock-warn-cell-{idx}`; `line_row_partial` now reads `?warn=1` so
+  **added** výdej rows get the hooks; add-line button appends `?warn=1` only for
+  výdej. (3) prominent block-save — `_stock_warn.html` over wrapper gets
+  `data-over="1"`; a script in `_movement_form_lines.html` disables
+  `#vydej-submit` + shows red `#stock-block-banner` (`vydej_form.html`) while any
+  non-deleted line is over stock (progressive enhancement; the 0042 server
+  overdraw card stays the real guardrail). No schema/forms/decision change —
+  form/HTMX bug fix. `inventory/tests.py` +5 tests; `design-system.md` hook
+  contract corrected. 403 tests pass.
+- **2026-07-02** — **Diacritic-insensitive, typo-tolerant, live-as-you-type
+  list filtering** across the sklad text filters
+  ([`decisions/0063-diacritic-insensitive-client-filtering.md`](./decisions/0063-diacritic-insensitive-client-filtering.md)).
+  One reusable, attribute-driven filter behaviour in `kasia/templates/base.html`
+  (`foldText` NFD-strip + `levenshtein` + `matchesQuery`, wired by
+  `data-filter-rows` / `data-filter-empty` on the search input +
+  `data-filter-text` on each row — new locked hook, added to `design-system.md`).
+  Removed the three server-side `q` `__icontains` blocks in `catalogue_index`
+  / `movement_history` / `branch_dashboard` (echo of `q`/`search` kept for the
+  input value); added the same live name filter to the status-only lists
+  (Dodavatelé / Odběratelé / Pobočky) via a standalone out-of-form input.
+  Counts stay server-rendered totals; live narrowing shows via row-hide +
+  JS empty-state. 4 tests repurposed to assert rows render regardless of `q`
+  + carry `data-filter-text`; full suite 399 pass. JS logic verified in node;
+  end-to-end verified headless via curl (attributes, `&quot;`-escaping edge
+  case). Browser extension was offline, so the interactive in-browser
+  walkthrough (Verification steps 3/5) is still pending Matej.
 - **2026-06-30** — Public-site redesign **adopted into production**
   ([`decisions/0058-public-redesign-and-produkty-page.md`](./decisions/0058-public-redesign-and-produkty-page.md);
   supersedes 0054 public-only, amends 0051 IA to 5 pages). Ported the
@@ -1984,6 +2045,44 @@
   no migration; `data-current`/type=number values stay dot). **Prevody hidden**
   from employees (nav links + Podpora how-to removed; views/urls/tests kept in
   repo, unlinked). **396 pytest green** (full suite); `manage.py check` clean.
+
+- **2026-07-01** — **1 dp polish: stock-adjust prefill, no-op saves, katalog
+  "V pořádku"** (branch `ft_inv_dp_polish`; refinement inside
+  [`0061`](./decisions/0061-display-1dp-comma.md) — no new decision, no schema
+  or stored-data change). Follow-ups from the live walkthrough after 0061:
+  (1) `stock_adjust_edit` prefill was the one `:.3f` the 1dp sweep missed →
+  `f"{current:.1f}"` (matches the `floatformat:1` row display; a `9.997` row now
+  prefills `10.0`, not `9,997`). (2) **Stock-correction saves compare edits at
+  1 dp** so an untouched save is a true no-op (no phantom `+0.00x` movement, no
+  spurious reason): `stock_adjust_edit` + `inventura_edit` correction/order
+  branches `quantize(Decimal("0.1"), ROUND_HALF_UP)` before comparing against
+  `row["current"].quantize(Decimal("0.1"))`; `any_change`/`parsed.append` moved
+  into one guard. `inventura_edit.html` JS delta/dirty check rounds both sides
+  to 1 dp (`Math.round(x*10)`) to match the server. Stored values left untouched
+  (sub-0.1 residue is harmless/invisible; only a genuine edit rewrites a row, to
+  1 dp). (3) Katalog **"Stav skladu"** filter gains **"V pořádku"**
+  (`state=ok` = neither low nor empty). Dochází inventura prefill stays **blank**
+  by design (order-oriented; confirmed no change). `design-system.md` gains a
+  hard-constraint line pinning the 1dp compare. **399 pytest green** (full
+  suite; +3 new tests: stock-adjust subunit no-op, inventura subunit no-op,
+  catalogue `state=ok`).
+
+- **2026-07-01** — **1 dp sweep round 2 + Dochází prefill** (same branch
+  `ft_inv_dp_polish`; walkthrough follow-ups, still inside
+  [`0061`](./decisions/0061-display-1dp-comma.md)). (1) **Dochází inventura now
+  prefills the nový-stav cell** with current stock (1 dp), matching per-branch /
+  Vše — no longer blank (reverses the earlier "blank = no action" intent per
+  Matej). (2) **Killed remaining dotted / 3-dp displays**: `vydej_form.html`
+  overdraw card (`stringformat:".3f"`→`floatformat:1`), `_stock_warn.html`
+  (raw→`floatformat:1`), `dodaci_list_index.html` total, **`dodaci_list.html`
+  PDF** line qty. (3) **Fixed comma-in-number-input bugs**: `prijem_confirm.html`
+  value `.3f`→`.1f`; `mixing_job_detail.html` finish-form inputs used
+  `floatformat:1` inside `type=number` `value=` (emits comma → browser blanks
+  the field) → `stringformat:'.1f'` (dot). `design-system.md` 1dp section
+  expanded (all pages incl. dodák PDF; never `floatformat` in a number `value=`;
+  recipe ratios/percentages the only >1dp exception; Dochází prefills).
+  **399 pytest green** (full suite; +1 Dochází-prefill assertion, 4 overdraw/
+  stock-warn assertions updated to 1dp comma).
 
 ## Hand-off for the next session (post-compact)
 

@@ -9,12 +9,11 @@ Pass 3a screens:
 - vydej_create — screen 07 (with HTMX stock-cap warning)
 - movement_saved — landing page after a successful create
 - line_row_partial — HTMX add-row endpoint
-- stock_warn_partial — HTMX live stock-cap check for výdej
 """
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -289,14 +288,13 @@ def movement_history(request):
 
     df, dt = _parse(date_from), _parse(date_to)
 
+    # Per 0063: text search (`q`) is filtered client-side in the browser
+    # (diacritic-insensitive, typo-tolerant, as-you-type) over the rendered
+    # rows. The server only echoes the term back into the input. Date, branch,
+    # and tab stay server-side and pre-narrow the (200-capped) set as before;
+    # the "Nalezeno" / tab counts therefore reflect server totals, not the
+    # client-typed text.
     search = (request.GET.get("q") or "").strip()
-    if search:
-        base_qs = base_qs.filter(
-            Q(odberatel__name__icontains=search)
-            | Q(dodavatel__name__icontains=search)
-            | Q(lines__product__name_cs__icontains=search)
-            | Q(note__icontains=search)
-        ).distinct()
 
     # Per 0059: PLANNED príjmy (objednávky) are NOT history — they live only
     # in the "Plánované" tab. The other tabs are DONE-only (what happened).
@@ -416,9 +414,11 @@ def branch_dashboard(request, code: str):
         .select_related("product")
         .order_by("product__name_cs")
     )
+    # Per 0063: the product search (`q`) is filtered client-side in the browser
+    # over the rendered stock rows. The server only echoes the term back into
+    # the input. KPIs are branch-wide (not search-scoped), so they are
+    # unaffected.
     search = (request.GET.get("q") or "").strip()
-    if search:
-        stocks_qs = stocks_qs.filter(product__name_cs__icontains=search)
     stocks = list(stocks_qs)
     # Threshold-aware status per 0043 + 0044. Replaces the old hardcoded
     # `< 1 kg` near-empty marker.
@@ -740,6 +740,29 @@ def vydej_create(request):
         form = VydejForm(user=request.user)
         formset = MovementLineFormSet(prefix="lines")
 
+    # Embed the per-(branch, product) on-hand map so the výdej form can run
+    # the live over-stock check purely in the browser — no htmx round-trip.
+    # Basis is raw Stock.quantity (matches _compute_overdraw). Missing pairs
+    # are absent here and treated as 0 by the JS. ~2 branches × ~12 products.
+    stock_map: dict[str, dict[str, str]] = {}
+    for s in Stock.objects.filter(branch__is_active=True).values(
+        "branch_id", "product_id", "quantity"
+    ):
+        stock_map.setdefault(str(s["branch_id"]), {})[str(s["product_id"])] = (
+            f'{s["quantity"]:.3f}'
+        )
+
+    # Per-branch inventura base URL, so the live over-stock block can offer a
+    # vlastník a "fix the stock" jump for the flagged products (per 0060's
+    # ?products=&next= contract, same as míchání). Only vlastník may open
+    # inventura, so the blob is only emitted for them.
+    branch_inventura: dict[str, str] = {}
+    if getattr(request.user, "is_vlastnik", False):
+        branch_inventura = {
+            str(b.pk): reverse("inventory:inventura_edit", args=[b.code])
+            for b in Branch.objects.filter(is_active=True)
+        }
+
     return render(
         request,
         "inventory/vydej_form.html",
@@ -747,6 +770,8 @@ def vydej_create(request):
             "form": form,
             "formset": formset,
             "overdraw_warnings": overdraw_warnings,
+            "stock_map": stock_map,
+            "branch_inventura": branch_inventura,
             "recent_movements": _recent_movements_for_form(
                 request.user, Movement.Kind.VYDEJ
             ),
@@ -768,43 +793,16 @@ def line_row_partial(request):
     except ValueError:
         index = 0
     form = MovementLineForm(prefix=f"lines-{index}")
+    show_stock_warn = request.GET.get("warn") == "1"
     return render(
         request,
         "inventory/_line_row.html",
-        {"line_form": form, "index": index, "is_partial": True},
-    )
-
-
-@require_GET
-def stock_warn_partial(request):
-    """Live stock-cap check for výdej.
-
-    Query params: branch (id), product (id), qty (decimal).
-    Returns a small HTML fragment with the warning, or empty if OK.
-    """
-    branch_id = request.GET.get("branch")
-    product_id = request.GET.get("product")
-    qty_raw = request.GET.get("qty", "")
-
-    if not branch_id or not product_id or not qty_raw:
-        return HttpResponse("")
-
-    try:
-        qty = Decimal(qty_raw)
-    except (InvalidOperation, ValueError):
-        return HttpResponse("")
-
-    product = Product.objects.filter(pk=product_id).first()
-    if product is None:
-        return HttpResponse("")
-
-    stock = Stock.objects.filter(branch_id=branch_id, product_id=product_id).first()
-    on_hand = stock.quantity if stock else Decimal("0.000")
-    over = qty > on_hand
-    return render(
-        request,
-        "inventory/_stock_warn.html",
-        {"on_hand": on_hand, "qty": qty, "over": over, "product": product},
+        {
+            "line_form": form,
+            "index": index,
+            "is_partial": True,
+            "show_stock_warn": show_stock_warn,
+        },
     )
 
 
@@ -923,9 +921,12 @@ def catalogue_index(request):
     if kind in (Product.Kind.RAW_SPICE, Product.Kind.MIXTURE):
         qs = qs.filter(kind=kind)
 
+    # Per 0063: text search (`q`) is filtered client-side in the browser
+    # (diacritic-insensitive, typo-tolerant, as-you-type). The server only
+    # echoes the term back into the input so it round-trips in the URL and the
+    # JS re-applies it on load. Structured filters (kind/status/state/branch)
+    # stay server-side.
     search = (request.GET.get("q") or "").strip()
-    if search:
-        qs = qs.filter(name_cs__icontains=search)
 
     products = list(qs)
 
@@ -1033,6 +1034,13 @@ def catalogue_index(request):
             r
             for r in rows
             if r["effective"] <= 0 and r["threshold"] is not None
+        ]
+    elif state_filter == "ok":
+        rows = [
+            r
+            for r in rows
+            if not r["is_low"]
+            and not (r["effective"] <= 0 and r["threshold"] is not None)
         ]
 
     return render(
@@ -2492,7 +2500,7 @@ def stock_adjust_edit(request, pk: int):
         reserved = reserved_kg(product, branch) if stock else Decimal("0.000")
         carried = stock is not None
         if posted_value is None:
-            new_value = f"{current:.3f}"
+            new_value = f"{current:.1f}"
         else:
             new_value = posted_value
         return {
@@ -2536,11 +2544,10 @@ def stock_adjust_edit(request, pk: int):
             if new_qty < 0:
                 row["error"] = "Stav nemůže být záporný."
                 continue
-            if new_qty.as_tuple().exponent < -3:
-                new_qty = new_qty.quantize(Decimal("0.001"))
-            if new_qty != row["current"]:
+            new_qty = new_qty.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+            if new_qty != row["current"].quantize(Decimal("0.1")):
                 any_change = True
-            parsed.append((branch, new_qty))
+                parsed.append((branch, new_qty))
 
         if any_change and not reason_value:
             reason_error = "Důvod úpravy je povinný, když měníte hodnoty."
@@ -2676,7 +2683,7 @@ def inventura_edit(request, code: str):
                     "current": r.on_hand,
                     "qty_field": f"qty_{r.product.pk}_{r.branch.pk}",
                     "eta_field": f"eta_{r.product.pk}_{r.branch.pk}",
-                    "qty_value": "",  # empty default — blank = no action
+                    "qty_value": f"{r.on_hand:.1f}",  # prefill current stock
                     "eta_value": "",
                     "orders": grouped.get((r.product.pk, r.branch.pk), []),
                 }
@@ -2765,6 +2772,7 @@ def inventura_edit(request, code: str):
                 if qty <= 0:
                     errors.append(f"{label}: objednané množství musí být kladné.")
                     continue
+                qty = qty.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
                 orders.append((p, b, qty, eta))
             else:
                 # No date → absolute new stock level (immediate correction).
@@ -2778,7 +2786,8 @@ def inventura_edit(request, code: str):
                 if new_qty < 0:
                     errors.append(f"{label}: stav nemůže být záporný.")
                     continue
-                if new_qty == row["current"]:
+                new_qty = new_qty.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+                if new_qty == row["current"].quantize(Decimal("0.1")):
                     continue
                 adjustments.append((p, b, new_qty))
 

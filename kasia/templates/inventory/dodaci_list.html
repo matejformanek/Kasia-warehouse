@@ -194,7 +194,7 @@
       <tr>
         <td class="idx">{{ forloop.counter }}.</td>
         <td>{{ line.product.name_cs }}</td>
-        <td class="qty">{{ line.quantity_kg }}</td>
+        <td class="qty">{{ line.quantity_kg|floatformat:1 }}</td>
         {% if show_sarze %}<td>{{ line.sarze }}</td>{% endif %}
         {% if show_note %}<td>{{ line.note }}</td>{% endif %}
       </tr>

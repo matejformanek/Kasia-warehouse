@@ -9,7 +9,9 @@
   <div class="field" style="margin-bottom:0;">
     <label for="id_filter_q">Hledat</label>
     <input type="search" name="q" id="id_filter_q" value="{{ filter_q }}"
-           placeholder="česky, např. „pepř"…" style="min-width:240px;">
+           placeholder="česky, např. „pepř"…" style="min-width:240px;"
+           data-filter-rows="#catalogue-table tbody"
+           data-filter-empty="#catalogue-empty">
   </div>
   <div class="field" style="margin-bottom:0;">
     <label for="id_filter_kind">Typ</label>
@@ -33,6 +35,7 @@
       <option value="" {% if not filter_state %}selected{% endif %}>— vše —</option>
       <option value="low" {% if filter_state == "low" %}selected{% endif %}>Dochází</option>
       <option value="empty" {% if filter_state == "empty" %}selected{% endif %}>Prázdné</option>
+      <option value="ok" {% if filter_state == "ok" %}selected{% endif %}>V pořádku</option>
     </select>
   </div>
   {% if not obsluha_branch %}
@@ -97,15 +100,15 @@
       Pro per-branch pohled vyberte pobočku ve filtru výše.
     </p>
   {% endif %}
-  <table class="lines">
+  <table class="lines" id="catalogue-table">
     <thead>
       <tr>
         <th>Název</th>
         <th>Typ</th>
         <th style="text-align:right;" title="Aktuální skladová zásoba">Na skladě</th>
-        <th style="text-align:right;" title="Plánované míchání a plánované převody">Rezerv.</th>
+        <th style="text-align:right;" title="Plánované míchání a plánované převody (per 0044)">Rezerv.</th>
         <th style="text-align:right;" title="Efektivně = na skladě − rezervováno">Efektivně</th>
-        <th style="text-align:right;" title="Objednací bod. Pokud má produkt per-pobočkovou výjimku, zobrazuje se nejnižší nastavený práh.">Práh</th>
+        <th style="text-align:right;" title="Objednací bod (per 0043). Pokud má produkt per-pobočkovou výjimku, zobrazuje se nejnižší nastavený práh.">Práh</th>
         <th>Stav</th>
         <th title="Pobočky pod prahem objednacího bodu (efektivně = na skladě − rezervováno)">Nízký na</th>
         <th></th>
@@ -114,7 +117,8 @@
     <tbody>
       {% for row in rows %}
         <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=row.product.pk %}"
-            {% if row.is_low %}style="background:var(--warn-tint);"{% endif %}>
+            data-filter-text="{{ row.product.name_cs }}"
+            {% if row.is_low %}style="background:#fbf3e0;"{% endif %}>
           <td>
             <strong>{{ row.product.name_cs }}</strong>
             {% if not row.product.is_active %}
@@ -164,6 +168,7 @@
       {% endfor %}
     </tbody>
   </table>
+  <p id="catalogue-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá filtru.</p>
 {% elif filter_q or filter_kind or filter_status != "active" or filter_state %}
   <p>Nic neodpovídá filtru.
     <a href="{% url 'inventory:catalogue_index' %}">Vymazat filtry</a>

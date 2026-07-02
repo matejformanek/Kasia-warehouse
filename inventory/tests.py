@@ -1,3 +1,5 @@
+import json
+import re
 from datetime import date
 from decimal import Decimal
 
@@ -1460,32 +1462,118 @@ def test_line_row_partial(user_tyn) -> None:
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
-def test_stock_warn_partial_over_and_under(user_tyn, tyn, pepper) -> None:
-    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("3.000"))
+def test_line_row_qty_min_matches_step(user_tyn) -> None:
+    # Round numbers (10000) must be accepted — min must align with step="0.1",
+    # not the stale min="0.001" which made every round number a stepMismatch.
     client = Client()
     client.force_login(user_tyn)
-    over = client.get(
-        f"/sklad/_partials/stock-warn/?branch={tyn.pk}&product={pepper.pk}&qty=5.000"
+    response = client.get("/sklad/vydej/novy/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert 'min="0.1"' in body
+    assert 'min="0.001"' not in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_vydej_post_accepts_round_number(user_tyn, tyn, ricany, pepper) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("20000.000"))
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.post(
+        "/sklad/vydej/novy/",
+        {
+            "branch": tyn.pk,
+            "odberatel": ricany.pk,
+            "date_issued": "2026-06-12",
+            "lines-TOTAL_FORMS": "1",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-product": pepper.pk,
+            "lines-0-quantity_kg": "10000",
+        },
     )
-    assert over.status_code == 200
-    body = over.content.decode("utf-8")
-    assert "překračuje" in body
-    under = client.get(
-        f"/sklad/_partials/stock-warn/?branch={tyn.pk}&product={pepper.pk}&qty=1.000"
-    )
-    assert under.status_code == 200
-    body = under.content.decode("utf-8")
-    assert "3,0" in body  # 1 dp, Czech comma (per 0061)
+    assert response.status_code == 302, response.content[:500]
+    assert Movement.objects.count() == 1
 
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
-def test_stock_warn_partial_empty_on_missing_params(user_tyn) -> None:
+def test_vydej_form_embeds_stock_map_and_no_htmx(user_tyn, tyn, pepper) -> None:
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("3.000"))
     client = Client()
     client.force_login(user_tyn)
-    response = client.get("/sklad/_partials/stock-warn/")
+    response = client.get("/sklad/vydej/novy/")
     assert response.status_code == 200
-    assert response.content == b""
+    body = response.content.decode("utf-8")
+    # The JSON stock map is embedded and carries the seeded on-hand.
+    match = re.search(
+        r'<script id="vydej-stock-map" type="application/json">(.*?)</script>',
+        body,
+        re.DOTALL,
+    )
+    assert match, "vydej-stock-map json_script block not found"
+    data = json.loads(match.group(1))
+    assert data[str(tyn.pk)][str(pepper.pk)] == "3.000"
+    # The JS render target is present.
+    assert 'id="stock-warn-cell-0"' in body
+    # No htmx live-check machinery remains (the add-line button still uses
+    # htmx to append rows — only the stock-warn round-trip is gone).
+    assert "stock_warn_partial" not in body
+    assert "/_partials/stock-warn/" not in body
+    assert 'hx-target="#stock-warn-cell' not in body
+    assert "stockWarnVals" not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_vydej_form_inventura_jump_for_vlastnik(user_tyn, tyn) -> None:
+    # user_tyn has no role group → is_vlastnik. The over-stock block offers a
+    # jump to inventura pre-filtered to the flagged products (per 0060).
+    client = Client()
+    client.force_login(user_tyn)
+    body = client.get("/sklad/vydej/novy/").content.decode("utf-8")
+    match = re.search(
+        r'<script id="vydej-inventura-urls" type="application/json">(.*?)</script>',
+        body,
+        re.DOTALL,
+    )
+    assert match, "vydej-inventura-urls json_script block not found"
+    urls = json.loads(match.group(1))
+    assert urls[str(tyn.pk)] == reverse("inventory:inventura_edit", args=[tyn.code])
+    assert 'id="stock-block-inventura"' in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_vydej_form_inventura_jump_absent_for_obsluha(user_obsluha_tyn) -> None:
+    # Obsluha may not open inventura — no jump blob, no link.
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    body = client.get("/sklad/vydej/novy/").content.decode("utf-8")
+    assert 'id="vydej-inventura-urls"' not in body
+    assert 'id="stock-block-inventura"' not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_line_row_partial_warn_flag_wires_stock_warn(user_tyn) -> None:
+    client = Client()
+    client.force_login(user_tyn)
+    warned = client.get("/sklad/_partials/line-row/?index=1&warn=1")
+    assert warned.status_code == 200
+    body = warned.content.decode("utf-8")
+    # ?warn=1 → the JS render-target cell, no htmx.
+    assert "stock-warn-cell" in body
+    assert 'id="stock-warn-cell-1"' in body
+    assert "hx-get" not in body
+    assert "/_partials/stock-warn/" not in body
+    # Without ?warn=1 (e.g. příjem add-row), no stock-warn hooks at all.
+    plain = client.get("/sklad/_partials/line-row/?index=1")
+    assert plain.status_code == 200
+    plain_body = plain.content.decode("utf-8")
+    assert "stock-warn-cell" not in plain_body
 
 
 @pytest.mark.django_db

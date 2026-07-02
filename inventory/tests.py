@@ -6174,9 +6174,11 @@ def test_catalogue_index_shows_branch_low_stock_chips(
     response = client.get("/sklad/katalog/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
-    # Find the pepper row and inspect just its low-branches cell.
-    # The new <th>Nízký na</th> column should render exactly one chip.
-    assert "Nízký na" in body
+    # Pepper is low (not empty) → it lands in the "Dochází" group, whose
+    # branch column is "Dochází na" and renders one low-branch chip.
+    assert "sub-head low" in body  # the Dochází group header renders
+    assert "sub-head empty" not in body  # no empty products → no empty group
+    assert "Dochází na" in body
     assert ">TYN<" in body  # chip text
     # No SEZ chip on this row (SEZ has 20 kg > 5 kg threshold).
     pepper_row_idx = body.index("Pepř")
@@ -6227,14 +6229,12 @@ def test_catalogue_filter_branch_does_not_show_per_branch_chip(
     body = response.content.decode("utf-8")
     pepper_row_idx = body.index("Pepř")
     snippet = body[pepper_row_idx : pepper_row_idx + 2000]
-    # No chip in the snippet (TYN appears in the page header / filter chip
-    # is a different element).
-    assert "tab-chip" in body  # template still has tab-chip class somewhere
-    # The exact chip element `<span class="tab-chip" ... >TYN</span>` for
-    # the low-branches column must not be present in this row.
+    # With a single branch in scope the per-branch chip column is suppressed.
+    assert "Pepř" in body
+    # No branch chip element for the branch column must be present in this row.
     import re
     chips = re.findall(
-        r"<span class=\"tab-chip\"[^>]*>([A-Z]{3})</span>", snippet
+        r"<span class=\"(?:low|empty)-branch\"[^>]*>([A-Z]{3})</span>", snippet
     )
     assert chips == []
 
@@ -6257,7 +6257,7 @@ def test_catalogue_obsluha_does_not_show_per_branch_chip(
     snippet = body[pepper_row_idx : pepper_row_idx + 2000]
     import re
     chips = re.findall(
-        r"<span class=\"tab-chip\"[^>]*>([A-Z]{3})</span>", snippet
+        r"<span class=\"(?:low|empty)-branch\"[^>]*>([A-Z]{3})</span>", snippet
     )
     assert chips == []
 
@@ -6656,7 +6656,7 @@ def test_catalogue_chip_omits_branch_without_stock_row(
     import re
 
     chips = re.findall(
-        r"<span class=\"tab-chip\"[^>]*>([A-Z]{3})</span>", snippet
+        r"<span class=\"(?:low|empty)-branch\"[^>]*>([A-Z]{3})</span>", snippet
     )
     assert "SEZ" in chips
     assert "TYN" not in chips

@@ -1021,27 +1021,33 @@ def catalogue_index(request):
             }
         )
 
+    # Stock state per row (empty overrides low). Reused for the KPI strip,
+    # the grouped tables and the ?state= filter.
+    def _is_empty(r):
+        return r["effective"] <= 0 and r["threshold"] is not None
+
+    def _is_low(r):
+        return r["is_low"] and not _is_empty(r)
+
+    # KPI strip aggregates — computed over the whole current scope
+    # (status/kind/branch), before the ?state= filter narrows the display.
+    kpi_products = len(rows)
+    kpi_empty = sum(1 for r in rows if _is_empty(r))
+    kpi_low = sum(1 for r in rows if _is_low(r))
+    kpi_total_kg = sum((r["total"] for r in rows), Decimal("0.000"))
+
     state_filter = (request.GET.get("state") or "").strip()
     if state_filter == "low":
-        rows = [
-            r
-            for r in rows
-            if r["is_low"]
-            and not (r["effective"] <= 0 and r["threshold"] is not None)
-        ]
+        rows = [r for r in rows if _is_low(r)]
     elif state_filter == "empty":
-        rows = [
-            r
-            for r in rows
-            if r["effective"] <= 0 and r["threshold"] is not None
-        ]
+        rows = [r for r in rows if _is_empty(r)]
     elif state_filter == "ok":
-        rows = [
-            r
-            for r in rows
-            if not r["is_low"]
-            and not (r["effective"] <= 0 and r["threshold"] is not None)
-        ]
+        rows = [r for r in rows if not _is_empty(r) and not _is_low(r)]
+
+    # Grouped tables (per 0064) — the template renders only non-empty groups.
+    empty_rows = [r for r in rows if _is_empty(r)]
+    low_rows = [r for r in rows if _is_low(r)]
+    ok_rows = [r for r in rows if not _is_empty(r) and not _is_low(r)]
 
     return render(
         request,
@@ -1049,12 +1055,24 @@ def catalogue_index(request):
         {
             "rows": rows,
             "count": len(rows),
+            "empty_rows": empty_rows,
+            "low_rows": low_rows,
+            "ok_rows": ok_rows,
+            "kpi_products": kpi_products,
+            "kpi_empty": kpi_empty,
+            "kpi_low": kpi_low,
+            "kpi_total_kg": kpi_total_kg,
             "filter_q": search,
             "filter_kind": kind,
             "filter_status": status,
             "filter_branch_code": filter_branch_code,
             "filter_state": state_filter,
             "selected_branch": selected_branch,
+            # Per-branch "low/empty on" chips only make sense in the
+            # all-branches view (a single branch in scope needs no chip).
+            "show_branch_chips": (
+                selected_branch is None and not request.user.is_obsluha
+            ),
             "branches": Branch.objects.filter(is_active=True).order_by("code"),
             "obsluha_branch": (
                 request.user.branch if request.user.is_obsluha else None

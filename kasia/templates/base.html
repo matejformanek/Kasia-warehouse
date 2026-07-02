@@ -532,21 +532,36 @@
       return true; // every token must match somewhere in the row
     }
 
+    // Per 0064: data-filter-rows may match MANY tbodies (the grouped Katalog).
+    // We iterate every matched tbody; a tbody that carries data-filter-group
+    // ("<section selector>") hides its whole section when the group has rows
+    // but none of them match. Single-tbody lists set no data-filter-group and
+    // behave exactly as before (backward-compatible).
     function apply(input) {
-      const tbody = document.querySelector(input.dataset.filterRows);
-      if (!tbody) return;
+      const tbodies = document.querySelectorAll(input.dataset.filterRows);
+      if (!tbodies.length) return;
       const tokens = foldText(input.value).split(" ").filter(Boolean);
-      const rows = tbody.querySelectorAll("tr[data-filter-text]");
-      let visible = 0;
-      rows.forEach(function (row) {
-        if (row.dataset.filterFolded === undefined) {
-          row.dataset.filterFolded = foldText(row.dataset.filterText);
+      let visible = 0, total = 0;
+      tbodies.forEach(function (tbody) {
+        const rows = tbody.querySelectorAll("tr[data-filter-text]");
+        let groupVisible = 0;
+        rows.forEach(function (row) {
+          if (row.dataset.filterFolded === undefined) {
+            row.dataset.filterFolded = foldText(row.dataset.filterText);
+          }
+          const folded = row.dataset.filterFolded;
+          const match = tokens.length === 0 ||
+            matchesQuery(tokens, folded, folded.split(" ").filter(Boolean));
+          row.style.display = match ? "" : "none";
+          if (match) { visible++; groupVisible++; }
+          total++;
+        });
+        if (tbody.dataset.filterGroup) {
+          const section = document.querySelector(tbody.dataset.filterGroup);
+          if (section) {
+            section.style.display = (rows.length && groupVisible === 0) ? "none" : "";
+          }
         }
-        const folded = row.dataset.filterFolded;
-        const match = tokens.length === 0 ||
-          matchesQuery(tokens, folded, folded.split(" ").filter(Boolean));
-        row.style.display = match ? "" : "none";
-        if (match) visible++;
       });
       if (input.dataset.filterCount) {
         const el = document.querySelector(input.dataset.filterCount);
@@ -554,7 +569,7 @@
       }
       if (input.dataset.filterEmpty) {
         const el = document.querySelector(input.dataset.filterEmpty);
-        if (el) el.style.display = (rows.length && visible === 0) ? "" : "none";
+        if (el) el.style.display = (total && visible === 0) ? "" : "none";
       }
     }
 

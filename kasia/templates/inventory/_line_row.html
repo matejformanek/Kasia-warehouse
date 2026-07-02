@@ -11,7 +11,7 @@ Context variables:
 {% endcomment %}
 <tr class="line-row" data-index="{{ index }}">
   <td>
-    <select name="lines-{{ index }}-product">
+    <select class="line-prod" name="lines-{{ index }}-product">
       <option value="">— vyberte produkt —</option>
       {% for product in line_form.fields.product.queryset %}
         <option value="{{ product.pk }}"
@@ -23,7 +23,7 @@ Context variables:
     {% if line_form.product.errors %}<div class="errorlist">{{ line_form.product.errors }}</div>{% endif %}
   </td>
   <td>
-    <input type="number" step="0.1" min="0.1"
+    <input class="line-qty" type="number" step="0.1" min="0.1"
            name="lines-{{ index }}-quantity_kg"
            value="{{ line_form.quantity_kg.value|default_if_none:'' }}">
     {% if line_form.quantity_kg.errors %}<div class="errorlist">{{ line_form.quantity_kg.errors }}</div>{% endif %}
@@ -39,16 +39,16 @@ Context variables:
              value="{{ line_form.sarze.value|default_if_none:'' }}">
       <div class="stock-warn-cell" id="stock-warn-cell-{{ index }}"></div>
     {% else %}
-      <input type="text" name="lines-{{ index }}-sarze"
+      <input class="line-sarze" type="text" name="lines-{{ index }}-sarze"
              value="{{ line_form.sarze.value|default_if_none:'' }}" maxlength="64">
     {% endif %}
   </td>
   <td>
-    <input type="date" name="lines-{{ index }}-expiry"
+    <input class="line-exp" type="date" name="lines-{{ index }}-expiry"
            value="{{ line_form.expiry.value|default_if_none:'' }}">
   </td>
   <td>
-    <input type="text" name="lines-{{ index }}-note"
+    <input class="line-note" type="text" name="lines-{{ index }}-note"
            value="{{ line_form.note.value|default_if_none:'' }}" maxlength="256">
   </td>
   <td>

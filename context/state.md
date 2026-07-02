@@ -5,6 +5,23 @@
 
 ## Done
 
+- **2026-07-02** — **Diacritic-insensitive, typo-tolerant, live-as-you-type
+  list filtering** across the sklad text filters
+  ([`decisions/0063-diacritic-insensitive-client-filtering.md`](./decisions/0063-diacritic-insensitive-client-filtering.md)).
+  One reusable, attribute-driven filter behaviour in `kasia/templates/base.html`
+  (`foldText` NFD-strip + `levenshtein` + `matchesQuery`, wired by
+  `data-filter-rows` / `data-filter-empty` on the search input +
+  `data-filter-text` on each row — new locked hook, added to `design-system.md`).
+  Removed the three server-side `q` `__icontains` blocks in `catalogue_index`
+  / `movement_history` / `branch_dashboard` (echo of `q`/`search` kept for the
+  input value); added the same live name filter to the status-only lists
+  (Dodavatelé / Odběratelé / Pobočky) via a standalone out-of-form input.
+  Counts stay server-rendered totals; live narrowing shows via row-hide +
+  JS empty-state. 4 tests repurposed to assert rows render regardless of `q`
+  + carry `data-filter-text`; full suite 399 pass. JS logic verified in node;
+  end-to-end verified headless via curl (attributes, `&quot;`-escaping edge
+  case). Browser extension was offline, so the interactive in-browser
+  walkthrough (Verification steps 3/5) is still pending Matej.
 - **2026-06-30** — Public-site redesign **adopted into production**
   ([`decisions/0058-public-redesign-and-produkty-page.md`](./decisions/0058-public-redesign-and-produkty-page.md);
   supersedes 0054 public-only, amends 0051 IA to 5 pages). Ported the

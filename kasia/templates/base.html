@@ -469,6 +469,110 @@
       qty: get(`[name='lines-${idx}-quantity_kg']`),
     };
   }
+
+  // Live client-side row filter (per decision 0063). Diacritic-insensitive,
+  // typo-tolerant, filters as you type — no round-trip, no submit button.
+  // Wired purely by data-attributes so there is no per-page JS:
+  //   input[data-filter-rows="<tbody selector>"]  filters that tbody's rows;
+  //     optional data-filter-count / data-filter-empty are element selectors.
+  //   tr[data-filter-text="…searchable text…"]     one attribute per row.
+  // Folding strips all combining diacritics generically (NFD), so it covers
+  // every Czech accent without a hardcoded char list. A typed token matches a
+  // row when it is a substring of the row's folded text OR within a small
+  // Levenshtein edit distance of one of the row's words.
+  (function () {
+    function foldText(s) {
+      return (s || "")
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    // Optimal-string-alignment (restricted Damerau–Levenshtein) distance.
+    // Unlike plain Levenshtein it counts an adjacent transposition ("perp"
+    // vs "pepr") as ONE edit, so the commonest typos — swapped neighbouring
+    // letters — are forgiven at distance 1.
+    function editDistance(a, b) {
+      const m = a.length, n = b.length;
+      if (m === 0) return n;
+      if (n === 0) return m;
+      const d = [];
+      for (let i = 0; i <= m; i++) { d.push(new Array(n + 1)); d[i][0] = i; }
+      for (let j = 0; j <= n; j++) d[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+          d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+          if (i > 1 && j > 1 &&
+              a.charCodeAt(i - 1) === b.charCodeAt(j - 2) &&
+              a.charCodeAt(i - 2) === b.charCodeAt(j - 1)) {
+            d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1); // transposition
+          }
+        }
+      }
+      return d[m][n];
+    }
+
+    function tokenMatches(token, rowFolded, rowWords) {
+      if (rowFolded.indexOf(token) !== -1) return true;
+      if (token.length < 3) return false; // too short to fuzzy-match safely
+      // Benevolent thresholds: 1 edit for short tokens, more as they grow.
+      const maxDist = token.length <= 4 ? 1 : (token.length <= 7 ? 2 : 3);
+      for (let i = 0; i < rowWords.length; i++) {
+        if (Math.abs(rowWords[i].length - token.length) > maxDist) continue;
+        if (editDistance(token, rowWords[i]) <= maxDist) return true;
+      }
+      return false;
+    }
+
+    function matchesQuery(tokens, rowFolded, rowWords) {
+      for (let i = 0; i < tokens.length; i++) {
+        if (!tokenMatches(tokens[i], rowFolded, rowWords)) return false;
+      }
+      return true; // every token must match somewhere in the row
+    }
+
+    function apply(input) {
+      const tbody = document.querySelector(input.dataset.filterRows);
+      if (!tbody) return;
+      const tokens = foldText(input.value).split(" ").filter(Boolean);
+      const rows = tbody.querySelectorAll("tr[data-filter-text]");
+      let visible = 0;
+      rows.forEach(function (row) {
+        if (row.dataset.filterFolded === undefined) {
+          row.dataset.filterFolded = foldText(row.dataset.filterText);
+        }
+        const folded = row.dataset.filterFolded;
+        const match = tokens.length === 0 ||
+          matchesQuery(tokens, folded, folded.split(" ").filter(Boolean));
+        row.style.display = match ? "" : "none";
+        if (match) visible++;
+      });
+      if (input.dataset.filterCount) {
+        const el = document.querySelector(input.dataset.filterCount);
+        if (el) el.textContent = visible;
+      }
+      if (input.dataset.filterEmpty) {
+        const el = document.querySelector(input.dataset.filterEmpty);
+        if (el) el.style.display = (rows.length && visible === 0) ? "" : "none";
+      }
+    }
+
+    function wire(input) {
+      let t = null;
+      input.addEventListener("input", function () {
+        clearTimeout(t);
+        t = setTimeout(function () { apply(input); }, 120);
+      });
+      apply(input); // apply once on load so an echoed ?q= filters immediately
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll("input[data-filter-rows]").forEach(wire);
+    });
+  })();
 </script>
 {% include "inventory/_confirm_dialog.html" %}
 </body>

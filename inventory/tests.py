@@ -2011,14 +2011,21 @@ def test_branch_dashboard_lists_stock_for_branch(
 def test_branch_dashboard_search_filters_stock(
     user_obsluha_tyn, tyn, pepper, paprika
 ) -> None:
+    # Per 0063 the `q` text filter moved client-side: the server renders ALL
+    # stock rows regardless of `q`, each carrying the data-filter-text the JS
+    # folds/matches. (Folding/typo matching itself is verified in-browser.)
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("8.000"))
     Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("3.000"))
     client = Client()
     client.force_login(user_obsluha_tyn)
     response = client.get(f"/sklad/pobocka/TYN/?q={pepper.name_cs[:4]}")
     body = response.content.decode("utf-8")
+    # Both rows render server-side now — the browser narrows to the query.
     assert pepper.name_cs in body
-    assert paprika.name_cs not in body
+    assert paprika.name_cs in body
+    # Each row carries the searchable text the client filter consumes.
+    assert f'data-filter-text="{pepper.name_cs}"' in body
+    assert f'data-filter-text="{paprika.name_cs}"' in body
 
 
 @pytest.mark.django_db
@@ -2340,15 +2347,18 @@ def test_history_search_filter(user_vlastnik, user_tyn, tyn, ricany, pepper) -> 
     )
     client = Client()
     client.force_login(user_vlastnik)
-    # Search by note token.
-    response = client.get("/sklad/pohyby/?q=poznámka")
-    body = response.content.decode("utf-8")
-    assert "Nalezeno: 1" in body
-    # Negative case.
+    # Per 0063 `q` is filtered client-side now: the server renders the row
+    # regardless of `q` (so it no longer zeroes out on a non-matching term),
+    # carrying data-filter-text with product + counterparty + note for the
+    # browser to fold/match. (Folding/typo matching is verified in-browser.)
     response = client.get("/sklad/pohyby/?q=neco-co-tam-neni")
     body = response.content.decode("utf-8")
-    assert "Nalezeno: 0" in body
-    assert "neodpovídají filtrům" in body
+    assert "Nalezeno: 0" not in body
+    assert "neodpovídají filtrům" not in body
+    # The movement row carries the searchable text (product + counterparty + note).
+    assert (
+        f'data-filter-text="{pepper.name_cs} {ricany.name} ahoj poznámka"' in body
+    )
 
 
 @pytest.mark.django_db
@@ -2413,12 +2423,17 @@ def test_catalogue_archived_filter(user_vlastnik, pepper, paprika) -> None:
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_catalogue_search_filter(user_vlastnik, pepper, paprika) -> None:
+    # Per 0063: `q` is a client-side filter — the server renders ALL rows
+    # regardless of `q`, each carrying data-filter-text for the browser to
+    # fold/match. (Folding/typo matching is verified in-browser.)
     client = Client()
     client.force_login(user_vlastnik)
     response = client.get(f"/sklad/katalog/?q={pepper.name_cs[:4]}")
     body = response.content.decode("utf-8")
     assert pepper.name_cs in body
-    assert paprika.name_cs not in body
+    assert paprika.name_cs in body
+    assert f'data-filter-text="{pepper.name_cs}"' in body
+    assert f'data-filter-text="{paprika.name_cs}"' in body
 
 
 @pytest.mark.django_db

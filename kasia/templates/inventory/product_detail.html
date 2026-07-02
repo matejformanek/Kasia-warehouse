@@ -37,7 +37,7 @@
       </thead>
       <tbody>
         {% for r in branch_rows %}
-          <tr {% if r.is_low %}style="background:#fbf3e0;"{% endif %}>
+          <tr {% if r.is_low %}style="background:var(--warn-tint);"{% endif %}>
             <td>{{ r.branch.code }} — {{ r.branch.name }}</td>
             <td style="text-align:right;font-variant-numeric:tabular-nums;">
               {{ r.on_hand|floatformat:1 }}
@@ -131,7 +131,7 @@
       </tbody>
     </table>
     <p style="color:var(--fg-soft);">
-      Receptura se snapshotuje při zahájení míchání (per decision 0005).
+      Receptura se snapshotuje při zahájení míchání.
     </p>
   {% else %}
     <p style="color:var(--fg-soft);">Recept zatím nebyl vyplněn.</p>

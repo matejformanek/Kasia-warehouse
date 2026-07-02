@@ -6,7 +6,7 @@
 <h1>Dodací list {{ dodaci_list.cislo }}</h1>
 
 {% if dodaci_list.is_edited %}
-  <div class="msg warning" style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fbf3e0;color:var(--warn);border-radius:4px;">
+  <div class="msg warning" style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:var(--warn-tint);color:var(--warn);">
     Editováno — aktuální verze: <strong>v{{ dodaci_list.current_version }}</strong>.
     Předchozí verze byla nahrazena `[OPRAVA]` e-mailem; trail níže.
   </div>

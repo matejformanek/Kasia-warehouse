@@ -12,12 +12,12 @@
   <h1>Inventura — {{ branch.code }} ({{ branch.name }})</h1>
 {% endif %}
 
-<div class="card" style="background:#fbf3e0;border-left:3px solid var(--warn);">
+<div class="card" style="background:var(--warn-tint);border-left:3px solid var(--warn);">
   <strong>Hromadná úprava.</strong>
   U každého řádku vyplňte hodnotu a volitelně datum příjezdu:
   <ul style="margin:0.5rem 0 0;padding-left:1.2rem;">
-    <li><strong>Bez data</strong> — hodnota je <em>nový stav skladu</em>; změna se zapíše ihned (pohyb <code>[STAV]</code>, per 0041).</li>
-    <li><strong>S datem</strong> — hodnota je <em>objednané množství</em> (ne nový stav); založí se plánovaný příjem s tímto datem příjezdu (per 0059). Stav skladu se teď nemění.</li>
+    <li><strong>Bez data</strong> — hodnota je <em>nový stav skladu</em>; změna se zapíše ihned (pohyb <code>[STAV]</code>).</li>
+    <li><strong>S datem</strong> — hodnota je <em>objednané množství</em> (ne nový stav); založí se plánovaný příjem s tímto datem příjezdu. Stav skladu se teď nemění.</li>
   </ul>
 </div>
 

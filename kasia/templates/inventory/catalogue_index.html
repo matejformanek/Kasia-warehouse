@@ -103,9 +103,9 @@
         <th>Název</th>
         <th>Typ</th>
         <th style="text-align:right;" title="Aktuální skladová zásoba">Na skladě</th>
-        <th style="text-align:right;" title="Plánované míchání a plánované převody (per 0044)">Rezerv.</th>
+        <th style="text-align:right;" title="Plánované míchání a plánované převody">Rezerv.</th>
         <th style="text-align:right;" title="Efektivně = na skladě − rezervováno">Efektivně</th>
-        <th style="text-align:right;" title="Objednací bod (per 0043). Pokud má produkt per-pobočkovou výjimku, zobrazuje se nejnižší nastavený práh.">Práh</th>
+        <th style="text-align:right;" title="Objednací bod. Pokud má produkt per-pobočkovou výjimku, zobrazuje se nejnižší nastavený práh.">Práh</th>
         <th>Stav</th>
         <th title="Pobočky pod prahem objednacího bodu (efektivně = na skladě − rezervováno)">Nízký na</th>
         <th></th>
@@ -114,7 +114,7 @@
     <tbody>
       {% for row in rows %}
         <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=row.product.pk %}"
-            {% if row.is_low %}style="background:#fbf3e0;"{% endif %}>
+            {% if row.is_low %}style="background:var(--warn-tint);"{% endif %}>
           <td>
             <strong>{{ row.product.name_cs }}</strong>
             {% if not row.product.is_active %}

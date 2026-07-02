@@ -114,7 +114,7 @@
           <td>{{ mv.date_issued|date:"d. m. Y" }}</td>
           <td>
             {% if mv.note|slice:":7" == "[STAV] " %}
-              <span style="color:var(--warn);" title="Ruční úprava stavu (per rozhodnutí 0041)">
+              <span style="color:var(--warn);" title="Ruční úprava stavu">
                 inventura
               </span>
             {% elif mv.kind == "prijem" %}

@@ -8,7 +8,7 @@
 </h1>
 
 {% if is_vydej and dodaci_list %}
-  <div class="card" style="background:#fbf3e0;border-left:3px solid var(--warn);">
+  <div class="card" style="background:var(--warn-tint);border-left:3px solid var(--warn);">
     Tento výdej je svázán s dodacím listem <strong>{{ dodaci_list.cislo }}</strong>
     (aktuální verze v{{ dodaci_list.current_version }}). Uložení úpravy automaticky
     vygeneruje novou verzi PDF a odešle ji s předmětem

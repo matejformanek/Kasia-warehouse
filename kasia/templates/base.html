@@ -25,7 +25,9 @@
     --line-soft: #eef0ee;
     --error: #a02525;
     --error-tint: #fbebea;
-    --warn: #8a5a12;
+    /* Warn = orange (decision: retone within 0054; replaces the old muddy ochre). */
+    --warn: #c2410c;
+    --warn-tint: #fdeee3;
     --ok: #1f6b3a;
     --ok-soft: #e7f1ea;
     /* legacy alias kept so any stray var(--border) still resolves */
@@ -115,7 +117,7 @@
   .messages .msg { padding: 0.6rem 0.85rem; border-left: 3px solid var(--fg-faint); margin-bottom: 0.5rem; font-size: 0.95rem; }
   .messages .msg.success { background: var(--ok-soft); border-left-color: var(--ok); color: var(--ok); }
   .messages .msg.error   { background: var(--error-tint); border-left-color: var(--error); color: var(--error); }
-  .messages .msg.warning { background: #fbf3e0; border-left-color: var(--warn); color: var(--warn); }
+  .messages .msg.warning { background: var(--warn-tint); border-left-color: var(--warn); color: var(--warn); }
   .messages .msg.info    { background: var(--accent-tint); border-left-color: var(--accent); color: var(--accent-deep); }
 
   /* ============ CARDS ============ */
@@ -210,7 +212,7 @@
   }
   .recipe-notes p { color: var(--fg); }
   .warnings-banner {
-    background: #fbf3e0; border-left: 3px solid var(--warn); color: var(--warn);
+    background: var(--warn-tint); border-left: 3px solid var(--warn); color: var(--warn);
     padding: 0.5rem 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;
   }
   .warnings-banner ul { margin: 0.25rem 0 0 1rem; padding: 0; }

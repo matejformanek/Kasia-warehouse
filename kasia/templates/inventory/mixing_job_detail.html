@@ -155,7 +155,7 @@
 
 <form method="post" action="{% url 'inventory:mixing_job_cancel' pk=job.pk %}">
   {% csrf_token %}
-  <div class="card" style="background:#fff4e6;">
+  <div class="card" style="background:var(--warn-tint);">
     <h2 style="font-size:1.05rem;margin-top:0;color:var(--warn);">Zrušit dávku</h2>
     <p style="color:var(--fg-soft);">
       Spotřebované suroviny se vrátí na sklad přes audited correction

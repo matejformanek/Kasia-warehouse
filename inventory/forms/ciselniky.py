@@ -12,6 +12,7 @@ from ..models import (
     StockThresholdOverride,
     Supplier,
 )
+from .base import validate_active_name_unique
 
 
 class SupplierForm(forms.ModelForm):
@@ -31,17 +32,11 @@ class SupplierForm(forms.ModelForm):
         }
 
     def clean_name(self) -> str:
-        name = (self.cleaned_data["name"] or "").strip()
-        # Soft uniqueness check on active rows: don't let a worker
-        # create a second "Koření CZ s.r.o." by accident.
-        qs = Supplier.objects.filter(name__iexact=name, is_active=True)
-        if self.instance and self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
-        if qs.exists():
-            raise forms.ValidationError(
-                "Aktivní dodavatel s tímto názvem už existuje."
-            )
-        return name
+        # Soft uniqueness on active rows: don't let a worker create a second
+        # "Koření CZ s.r.o." by accident.
+        return validate_active_name_unique(
+            Supplier, "name", self.cleaned_data["name"], instance=self.instance, label="dodavatel"
+        )
 
 
 class CustomerForm(forms.ModelForm):
@@ -62,15 +57,9 @@ class CustomerForm(forms.ModelForm):
         }
 
     def clean_name(self) -> str:
-        name = (self.cleaned_data["name"] or "").strip()
-        qs = Customer.objects.filter(name__iexact=name, is_active=True)
-        if self.instance and self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
-        if qs.exists():
-            raise forms.ValidationError(
-                "Aktivní odběratel s tímto názvem už existuje."
-            )
-        return name
+        return validate_active_name_unique(
+            Customer, "name", self.cleaned_data["name"], instance=self.instance, label="odběratel"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -121,15 +110,13 @@ class ProductForm(forms.ModelForm):
             self.fields.pop("reorder_threshold_kg", None)
 
     def clean_name_cs(self) -> str:
-        name = (self.cleaned_data["name_cs"] or "").strip()
-        qs = Product.objects.filter(name_cs__iexact=name, is_active=True)
-        if self.instance and self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
-        if qs.exists():
-            raise forms.ValidationError(
-                "Aktivní produkt s tímto názvem už existuje."
-            )
-        return name
+        return validate_active_name_unique(
+            Product,
+            "name_cs",
+            self.cleaned_data["name_cs"],
+            instance=self.instance,
+            label="produkt",
+        )
 
 
 class RecipeComponentForm(forms.ModelForm):

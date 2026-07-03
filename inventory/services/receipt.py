@@ -13,19 +13,16 @@ from ..models import (
     MovementLine,
     Supplier,
 )
+from . import counterparties
 from .stock import _apply_line_to_stock
 
-_ORDER_COUNTERPARTY_NAME = "Objednávka"
 _ORDER_NOTE_PREFIX = "[OBJ] "
 
 
 def _order_counterparty() -> Supplier:
     """The seeded internal supplier used on the príjem leg of a confirmed
-    planned receipt that has no real supplier (mirror of
-    `_adjustment_supplier`)."""
-    return Supplier.objects.get(
-        name=_ORDER_COUNTERPARTY_NAME, is_internal=True
-    )
+    planned receipt that has no real supplier."""
+    return counterparties.supplier("order")
 
 
 def confirm_planned_receipt(

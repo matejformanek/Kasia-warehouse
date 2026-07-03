@@ -2,6 +2,8 @@
 
 from django.utils.http import url_has_allowed_host_and_scheme
 
+from accounts.permissions import require_vlastnik
+
 from ..models import DodaciList, DodaciListEmailLog
 
 
@@ -21,9 +23,7 @@ def _dl_failed_at_current_version(dodaci_list: DodaciList, logs) -> bool:
 
 
 def _require_vlastnik(request) -> None:
-    if not request.user.is_vlastnik:
-        from django.core.exceptions import PermissionDenied
-        raise PermissionDenied("Nemáte oprávnění upravovat nastavení.")
+    require_vlastnik(request, "Nemáte oprávnění upravovat nastavení.")
 
 
 

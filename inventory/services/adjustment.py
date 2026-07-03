@@ -16,22 +16,18 @@ from ..models import (
     Stock,
     Supplier,
 )
+from . import counterparties
 from .movement import apply_movement
 
-_ADJUSTMENT_COUNTERPARTY_NAME = "Inventura / ruční úprava"
 _ADJUSTMENT_NOTE_PREFIX = "[STAV] "
 
 
 def _adjustment_supplier() -> Supplier:
-    return Supplier.objects.get(
-        name=_ADJUSTMENT_COUNTERPARTY_NAME, is_internal=True
-    )
+    return counterparties.supplier("adjustment")
 
 
 def _adjustment_customer() -> Customer:
-    return Customer.objects.get(
-        name=_ADJUSTMENT_COUNTERPARTY_NAME, is_internal=True
-    )
+    return counterparties.customer("adjustment")
 
 
 def apply_stock_adjustment(

@@ -2324,6 +2324,17 @@ feeds back, hold position and respond to direct asks.
   suite green at **406 pass**; kept green at each checkpoint. `design-system.md`
   updated for the new token/CSS locations (class + JS/HTMX hook contract
   unchanged).
+  - **D0 done** — 0068/0069 + architecture.md + discrepancy log + rule/state
+    updates.
+  - **D1 done** — all six `inventory` monoliths split into packages with
+    re-exporting `__init__` (models 1253→pkg, admin 623, services 2030,
+    forms 716, views 3420, tests 7654→15 modules + `_support.py`). No file
+    now exceeds ~832 LOC. Every checkpoint: ruff clean, `manage.py check`
+    clean, `makemigrations --check` = no changes, 406 tests pass. One
+    inert discrepancy logged (#1: test monkeypatch targets re-pointed).
+  - **Next in-branch:** D2 (dedupe: counterparty registry, MovementBuilder,
+    ArchivableCRUD CBVs, RequireVlastnikMixin), D3 (break up giant fns),
+    D4 (CSS externalization), D5 (test static-storage override).
 
 ## Next
 

@@ -17,15 +17,16 @@ from ..models import (
     RecipeComponent,
     Supplier,
 )
+from . import counterparties
 from .movement import apply_movement, edit_movement
 
 
 def _micharna_customer() -> Customer:
-    return Customer.objects.get(name="Míchárna", is_internal=True)
+    return counterparties.customer("micharna")
 
 
 def _micharna_supplier() -> Supplier:
-    return Supplier.objects.get(name="Míchárna", is_internal=True)
+    return counterparties.supplier("micharna")
 
 
 def plan_mixing_job(

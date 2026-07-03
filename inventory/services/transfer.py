@@ -14,21 +14,16 @@ from ..models import (
     PlannedTransfer,
     Supplier,
 )
+from . import counterparties
 from .movement import apply_movement
-
-_TRANSFER_COUNTERPARTY_NAME = "Převod mezi pobočkami"
 
 
 def _transfer_customer() -> Customer:
-    return Customer.objects.get(
-        name=_TRANSFER_COUNTERPARTY_NAME, is_internal=False
-    )
+    return counterparties.customer("transfer")
 
 
 def _transfer_supplier() -> Supplier:
-    return Supplier.objects.get(
-        name=_TRANSFER_COUNTERPARTY_NAME, is_internal=False
-    )
+    return counterparties.supplier("transfer")
 
 
 def execute_planned_transfer(

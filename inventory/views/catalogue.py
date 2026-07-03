@@ -11,6 +11,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from accounts.permissions import require_vlastnik
+
 from ..forms import (
     ProductForm,
     RecipeComponentForm,
@@ -501,9 +503,7 @@ def product_edit(request, pk: int):
 @require_POST
 def product_archive(request, pk: int):
     """Soft-archive a product. Vlastník-only per 0040."""
-    if not request.user.is_vlastnik:
-        from django.core.exceptions import PermissionDenied
-        raise PermissionDenied("Pouze vlastník může archivovat produkty.")
+    require_vlastnik(request, "Pouze vlastník může archivovat produkty.")
     product = get_object_or_404(Product, pk=pk)
     product.is_active = False
     product.save(update_fields=["is_active"])
@@ -514,9 +514,7 @@ def product_archive(request, pk: int):
 @require_POST
 def product_reactivate(request, pk: int):
     """Re-activate an archived product. Vlastník-only per 0040."""
-    if not request.user.is_vlastnik:
-        from django.core.exceptions import PermissionDenied
-        raise PermissionDenied("Pouze vlastník může aktivovat produkty.")
+    require_vlastnik(request, "Pouze vlastník může aktivovat produkty.")
     product = get_object_or_404(Product, pk=pk)
     if Product.objects.filter(
         name_cs__iexact=product.name_cs, is_active=True

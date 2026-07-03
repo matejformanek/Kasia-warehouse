@@ -161,3 +161,15 @@ Branch staff do not see this screen — they land on
 - Whether to show simple time-window charts (movement counts last 7 / 30
   days). Defer — could turn this from a calm dashboard into a numbers
   wall.
+
+## UX refresh — Phase 2 (2026-07-03)
+
+Přehled ported to the locked mockup `02a` as a per-branch command center
+(`home.html` + `home` view). KPI strip is now **Vyprodáno / Dochází /
+Objednáno / K vyřešení** (per-branch breakdown sub-labels). Each branch card
+groups its attention rows into **Vyprodáno / Dochází / Objednáno** sections
+(empty groups omitted); **Objednáno** reuses the 0057 PLANNED-příjem overlay
+from `low_stock_rows()` (badge-only). A **K vyřešení** task-list carries
+resend (failed e-mail) / open-dodák (edited) actions. Bottom per-branch
+**Poslední aktivita** (movements + dodací listy). Per-branch **Inventura**
+button uses the per-branch URL. `_low_stock_panel.html` retired.

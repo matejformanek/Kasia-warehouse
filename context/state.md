@@ -5,6 +5,33 @@
 
 ## Done
 
+- **2026-07-03** — **Sklad UX refresh — Phase 2 (the swap) complete on
+  `ft_sklad_ux_refresh`.** Every locked mockup ported into its real Django
+  template, one commit per screen, full suite green (**403 pass**) + `manage.py
+  check` clean throughout. Merged `origin/main` first (#21 1dp polish / #22
+  0063 filter / #23 výdej JS over-stock; `_stock_warn.html` gone).
+  - **Phase A (self-contained restyles):** Detail produktu (two-col + fakta
+    tiles, recipe-scaler JS kept), Dodací listy index+detail, Míchání historie,
+    Míchání create + preview, Uživatelé, Nastavení, Podpora. Added a
+    `{% block extra_head %}` to `base.html` for per-screen CSS.
+  - **Phase B:** Katalog grouped-by-state (Prázdné/Dochází/V pořádku, whole-row
+    no-buttons) + KPI strip — decision
+    [`0064`](./decisions/0064-grouped-catalogue-client-filter.md) (multi-tbody
+    `data-filter-group` filter extension in `base.html`); Výdej + Příjem numbered
+    steps + running summary (shared `_line_row`/`_movement_form_lines`, #23
+    stock-warn JS kept verbatim); Inventura sticky tally + green edited rows +
+    own type-to-filter (all JS/names/1dp-compare kept); Historie compact columns
+    + Množství + `.btn-mini` PLANNED actions; Číselníky filterbar polish; Branch
+    dashboard clickable stock rows; **Přehled** rebuilt as a per-branch command
+    center (empty/low/ordered groups, KPI Vyprodáno/Dochází/Objednáno/K vyřešení,
+    K vyřešení task-list, per-branch Poslední aktivita; `_low_stock_panel.html`
+    retired).
+  - **Finish:** Inventura vlastník-only sidebar nav item — decision
+    [`0065`](./decisions/0065-inventura-sidebar-nav.md); `design-system.md`
+    updated (`.sub-head` + `extra_head` shared, 0064 filter extension, grouped
+    Katalog + Inventura nav notes); screens docs + this file + memory refreshed.
+  - **Pending:** Matej's live localhost walkthrough (Výdej over-stock especially)
+    + prod deploy — both out of this plan's scope.
 - **2026-07-02** — **Sklad UX refresh — Phase 1 (mockups) complete + locked;
   Phase 2 step 1 shipped.** Branch `ft_sklad_ux_refresh` (pushed; 2 commits on
   top of main `c5627e9`). Restyle **within decision 0054** (no new decision

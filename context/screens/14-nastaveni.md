@@ -213,3 +213,9 @@ very little to fiddle with here.
 > [`decisions/0008-dodaci-list-numbering.md`](../decisions/0008-dodaci-list-numbering.md).
 > E-mail recipients model is closed by
 > [`decisions/0031-emails-internal-only-supersedes-0009.md`](../decisions/0031-emails-internal-only-supersedes-0009.md).
+
+## UX refresh — Phase 2 (2026-07-03)
+
+Nastavení restyled per mockup `16`: airy section cards + anchor chips + sticky
+save bar; all radii 0, `#fbe8e8` -> `.non-form-errors`. Every real form field,
+recipient formset, SMTP test, and branch tables preserved.

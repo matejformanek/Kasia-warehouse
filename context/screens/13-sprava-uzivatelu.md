@@ -97,3 +97,8 @@ total (per [`../people-and-roles.md`](../people-and-roles.md)).
 > Per-user activity view is folded into
 > [Historie pohybů](10-historie-pohybu.md) via the operator filter
 > — no separate sub-screen in MVP.
+
+## UX refresh — Phase 2 (2026-07-03)
+
+Uživatelé restyled per mockup `15` (head-card + count, mono email/last-login,
+stav pills); locked `.js-confirm` deactivate preserved.

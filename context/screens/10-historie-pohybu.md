@@ -127,3 +127,12 @@ colleague did yesterday.
 - Whether to show "celkové množství podle filtru" as a sum at the
   bottom of the table — useful for spot reconciliation but only
   meaningful per-unit; defer.
+
+## UX refresh — Phase 2 (2026-07-03)
+
+Historie ported to mockup `09`: compact table with columns **Datum · Druh ·
+Pob. · Položky · Protistrana · Množství · Doklad**, colour-coded `.druh`
+badges, operator folded into a Protistrana sub-line, merged Doklad cell
+(`.dl-link` + `.tag-edit`), and `.btn-mini` accept/cancel for PLANNED rows
+(Přijmout -> `prijem_confirm`, out-of-form Zrušit per 0059). New per-movement
+**Množství** total (summed in the view). `#history-table` 0063 filter kept.

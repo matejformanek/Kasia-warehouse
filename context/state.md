@@ -5,6 +5,36 @@
 
 ## Done
 
+- **2026-07-03** — **Restructure Round 2 (inert-only) complete on
+  `ft_arch_restructure` (PR #26).** Decision
+  [`0070`](./decisions/0070-round2-structure-refinements.md) (the gate — drafted +
+  wording confirmed before any code) authorizes recursive sub-packaging +
+  executes 0069's `components/` CSS layer + a module-private on-commit helper.
+  All behavior-preserving; 0068/0069 not edited (append-only).
+  - **Part 1** — `inventory/views/movements.py` (832 LOC) → `movements/`
+    sub-package (`history`/`prijem`/`vydej`/`edit`/`partials` + package-local
+    `_shared`), re-exporting `__init__` (`__all__`). Both `from
+    inventory.views.movements import X` and `from inventory.views import X` still
+    resolve; `_compute_overdraw` stays public. Extracted
+    `_send_dodaci_on_commit(dodaci_list, trigger_reason)` in
+    `services/movement.py` (apply → `"vystavení"`, edit → `f"oprava: {reason}"`).
+  - **Part 2** — assembled sklad `components/*.css`
+    (tables/forms/kpis/filters/chips/dialogs), `<link>`ed from `base.html` in
+    fixed order after `base-sklad.css`. Byte-identical: set-equality diff (no
+    base rule lost) + **per-page cascade-winner equivalence = 0 mismatches, 0
+    rules lost** (home/catalogue/customer/supplier/vydej/historie/dodák). Two
+    cascade traps handled by co-location: `.over-stock`/zebra + KPI `@media`
+    overrides (both into their component file). Dedup: `.kpi.err/.warn/.ordered`
+    (home+catalogue) → kpis.css; číselník furniture (customer+supplier) →
+    filters.css.
+  - **Part 3** — README filled; `inventory/__init__.py` docstring;
+    `settings/base.py` `.env.example` pointer; `architecture.md` shows
+    `movements/`; `design-system.md` records the components file list + fixed
+    `<link>` order (sklad-scoped) as a hard constraint. Discrepancy log +3/+4
+    (both inert). Gates green throughout: **406 pass · ruff · check ·
+    makemigrations no-changes · collectstatic**. Browser spot-check substituted
+    with the static cascade proof (extension offline + local admin pw unknown;
+    logged as inert #4).
 - **2026-07-03** — **Inventura "Dochází" filter toggle (single-branch).** Added
   a "Dochází" checkbox next to the name filter on per-branch inventura
   (`inventura_edit`) that scopes visible rows to products below their reorder
@@ -2346,15 +2376,15 @@ feeds back, hold position and respond to direct asks.
     OK; render byte-identical (cascade order preserved).
   - **D5 dropped** — no test static-storage override needed (verified: tests
     render `{% static 'css/…' %}` with and without a manifest).
-  - **Status: Round 1 done, on PR #26** (all phases green, 406 tests, ~16
-    commits). CI now also gates `collectstatic`. Local Docker stack is up
-    (`make up`). Visual spot-check passed (render byte-identical).
-  - **→ NEXT SESSION / post-compact:** Round 2 is planned in
-    [`refactors/0068-round2-plan.md`](./refactors/0068-round2-plan.md) — a
-    second big tuning pass *on top of PR #26* (finish the CSS `components/`
-    layer, revisit the long functions left cohesive, split files >400 LOC,
-    deeper OOP where state clusters, dedup sweep, docs). **Read that file
-    first**; it carries the full handoff (branch, gates, logins, guardrails).
+  - **Status: Round 1 + Round 2 done, on PR #26** (all phases green, 406 tests).
+    CI now also gates `collectstatic`. Local Docker stack is up (`make up`).
+    Round 2 (inert-only) landed per
+    [`0070`](./decisions/0070-round2-structure-refinements.md) — see the Done
+    entry above. The broader candidate list in
+    [`refactors/0068-round2-plan.md`](./refactors/0068-round2-plan.md) (revisit
+    long functions, Branch→CBV, visual polish) was **deliberately deferred** —
+    the user chose the inert-only scope; those extras were not pulled in.
+  - **→ next:** `/pr-harden` on PR #26, then merge to ship.
 
 ## Next
 

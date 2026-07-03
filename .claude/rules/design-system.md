@@ -23,19 +23,41 @@
 Both carry the jpg Kasia logo (`brand/kasia-logo.jpg`) top-left. Imagery is
 hand-authored green SVG/CSS + marked photo slots — no raster generation.
 
-## CSS lives in static, layered (per [`0069`](../../context/decisions/0069-css-externalization.md))
+## CSS lives in static, layered (per [`0069`](../../context/decisions/0069-css-externalization.md) + [`0070`](../../context/decisions/0070-round2-structure-refinements.md))
 
 All CSS is in `kasia/static/css/`, `<link>`ed (never inline `<style>`, never
 `@import`): `tokens-sklad.css` + `tokens-web.css` (the two `:root` sets — kept
 separate because both define `--line` with different values), `base-sklad.css`
 / `base-web.css` (shell + shared classes per surface), `components/*.css`
-(shared: kpis, tables, dialogs, filters, forms), and `pages/<screen>.css`
-(per-screen). Shared partials fold into `base-sklad.css` (`_confirm_dialog`,
-`_movement_form_lines`) or their htmx host page's css (`_mixing_preview` →
-`pages/mixing_job_create.css`). **Kept inline on purpose:** PDF
-(`dodaci_list.html`, `recipe_pdf.html`) + e-mail templates (WeasyPrint / inbox)
-and the `404.html` / `500.html` error pages (self-contained — must not depend on
-the static pipeline during a failure).
+(**sklad-scoped** — see below), and `pages/<screen>.css` (per-screen). Shared
+partials fold into a component file (`_confirm_dialog` → `components/dialogs.css`,
+`_movement_form_lines` → `components/forms.css`) or their htmx host page's css
+(`_mixing_preview` → `pages/mixing_job_create.css`). **Kept inline on purpose:**
+PDF (`dodaci_list.html`, `recipe_pdf.html`) + e-mail templates (WeasyPrint /
+inbox) and the `404.html` / `500.html` error pages (self-contained — must not
+depend on the static pipeline during a failure).
+
+**Sklad component CSS (0070) lives in `components/*.css` and is `<link>`ed from
+`base.html` in this exact order, after `base-sklad.css` and before
+`{% block extra_head %}`; never inline, never `@import`:**
+
+```
+tokens-sklad.css → base-sklad.css →
+  components/tables.css → forms.css → kpis.css → filters.css → chips.css →
+  dialogs.css →
+{% block extra_head %}  (pages/<screen>.css, still loads last, still wins)
+```
+
+The `components/` layer is **sklad-only** — the public surface keeps
+`base-web.css` and there is no shared cross-surface component tier (the `--line`
+token collision + the deliberate 0054-vs-0058 divergence). Two cascade
+constraints are load-bearing: the `.over-stock` red-fill stays in
+`components/tables.css` *after* the `table.lines` zebra, and the KPI-column
+`@media` overrides live in `components/kpis.css` *after* the base `.kpi` rules
+(both would lose if separated across the load order). The locked class names and
+JS/HTMX hooks in this file are unchanged and **must not be renamed**; moving a
+rule between these files is fine, renaming a class or reordering the layer is a
+new decision.
 
 ## Keep stable (renaming these = a new decision)
 

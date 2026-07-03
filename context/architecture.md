@@ -36,9 +36,11 @@ Movement`).
   `dodaci_list` (DodakService) · `email` · `mixing` (MixingJobService) ·
   `reorder` · `transfer` · `receipt` · `counterparties` (role registry) ·
   `recipe_import`.
-- **`views/`** — `dashboard` · `movements` · `ciselniky` · `catalogue` ·
-  `mixing` · `dodaci` · `inventura` · `settings` · `transfers` · `support` ·
-  `partials` · `_mixins` (RequireVlastnikMixin, ArchivableCRUDMixin).
+- **`views/`** — `dashboard` · `movements/` (a sub-package per 0070:
+  `history` · `prijem` · `vydej` · `edit` · `partials` + package-local
+  `_shared`) · `ciselniky` · `catalogue` · `mixing` · `dodaci` · `inventura` ·
+  `settings` · `transfers` · `support` · `partials` · `_mixins`
+  (RequireVlastnikMixin, ArchivableCRUDMixin).
 - **`forms/`** — grouped by subsystem + `base` (soft-unique-name validator).
 - **`admin/`**, **`tests/`** — grouped the same way.
 

@@ -15,8 +15,9 @@ The site is split into two surfaces on one domain (per
 **public marketing site at `/`** (no login, the `web` app — see
 [`context/public-site.md`](./context/public-site.md)) and the
 **login-gated warehouse app under `/sklad/…`** (auth at
-`/sklad/prihlaseni/`, users at `/sklad/uzivatele/`). `/admin/`,
-`/healthz`, and the `/navrhy/` design gallery stay at root.
+`/sklad/prihlaseni/`, users at `/sklad/uzivatele/`). `/admin/` and
+`/healthz` stay at root. (The `/navrhy/` design gallery was retired per
+decision 0067 — the mockups stay in `design-options/` but are not served.)
 
 ## Read in this order
 

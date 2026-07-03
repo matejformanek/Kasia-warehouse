@@ -1,5 +1,7 @@
 # 0047 — Design-review gallery served publicly under /static/navrhy/
 
+> **Superseded by 0067** — the gallery is no longer served (files kept in repo).
+
 ## Context
 
 Before adopting a new homepage look, Petr (the owner) wants to browse a set

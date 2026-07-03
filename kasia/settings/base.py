@@ -56,8 +56,9 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # Every view requires login unless decorated with @login_not_required
     # (Django 5.1+). The warehouse app lives under /sklad/ and is fully gated;
-    # the public marketing site at / (web app) and the /navrhy/ gallery opt
-    # out per-view with @login_not_required. See decisions 0020, 0047, 0050.
+    # the public marketing site at / (web app) opts out per-view with
+    # @login_not_required. See decisions 0020, 0050. (The /navrhy/ gallery,
+    # decision 0047, was retired per 0067.)
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -130,12 +131,10 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = []
 if (BASE_DIR / "kasia" / "static").exists():
     STATICFILES_DIRS.append(BASE_DIR / "kasia" / "static")
-# Design-option mockups (top-level `design-options/`) are served publicly as
-# static files under /static/navrhy/ so Petr can review them on prod without
-# a login, per context/decisions/0047-design-review-gallery.md. They are
-# data-free HTML exploration artifacts, not part of the application.
-if (BASE_DIR / "design-options").exists():
-    STATICFILES_DIRS.append(("navrhy", BASE_DIR / "design-options"))
+# The design-option mockups (top-level `design-options/`) were served under
+# /static/navrhy/ for review (decision 0047). Retired per 0067: the files stay
+# in the repo (in case we revisit a direction) but are no longer served, so the
+# gallery is unavailable on both surfaces. Do NOT re-add this without a decision.
 
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},

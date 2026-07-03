@@ -17,7 +17,7 @@ from ..models import (
     Supplier,
 )
 from . import counterparties
-from .movement import apply_movement
+from .movement import apply_movement, build_movement
 
 _ADJUSTMENT_NOTE_PREFIX = "[STAV] "
 
@@ -79,20 +79,20 @@ def apply_stock_adjustment(
 
     if delta > 0:
         # Stock up: synthetic prijem from internal supplier.
-        movement = Movement(
+        movement = build_movement(
             branch=branch,
             kind=Movement.Kind.PRIJEM,
-            dodavatel=_adjustment_supplier(),
+            counterparty=_adjustment_supplier(),
             date_issued=issue_date,
             note=note,
             created_by=user,
         )
     else:
         # Stock down: synthetic vydej to internal customer.
-        movement = Movement(
+        movement = build_movement(
             branch=branch,
             kind=Movement.Kind.VYDEJ,
-            odberatel=_adjustment_customer(),
+            counterparty=_adjustment_customer(),
             date_issued=issue_date,
             note=note,
             created_by=user,

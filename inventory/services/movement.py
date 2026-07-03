@@ -24,6 +24,40 @@ from .stock import _apply_line_to_stock
 _MOVEMENT_AUDITABLE_FIELDS = ("kind", "branch", "date_issued", "odberatel", "dodavatel", "note")
 _LINE_AUDITABLE_FIELDS = ("product", "quantity_kg", "sarze", "expiry", "note")
 
+
+def build_movement(
+    *,
+    branch,
+    kind: str,
+    counterparty,
+    date_issued,
+    note: str = "",
+    transfer=None,
+    created_by=None,
+) -> Movement:
+    """Construct an (unsaved) Movement, routing the counterparty to the correct
+    field for its kind (výdej → odberatel, příjem → dodavatel — mirroring the
+    model's counterparty CheckConstraint). Single construction point for the
+    system-generated movements (mixing, transfer, adjustment); callers pass the
+    lines and hand it to ``apply_movement``.
+    """
+    kwargs: dict[str, Any] = {
+        "branch": branch,
+        "kind": kind,
+        "date_issued": date_issued,
+        "note": note,
+    }
+    if kind == Movement.Kind.VYDEJ:
+        kwargs["odberatel"] = counterparty
+    else:
+        kwargs["dodavatel"] = counterparty
+    if transfer is not None:
+        kwargs["transfer"] = transfer
+    if created_by is not None:
+        kwargs["created_by"] = created_by
+    return Movement(**kwargs)
+
+
 def _render(value: Any) -> str:
     """String-render a field value for the audit log. Empty for None."""
     if value is None:

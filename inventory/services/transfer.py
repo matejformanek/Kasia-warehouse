@@ -15,7 +15,7 @@ from ..models import (
     Supplier,
 )
 from . import counterparties
-from .movement import apply_movement
+from .movement import apply_movement, build_movement
 
 
 def _transfer_customer() -> Customer:
@@ -51,11 +51,11 @@ def execute_planned_transfer(
 
     with transaction.atomic():
         # Source-leg výdej.
-        vydej = Movement(
+        vydej = build_movement(
             branch=transfer.source_branch,
             kind=Movement.Kind.VYDEJ,
+            counterparty=_transfer_customer(),
             date_issued=issue_date,
-            odberatel=_transfer_customer(),
             note=(
                 f"Převod {transfer.product.name_cs} "
                 f"{transfer.quantity_kg} kg → "
@@ -71,11 +71,11 @@ def execute_planned_transfer(
         apply_movement(movement=vydej, lines=[vydej_line], user=executed_by)
 
         # Target-leg příjem.
-        prijem = Movement(
+        prijem = build_movement(
             branch=transfer.target_branch,
             kind=Movement.Kind.PRIJEM,
+            counterparty=_transfer_supplier(),
             date_issued=issue_date,
-            dodavatel=_transfer_supplier(),
             note=(
                 f"Převod {transfer.product.name_cs} "
                 f"{transfer.quantity_kg} kg ← "

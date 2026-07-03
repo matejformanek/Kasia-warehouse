@@ -18,7 +18,7 @@ from ..models import (
     Supplier,
 )
 from . import counterparties
-from .movement import apply_movement, edit_movement
+from .movement import apply_movement, build_movement, edit_movement
 
 
 def _micharna_customer() -> Customer:
@@ -158,11 +158,11 @@ def start_mixing_job(
             )
 
         with transaction.atomic():
-            consume_movement = Movement(
+            consume_movement = build_movement(
                 branch=branch,
                 kind=Movement.Kind.VYDEJ,
+                counterparty=_micharna_customer(),
                 date_issued=date_issued,
-                odberatel=_micharna_customer(),
                 note=(
                     f"Míchání směsi {mixture.name_cs} ({target_qty} kg). "
                     f"{job.note or note}".strip()
@@ -216,11 +216,11 @@ def start_mixing_job(
 
     with transaction.atomic():
         # Build the consume Movement (one vydej with N lines).
-        consume_movement = Movement(
+        consume_movement = build_movement(
             branch=branch,
             kind=Movement.Kind.VYDEJ,
+            counterparty=_micharna_customer(),
             date_issued=date_issued,
-            odberatel=_micharna_customer(),
             note=(
                 f"Míchání směsi {mixture.name_cs} ({target_qty} kg). "
                 f"{note}".strip()
@@ -359,11 +359,11 @@ def finish_mixing_job(
             )
 
         # Produce Movement — single-line prijem from Míchárna supplier.
-        produce_movement = Movement(
+        produce_movement = build_movement(
             branch=mixing_job.branch,
             kind=Movement.Kind.PRIJEM,
+            counterparty=_micharna_supplier(),
             date_issued=date_issued,
-            dodavatel=_micharna_supplier(),
             note=(
                 f"Míchání směsi {mixing_job.mixture.name_cs} — vyrobeno "
                 f"{actual_produced_qty} kg (cíl {mixing_job.target_qty} kg)."

@@ -2790,6 +2790,7 @@ def inventura_edit(request, code: str):
                     "qty_value": f"{r.on_hand:.1f}",  # prefill current stock
                     "eta_value": "",
                     "orders": grouped.get((r.product.pk, r.branch.pk), []),
+                    "below_threshold": False,
                 }
                 for r in low_stock_rows()
             ]
@@ -2816,6 +2817,7 @@ def inventura_edit(request, code: str):
                             "qty_value": f"{cur:.1f}",
                             "eta_value": "",
                             "orders": grouped.get((p.pk, b.pk), []),
+                            "below_threshold": False,
                         }
                     )
             return out
@@ -2839,9 +2841,21 @@ def inventura_edit(request, code: str):
                 "qty_value": f"{stocks_by_product.get(p.pk, Decimal('0.000')):.1f}",
                 "eta_value": "",
                 "orders": [],
+                "below_threshold": p.pk in low_pks,
             }
             for p in products
         ]
+
+    # Single-branch "Dochází" toggle (client-side filter): mark each row below
+    # its reorder threshold at this branch. Reuse low_stock_rows() — the same
+    # source of truth the cross-branch "Dochází zboží" chip uses — so the
+    # membership rule (effective < threshold, respecting overrides / reserved /
+    # carried) stays in one place. Guarded to single-branch mode (branch set).
+    low_pks: set[int] = set()
+    if not cross_branch:
+        low_pks = {
+            r.product.pk for r in low_stock_rows() if r.branch.pk == branch.pk
+        }
 
     rows = _build_rows()
 
@@ -2996,6 +3010,7 @@ def inventura_edit(request, code: str):
             "is_low": is_low,
             "is_all": is_all,
             "cross_branch": cross_branch,
+            "show_low_toggle": not cross_branch,
             "rows": rows,
             "all_branches": all_branches,
             "today": date.today(),

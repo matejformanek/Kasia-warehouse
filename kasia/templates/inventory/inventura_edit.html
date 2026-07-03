@@ -13,6 +13,20 @@
   .branch-row { margin-bottom: 1rem; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
   .toolbar { display: flex; gap: .75rem; align-items: center; margin-bottom: .75rem; flex-wrap: wrap; }
   .toolbar input[type=search] { min-width: 260px; }
+  /* "Dochází" filter — sharp toggle switch + label in one bordered box (radius
+     0, green accent). The count span sits AFTER it so it can never shift the
+     box when it appears. The whole box tints green while active. */
+  .low-toggle { display: inline-flex; align-items: center; gap: .5rem; cursor: pointer; user-select: none; font-size: .92rem; white-space: nowrap; padding: .4rem .7rem; background: var(--bg-card); border: 1px solid var(--line); transition: background .15s, border-color .15s; }
+  .low-toggle:hover { border-color: var(--accent); }
+  .low-toggle:has(input:checked) { background: var(--ok-soft); border-color: var(--accent); }
+  .low-toggle input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .low-toggle .switch { position: relative; width: 40px; height: 22px; flex: none; background: var(--bg); border: 1px solid var(--line); transition: background .15s, border-color .15s; }
+  .low-toggle .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--fg-soft); transition: transform .15s, background .15s; }
+  .low-toggle:hover .switch { border-color: var(--accent); }
+  .low-toggle input:checked + .switch { background: var(--ok-soft); border-color: var(--accent); }
+  .low-toggle input:checked + .switch::after { transform: translateX(18px); background: var(--accent); }
+  .low-toggle input:focus-visible + .switch { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #inventura-filter-count { font-variant-numeric: tabular-nums; }
 
   /* Zebra + hover that never blanks to white, and never overrides a green row. */
   .inventura-row:nth-child(even) td { background: #ebebeb; }
@@ -82,6 +96,13 @@
 
   <div class="toolbar">
     <input type="search" id="inventura-filter" placeholder="Filtrovat produkt v seznamu…">
+    {% if show_low_toggle %}
+      <label class="low-toggle" title="Zobrazit jen položky pod objednacím bodem">
+        <input type="checkbox" id="inventura-low-only">
+        <span class="switch" aria-hidden="true"></span>
+        Dochází
+      </label>
+    {% endif %}
     <span class="muted" id="inventura-filter-count"></span>
   </div>
 
@@ -99,7 +120,7 @@
     </thead>
     <tbody>
       {% for row in rows %}
-        <tr class="inventura-row" data-current="{{ row.current|unlocalize }}">
+        <tr class="inventura-row" data-current="{{ row.current|unlocalize }}" data-low="{{ row.below_threshold|yesno:'1,0' }}">
           <td><strong>{{ row.product.name_cs }}</strong></td>
           {% if cross_branch %}<td>{{ row.branch.code }}</td>{% endif %}
           <td style="color:var(--fg-soft);">{{ row.product.get_kind_display }}</td>
@@ -317,22 +338,28 @@
       if (ok) { dirty = false; window.location = a.href; }
     }, true);
 
-    // Type-to-filter over the product name (its own filter, not the 0063 hook).
+    // Type-to-filter over the product name, ANDed with the single-branch
+    // "Dochází" checkbox (its own filter, not the 0063 hook). A row shows when
+    // its name matches the query and — if the checkbox is on — it's below its
+    // reorder threshold (data-low="1", set server-side from low_stock_rows()).
     const filter = document.getElementById("inventura-filter");
     const fc = document.getElementById("inventura-filter-count");
-    if (filter) {
-      filter.addEventListener("input", function () {
-        const q = filter.value.trim().toLowerCase();
-        let shown = 0;
-        rows.forEach(function (row) {
-          const name = row.querySelector("td strong").textContent.toLowerCase();
-          const match = !q || name.includes(q);
-          row.style.display = match ? "" : "none";
-          if (match) shown++;
-        });
-        fc.textContent = q ? (shown + " z " + rows.length + " odpovídá") : "";
+    const lowOnly = document.getElementById("inventura-low-only");
+    function applyFilter() {
+      const q = filter ? filter.value.trim().toLowerCase() : "";
+      const onlyLow = !!(lowOnly && lowOnly.checked);
+      let shown = 0;
+      rows.forEach(function (row) {
+        const name = row.querySelector("td strong").textContent.toLowerCase();
+        const nameMatch = !q || name.includes(q);
+        const match = nameMatch && (!onlyLow || row.dataset.low === "1");
+        row.style.display = match ? "" : "none";
+        if (match) shown++;
       });
+      fc.textContent = (q || onlyLow) ? (shown + " z " + rows.length + " odpovídá") : "";
     }
+    if (filter) filter.addEventListener("input", applyFilter);
+    if (lowOnly) lowOnly.addEventListener("change", applyFilter);
 
     syncReasonRequired();
     updateTally();

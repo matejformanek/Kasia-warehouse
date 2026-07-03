@@ -5,6 +5,15 @@
 
 ## Done
 
+- **2026-07-03** — **Inventura "Dochází" filter toggle (single-branch).** Added
+  a "Dochází" checkbox next to the name filter on per-branch inventura
+  (`inventura_edit`) that scopes visible rows to products below their reorder
+  threshold at that branch. Pure client-side filter, ANDed with the name query,
+  reusing `low_stock_rows()` as the single source of truth (`data-low` row
+  attr + `show_low_toggle` context flag). Hidden on the cross-branch "Vše" /
+  "Dochází zboží" views. Documented under the Inventura bullet in
+  `.claude/rules/design-system.md`; two new tests. No decision needed (no schema
+  / tech / locked-hook change).
 - **2026-07-03** — **Sklad UX refresh — Phase 2 (the swap) complete on
   `ft_sklad_ux_refresh`.** Every locked mockup ported into its real Django
   template, one commit per screen, full suite green (**403 pass**) + `manage.py

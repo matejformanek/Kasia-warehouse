@@ -207,7 +207,12 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   **vlastník-only** sidebar + mobile nav item in the Provoz group, under Katalog.
   Its href is conditional in `base.html`: the user's own branch
   (`inventura_edit code=<user.branch.code>`) if they have one, else the
-  all-branch **"Vše"** (`code='vse'`). No new view/chooser.
+  all-branch **"Vše"** (`code='vse'`). No new view/chooser. A **single-branch**
+  inventura carries a **"Dochází"** checkbox next to the name filter that scopes
+  the visible rows to products below their reorder threshold at that branch
+  (`data-low` row attr from `low_stock_rows()`, ANDed with the name query in the
+  screen's own custom filter — not the 0063 `data-filter-*` hook). Hidden on the
+  cross-branch "Vše" / "Dochází zboží" views.
 
 ## Out of scope for web chrome
 

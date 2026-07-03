@@ -1,49 +1,9 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Historie pohybů — Kasia vera{% endblock %}
 
-{% block extra_head %}
-<style>
-  /* Historie — compact table + unified badges/actions (mockup 09). */
-  #history-table { font-size: .9rem; }
-  #history-table th, #history-table td { padding: 0.34rem 0.55rem; }
-  #history-table tbody tr:nth-child(even) td { background: #ebebeb; }
-  #history-table tbody tr:hover td { background: #e2e5e2; }
-
-  .druh { display: inline-block; font-size: .78rem; font-weight: 600; padding: .1rem .45rem; white-space: nowrap; }
-  .druh.prijem { color: var(--ok); background: var(--ok-soft); }
-  .druh.vydej { color: #fff; background: var(--accent-deep); }
-  .druh.inventura { color: var(--warn); background: var(--warn-tint); }
-  .druh.plan { color: var(--warn); background: var(--warn-tint); border: 1px solid var(--warn); border-radius: 999px; }
-
-  .date-cell { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .items-more { color: var(--fg-soft); font-size: .84rem; }
-  .stav-note { color: var(--fg-soft); font-size: .8rem; font-style: italic; margin-top: 1px; }
-  .party { line-height: 1.25; }
-  .party .op { display: block; color: var(--fg-faint); font-size: .78rem; }
-
-  .doklad-cell { white-space: nowrap; }
-  /* Stack the doklad items (dl-link + edited tag) under each other, not inline.
-     On an inner wrapper — NOT the <td> itself, so the cell stays a real table
-     cell and the zebra fills its full height. */
-  .doklad-stack { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; }
-  /* Green číslo link — override base's `tr.row-link td a { color: var(--fg) }`. */
-  #history-table .dl-link { font-family: var(--mono); font-weight: 600; color: var(--accent); text-decoration: none; }
-  #history-table .dl-link:hover { text-decoration: underline; }
-  .tag-edit { display: inline-block; font-size: .75rem; font-weight: 600; color: var(--warn); border: 1px solid var(--warn); background: var(--warn-tint); padding: .08rem .4rem; white-space: nowrap; }
-
-  .plan-actions { display: inline-flex; gap: .4rem; align-items: stretch; }
-  .btn-mini { font: inherit; font-size: .8rem; font-weight: 600; line-height: 1.35; padding: .22rem .6rem; border-radius: 0; cursor: pointer; text-decoration: none; border: 1px solid transparent; display: inline-flex; align-items: center; }
-  .btn-mini.accept { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .btn-mini.accept:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
-  .btn-mini.cancel { background: #fff; color: var(--error); border-color: #e6c4c2; }
-  .btn-mini.cancel:hover { background: var(--error-tint); border-color: var(--error); }
-
-  .pager { display: flex; align-items: center; gap: 1rem; margin: .5rem 0 1rem; }
-  .pager .pager-info { color: var(--fg-soft); font-size: .9rem; font-variant-numeric: tabular-nums; }
-  .pager .pager-disabled { opacity: .45; pointer-events: none; }
-</style>
-{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/movement_history.css' %}">{% endblock %}
 
 {% block content %}
 <h1>Historie pohybů

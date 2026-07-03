@@ -1,23 +1,8 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Uživatelé — Kasia vera{% endblock %}
 
-{% block extra_head %}
-<style>
-  /* Uživatelé (user_admin_index) — header card + user table. */
-  .head-card { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
-  .head-count strong { color: var(--fg); font-weight: 700; }
-  .foot-note { color: var(--fg-soft); font-size: 0.9rem; margin: 0.4rem 0 0; }
-  .email-cell { font-family: var(--mono); font-size: .88rem; }
-  .last-login { font-family: var(--mono); font-size: .85rem; font-variant-numeric: tabular-nums; color: var(--fg-soft); }
-  .self-tag { color: var(--fg-faint); font-weight: 500; font-size: .85rem; }
-  .stav-ok { color: var(--ok); font-weight: 600; }
-  .stav-off { color: var(--fg-faint); }
-  tr.user-off td { opacity: 0.55; }
-  td.row-actions { white-space: nowrap; }
-  td.row-actions form { display: inline; margin: 0; }
-  td.row-actions a.secondary, td.row-actions button.secondary { padding: 0.35rem 0.7rem; font-size: 0.85rem; }
-</style>
-{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/user_admin_index.css' %}">{% endblock %}
 
 {% block content %}
 <h1>Uživatelé</h1>

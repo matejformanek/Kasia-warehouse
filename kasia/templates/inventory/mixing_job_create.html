@@ -1,19 +1,9 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Nová výrobní dávka — Kasia vera{% endblock %}
 
-{% block extra_head %}
-<style>
-  /* Míchání — nová výrobní dávka. Two-column form grid + mono numeric inputs. */
-  .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.4rem; }
-  .form-grid .full { grid-column: 1 / -1; }
-  .field .num-in { max-width: 12rem; font-family: var(--mono); font-variant-numeric: tabular-nums; }
-  .field-help { font-size: .85rem; color: var(--fg-soft); margin: .3rem 0 0; }
-  .card-sub { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1rem; }
-  .btn-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
-  @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
-</style>
-{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/mixing_job_create.css' %}">{% endblock %}
 
 {% block content %}
 <h1>Nová výrobní dávka <span class="muted" style="font-weight:500;font-size:1rem;">· míchání</span></h1>

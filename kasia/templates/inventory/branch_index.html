@@ -1,18 +1,9 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Pobočky — Kasia vera{% endblock %}
 
-{% block extra_head %}
-<style>
-  .filterbar { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; width: 100%; }
-  .filterbar .field { margin-bottom: 0; }
-  .stav-ok { color: var(--ok); font-weight: 600; }
-  .stav-arch { color: var(--fg-faint); }
-  td.row-actions { white-space: nowrap; }
-  td.row-actions a.secondary, td.row-actions button.secondary { padding: .35rem .7rem; font-size: .85rem; }
-  .foot-note { color: var(--fg-soft); font-size: .9rem; margin: 1rem 0 0; }
-</style>
-{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/branch_index.css' %}">{% endblock %}
 
 {% block content %}
 <h1>Pobočky</h1>

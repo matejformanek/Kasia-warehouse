@@ -283,3 +283,59 @@
     .kpi { border-left: 0; border-top: 1px solid var(--line-soft); }
     .kpi:first-child { border-top: 0; }
   }
+
+/* ===== Shared partial: _confirm_dialog.html (dialog) ===== */
+  .kasia-dialog {
+    border: 0;
+    border-radius: 8px;
+    padding: 0;
+    max-width: 460px;
+    width: calc(100% - 2rem);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    background: #fff;
+    color: var(--fg);
+  }
+  .kasia-dialog::backdrop {
+    background: rgba(20, 30, 22, 0.45);
+    backdrop-filter: blur(2px);
+  }
+  .kasia-dialog-title {
+    margin: 0;
+    padding: 1rem 1.25rem 0.5rem;
+    font-size: 1.1rem;
+    color: var(--accent-deep);
+  }
+  .kasia-dialog-body {
+    margin: 0;
+    padding: 0.25rem 1.25rem 1rem;
+    color: var(--fg);
+    line-height: 1.45;
+  }
+  .kasia-dialog-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    padding: 0.75rem 1.25rem 1rem;
+    border-top: 1px solid var(--accent-tint);
+    background: #fafaf8;
+  }
+  .kasia-dialog-actions .primary.danger {
+    background: var(--error);
+    border-color: var(--error);
+  }
+
+/* ===== Shared partial: _movement_form_lines.html (příjem/výdej form) ===== */
+  .step-head { display: flex; align-items: center; gap: .85rem; margin: 0 0 1.3rem; }
+  .step-head .step-no { flex: 0 0 auto; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; font-family: var(--mono); font-weight: 600; font-size: 1rem; }
+  .step-head h2 { margin: 0; font-size: 1.2rem; }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem 1.6rem; }
+  .field-grid .field { margin-bottom: 0; }
+  .line-summary { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 1rem; color: var(--fg); padding: .8rem 1rem; background: var(--accent-tint); border-left: 3px solid var(--accent); margin: 1.2rem 0 0; }
+  .line-summary.final { font-size: 1.2rem; font-weight: 600; padding: 1rem 1.2rem; margin: 0 0 1.2rem; }
+  .submit-bar { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; margin: 0; }
+  td input.line-qty { max-width: 120px; text-align: right; font-family: var(--mono); }
+  td select.line-prod { max-width: 100%; }
+  td input.line-sarze { max-width: 130px; font-family: var(--mono); }
+  td input.line-exp { max-width: 160px; font-family: var(--mono); }
+  td input.line-note { max-width: 220px; }
+  @media (max-width: 640px) { .field-grid { grid-template-columns: 1fr; } }

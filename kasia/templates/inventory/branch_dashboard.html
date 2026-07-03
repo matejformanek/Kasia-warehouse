@@ -1,14 +1,9 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{{ branch.code }} — {{ branch.name }} — Kasia vera{% endblock %}
 
-{% block extra_head %}
-<style>
-  .asof { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1.2rem; }
-  #stock-table tbody tr:nth-child(even) td { background: #ebebeb; }
-  #stock-table tbody tr:hover td { background: #e2e5e2; }
-</style>
-{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/branch_dashboard.css' %}">{% endblock %}
 
 {% block content %}
 <h1>{{ branch.code }} — {{ branch.name }}</h1>

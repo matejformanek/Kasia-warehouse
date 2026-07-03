@@ -1,0 +1,8 @@
+/* Page CSS: dodaci_list_index (decision 0069). */
+  /* Dodací listy — seznam. Filter card + table; version chip v2+ = orange (edited). */
+  .scope-note { color: var(--fg-soft); font-size: 0.9rem; margin: 0 0 0.6rem; }
+  .cislo { font-family: var(--mono); font-weight: 600; }
+
+  /* Version chip — v1 neutral, v2+ orange (edited). */
+  .ver { display: inline-block; font-family: var(--mono); font-size: .78rem; font-weight: 600; padding: .1rem .45rem; border: 1px solid var(--line); background: #fff; color: var(--fg-soft); }
+  .ver.edited { background: var(--warn-tint); border-color: var(--warn); color: var(--warn); }

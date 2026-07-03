@@ -1,0 +1,9 @@
+/* Page CSS: customer_index (decision 0069). */
+  .filterbar { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; width: 100%; }
+  .filterbar .field { margin-bottom: 0; }
+  .ico { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .stav-ok { color: var(--ok); font-weight: 600; }
+  .stav-arch { color: var(--fg-faint); }
+  td.row-actions { white-space: nowrap; }
+  td.row-actions a.secondary, td.row-actions button.secondary { padding: .35rem .7rem; font-size: .85rem; }
+  .foot-note { color: var(--fg-soft); font-size: .9rem; margin: 1rem 0 0; }

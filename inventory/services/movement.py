@@ -78,6 +78,23 @@ def _line_summary(line: MovementLine) -> str:
     return " · ".join(parts)
 
 
+def _send_dodaci_on_commit(dodaci_list: DodaciList, trigger_reason: str) -> None:
+    """Render the dodák PDF now and defer the e-mail to transaction commit.
+
+    Shared by ``apply_movement`` (``trigger_reason="vystavení"``) and
+    ``edit_movement`` (``f"oprava: {reason}"``). Deferring via ``on_commit``
+    means a rollback of the enclosing atomic block skips the e-mail entirely.
+    """
+    pdf_bytes = render_dodaci_list_pdf(dodaci_list)
+    transaction.on_commit(
+        lambda: send_dodaci_list_email(
+            dodaci_list=dodaci_list,
+            trigger_reason=trigger_reason,
+            pdf_bytes=pdf_bytes,
+        )
+    )
+
+
 
 def apply_movement(
     *,
@@ -140,14 +157,7 @@ def apply_movement(
 
         if movement.kind == Movement.Kind.VYDEJ and not is_internal_vydej:
             dodaci_list = _create_dodaci_list_for_movement(movement)
-            pdf_bytes = render_dodaci_list_pdf(dodaci_list)
-            transaction.on_commit(
-                lambda dl=dodaci_list, pdf=pdf_bytes: send_dodaci_list_email(
-                    dodaci_list=dl,
-                    trigger_reason="vystavení",
-                    pdf_bytes=pdf,
-                )
-            )
+            _send_dodaci_on_commit(dodaci_list, "vystavení")
 
         return movement
 
@@ -322,14 +332,7 @@ def edit_movement(
             _assert_recipients_set()
             dodaci_list.current_version += 1
             dodaci_list.save(update_fields=["current_version"])
-            pdf_bytes = render_dodaci_list_pdf(dodaci_list)
-            transaction.on_commit(
-                lambda dl=dodaci_list, pdf=pdf_bytes, r=reason: send_dodaci_list_email(
-                    dodaci_list=dl,
-                    trigger_reason=f"oprava: {r}",
-                    pdf_bytes=pdf,
-                )
-            )
+            _send_dodaci_on_commit(dodaci_list, f"oprava: {reason}")
 
         return movement
 

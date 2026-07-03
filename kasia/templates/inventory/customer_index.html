@@ -2,11 +2,26 @@
 
 {% block title %}Odběratelé — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  .filterbar { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; width: 100%; }
+  .filterbar .field { margin-bottom: 0; }
+  #customer-table tbody tr:nth-child(even) td { background: #ebebeb; }
+  #customer-table tbody tr:hover td { background: #e2e5e2; }
+  .ico { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .stav-ok { color: var(--ok); font-weight: 600; }
+  .stav-arch { color: var(--fg-faint); }
+  td.row-actions { white-space: nowrap; }
+  td.row-actions a.secondary, td.row-actions button.secondary { padding: .35rem .7rem; font-size: .85rem; }
+  .foot-note { color: var(--fg-soft); font-size: .9rem; margin: 1rem 0 0; }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Odběratelé</h1>
 
-<form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
-  <div class="field" style="margin-bottom:0;">
+<form method="get" class="card filterbar">
+  <div class="field">
     <label for="id_filter_status">Stav</label>
     <select name="status" id="id_filter_status" onchange="this.form.submit()">
       <option value="active" {% if filter_status == "active" %}selected{% endif %}>aktivní</option>
@@ -14,7 +29,7 @@
       <option value="all" {% if filter_status == "all" %}selected{% endif %}>vše</option>
     </select>
   </div>
-  <div>
+  <div style="margin-left:auto;">
     <a class="primary" href="{% url 'inventory:customer_create' %}">+ Nový odběratel</a>
   </div>
 </form>
@@ -51,7 +66,7 @@
               <small style="color:var(--accent);">· výchozí</small>
             {% endif %}
           </td>
-          <td>
+          <td class="ico">
             {{ cust.ico|default:"—" }}
             {% if cust.dic %}<br><small style="color:var(--fg-soft);">{{ cust.dic }}</small>{% endif %}
           </td>
@@ -62,12 +77,12 @@
           <td>{{ cust.address|default:"—"|linebreaksbr }}</td>
           <td>
             {% if cust.is_active %}
-              <span style="color:var(--ok);">aktivní</span>
+              <span class="stav-ok">aktivní</span>
             {% else %}
-              <span style="color:var(--fg-soft);">archivovaný</span>
+              <span class="stav-arch">archivovaný</span>
             {% endif %}
           </td>
-          <td style="white-space:nowrap;">
+          <td class="row-actions">
             <a class="secondary" href="{% url 'inventory:customer_edit' pk=cust.pk %}">Upravit</a>
             {% if cust.is_active %}
               {% if not cust.is_default_recipient %}
@@ -95,7 +110,7 @@
   <p style="color:var(--fg-soft);">Žádní odběratelé v tomto filtru.</p>
 {% endif %}
 
-<p style="color:var(--fg-soft); font-size:0.9rem; margin-top:1rem;">
+<p class="foot-note">
   Výchozí odběratel (Říčany) má speciální status — nelze ho archivovat z této obrazovky.
 </p>
 {% endblock %}

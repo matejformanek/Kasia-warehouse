@@ -1,0 +1,22 @@
+/* Public (web) design tokens — single source of truth (decision 0069). */
+  /* ===== Public design system — "mono × centered, green sections" (decision 0058) ===== */
+  :root {
+    --ink:    #14160f;
+    --ink-2:  #4a4d44;
+    --ink-3:  #74776d;
+    --paper:  #ffffff;
+    --green:  #235c33;
+    --green-d:#1a4527;
+    --brandbar:#006634;          /* matches the logo background green */
+    --line:   #d9dad3;
+    --line-2: #e4e6df;
+    --line-3: #ececea;
+    --tint:   #f6fbf8;
+    --tint-2: #eef7f1;
+    --lgreen: #0a3b20;          /* deep forest-green section bands (white text) */
+    --on-green: #cdeed7;        /* light mint accent on the green ground */
+    --radius: 14px;
+    --pill:   999px;
+    --maxw:   1080px;
+    --maxw-narrow: 760px;
+  }

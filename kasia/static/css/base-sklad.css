@@ -1,4 +1,6 @@
-/* Sklad shell + shared classes (decision 0069). Tokens live in tokens-sklad.css. */
+/* Sklad shell + shared classes (decision 0069). Tokens live in tokens-sklad.css.
+   Component groups (tables, forms, kpis, filters, chips, dialogs) were moved to
+   components/*.css and are <link>ed after this file per 0070. */
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   html, body {
@@ -90,52 +92,6 @@
   }
   .card h2 { font-size: 1.05rem; margin-top: 0; }
 
-  /* ============ KPI STRIP ============ */
-  .kpis {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
-    background: var(--bg-card); border: 1px solid var(--line); margin-bottom: 1.2rem;
-  }
-  .kpi { padding: 16px 18px; border-left: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 7px; }
-  .kpi:first-child { border-left: 0; }
-  .kpi.accent { border-top: 2px solid var(--accent); }
-  .kpi .lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: var(--fg-faint); }
-  .kpi .k-val {
-    font-family: var(--mono); font-variant-numeric: tabular-nums;
-    font-size: 31px; font-weight: 600; line-height: 1; letter-spacing: -.02em;
-    color: var(--fg); display: flex; align-items: baseline; gap: 5px;
-  }
-  .kpi.accent .k-val { color: var(--accent); }
-  .kpi .k-unit { font-size: 13px; font-weight: 500; color: var(--fg-faint); letter-spacing: 0; }
-  .kpi .k-sub { font-size: 11.5px; color: var(--fg-soft); }
-
-  /* ============ FORM FIELDS ============ */
-  /* Sharp/radius-0 per 0054, but themed: faint fill, hover, accent focus ring,
-     and a custom caret on selects so the edit forms don't read as raw inputs. */
-  form .field { margin-bottom: 0.85rem; }
-  form label { display: block; font-weight: 600; margin-bottom: 0.3rem; color: var(--fg); }
-  form input[type=text], form input[type=email], form input[type=password],
-  form input[type=date], form input[type=number], form input[type=search],
-  form select, form textarea {
-    font: inherit; padding: 0.5rem 0.6rem; border: 1px solid var(--line);
-    border-radius: 0; width: 100%; max-width: 320px; background: #fcfdfc; color: var(--fg);
-    transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
-  }
-  form input:hover, form select:hover, form textarea:hover { border-color: var(--fg-faint); }
-  form input:focus, form select:focus, form textarea:focus {
-    outline: none; border-color: var(--accent); background-color: #fff;
-    box-shadow: inset 0 0 0 1px var(--accent);
-  }
-  form select {
-    appearance: none; -webkit-appearance: none; -moz-appearance: none; padding-right: 1.9rem;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23565b66' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 0.6rem center;
-  }
-  form select:hover, form select:focus {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%231f6b3a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  }
-  form textarea { max-width: 100%; line-height: 1.5; }
-  form .errorlist { list-style: none; color: var(--error); padding: 0; margin: 0.25rem 0 0; font-size: 0.9rem; }
-
   /* ============ BUTTONS ============ */
   .primary, button.primary, a.primary {
     background: var(--accent); color: #fff; border: 1px solid var(--accent);
@@ -152,37 +108,7 @@
   }
   button.secondary:hover, a.secondary:hover { border-color: var(--fg-faint); }
 
-  /* ============ TABLES ============ */
-  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; }
-  table.lines th, table.lines td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
-  table.lines th {
-    font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em;
-    color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600;
-  }
-  table.lines td input, table.lines td select { max-width: 100%; }
-  /* Neutral grey zebra + hover-darken (design 0054 / mockups), applied to
-     every .lines table. Attention rows (over-stock, inventura .changed) carry
-     higher-specificity backgrounds below so they always win over the zebra. */
-  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
-  table.lines tbody tr:hover td { background: #e2e5e2; }
-
-  /* ============ STOCK / MOVEMENT WIDGETS ============ */
-  /* Výdej renders the live stock message in the (unused) Šarže column cell.
-     A stable min-width keeps it readable and avoids layout shift when the
-     box appears/disappears. */
-  .stock-warn-cell { min-width: 16rem; }
-  .stock-warn { font-size: 0.9rem; color: var(--warn); margin-top: 0.2rem; }
-  /* Faint placeholder shown in the Sklad column before a product is picked. */
-  .stock-warn.stock-hint { color: var(--fg-faint); font-weight: normal; }
-  .stock-warn.over {
-    color: var(--error); font-weight: bold;
-    background: #fbe8e8; border-left: 3px solid var(--error);
-    padding: 0.3rem 0.45rem; margin-top: 0.35rem;
-  }
-  /* Whole-row highlight while a výdej line exceeds branch stock. Selector is
-     specific enough to beat the table.lines zebra above on even rows. */
-  table.lines tbody tr.line-row.over-stock td { background: #fbe8e8; }
-  table.lines tbody tr.line-row.over-stock:hover td { background: #f7dcdc; }
+  /* ============ STORE MESSAGING BANNERS ============ */
   .recipients {
     background: var(--accent-tint); border-left: 3px solid var(--accent);
     padding: 0.5rem 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;
@@ -202,36 +128,6 @@
     padding: 0.5rem 0.75rem; border-radius: 0; margin-bottom: 0.75rem;
   }
 
-  /* ============ ROW-DELETE BUTTON (formset Smazat) ============ */
-  /* Matches the input box-model so it lines up inside a table.lines td. */
-  .row-delete-btn {
-    background: var(--error-tint); color: var(--error); border: 1px solid #e6c4c2;
-    border-radius: 0; padding: 0.4rem 0.6rem; line-height: 1.4; cursor: pointer;
-    font: inherit; vertical-align: middle; display: inline-block; white-space: nowrap;
-  }
-  .row-delete-btn:hover { background: #f6dad8; }
-  .line-row.marked-deleted { opacity: 0.45; text-decoration: line-through; }
-  .line-row.marked-deleted .row-delete-btn { background: var(--bg-card); color: var(--fg); text-decoration: none; }
-  .line-row.marked-deleted .row-delete-btn::before { content: "↺ "; }
-
-  /* ============ REQUIRED-FIELD MARKERS ============ */
-  .field-required::after { content: " *"; color: var(--error); font-weight: bold; }
-  .required-legend { font-size: 0.85rem; color: var(--fg-soft); margin-bottom: 0.5rem; }
-  .required-legend::before { content: "* "; color: var(--error); font-weight: bold; }
-
-  /* ============ ROW LINK ============ */
-  tr.row-link { cursor: pointer; }
-  tr.row-link:hover { background: var(--line-soft); }
-  tr.row-link td a { color: var(--fg); }
-
-  /* ============ CHIPS ============ */
-  .tab-chip {
-    padding: 0.3rem 0.8rem; border-radius: 0; font-size: 0.85rem; line-height: 1.3;
-    white-space: nowrap; display: inline-block; border: 1px solid var(--line); background: #fff; color: var(--fg-soft);
-  }
-  .tab-chip.active { color: #fff; background: var(--accent); border-color: var(--accent); }
-  a.tab-chip { text-decoration: none; }
-
   /* ============ DETAILS ============ */
   details { background: var(--bg-card); border: 1px solid var(--line); border-radius: 0; padding: 1rem; margin-bottom: 1rem; }
   details summary { cursor: pointer; font-weight: 500; color: var(--accent); }
@@ -250,6 +146,8 @@
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   /* ============ RESPONSIVE ============ */
+  /* KPI-column responsive overrides moved to components/kpis.css (0070) so they
+     load after the base .kpi rules and still win at their breakpoints. */
   @media (max-width: 980px) { .grid-2 { grid-template-columns: 1fr; } }
   @media (max-width: 720px) {
     .app { grid-template-columns: 1fr; }
@@ -276,66 +174,4 @@
     .mob-nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
     .content { padding: 20px 16px 48px; max-width: 100%; }
     .app.no-sidebar .content { padding-top: 36px; }
-    .kpis { grid-template-columns: 1fr 1fr; }
   }
-  @media (max-width: 480px) {
-    .kpis { grid-template-columns: 1fr; }
-    .kpi { border-left: 0; border-top: 1px solid var(--line-soft); }
-    .kpi:first-child { border-top: 0; }
-  }
-
-/* ===== Shared partial: _confirm_dialog.html (dialog) ===== */
-  .kasia-dialog {
-    border: 0;
-    border-radius: 8px;
-    padding: 0;
-    max-width: 460px;
-    width: calc(100% - 2rem);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-    background: #fff;
-    color: var(--fg);
-  }
-  .kasia-dialog::backdrop {
-    background: rgba(20, 30, 22, 0.45);
-    backdrop-filter: blur(2px);
-  }
-  .kasia-dialog-title {
-    margin: 0;
-    padding: 1rem 1.25rem 0.5rem;
-    font-size: 1.1rem;
-    color: var(--accent-deep);
-  }
-  .kasia-dialog-body {
-    margin: 0;
-    padding: 0.25rem 1.25rem 1rem;
-    color: var(--fg);
-    line-height: 1.45;
-  }
-  .kasia-dialog-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-    padding: 0.75rem 1.25rem 1rem;
-    border-top: 1px solid var(--accent-tint);
-    background: #fafaf8;
-  }
-  .kasia-dialog-actions .primary.danger {
-    background: var(--error);
-    border-color: var(--error);
-  }
-
-/* ===== Shared partial: _movement_form_lines.html (příjem/výdej form) ===== */
-  .step-head { display: flex; align-items: center; gap: .85rem; margin: 0 0 1.3rem; }
-  .step-head .step-no { flex: 0 0 auto; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; font-family: var(--mono); font-weight: 600; font-size: 1rem; }
-  .step-head h2 { margin: 0; font-size: 1.2rem; }
-  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem 1.6rem; }
-  .field-grid .field { margin-bottom: 0; }
-  .line-summary { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 1rem; color: var(--fg); padding: .8rem 1rem; background: var(--accent-tint); border-left: 3px solid var(--accent); margin: 1.2rem 0 0; }
-  .line-summary.final { font-size: 1.2rem; font-weight: 600; padding: 1rem 1.2rem; margin: 0 0 1.2rem; }
-  .submit-bar { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; margin: 0; }
-  td input.line-qty { max-width: 120px; text-align: right; font-family: var(--mono); }
-  td select.line-prod { max-width: 100%; }
-  td input.line-sarze { max-width: 130px; font-family: var(--mono); }
-  td input.line-exp { max-width: 160px; font-family: var(--mono); }
-  td input.line-note { max-width: 220px; }
-  @media (max-width: 640px) { .field-grid { grid-template-columns: 1fr; } }

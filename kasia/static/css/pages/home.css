@@ -1,12 +1,7 @@
 /* Page CSS: home (decision 0069). */
   /* Přehled — per-branch command center (mockup 02a). */
+  /* .kpi.err/.warn/.ordered hoisted to components/kpis.css (0070). */
   .asof { color: var(--fg-soft); font-size: .9rem; margin: 0; }
-  .kpi.err { border-top: 2px solid var(--error); }
-  .kpi.err .k-val { color: var(--error); }
-  .kpi.warn { border-top: 2px solid var(--warn); }
-  .kpi.warn .k-val { color: var(--warn); }
-  .kpi.ordered { border-top: 2px solid var(--accent); }
-  .kpi.ordered .k-val { color: var(--accent); }
 
   .branch-card { background: var(--bg-card); border: 1px solid var(--line); padding: 1.1rem 1.25rem; margin-bottom: 0; }
   .branch-top { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; margin-bottom: .7rem; padding-bottom: .7rem; border-bottom: 1px solid var(--line-soft); }

@@ -1,12 +1,7 @@
 /* Page CSS: catalogue_index (decision 0069). */
   /* Katalog — grouped by stock state (per 0064). Sharp/technical per 0054. */
-  .kpi.warn { border-top: 2px solid var(--warn); }
-  .kpi.warn .k-val { color: var(--warn); }
-  .kpi.err { border-top: 2px solid var(--error); }
-  .kpi.err .k-val { color: var(--error); }
-
-  .filterbar { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; width: 100%; }
-  .filterbar .field { margin-bottom: 0; }
+  /* .kpi.warn/.err hoisted to components/kpis.css; .filterbar + .filterbar
+     .field hoisted to components/filters.css (0070). .field.grow stays here. */
   .filterbar .field.grow { flex: 1 1 220px; }
   .scope-note { color: var(--fg-soft); font-size: 0.9rem; margin: 0 0 0.6rem; }
 

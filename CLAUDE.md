@@ -5,9 +5,10 @@ a Czech B2B spice distributor. The stack is locked, the operator-facing
 MVP is built (15 screens + Pass 5 operator CRUD + Pass 6 reorder
 threshold / reservations / low-stock summary + Pass 7 Podpora +
 Pass 8 XLS recipe importer + in-app password change), and the system
-runs locally via `make up` against the same Docker image we'll ship
-to the Hetzner box. Hetzner provisioning + the 14-day shadow run come
-last.
+runs locally via `make up` against the same Docker image shipped
+to the Hetzner box, which is **provisioned and live** — a push to
+`main` deploys to production via `deploy.yml`. The 14-day shadow run
+comes last.
 
 The site is split into two surfaces on one domain (per
 [`0050`](./context/decisions/0050-public-site-and-sklad-split.md)): a
@@ -72,11 +73,12 @@ The site is split into two surfaces on one domain (per
   the full docker stack (web + Postgres 18 + Caddy). Same image
   we'll ship to Hetzner; differences live in `.env`. Tests run on
   the host via `make test` (`uv run pytest`).
-- Hetzner box is **not yet provisioned**. The `deploy.yml` workflow
-  on `origin/main` keeps failing on the SSH step ("missing server
-  host") — that's the expected pre-Hetzner state, not a regression.
-  Provisioning + the 14-day shadow run come after Matej finishes
-  local walkthrough.
+- Hetzner box is **provisioned and live** (91.98.47.1, CPX22, fsn1).
+  The `deploy.yml` workflow on `origin/main` **works**: a push to `main`
+  builds the image, pushes to GHCR, SSHes to the box, migrates, and
+  brings the stack up — i.e. **merging to `main` ships to production.**
+  (The old "not yet provisioned / missing server host" note here was
+  stale.)
 
 ## What this repo is not (yet)
 

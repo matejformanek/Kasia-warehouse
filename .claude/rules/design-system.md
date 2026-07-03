@@ -30,8 +30,13 @@ or restructure:
 - **Shared sklad classes:** `.card`, `.primary`/`.secondary`, `table.lines`,
   `.field`, `.messages`/`.msg.*`, `.tab-chip`, `details`, `.row-link`,
   `.recipients`, `.stock-warn`, `.non-form-errors`, `.warnings-banner`,
-  `.row-delete-btn`, `.kpis`/`.kpi`. Keep the `:root` vars child templates use:
-  `--fg-soft`, `--warn`, `--ok`, `--ok-soft`, `--error`, `--accent`.
+  `.row-delete-btn`, `.kpis`/`.kpi`, `.js-confirm`, and **`.sub-head`** (the
+  grouped-section header: dot + label + count, coloured red/orange/neutral —
+  used by the grouped Katalog and the per-branch Přehled). Keep the `:root`
+  vars child templates use: `--fg-soft`, `--warn`, `--ok`, `--ok-soft`,
+  `--error`, `--accent`. Per-screen CSS goes in each sklad template's
+  **`{% block extra_head %}`** (the shell exposes it in `base.html`'s `<head>`);
+  do not re-declare the `:root` tokens or shared classes there.
 - **Shared public classes (0058):** `.wrap`/`.narrow`, `.btn`/`.btn-primary`/
   `.btn-ghost` (+`.btn-outline` alias), `.site-header`/`.nav`/`.brand-logo`/
   `.nav-toggle`, `.hero`/`.kicker`/`.hero-cta`, `.photo-band`/`.photo-frame`,
@@ -104,10 +109,21 @@ or restructure:
   Django's **default auto-escaping** — do **not** apply `escapejs` (it would
   emit `\"` that `dataset` reads literally). Renaming `data-filter-rows` /
   `-count` / `-empty` / `-text`, or the `foldText` / `levenshtein` /
-  `matchesQuery` helpers, is a new decision. Used on `#catalogue-table` /
-  `#history-table` / `#stock-table` / `#supplier-table` / `#customer-table` /
-  `#branch-table` (+ matching `-count` / `-empty`). Do **not** reuse the
-  reserved ids `#lines-table` / `#lines-body` (movement-form hook above).
+  `matchesQuery` helpers, is a new decision. Used on `#history-table` /
+  `#stock-table` / `#supplier-table` / `#customer-table` / `#branch-table`
+  (+ matching `-count` / `-empty`). Do **not** reuse the reserved ids
+  `#lines-table` / `#lines-body` (movement-form hook above).
+- **Grouped multi-tbody filter (extends 0063, per
+  [`0064`](../../context/decisions/0064-grouped-catalogue-client-filter.md)):**
+  `apply()` uses `querySelectorAll(data-filter-rows)`, so `data-filter-rows` may
+  match **several** tbodies (the grouped Katalog wires `data-filter-rows=".cat-body"`
+  onto its three group `<tbody class="cat-body">`). A tbody may carry
+  **`data-filter-group="<section selector>"`**; when that group has rows but none
+  match, its whole section (the `.sub-head` header + table, wrapped in one
+  container, e.g. `#cat-group-empty`) is hidden. A tbody without
+  `data-filter-group` is a plain single list and behaves exactly as under 0063
+  — so every existing single-tbody filter is untouched. Renaming
+  `data-filter-group` or the multi-selector behaviour is a new decision.
 
 ## Movement.status (planned príjem) — per 0059
 
@@ -175,6 +191,22 @@ Reference the tokens (`var(--accent)`, `var(--green)`, …), not raw hex, in new
 templates. The canonical palette/radius/font values live in the two `:root`
 blocks and in `0054` — point there rather than copying hex into this rule.
 
+## Katalog is grouped; Inventura is a nav landing
+
+- **Katalog** (`catalogue_index`, per
+  [`0064`](../../context/decisions/0064-grouped-catalogue-client-filter.md)) is
+  **grouped by stock state** into three separate `<table>`s — Prázdné (red) /
+  Dochází (orange) / V pořádku (neutral) — under `.sub-head` headers, with a KPI
+  strip. The view groups its rows server-side and renders **only the non-empty
+  groups**. Rows are **whole-row `row-link` with no per-row buttons** (editing is
+  on the product detail page). It uses the grouped multi-tbody filter above.
+- **Inventura** (per
+  [`0065`](../../context/decisions/0065-inventura-sidebar-nav.md)) has a
+  **vlastník-only** sidebar + mobile nav item in the Provoz group, under Katalog.
+  Its href is conditional in `base.html`: the user's own branch
+  (`inventura_edit code=<user.branch.code>`) if they have one, else the
+  all-branch **"Vše"** (`code='vse'`). No new view/chooser.
+
 ## Out of scope for web chrome
 
 `inventory/dodaci_list.html` is a **WeasyPrint PDF** and e-mail templates are
@@ -186,5 +218,8 @@ blocks and in `0054` — point there rather than copying hex into this rule.
 - [`0059-merge-objednavka-into-prijem.md`](../../context/decisions/0059-merge-objednavka-into-prijem.md) — Movement.status + planned príjem UI
 - [`0060-michani-immediate-only.md`](../../context/decisions/0060-michani-immediate-only.md) — míchání immediate action + inventura `?products=`/`next` contract
 - [`0061-display-1dp-comma.md`](../../context/decisions/0061-display-1dp-comma.md) — 1 dp comma display + banned native dialogs
+- [`0063-diacritic-insensitive-client-filtering.md`](../../context/decisions/0063-diacritic-insensitive-client-filtering.md) — the `data-filter-*` live filter hook
+- [`0064-grouped-catalogue-client-filter.md`](../../context/decisions/0064-grouped-catalogue-client-filter.md) — grouped Katalog + multi-tbody filter extension
+- [`0065-inventura-sidebar-nav.md`](../../context/decisions/0065-inventura-sidebar-nav.md) — Inventura nav landing
 - [`context/public-site.md`](../../context/public-site.md) — public visual assets
 - [`no-premature-tech-choices.md`](./no-premature-tech-choices.md) — why design direction is gated

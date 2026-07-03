@@ -22,8 +22,11 @@
   .party { line-height: 1.25; }
   .party .op { display: block; color: var(--fg-faint); font-size: .78rem; }
 
-  /* Stack the doklad items (dl-link + edited tag) under each other, not inline. */
-  .doklad-cell { white-space: nowrap; display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; }
+  .doklad-cell { white-space: nowrap; }
+  /* Stack the doklad items (dl-link + edited tag) under each other, not inline.
+     On an inner wrapper — NOT the <td> itself, so the cell stays a real table
+     cell and the zebra fills its full height. */
+  .doklad-stack { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; }
   /* Green číslo link — override base's `tr.row-link td a { color: var(--fg) }`. */
   #history-table .dl-link { font-family: var(--mono); font-weight: 600; color: var(--accent); text-decoration: none; }
   #history-table .dl-link:hover { text-decoration: underline; }
@@ -173,12 +176,14 @@
           </td>
           <td class="num">{{ mv.total_kg|floatformat:1 }}</td>
           <td class="doklad-cell">
-            {% with dl=mv.dodaci_list %}
-              {% if dl %}<a class="dl-link" href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">{{ dl.cislo }}</a>{% endif %}
-            {% endwith %}
-            {% if mv.audit_entries.count %}
-              <span class="tag-edit">editováno {{ mv.audit_entries.count }}×</span>
-            {% endif %}
+            <div class="doklad-stack">
+              {% with dl=mv.dodaci_list %}
+                {% if dl %}<a class="dl-link" href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">{{ dl.cislo }}</a>{% endif %}
+              {% endwith %}
+              {% if mv.audit_entries.count %}
+                <span class="tag-edit">editováno {{ mv.audit_entries.count }}×</span>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% endif %}

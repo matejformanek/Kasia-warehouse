@@ -2309,6 +2309,22 @@ purpose + test cases) at repo root.
 Matej's local walkthrough is the next signal; until he
 feeds back, hold position and respond to direct asks.
 
+## In progress
+
+- **2026-07-03** — **Technical restructure (OOP / de-dup / CSS centralization)**
+  on `ft_arch_restructure`. Purely technical, behavior-preserving; decisions
+  [`0068`](./decisions/0068-code-architecture-restructure.md) (packages,
+  CBV/mixins, service classes, counterparty registry, MovementBuilder) +
+  [`0069`](./decisions/0069-css-externalization.md) (inline `<style>` →
+  `kasia/static/css/` layered token system, `<link>`-only). Principles in
+  [`architecture.md`](./architecture.md); inconsistencies surfaced while
+  centralizing are logged in
+  [`refactors/0068-restructure-discrepancies.md`](./refactors/0068-restructure-discrepancies.md)
+  (behavior/pixel changes need explicit approval, not silent fold-in). Baseline
+  suite green at **406 pass**; kept green at each checkpoint. `design-system.md`
+  updated for the new token/CSS locations (class + JS/HTMX hook contract
+  unchanged).
+
 ## Next
 
 1. **Local walkthrough by Matej** against the running docker

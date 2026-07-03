@@ -5,21 +5,33 @@
 - **Sklad** (`kasia/templates/base.html`, `inventory` + `accounts` under
   `/sklad/…`) — **sharp / technical**: radius 0 everywhere, brand green accent,
   left **sidebar** shell, **Inter** (UI) + **IBM Plex Mono** (numerals/codes/
-  kg/dates, tabular-nums), KPI strip on dashboards. Tokens live in the
-  `base.html` `:root` (`--accent` green, `--fg*`, `--line*`, `--ok-soft`, …).
+  kg/dates, tabular-nums), KPI strip on dashboards. Tokens live in
+  `kasia/static/css/tokens-sklad.css` (`--accent` green, `--fg*`, `--line*`,
+  `--ok-soft`, …), `<link>`ed from `base.html` (per [`0069`](../../context/decisions/0069-css-externalization.md)).
 - **Public** (`kasia/templates/web/base.html`, `web` app at `/`) — **mono ×
   centered, green-sections** (decision 0058, supersedes 0054 for the public
   surface): a **green `#006634` sticky nav bar** (white text + the jpg logo),
   **Space Grotesk** (display) + **Inter** (body), white body with **deep
   forest-green `#0a3b20` section bands** (`.proc` / `.closing`), pill buttons,
-  green primary / ink-outline secondary. Tokens live in the `web/base.html`
-  `:root` (`--green`, `--brandbar`, `--lgreen`, `--on-green`, `--ink*`,
-  `--tint*`, …). **Five pages:** Domů · O nás · Sortiment (`/produkty/`) ·
+  green primary / ink-outline secondary. Tokens live in
+  `kasia/static/css/tokens-web.css` (`--green`, `--brandbar`, `--lgreen`,
+  `--on-green`, `--ink*`, `--tint*`, …), `<link>`ed from `web/base.html`.
+  **Five pages:** Domů · O nás · Sortiment (`/produkty/`) ·
   Provozovny · Kontakt. Maps are **Google Maps** embeds (`map_embed`/`map_link`
   from `web/content.py`).
 
 Both carry the jpg Kasia logo (`brand/kasia-logo.jpg`) top-left. Imagery is
 hand-authored green SVG/CSS + marked photo slots — no raster generation.
+
+## CSS lives in static, layered (per [`0069`](../../context/decisions/0069-css-externalization.md))
+
+All CSS is in `kasia/static/css/`, `<link>`ed (never inline `<style>`, never
+`@import`): `tokens-sklad.css` + `tokens-web.css` (the two `:root` sets — kept
+separate because both define `--line` with different values), `base-sklad.css`
+/ `base-web.css` (shell + shared classes per surface), `components/*.css`
+(shared: kpis, tables, dialogs, filters, forms), and `pages/<screen>.css`
+(per-screen). PDF (`dodaci_list.html`, `recipe_pdf.html`) and e-mail templates
+keep their own inline styles — out of this system.
 
 ## Keep stable (renaming these = a new decision)
 
@@ -34,9 +46,12 @@ or restructure:
   grouped-section header: dot + label + count, coloured red/orange/neutral —
   used by the grouped Katalog and the per-branch Přehled). Keep the `:root`
   vars child templates use: `--fg-soft`, `--warn`, `--ok`, `--ok-soft`,
-  `--error`, `--accent`. Per-screen CSS goes in each sklad template's
-  **`{% block extra_head %}`** (the shell exposes it in `base.html`'s `<head>`);
-  do not re-declare the `:root` tokens or shared classes there.
+  `--error`, `--accent`. Per-screen CSS is a linked stylesheet
+  `kasia/static/css/pages/<screen>.css`, `<link>`ed from the template's
+  **`{% block extra_head %}`** (the shell exposes it in `base.html`'s `<head>`).
+  **`<link>` only — never inline `<style>`, never `@import`** (the manifest
+  storage rewrites `url()`/`@import`; per [`0069`](../../context/decisions/0069-css-externalization.md)).
+  Do not re-declare the `:root` tokens or shared classes there.
 - **Shared public classes (0058):** `.wrap`/`.narrow`, `.btn`/`.btn-primary`/
   `.btn-ghost` (+`.btn-outline` alias), `.site-header`/`.nav`/`.brand-logo`/
   `.nav-toggle`, `.hero`/`.kicker`/`.hero-cta`, `.photo-band`/`.photo-frame`,
@@ -47,7 +62,8 @@ or restructure:
   `.site-footer`. Auth/form pages reuse `.login-card`/`.login-panels`/
   `.login-aside`/`.login-meta`/`.card`/`.eyebrow`/`.lead` + `form .field`.
   Page-specific CSS (e.g. kontakt `.k-split`, produkty `.cat-grid`, provozovny
-  location cards) lives in each template's `{% block extra_head %}`.
+  location cards) lives in `kasia/static/css/pages/<screen>.css`, `<link>`ed from
+  each template's `{% block extra_head %}` (`<link>` only, no `@import`).
 - **JS/HTMX hooks (sklad `base.html`):** the row-delete toggle (`.row-delete-btn`
   + `data-target` + `.line-row`/`.marked-deleted`, `<button type="button">`
   inside a `<td>`); whole-row nav (`tr.row-link[data-href]` + the

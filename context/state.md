@@ -2346,8 +2346,15 @@ feeds back, hold position and respond to direct asks.
     OK; render byte-identical (cascade order preserved).
   - **D5 dropped** — no test static-storage override needed (verified: tests
     render `{% static 'css/…' %}` with and without a manifest).
-  - **Status: all phases green (406 tests) across ~16 commits on
-    `ft_arch_restructure`.** Ready for visual spot-check (`make up`) + PR.
+  - **Status: Round 1 done, on PR #26** (all phases green, 406 tests, ~16
+    commits). CI now also gates `collectstatic`. Local Docker stack is up
+    (`make up`). Visual spot-check passed (render byte-identical).
+  - **→ NEXT SESSION / post-compact:** Round 2 is planned in
+    [`refactors/0068-round2-plan.md`](./refactors/0068-round2-plan.md) — a
+    second big tuning pass *on top of PR #26* (finish the CSS `components/`
+    layer, revisit the long functions left cohesive, split files >400 LOC,
+    deeper OOP where state clusters, dedup sweep, docs). **Read that file
+    first**; it carries the full handoff (branch, gates, logins, guardrails).
 
 ## Next
 

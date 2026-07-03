@@ -30,8 +30,12 @@ All CSS is in `kasia/static/css/`, `<link>`ed (never inline `<style>`, never
 separate because both define `--line` with different values), `base-sklad.css`
 / `base-web.css` (shell + shared classes per surface), `components/*.css`
 (shared: kpis, tables, dialogs, filters, forms), and `pages/<screen>.css`
-(per-screen). PDF (`dodaci_list.html`, `recipe_pdf.html`) and e-mail templates
-keep their own inline styles — out of this system.
+(per-screen). Shared partials fold into `base-sklad.css` (`_confirm_dialog`,
+`_movement_form_lines`) or their htmx host page's css (`_mixing_preview` →
+`pages/mixing_job_create.css`). **Kept inline on purpose:** PDF
+(`dodaci_list.html`, `recipe_pdf.html`) + e-mail templates (WeasyPrint / inbox)
+and the `404.html` / `500.html` error pages (self-contained — must not depend on
+the static pipeline during a failure).
 
 ## Keep stable (renaming these = a new decision)
 

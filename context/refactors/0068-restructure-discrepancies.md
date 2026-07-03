@@ -30,6 +30,7 @@ Anything that would is escalated here, not absorbed.
 | # | Location | Discrepancy | Variants | Resolution | Approved? |
 |---|----------|-------------|----------|------------|-----------|
 | 1 | `inventory/tests.py` (6 tests) | White-box tests monkeypatched `services.<helper>`/`services.EmailMessage`; after the services split the call-sites look those names up in submodule namespaces. | patch `services.X` vs patch where used | **Inert** — re-pointed 6 monkeypatch targets to `services.dodaci_list.*` / `services.email.*` (patch where the name is looked up). Assertions unchanged; no app-behavior change. | n/a (inert) |
+| 2 | D5 (test static-storage override) | Plan expected the manifest storage to require a `FileSystemStorage` test override once templates emit `{% static 'css/…' %}`. | add override vs not needed | **Not needed** — verified empirically: 73 template-rendering tests pass with the manifest present AND absent (`base.html` already used `{% static %}`; the test env resolves it without collectstatic). D5 dropped. | n/a (inert) |
 
 ## Follow-ups deferred (not fixed in this restructure)
 

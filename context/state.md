@@ -2332,9 +2332,22 @@ feeds back, hold position and respond to direct asks.
     now exceeds ~832 LOC. Every checkpoint: ruff clean, `manage.py check`
     clean, `makemigrations --check` = no changes, 406 tests pass. One
     inert discrepancy logged (#1: test monkeypatch targets re-pointed).
-  - **Next in-branch:** D2 (dedupe: counterparty registry, MovementBuilder,
-    ArchivableCRUD CBVs, RequireVlastnikMixin), D3 (break up giant fns),
-    D4 (CSS externalization), D5 (test static-storage override).
+  - **D2 done** — counterparty registry (killed 7 getters), single
+    `require_vlastnik` + `RequireVlastnikMixin` (killed 4 variants), shared
+    name-uniqueness validator (killed 3 copies), `build_movement()` for the 7
+    system-movement sites, Supplier/Customer CRUD → reusable `_crud` class-based
+    views (Branch left function-based — right-sizing).
+  - **D3 done** — extracted `catalogue_index` row builder (121→85); other long
+    fns (transaction orchestrators, view-state closures) deliberately left
+    cohesive (logged in `refactors/0068-restructure-discrepancies.md`).
+  - **D4 done** — all inline `<style>` externalized to `kasia/static/css/`
+    (`tokens-{sklad,web}.css` + `base-{sklad,web}.css` + `pages/*.css`),
+    `<link>`-only. Only PDF/e-mail + 404/500 keep inline style. collectstatic
+    OK; render byte-identical (cascade order preserved).
+  - **D5 dropped** — no test static-storage override needed (verified: tests
+    render `{% static 'css/…' %}` with and without a manifest).
+  - **Status: all phases green (406 tests) across ~16 commits on
+    `ft_arch_restructure`.** Ready for visual spot-check (`make up`) + PR.
 
 ## Next
 

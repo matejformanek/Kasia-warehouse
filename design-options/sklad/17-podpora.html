@@ -1,0 +1,338 @@
+<!-- Sklad mockup 17 — Podpora. 1:1 Phase-2 port target for
+     kasia/templates/inventory/support.html. Shell (head/style/sidebar/scripts)
+     reused verbatim from 01b-katalog-grouped.html; form-field styling from 05-vydej.html.
+     Návod (3 details accordions) + report form + Historie hlášení table. -->
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Podpora — Kasia sklad (návrh)</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #1f6b3a; --accent-deep: #16432a; --accent-tint: #eef4ee;
+    --fg: #141719; --fg-soft: #565b66; --fg-faint: #868c97;
+    --bg: #f6f7f5; --bg-card: #ffffff; --line: #d9dcd9; --line-soft: #eef0ee;
+    --error: #a02525; --error-tint: #fbebea;
+    --warn: #c2410c; --warn-tint: #fdeee3;
+    --ok: #1f6b3a; --ok-soft: #e7f1ea;
+    --sidebar-w: 244px;
+    --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { font-family: var(--ui); color: var(--fg); background: var(--bg); margin: 0; font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -.01em; }
+  h1 { font-size: 1.45rem; margin: 0 0 1.1rem; }
+  h2 { font-size: 1.15rem; margin: 2rem 0 .8rem; }
+  h3 { font-size: 1rem; margin: 1.2rem 0 .4rem; }
+
+  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+  .sidebar { position: sticky; top: 0; align-self: start; height: 100vh; background: var(--bg-card); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 14px; }
+  .sidebar .brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 16px; margin-bottom: 6px; border-bottom: 1px solid var(--line-soft); text-decoration: none; }
+  .sidebar .brand img { height: 34px; width: auto; display: block; }
+  .sidebar .brand .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .sidebar .brand .brand-name { font-weight: 700; font-size: 16px; letter-spacing: .06em; color: var(--fg); }
+  .sidebar .brand .brand-sub { font-size: 11px; color: var(--fg-faint); letter-spacing: .14em; text-transform: uppercase; }
+  .nav { display: flex; flex-direction: column; gap: 1px; margin-top: 10px; flex: 1 1 auto; overflow-y: auto; }
+  .nav .nav-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); padding: 12px 10px 5px; font-weight: 600; }
+  .nav a { display: flex; align-items: center; gap: 10px; padding: 8px 11px; color: var(--fg-soft); font-weight: 500; font-size: 14px; text-decoration: none; border-left: 3px solid transparent; }
+  .nav a:hover { background: var(--line-soft); color: var(--fg); }
+  .nav a.active { background: var(--accent-tint); color: var(--accent-deep); font-weight: 600; border-left-color: var(--accent); }
+  .nav a .ic { width: 17px; height: 17px; flex: 0 0 17px; color: var(--fg-faint); }
+  .nav a.active .ic { color: var(--accent); }
+  .sidebar .user { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+  .sidebar .user .email { font-size: 12.5px; color: var(--fg-soft); text-decoration: none; }
+  .sidebar .user .logout { font-size: 13px; font-weight: 600; color: var(--fg); background: none; border: 1px solid var(--line); padding: 6px 10px; cursor: pointer; font-family: inherit; width: 100%; text-align: left; }
+
+  .content { padding: 30px 34px 56px; max-width: 1180px; width: 100%; min-width: 0; margin: 0 auto; }
+
+  .card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 0; padding: 1.2rem 1.35rem; margin-bottom: 1.2rem; }
+  .muted { color: var(--fg-soft); }
+  code { font-family: var(--mono); font-size: .86em; background: var(--line-soft); padding: .05rem .3rem; }
+
+  /* details accordions — sharp / bordered, brand-green summary marker. */
+  details { border: 1px solid var(--line); border-radius: 0; background: var(--bg-card); margin-bottom: .6rem; }
+  details summary { cursor: pointer; padding: .8rem 1rem; font-weight: 600; list-style: none; display: flex; align-items: center; gap: .6rem; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "+"; font-family: var(--mono); color: var(--accent); font-weight: 700; width: 1rem; display: inline-block; }
+  details[open] summary::before { content: "–"; }
+  details[open] summary { border-bottom: 1px solid var(--line-soft); }
+  details .details-body { padding: .5rem 1.2rem 1rem; }
+  details ul, details ol { margin: .3rem 0 .6rem; padding-left: 1.4rem; }
+  details li { margin-bottom: .35rem; }
+  details h3:first-child { margin-top: .4rem; }
+
+  /* Form fields (from 05-vydej styling). */
+  form .field { margin-bottom: 1rem; max-width: 620px; }
+  form label { display: block; font-weight: 600; margin-bottom: 0.35rem; color: var(--fg); }
+  .field-required::after { content: " *"; color: var(--error); font-weight: bold; }
+  form input[type=text], form input[type=url], form textarea {
+    font: inherit; padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 0;
+    width: 100%; background: #fcfdfc; color: var(--fg);
+  }
+  form textarea { resize: vertical; min-height: 5rem; font-family: inherit; }
+  form input:focus, form textarea:focus { outline: none; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+  .primary, a.primary, button.primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); padding: 0.5rem 1.1rem; border-radius: 0; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; vertical-align: middle; }
+  .primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  a.secondary, button.secondary { background: #fff; color: var(--fg); border: 1px solid var(--line); padding: 0.4rem 0.8rem; border-radius: 0; font: inherit; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; vertical-align: middle; }
+  a.secondary:hover, button.secondary:hover { border-color: var(--fg-faint); }
+
+  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; }
+  table.lines th, table.lines td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  table.lines th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600; }
+  .stav-open { color: var(--warn); white-space: nowrap; }
+  .stav-done { color: var(--ok); white-space: nowrap; }
+  .non-form-errors { color: var(--error); font-size: .9rem; margin-bottom: .6rem; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="index.html">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="brand-text"><span class="brand-name">KASIA</span><span class="brand-sub">sklad</span></span>
+    </a>
+    <nav class="nav" aria-label="Hlavní navigace">
+      <span class="nav-label">Provoz</span>
+      <a href="02a-prehled.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Přehled</a>
+      <a href="01b-katalog-grouped.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Katalog</a>
+      <a href="03-inventura.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M9 13l2 2 4-4"/></svg>Inventura</a>
+      <a href="08-prijem.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Příjem</a>
+      <a href="05-vydej.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>Výdej</a>
+      <a href="06-michani.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 0 1 15-6.7L21 6"/><path d="M21 3v3h-3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 18"/><path d="M3 21v-3h3"/></svg>Míchání</a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h13l-3-3m3 3-3 3"/><path d="M20 16H7l3-3m-3 3 3 3"/></svg>Převody</a>
+      <a href="10-dodaci-listy.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>Dodací listy</a>
+      <a href="09-historie.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/></svg>Historie</a>
+      <a href="17-podpora.html" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .8-1 1.7"/><path d="M12 17h.01"/></svg>Podpora</a>
+      <span class="nav-label">Číselníky</span>
+      <a href="12-dodavatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V8l6-4 6 4v13"/><path d="M15 21V11l6 4v6"/><path d="M3 21h18"/></svg>Dodavatelé</a>
+      <a href="13-odberatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/><path d="M21 21v-1a5 5 0 0 0-4-4.9"/></svg>Odběratelé</a>
+      <span class="nav-label">Správa</span>
+      <a href="14-pobocky.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 9l3-5h12l3 5"/><path d="M9 21v-6h6v6"/></svg>Pobočky</a>
+      <a href="15-uzivatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/></svg>Uživatelé</a>
+      <a href="16-nastaveni.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-2.88 1.2V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 7 19.6a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 2.6 14H2.5a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.4 9Z"/></svg>Nastavení</a>
+    </nav>
+    <div class="user">
+      <a href="#" class="email">petr@kasia.cz</a>
+      <button class="logout">Odhlásit</button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <h1>Podpora</h1>
+
+    <p class="muted">
+      Návod k použití, postupy a&nbsp;formulář pro hlášení chyb nebo požadavků.
+      Všechna hlášení vidí celý tým — vlastník je označí jako vyřešená,
+      jakmile je oprava nasazená.
+    </p>
+
+    <h2>Návod k použití</h2>
+
+    <details>
+      <summary>Co kde najdu (stručný přehled obrazovek)</summary>
+      <div class="details-body">
+        <ul>
+          <li><strong>Přehled</strong> — domovská stránka. Vlastník vidí obě pobočky, panel „Dochází / Prázdné" a&nbsp;poslední pohyby. Obsluha vidí svoji pobočku. Vpravo nahoře je tlačítko „Inventura {pobočka}".</li>
+          <li><strong>Pobočka</strong> — stav zásob jedné pobočky. Každý produkt má stav: prázdné (červená) / dochází (oranžová) / v&nbsp;pořádku. Odsud vede příjem, výdej i&nbsp;míchání.</li>
+          <li><strong>Katalog</strong> — seznam všech produktů a&nbsp;směsí, seskupený podle stavu. Hledání, filtr podle typu / stavu / pobočky. Sloupce „Na skladě", „Rezerv.", „Efektivně" (= na skladě − rezervováno) a&nbsp;„Práh".</li>
+          <li><strong>Detail produktu</strong> — stav po pobočkách včetně šarží, receptura u&nbsp;směsí, ruční úprava stavu, nastavení objednacího bodu (prahu), archivace.</li>
+          <li><strong>Příjem</strong> — příjemka od dodavatele. Položky (kg + šarže) a&nbsp;pole <strong>Očekávaný příjezd</strong>: necháte-li ho prázdné, zásoby naskladní hned; vyplníte-li ho, jde o&nbsp;<strong>plánovaný příjem (objednávku)</strong> — naskladní se až po potvrzení.</li>
+          <li><strong>Výdej</strong> — výdejka odběrateli. Po uložení se zásoby sníží, vystaví se <strong>dodací list (PDF)</strong> a&nbsp;automaticky odejde e-mailem Petrovi a&nbsp;Karolíně (ne zákazníkovi).</li>
+          <li><strong>Míchání</strong> — namíchání směsi jedním krokem. Vyberete pobočku, směs a&nbsp;cílové množství → suroviny se odečtou a&nbsp;směs naskladní. Žádné plánování / dokončování dávky.</li>
+          <li><strong>Inventura</strong> — hromadné přepočítání skladu pro jednu pobočku. Projdete řádky, zapíšete skutečné hodnoty, změněné řádky zezelenají, dole je součet (kolik řádků a&nbsp;čistá změna v&nbsp;kg); uložíte jedním tlačítkem.</li>
+          <li><strong>Dodací listy</strong> — přehled vystavených dodáků, filtr podle pobočky a&nbsp;období, znovuodeslání PDF e-mailem.</li>
+          <li><strong>Historie</strong> — kompletní log všech pohybů. Filtry podle druhu, pobočky, období. Záložka <strong>„Plánované"</strong> obsahuje objednané příjmy čekající na přijetí (tlačítko „Přijmout").</li>
+          <li><strong>Dodavatelé · Odběratelé</strong> — seznam partnerů, přidávání, archivace, editace.</li>
+          <li><strong>Pobočky</strong> — vlastník: přidání a&nbsp;editace fyzických poboček.</li>
+          <li><strong>Uživatelé</strong> — vlastník: správa účtů, rolí a&nbsp;pobočkové příslušnosti.</li>
+          <li><strong>Nastavení</strong> — vlastník: adresa firmy, příjemci dodáků, šablony, dodací listy.</li>
+          <li><strong>Podpora</strong> — tato stránka. Návod + formulář pro hlášení.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Postupy (krok za krokem)</summary>
+      <div class="details-body">
+        <h3>1. Příjem dodávky (okamžitý i&nbsp;plánovaný)</h3>
+        <ol>
+          <li>Klikněte „Příjem" v&nbsp;menu (nebo tlačítko příjmu na pobočce).</li>
+          <li>Vyberte pobočku a&nbsp;dodavatele (nového lze přidat přímo z&nbsp;formuláře).</li>
+          <li>Pro každý řádek: produkt, hmotnost v&nbsp;kg, šarže (je-li na obalu — doporučeno).</li>
+          <li><strong>Očekávaný příjezd</strong> je klíčové pole:
+            <ul>
+              <li><strong>Prázdné</strong> = zboží je fyzicky tady. Po uložení se zásoby <strong>hned naskladní</strong>.</li>
+              <li><strong>Vyplněné datum</strong> = objednávka / <strong>plánovaný příjem</strong>. Zásoby se zatím <em>nepřipočtou</em>; řádek čeká v&nbsp;Historii → záložka „Plánované".</li>
+            </ul>
+          </li>
+          <li>Klikněte „Uložit příjem".</li>
+          <li>Až objednávka dorazí: Historie → „Plánované" → u&nbsp;řádku „<strong>Přijmout</strong>", zkontrolujte kg a&nbsp;šarže, potvrďte. Teprve teď se zásoby navýší.</li>
+        </ol>
+
+        <h3>2. Výdej zboží (rozvoz nebo prodej)</h3>
+        <ol>
+          <li>Klikněte „Výdej".</li>
+          <li>Vyberte pobočku a&nbsp;odběratele (nového lze přidat z&nbsp;formuláře).</li>
+          <li>Vyplňte položky (produkt, kg, případně šarže).</li>
+          <li>Klikněte „Vystavit výdej". Zásoby se sníží, vygeneruje se <strong>dodací list (PDF)</strong> a&nbsp;<strong>automaticky odejde e-mailem</strong> Petrovi a&nbsp;Karolíně. Zákazník PDF nedostává.</li>
+        </ol>
+
+        <h3>3. Míchání směsi (jeden krok)</h3>
+        <ol>
+          <li>Menu → „Míchání".</li>
+          <li>Vyberte <strong>pobočku</strong>, <strong>směs</strong> a&nbsp;<strong>cílové množství</strong> (kolik kg směsi chcete).</li>
+          <li>Volitelně vyplňte „Skutečně vyrobeno", liší-li se výsledek od cíle (prázdné = cíl).</li>
+          <li>Klikněte „<strong>Namíchat</strong>". Suroviny se podle receptury <strong>odečtou</strong> a&nbsp;směs se <strong>naskladní</strong> — vše jedním krokem. Žádné plánování ani dokončování dávky.</li>
+          <li>Chybí-li surovina, zobrazí se zelené tlačítko „<strong>Upravit stav surovin</strong>". Otevře inventuru <em>jen</em> pro suroviny této směsi — dosypte / opravte stavy, uložte, vraťte se a&nbsp;namíchejte.</li>
+        </ol>
+
+        <h3>4. Inventura (hromadné přepočítání skladu)</h3>
+        <ol>
+          <li>Otevřete „Inventura" v&nbsp;menu, nebo přes oranžové tlačítko „Inventura {pobočka}" na Přehledu / Katalogu (a&nbsp;u&nbsp;chybějící suroviny v&nbsp;Míchání).</li>
+          <li>Inventura je vždy pro <strong>jednu pobočku</strong> — potvrďte / vyberte ji.</li>
+          <li>Projděte řádky a&nbsp;do sloupce „skutečnost" zapište skutečně napočítané kg. Upravený řádek se <strong>zvýrazní zeleně</strong>.</li>
+          <li>Dole vidíte průběžný <strong>součet</strong>: kolik řádků jste změnili a&nbsp;jaká je čistá změna v&nbsp;kg.</li>
+          <li>Uložte <strong>jedním tlačítkem</strong>. Rozdíly se zapíšou jako korekce stavu; nezměněné řádky zůstanou beze změny.</li>
+        </ol>
+
+        <h3>5. Oprava staršího pohybu</h3>
+        <ol>
+          <li>Menu → „Historie".</li>
+          <li>Najděte chybný pohyb a&nbsp;otevřete ho.
+            (Pozn.: řádek v&nbsp;záložce „Plánované" není hotový pohyb — ten se neopravuje tady, ale tlačítkem „Přijmout".)</li>
+          <li>Klikněte „Upravit" a&nbsp;změňte hodnoty. <strong>Důvod opravy je povinný.</strong></li>
+          <li>Uložte. Šlo-li o&nbsp;výdej, dodací list se přegeneruje a&nbsp;přepošle Petrovi a&nbsp;Karolíně s&nbsp;předponou <strong>[OPRAVA]</strong> v&nbsp;předmětu.</li>
+        </ol>
+      </div>
+    </details>
+
+    <details>
+      <summary>Tipy a triky</summary>
+      <div class="details-body">
+        <ul>
+          <li><strong>„Dochází" ≠ „prázdné".</strong> Dochází (oranžová) = pod objednacím bodem, kg ještě jsou. Prázdné (červená) = efektivně 0&nbsp;kg. Práh nastavuje vlastník v&nbsp;detailu produktu.</li>
+          <li><strong>Řiďte se sloupcem „Efektivně", ne „Na skladě".</strong> Efektivně = na skladě − rezervováno. To je to, s&nbsp;čím reálně můžete počítat; rezervované kg jsou fyzicky tady, ale už slíbené.</li>
+          <li><strong>Dodací list jde Petrovi a&nbsp;Karolíně, ne zákazníkovi.</strong> Po výdeji odchází automaticky — zvlášť ho neřešíte.</li>
+          <li><strong>Plánovaný příjem se přičte až po „Přijmout".</strong> Dokud objednávka nedorazí a&nbsp;nepotvrdíte ji v&nbsp;Historii → „Plánované", zásoby zůstávají beze změny.</li>
+          <li><strong>Chce-li Míchání dosypat surovinu</strong>, použijte zelené „Upravit stav surovin" přímo z&nbsp;chybové hlášky — otevře inventuru jen pro suroviny té směsi. Pak se vraťte a&nbsp;namíchejte.</li>
+          <li><strong>Míchání je jeden krok.</strong> Není žádné plánování, spouštění ani dokončování dávky — kliknete „Namíchat" a&nbsp;je hotovo. „Skutečně vyrobeno" nechte prázdné, pokud sedí na cíl.</li>
+          <li><strong>Šarže není povinná, ale doporučená</strong> — bez ní nelze dohledat původ při reklamaci.</li>
+          <li><strong>Oprava pohybu vyžaduje důvod</strong> a&nbsp;u&nbsp;výdeje znovu odešle dodák Petrovi&nbsp;+&nbsp;Karolíně s&nbsp;předponou <strong>[OPRAVA]</strong> — počítejte s&nbsp;tím, ať se nediví.</li>
+          <li><strong>Inventura je pro celou pobočku najednou.</strong> Změněné řádky zezelenají, dole je součet (kolik řádků, čistá změna kg); uložíte jedním tlačítkem. Ideální na pravidelný přepočet skladu.</li>
+          <li><strong>Čísla jsou na 1&nbsp;desetinné místo, s&nbsp;čárkou, váhy v&nbsp;kg.</strong> Při zadávání můžete psát čárku i&nbsp;tečku — systém si poradí.</li>
+          <li><strong>Archivace produktu ho nesmaže z&nbsp;historie.</strong> Jen ho skryje z&nbsp;výchozího seznamu v&nbsp;Katalogu; pohyby zůstanou dohledatelné.</li>
+          <li><strong>Nevíte si rady? Napište přes formulář níže.</strong> Hlášení vidí celý tým a&nbsp;vlastník odpoví / opraví.</li>
+        </ul>
+      </div>
+    </details>
+
+    <h2>Nahlásit chybu nebo požadavek</h2>
+
+    <div class="card">
+      <p class="muted" style="margin-top:0;">
+        Napište nám, co nefunguje, co chybí nebo čemu nerozumíte. Všichni
+        v&nbsp;týmu hlášení vidí. Vlastník je označí jako vyřešená, jakmile
+        je opraveno.
+      </p>
+      <form onsubmit="return false;">
+        <div class="field">
+          <label for="page_url">Odkaz na stránku (URL)</label>
+          <input type="text" id="page_url" placeholder="nepovinné — např. /vydej/novy/">
+        </div>
+        <div class="field">
+          <label for="description" class="field-required">Popis</label>
+          <textarea id="description" rows="5" placeholder="Co se stalo, co jste čekali, případně čísla dodáku nebo produktu…"></textarea>
+        </div>
+        <button class="primary" type="submit">Odeslat hlášení</button>
+      </form>
+    </div>
+
+    <h2>Historie hlášení</h2>
+
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Kdo</th>
+          <th>Stránka</th>
+          <th>Popis</th>
+          <th>Stav</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="white-space:nowrap;">30. 06. 2026 14:12</td>
+          <td>karolina@kasia.cz</td>
+          <td><code>/vydej/novy/</code></td>
+          <td>Po uložení výdeje se dodák neodeslal na e-mail, i když stav klesl. Číslo TYN-2026-0140.</td>
+          <td><span class="stav-open">● Otevřené</span></td>
+          <td style="white-space:nowrap;"><button class="secondary" type="button">Vyřešit</button></td>
+        </tr>
+        <tr>
+          <td style="white-space:nowrap;">28. 06. 2026 09:47</td>
+          <td>karolina@kasia.cz</td>
+          <td><span class="muted">—</span></td>
+          <td>Šlo by v katalogu řadit produkty podle prahu, ať vidím nejdřív ty, co docházejí?</td>
+          <td><span class="stav-open">● Otevřené</span></td>
+          <td style="white-space:nowrap;"><button class="secondary" type="button">Vyřešit</button></td>
+        </tr>
+        <tr>
+          <td style="white-space:nowrap;">27. 06. 2026 16:03</td>
+          <td>jana@kasia.cz</td>
+          <td><code>/michani/</code></td>
+          <td>U míchání grilovacího koření mi to hlásí nedostatek papriky, ale na skladě je. Možná špatná šarže?</td>
+          <td><span class="stav-open">● Otevřené</span></td>
+          <td style="white-space:nowrap;"><button class="secondary" type="button">Vyřešit</button></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:1rem;">
+      <a href="#">Zobrazit vyřešená (1) →</a>
+    </p>
+
+    <!-- Example resolved row (shown when „Zobrazit vyřešená" is expanded). -->
+    <h3 style="margin-top:1.5rem;">Vyřešená hlášení (1)</h3>
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Datum</th><th>Kdo</th><th>Stránka</th><th>Popis</th><th>Stav</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="white-space:nowrap;">22. 06. 2026 11:20</td>
+          <td>petr@kasia.cz</td>
+          <td><code>/nastaveni/</code></td>
+          <td style="opacity:.7;">Přidat druhého příjemce dodáku (Karolína). — Hotovo, přidána adresa.</td>
+          <td style="white-space:nowrap;"><span class="stav-done">✓ Vyřešené</span></td>
+          <td style="white-space:nowrap;"><button class="secondary" type="button">Otevřít znovu</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top:.75rem;"><a href="#">← Skrýt vyřešená</a></p>
+
+  </main>
+</div>
+
+<script>
+  // Whole-row nav (base.html contract): tr.row-link[data-href], ignore interactive elements.
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("a, button, input, select, label")) return;
+    const tr = e.target.closest("tr.row-link[data-href]");
+    if (tr) window.location = tr.dataset.href;
+  });
+</script>
+</body>
+</html>

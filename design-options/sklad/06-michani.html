@@ -1,0 +1,248 @@
+<!-- Sklad mockup 06 — Míchání (Nová výrobní dávka, immediate action per decision 0060).
+     Míchání is now a SINGLE immediate action — no state machine (no Naplánováno/Probíhá/Hotovo),
+     no "Dokončit míchání" step, no "Zrušit dávku" card, no KPI strip. It keeps the spirit the owner
+     liked from the old design: the consumption-preview / shortfall table. Shell reused verbatim from
+     01b-katalog-grouped.html (tokens, sidebar, .card, table.lines neutral zebra #ebebeb, orange
+     --warn, buttons, .num, .muted, .row-link script). No swatch. -->
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nová výrobní dávka — Kasia sklad (návrh)</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #1f6b3a; --accent-deep: #16432a; --accent-tint: #eef4ee;
+    --fg: #141719; --fg-soft: #565b66; --fg-faint: #868c97;
+    --bg: #f6f7f5; --bg-card: #ffffff; --line: #d9dcd9; --line-soft: #eef0ee;
+    --error: #a02525; --error-tint: #fbebea;
+    --warn: #c2410c; --warn-tint: #fdeee3;
+    --ok: #1f6b3a; --ok-soft: #e7f1ea;
+    --sidebar-w: 244px;
+    --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { font-family: var(--ui); color: var(--fg); background: var(--bg); margin: 0; font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -.01em; }
+  h1 { font-size: 1.45rem; margin: 0 0 1.1rem; }
+
+  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+  .sidebar { position: sticky; top: 0; align-self: start; height: 100vh; background: var(--bg-card); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 14px; }
+  .sidebar .brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 16px; margin-bottom: 6px; border-bottom: 1px solid var(--line-soft); text-decoration: none; }
+  .sidebar .brand img { height: 34px; width: auto; display: block; }
+  .sidebar .brand .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .sidebar .brand .brand-name { font-weight: 700; font-size: 16px; letter-spacing: .06em; color: var(--fg); }
+  .sidebar .brand .brand-sub { font-size: 11px; color: var(--fg-faint); letter-spacing: .14em; text-transform: uppercase; }
+  .nav { display: flex; flex-direction: column; gap: 1px; margin-top: 10px; flex: 1 1 auto; overflow-y: auto; }
+  .nav .nav-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); padding: 12px 10px 5px; font-weight: 600; }
+  .nav a { display: flex; align-items: center; gap: 10px; padding: 8px 11px; color: var(--fg-soft); font-weight: 500; font-size: 14px; text-decoration: none; border-left: 3px solid transparent; }
+  .nav a:hover { background: var(--line-soft); color: var(--fg); }
+  .nav a.active { background: var(--accent-tint); color: var(--accent-deep); font-weight: 600; border-left-color: var(--accent); }
+  .nav a .ic { width: 17px; height: 17px; flex: 0 0 17px; color: var(--fg-faint); }
+  .nav a.active .ic { color: var(--accent); }
+  .sidebar .user { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+  .sidebar .user .email { font-size: 12.5px; color: var(--fg-soft); text-decoration: none; }
+  .sidebar .user .logout { font-size: 13px; font-weight: 600; color: var(--fg); background: none; border: 1px solid var(--line); padding: 6px 10px; cursor: pointer; font-family: inherit; width: 100%; text-align: left; }
+
+  .content { padding: 30px 34px 56px; max-width: 1180px; width: 100%; min-width: 0; margin: 0 auto; }
+
+  .card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 0; padding: 1.2rem 1.35rem; margin-bottom: 1.2rem; }
+
+  form .field { margin-bottom: 1rem; }
+  form .field:last-child { margin-bottom: 0; }
+  form label { display: block; font-weight: 600; margin-bottom: 0.3rem; color: var(--fg); }
+  form label .req { color: var(--error); font-weight: 700; margin-left: 2px; }
+  form input[type=text], form input[type=search], form input[type=number], form select, form textarea { font: inherit; padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 0; width: 100%; background: #fcfdfc; color: var(--fg); }
+  form textarea { resize: vertical; min-height: 3.2rem; }
+  form select { appearance: none; -webkit-appearance: none; padding-right: 1.9rem; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23565b66' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.6rem center; }
+  .field-help { font-size: .85rem; color: var(--fg-soft); margin: .3rem 0 0; }
+  .field .num-in { max-width: 12rem; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.4rem; }
+  .form-grid .full { grid-column: 1 / -1; }
+
+  .required-legend { font-size: .85rem; color: var(--fg-soft); margin: 0 0 1rem; }
+  .required-legend .req { color: var(--error); font-weight: 700; }
+
+  .primary, a.primary, button.primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); padding: 0.5rem 1.1rem; border-radius: 0; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; vertical-align: middle; }
+  .primary:hover, a.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  a.secondary, button.secondary { background: #fff; color: var(--fg); border: 1px solid var(--line); padding: 0.5rem 0.9rem; border-radius: 0; font: inherit; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; vertical-align: middle; }
+  a.secondary:hover { border-color: var(--fg-faint); }
+
+  h2 { font-size: 1.05rem; margin: 0 0 .3rem; }
+  .card-sub { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1rem; }
+  .muted { color: var(--fg-soft); }
+
+  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; }
+  table.lines th, table.lines td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  table.lines th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600; }
+  .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* Shortfall row + state pills — error red for the hard stock block. */
+  tr.short td { background: var(--error-tint); }
+  .short-txt { color: var(--error); font-weight: bold; }
+  .ok-txt { color: var(--ok); }
+  .stav-ok { color: var(--ok); font-weight: 600; }
+  .stav-short { color: var(--error); font-weight: 700; }
+
+  /* Recipe validation / stock-block banner — matches the real _mixing_preview.html non-form-errors. */
+  .non-form-errors { background: var(--error-tint); border-left: 3px solid var(--error); color: var(--error); padding: .7rem .9rem; margin-bottom: 1rem; font-size: .92rem; line-height: 1.5; }
+  .non-form-errors a { color: var(--error); font-weight: 600; }
+
+  .btn-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="index.html">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="brand-text"><span class="brand-name">KASIA</span><span class="brand-sub">sklad</span></span>
+    </a>
+    <nav class="nav" aria-label="Hlavní navigace">
+      <span class="nav-label">Provoz</span>
+      <a href="02a-prehled.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Přehled</a>
+      <a href="01b-katalog-grouped.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Katalog</a>
+      <a href="03-inventura.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M9 13l2 2 4-4"/></svg>Inventura</a>
+      <a href="08-prijem.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Příjem</a>
+      <a href="05-vydej.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>Výdej</a>
+      <a href="06-michani.html" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 0 1 15-6.7L21 6"/><path d="M21 3v3h-3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 18"/><path d="M3 21v-3h3"/></svg>Míchání</a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h13l-3-3m3 3-3 3"/><path d="M20 16H7l3-3m-3 3 3 3"/></svg>Převody</a>
+      <a href="10-dodaci-listy.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>Dodací listy</a>
+      <a href="09-historie.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/></svg>Historie</a>
+      <a href="17-podpora.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .8-1 1.7"/><path d="M12 17h.01"/></svg>Podpora</a>
+      <span class="nav-label">Číselníky</span>
+      <a href="12-dodavatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V8l6-4 6 4v13"/><path d="M15 21V11l6 4v6"/><path d="M3 21h18"/></svg>Dodavatelé</a>
+      <a href="13-odberatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/><path d="M21 21v-1a5 5 0 0 0-4-4.9"/></svg>Odběratelé</a>
+      <span class="nav-label">Správa</span>
+      <a href="14-pobocky.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V8l6-4 6 4v13"/><path d="M15 21V11l6 4v6"/><path d="M3 21h18"/></svg>Pobočky</a>
+      <a href="15-uzivatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/></svg>Uživatelé</a>
+      <a href="16-nastaveni.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-2.88 1.2V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 7 19.6a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 2.6 14H2.5a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.4 9Z"/></svg>Nastavení</a>
+    </nav>
+    <div class="user">
+      <a href="#" class="email">petr@kasia.cz</a>
+      <button class="logout">Odhlásit</button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <h1>Nová výrobní dávka <span class="muted" style="font-weight:500;font-size:1rem;">· míchání</span></h1>
+    <p class="required-legend"><span class="req">*</span> povinné pole</p>
+
+    <!-- ===== Form card ===== -->
+    <form class="card" onsubmit="return false;">
+      <div class="form-grid">
+        <div class="field">
+          <label>Pobočka<span class="req">*</span></label>
+          <select>
+            <option>TYN — Týniště n. O.</option>
+            <option>SEZ — Sezimovo Ústí</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Směs<span class="req">*</span></label>
+          <select>
+            <option>Grilovací koření</option>
+            <option>Gulášové koření</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Cílové množství (kg)<span class="req">*</span></label>
+          <input class="num-in" type="text" inputmode="decimal" value="50">
+        </div>
+        <div class="field">
+          <label>Skutečně vyrobeno (kg)</label>
+          <input class="num-in" type="text" inputmode="decimal" placeholder="—">
+          <p class="field-help">Volitelné — vyplňte jen když se vyrobené množství liší od cíle.</p>
+        </div>
+        <div class="field full">
+          <label>Poznámka</label>
+          <textarea rows="2" placeholder="Nepovinná poznámka k dávce…"></textarea>
+        </div>
+      </div>
+    </form>
+
+    <!-- ===== Consumption preview card (shortage state — the useful one) ===== -->
+    <div class="card">
+      <h2>Odvozená spotřeba pro Grilovací koření (50,0 kg)</h2>
+      <p class="card-sub">Potřeba = podíl × cílové množství. Receptura je snapshotovaná při zápisu dávky.</p>
+
+      <div class="non-form-errors">
+        Některá surovina nemá na skladě dost. Upravte nejdřív stav surovin (inventura jen
+        pro suroviny této směsi), pak se sem vraťte a namíchejte. Vyplněné hodnoty výše zůstanou zachovány.
+        <div style="margin-top:.6rem;">
+          <a class="primary" href="03-inventura.html" style="color:#fff;">Upravit stav surovin →</a>
+        </div>
+      </div>
+
+      <table class="lines">
+        <thead>
+          <tr>
+            <th>Surovina</th>
+            <th style="text-align:right;">Podíl</th>
+            <th style="text-align:right;">Spotřebuje se (kg)</th>
+            <th style="text-align:right;">Na skladě (kg)</th>
+            <th>Stav</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Paprika sladká mletá</td>
+            <td class="num">0,40</td>
+            <td class="num">20,0</td>
+            <td class="num">55,4</td>
+            <td class="stav-ok">ok</td>
+          </tr>
+          <tr>
+            <td>Sůl</td>
+            <td class="num">0,30</td>
+            <td class="num">15,0</td>
+            <td class="num">120,0</td>
+            <td class="stav-ok">ok</td>
+          </tr>
+          <tr>
+            <td>Pepř černý mletý</td>
+            <td class="num">0,15</td>
+            <td class="num">7,5</td>
+            <td class="num">104,2</td>
+            <td class="stav-ok">ok</td>
+          </tr>
+          <tr class="short">
+            <td>Kmín celý</td>
+            <td class="num">0,15</td>
+            <td class="num">7,5</td>
+            <td class="num short-txt">4,1</td>
+            <td class="stav-short">nedostatek</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===== Actions ===== -->
+    <div class="card">
+      <div class="btn-row">
+        <button class="primary" type="button" disabled style="opacity:.5;cursor:not-allowed;">Namíchat</button>
+        <a class="secondary" href="02a-prehled.html">Zrušit</a>
+        <span class="muted" style="font-size:.9rem;">Zpřístupní se po opravě nedostatku (Kmín celý).</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // Whole-row nav (base.html contract): tr.row-link[data-href], ignore interactive elements.
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("a, button, input, select, label")) return;
+    const tr = e.target.closest("tr.row-link[data-href]");
+    if (tr) window.location = tr.dataset.href;
+  });
+</script>
+</body>
+</html>

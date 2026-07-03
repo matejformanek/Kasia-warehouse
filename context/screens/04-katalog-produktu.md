@@ -113,3 +113,12 @@ its recipe definition.
 ## Open questions for this screen
 - Whether to add a "naposledy pohyb" column to help the owner spot
   dormant items — defer until there is operating history.
+
+## UX refresh — Phase 2 (2026-07-03)
+
+Katalog ported to mockup `01b`: **grouped by stock state** into three tables
+(Prázdné / Dochází / V pořádku) under `.sub-head` headers + a KPI strip; the
+view groups rows server-side and renders only non-empty groups. Rows are
+**whole-row `row-link` with no per-row buttons**. The 0063 live filter is
+extended to span all three group tbodies and hide an emptied group section
+(decision [`0064`](../decisions/0064-grouped-catalogue-client-filter.md)).

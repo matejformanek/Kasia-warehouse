@@ -2,8 +2,21 @@
 
 {% block title %}Dodací listy — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Dodací listy — seznam. Filter card + table; version chip v2+ = orange (edited). */
+  .scope-note { color: var(--fg-soft); font-size: 0.9rem; margin: 0 0 0.6rem; }
+  .cislo { font-family: var(--mono); font-weight: 600; }
+
+  /* Version chip — v1 neutral, v2+ orange (edited). */
+  .ver { display: inline-block; font-family: var(--mono); font-size: .78rem; font-weight: 600; padding: .1rem .45rem; border: 1px solid var(--line); background: #fff; color: var(--fg-soft); }
+  .ver.edited { background: var(--warn-tint); border-color: var(--warn); color: var(--warn); }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Dodací listy</h1>
+<p class="scope-note">Vystavené dodací listy k výdejům, od nejnovějšího. Klikněte na řádek pro detail a PDF.</p>
 
 <form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
   <div class="field" style="margin-bottom:0;">
@@ -38,7 +51,7 @@
   </div>
 </form>
 
-<p style="color:var(--fg-soft);">Nalezeno: {{ count }} záznamů.</p>
+<p class="scope-note">Nalezeno: {{ count }} záznamů.</p>
 
 {% if dodaci_listy %}
   <table class="lines">
@@ -49,23 +62,29 @@
         <th>Pobočka</th>
         <th>Odběratel</th>
         <th>Pol.</th>
-        <th>Hrubý objem (kg)</th>
-        <th>Editováno</th>
+        <th style="text-align:right;">Hrubý objem (kg)</th>
+        <th>Verze</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
       {% for dl in dodaci_listy %}
         <tr class="row-link" data-href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">
-          <td><strong>{{ dl.cislo }}</strong></td>
+          <td class="cislo">{{ dl.cislo }}</td>
           <td>{{ dl.date_issued|date:"d. m. Y" }}</td>
           <td>{{ dl.branch.code }}</td>
           <td>{{ dl.odberatel.name }}</td>
           <td>{{ dl.movement.lines.count }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ dl.total_quantity_kg|floatformat:1 }}</td>
-          <td>{% if dl.is_edited %}v{{ dl.current_version }}{% endif %}</td>
+          <td class="num">{{ dl.total_quantity_kg|floatformat:1 }}</td>
           <td>
-            <a class="secondary" href="{% url 'inventory:dodaci_list_pdf' cislo=dl.cislo %}">PDF</a>
+            {% if dl.is_edited %}
+              <span class="ver edited">v{{ dl.current_version }}</span>
+            {% else %}
+              <span class="ver">v{{ dl.current_version }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <a class="secondary" href="{% url 'inventory:dodaci_list_pdf' cislo=dl.cislo %}" style="font-size:.85rem;padding:.2rem .55rem;">PDF</a>
           </td>
         </tr>
       {% endfor %}

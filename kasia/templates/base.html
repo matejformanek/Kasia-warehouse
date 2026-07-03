@@ -25,7 +25,9 @@
     --line-soft: #eef0ee;
     --error: #a02525;
     --error-tint: #fbebea;
-    --warn: #8a5a12;
+    /* Warn = orange (decision: retone within 0054; replaces the old muddy ochre). */
+    --warn: #c2410c;
+    --warn-tint: #fdeee3;
     --ok: #1f6b3a;
     --ok-soft: #e7f1ea;
     /* legacy alias kept so any stray var(--border) still resolves */
@@ -115,7 +117,7 @@
   .messages .msg { padding: 0.6rem 0.85rem; border-left: 3px solid var(--fg-faint); margin-bottom: 0.5rem; font-size: 0.95rem; }
   .messages .msg.success { background: var(--ok-soft); border-left-color: var(--ok); color: var(--ok); }
   .messages .msg.error   { background: var(--error-tint); border-left-color: var(--error); color: var(--error); }
-  .messages .msg.warning { background: #fbf3e0; border-left-color: var(--warn); color: var(--warn); }
+  .messages .msg.warning { background: var(--warn-tint); border-left-color: var(--warn); color: var(--warn); }
   .messages .msg.info    { background: var(--accent-tint); border-left-color: var(--accent); color: var(--accent-deep); }
 
   /* ============ CARDS ============ */
@@ -195,7 +197,11 @@
     color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600;
   }
   table.lines td input, table.lines td select { max-width: 100%; }
-  table.lines tbody tr:hover td { background: #fafbfa; }
+  /* Neutral grey zebra + hover-darken (design 0054 / mockups), applied to
+     every .lines table. Attention rows (over-stock, inventura .changed) carry
+     higher-specificity backgrounds below so they always win over the zebra. */
+  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  table.lines tbody tr:hover td { background: #e2e5e2; }
 
   /* ============ STOCK / MOVEMENT WIDGETS ============ */
   /* Výdej renders the live stock message in the (unused) Šarže column cell.
@@ -210,9 +216,10 @@
     background: #fbe8e8; border-left: 3px solid var(--error);
     padding: 0.3rem 0.45rem; margin-top: 0.35rem;
   }
-  /* Whole-row highlight while a výdej line exceeds branch stock. */
-  .line-row.over-stock > td { background: #fbe8e8; }
-  .line-row.over-stock:hover > td { background: #f7dcdc; }
+  /* Whole-row highlight while a výdej line exceeds branch stock. Selector is
+     specific enough to beat the table.lines zebra above on even rows. */
+  table.lines tbody tr.line-row.over-stock td { background: #fbe8e8; }
+  table.lines tbody tr.line-row.over-stock:hover td { background: #f7dcdc; }
   .recipients {
     background: var(--accent-tint); border-left: 3px solid var(--accent);
     padding: 0.5rem 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;
@@ -223,7 +230,7 @@
   }
   .recipe-notes p { color: var(--fg); }
   .warnings-banner {
-    background: #fbf3e0; border-left: 3px solid var(--warn); color: var(--warn);
+    background: var(--warn-tint); border-left: 3px solid var(--warn); color: var(--warn);
     padding: 0.5rem 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;
   }
   .warnings-banner ul { margin: 0.25rem 0 0 1rem; padding: 0; }
@@ -314,6 +321,7 @@
     .kpi:first-child { border-top: 0; }
   }
 </style>
+{% block extra_head %}{% endblock %}
 <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
@@ -337,6 +345,9 @@
   <nav class="mob-nav" aria-label="Hlavní navigace (mobil)">
     <a href="{{ home_url }}"{% if un == 'home' or un == 'branch_dashboard' %} class="active"{% endif %}>Přehled</a>
     <a href="{% url 'inventory:catalogue_index' %}"{% if un == 'catalogue_index' %} class="active"{% endif %}>Katalog</a>
+    {% if user.is_vlastnik %}
+      <a href="{% if user.branch %}{% url 'inventory:inventura_edit' code=user.branch.code %}{% else %}{% url 'inventory:inventura_edit' code='vse' %}{% endif %}"{% if un == 'inventura_edit' %} class="active"{% endif %}>Inventura</a>
+    {% endif %}
     <a href="{% url 'inventory:prijem_create' %}"{% if un == 'prijem_create' %} class="active"{% endif %}>Příjem</a>
     <a href="{% url 'inventory:vydej_create' %}"{% if un == 'vydej_create' %} class="active"{% endif %}>Výdej</a>
     <a href="{% url 'inventory:mixing_job_index' %}"{% if un == 'mixing_job_index' %} class="active"{% endif %}>Míchání</a>
@@ -372,6 +383,12 @@
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h12"/></svg>
         Katalog
       </a>
+      {% if user.is_vlastnik %}
+        <a href="{% if user.branch %}{% url 'inventory:inventura_edit' code=user.branch.code %}{% else %}{% url 'inventory:inventura_edit' code='vse' %}{% endif %}"{% if un == 'inventura_edit' %} class="active" aria-current="page"{% endif %}>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M9 13l2 2 4-4"/></svg>
+        Inventura
+      </a>
+      {% endif %}
       <a href="{% url 'inventory:prijem_create' %}"{% if un == 'prijem_create' %} class="active" aria-current="page"{% endif %}>
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
         Příjem
@@ -529,21 +546,36 @@
       return true; // every token must match somewhere in the row
     }
 
+    // Per 0064: data-filter-rows may match MANY tbodies (the grouped Katalog).
+    // We iterate every matched tbody; a tbody that carries data-filter-group
+    // ("<section selector>") hides its whole section when the group has rows
+    // but none of them match. Single-tbody lists set no data-filter-group and
+    // behave exactly as before (backward-compatible).
     function apply(input) {
-      const tbody = document.querySelector(input.dataset.filterRows);
-      if (!tbody) return;
+      const tbodies = document.querySelectorAll(input.dataset.filterRows);
+      if (!tbodies.length) return;
       const tokens = foldText(input.value).split(" ").filter(Boolean);
-      const rows = tbody.querySelectorAll("tr[data-filter-text]");
-      let visible = 0;
-      rows.forEach(function (row) {
-        if (row.dataset.filterFolded === undefined) {
-          row.dataset.filterFolded = foldText(row.dataset.filterText);
+      let visible = 0, total = 0;
+      tbodies.forEach(function (tbody) {
+        const rows = tbody.querySelectorAll("tr[data-filter-text]");
+        let groupVisible = 0;
+        rows.forEach(function (row) {
+          if (row.dataset.filterFolded === undefined) {
+            row.dataset.filterFolded = foldText(row.dataset.filterText);
+          }
+          const folded = row.dataset.filterFolded;
+          const match = tokens.length === 0 ||
+            matchesQuery(tokens, folded, folded.split(" ").filter(Boolean));
+          row.style.display = match ? "" : "none";
+          if (match) { visible++; groupVisible++; }
+          total++;
+        });
+        if (tbody.dataset.filterGroup) {
+          const section = document.querySelector(tbody.dataset.filterGroup);
+          if (section) {
+            section.style.display = (rows.length && groupVisible === 0) ? "none" : "";
+          }
         }
-        const folded = row.dataset.filterFolded;
-        const match = tokens.length === 0 ||
-          matchesQuery(tokens, folded, folded.split(" ").filter(Boolean));
-        row.style.display = match ? "" : "none";
-        if (match) visible++;
       });
       if (input.dataset.filterCount) {
         const el = document.querySelector(input.dataset.filterCount);
@@ -551,7 +583,7 @@
       }
       if (input.dataset.filterEmpty) {
         const el = document.querySelector(input.dataset.filterEmpty);
-        if (el) el.style.display = (rows.length && visible === 0) ? "" : "none";
+        if (el) el.style.display = (total && visible === 0) ? "" : "none";
       }
     }
 

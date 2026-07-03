@@ -2,6 +2,49 @@
 
 {% block title %}Historie pohybů — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Historie — compact table + unified badges/actions (mockup 09). */
+  #history-table { font-size: .9rem; }
+  #history-table th, #history-table td { padding: 0.34rem 0.55rem; }
+  #history-table tbody tr:nth-child(even) td { background: #ebebeb; }
+  #history-table tbody tr:hover td { background: #e2e5e2; }
+
+  .druh { display: inline-block; font-size: .78rem; font-weight: 600; padding: .1rem .45rem; white-space: nowrap; }
+  .druh.prijem { color: var(--ok); background: var(--ok-soft); }
+  .druh.vydej { color: #fff; background: var(--accent-deep); }
+  .druh.inventura { color: var(--warn); background: var(--warn-tint); }
+  .druh.plan { color: var(--warn); background: var(--warn-tint); border: 1px solid var(--warn); border-radius: 999px; }
+
+  .date-cell { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .items-more { color: var(--fg-soft); font-size: .84rem; }
+  .stav-note { color: var(--fg-soft); font-size: .8rem; font-style: italic; margin-top: 1px; }
+  .party { line-height: 1.25; }
+  .party .op { display: block; color: var(--fg-faint); font-size: .78rem; }
+
+  .doklad-cell { white-space: nowrap; }
+  /* Stack the doklad items (dl-link + edited tag) under each other, not inline.
+     On an inner wrapper — NOT the <td> itself, so the cell stays a real table
+     cell and the zebra fills its full height. */
+  .doklad-stack { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; }
+  /* Green číslo link — override base's `tr.row-link td a { color: var(--fg) }`. */
+  #history-table .dl-link { font-family: var(--mono); font-weight: 600; color: var(--accent); text-decoration: none; }
+  #history-table .dl-link:hover { text-decoration: underline; }
+  .tag-edit { display: inline-block; font-size: .75rem; font-weight: 600; color: var(--warn); border: 1px solid var(--warn); background: var(--warn-tint); padding: .08rem .4rem; white-space: nowrap; }
+
+  .plan-actions { display: inline-flex; gap: .4rem; align-items: stretch; }
+  .btn-mini { font: inherit; font-size: .8rem; font-weight: 600; line-height: 1.35; padding: .22rem .6rem; border-radius: 0; cursor: pointer; text-decoration: none; border: 1px solid transparent; display: inline-flex; align-items: center; }
+  .btn-mini.accept { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-mini.accept:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  .btn-mini.cancel { background: #fff; color: var(--error); border-color: #e6c4c2; }
+  .btn-mini.cancel:hover { background: var(--error-tint); border-color: var(--error); }
+
+  .pager { display: flex; align-items: center; gap: 1rem; margin: .5rem 0 1rem; }
+  .pager .pager-info { color: var(--fg-soft); font-size: .9rem; font-variant-numeric: tabular-nums; }
+  .pager .pager-disabled { opacity: .45; pointer-events: none; }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Historie pohybů
   {% if branch_locked %} — pobočka {{ branch_locked.code }}{% endif %}
@@ -45,10 +88,10 @@
     <label for="id_filter_date_to">Do</label>
     <input type="date" name="date_to" id="id_filter_date_to" value="{{ filter_date_to }}">
   </div>
-  <div class="field" style="margin-bottom:0;">
+  <div class="field" style="margin-bottom:0;flex:1 1 240px;">
     <label for="id_filter_q">Hledat</label>
     <input type="search" name="q" id="id_filter_q" value="{{ filter_q }}"
-           placeholder="produkt, protistrana, poznámka…" style="min-width:240px;"
+           placeholder="produkt, protistrana, poznámka…"
            data-filter-rows="#history-table tbody"
            data-filter-empty="#history-empty">
   </div>
@@ -59,8 +102,7 @@
 </form>
 
 <p style="color:var(--fg-soft);">
-  Nalezeno: {{ count }} pohybů
-  {% if count == 200 %}(omezeno na 200 nejnovějších){% endif %}.
+  Nalezeno: {{ count }} pohybů{% if page_obj.paginator.num_pages > 1 %} · strana {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}{% endif %}.
 </p>
 
 {% if movements %}
@@ -69,12 +111,11 @@
       <tr>
         <th>Datum</th>
         <th>Druh</th>
-        <th>Pobočka</th>
+        <th>Pob.</th>
         <th>Položky</th>
         <th>Protistrana</th>
-        <th>Operátor</th>
-        <th>Editováno</th>
-        <th>Dodací list</th>
+        <th style="text-align:right;">Množství</th>
+        <th>Doklad</th>
       </tr>
     </thead>
     <tbody>
@@ -84,78 +125,68 @@
         {# Per 0059: a PLANNED príjem — confirm/cancel, not edit. #}
         <tr class="row-link" data-href="{% url 'inventory:prijem_confirm' pk=mv.pk %}"
             data-filter-text="{% if first_line %}{{ first_line.product.name_cs }}{% endif %} {% if mv.dodavatel %}{{ mv.dodavatel.name }}{% endif %} {{ mv.note }}">
-          <td style="font-variant-numeric:tabular-nums;">{{ mv.expected_on|date:"d. m. Y" }}</td>
-          <td>
-            <span class="stock-warn" style="display:inline-block;background:var(--ok-soft);color:var(--warn);padding:2px 6px;font-size:0.85rem;">
-              Plánováno
-            </span>
-          </td>
+          <td class="date-cell">{{ mv.expected_on|date:"d. m. Y" }}</td>
+          <td><span class="druh plan">Plánováno</span></td>
           <td>{{ mv.branch.code }}</td>
           <td>
             {% if first_line %}
               {{ first_line.product.name_cs }}
-              {% if lines_count > 1 %}
-                <span style="color:var(--fg-soft);">+{{ lines_count|add:"-1" }} dalších</span>
-              {% endif %}
+              {% if lines_count > 1 %}<span class="items-more">+{{ lines_count|add:"-1" }} dalších</span>{% endif %}
             {% endif %}
           </td>
-          <td>{% if mv.dodavatel %}{{ mv.dodavatel.name }}{% else %}<span style="color:var(--fg-soft);">—</span>{% endif %}</td>
-          <td style="color:var(--fg-soft);">{{ mv.created_by.email }}</td>
-          <td colspan="2" style="white-space:nowrap;">
-            <a class="primary" href="{% url 'inventory:prijem_confirm' pk=mv.pk %}"
-               style="padding:0.2rem 0.55rem;font-size:0.85rem;">Přijmout</a>
-            <button type="submit" form="plan-cancel-{{ mv.pk }}"
-                    class="js-confirm"
-                    data-confirm-title="Zrušit plánovaný příjem?"
-                    data-confirm-body="Opravdu zrušit celý plánovaný příjem s příjezdem {{ mv.expected_on|date:'d. m. Y' }} na pobočku {{ mv.branch.code }}? Sklad se nezměnil, jen se záznam smaže."
-                    data-confirm-cta="Zrušit plánovaný příjem"
-                    style="background:none;border:none;padding:0;color:var(--error);text-decoration:underline;cursor:pointer;font-size:0.85rem;">Zrušit</button>
+          <td class="party">
+            {% if mv.dodavatel %}{{ mv.dodavatel.name }}{% else %}<span class="items-more">—</span>{% endif %}
+            <span class="op">{{ mv.created_by.email }}</span>
+          </td>
+          <td class="num">{{ mv.total_kg|floatformat:1 }}</td>
+          <td class="doklad-cell">
+            <div class="plan-actions">
+              <a class="btn-mini accept" href="{% url 'inventory:prijem_confirm' pk=mv.pk %}">Přijmout</a>
+              <button type="submit" form="plan-cancel-{{ mv.pk }}"
+                      class="btn-mini cancel js-confirm"
+                      data-confirm-title="Zrušit plánovaný příjem?"
+                      data-confirm-body="Opravdu zrušit celý plánovaný příjem s příjezdem {{ mv.expected_on|date:'d. m. Y' }} na pobočku {{ mv.branch.code }}? Sklad se nezměnil, jen se záznam smaže."
+                      data-confirm-cta="Zrušit plánovaný příjem">Zrušit</button>
+            </div>
           </td>
         </tr>
         {% else %}
         <tr class="row-link" data-href="{% url 'inventory:movement_edit' pk=mv.pk %}"
             data-filter-text="{% if first_line %}{{ first_line.product.name_cs }}{% endif %} {% if mv.kind == 'vydej' %}{{ mv.odberatel.name }}{% else %}{{ mv.dodavatel.name }}{% endif %} {{ mv.note }}">
-          <td>{{ mv.date_issued|date:"d. m. Y" }}</td>
+          <td class="date-cell">{{ mv.date_issued|date:"d. m. Y" }}</td>
           <td>
             {% if mv.note|slice:":7" == "[STAV] " %}
-              <span style="color:var(--warn);" title="Ruční úprava stavu (per rozhodnutí 0041)">
-                inventura
-              </span>
+              <span class="druh inventura" title="Ruční úprava stavu">Inventura</span>
             {% elif mv.kind == "prijem" %}
-              <span style="color:var(--ok);">{{ mv.get_kind_display }}</span>
+              <span class="druh prijem">{{ mv.get_kind_display }}</span>
             {% else %}
-              <span style="color:var(--accent);">{{ mv.get_kind_display }}</span>
+              <span class="druh vydej">{{ mv.get_kind_display }}</span>
             {% endif %}
           </td>
           <td>{{ mv.branch.code }}</td>
           <td>
             {% if first_line %}
               {{ first_line.product.name_cs }}
-              {% if lines_count > 1 %}
-                <span style="color:var(--fg-soft);">+{{ lines_count|add:"-1" }} dalších</span>
-              {% endif %}
+              {% if lines_count > 1 %}<span class="items-more">+{{ lines_count|add:"-1" }} dalších</span>{% endif %}
               {% if mv.note|slice:":7" == "[STAV] " %}
-                <div style="color:var(--fg-soft);font-size:0.85rem;font-style:italic;">
-                  „{{ mv.note|slice:"7:"|truncatechars:80 }}
-                </div>
+                <div class="stav-note">„{{ mv.note|slice:"7:"|truncatechars:80 }}</div>
               {% endif %}
             {% endif %}
           </td>
-          <td>
+          <td class="party">
             {% if mv.kind == "vydej" %}{{ mv.odberatel.name }}{% else %}{{ mv.dodavatel.name }}{% endif %}
+            <span class="op">{{ mv.created_by.email }}</span>
           </td>
-          <td style="color:var(--fg-soft);">{{ mv.created_by.email }}</td>
-          <td>
-            {% if mv.audit_entries.count %}
-              <span style="color:var(--warn);">editováno ({{ mv.audit_entries.count }}×)</span>
-            {% endif %}
-          </td>
-          <td>
-            {% with dl=mv.dodaci_list %}
-              {% if dl %}
-                <a href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">{{ dl.cislo }}</a>
+          <td class="num">{{ mv.total_kg|floatformat:1 }}</td>
+          <td class="doklad-cell">
+            <div class="doklad-stack">
+              {% with dl=mv.dodaci_list %}
+                {% if dl %}<a class="dl-link" href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">{{ dl.cislo }}</a>{% endif %}
+              {% endwith %}
+              {% if mv.audit_entries.count %}
+                <span class="tag-edit">editováno {{ mv.audit_entries.count }}×</span>
               {% endif %}
-            {% endwith %}
+            </div>
           </td>
         </tr>
         {% endif %}
@@ -165,19 +196,35 @@
   </table>
   <p id="history-empty" style="display:none;color:var(--fg-soft);">Žádné pohyby neodpovídají hledání.</p>
 
-  {% if active_tab == "planned" %}
-    {% comment %}Out-of-table cancel forms so the in-row "Zrušit" button never
-       nests a <form> inside tr.row-link (the locked row-link hook, per 0057
-       gotcha).{% endcomment %}
-    {% for mv in movements %}
+  {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="pager" aria-label="Stránkování">
+      {% if page_obj.has_previous %}
+        <a class="secondary" href="?{{ page_querystring }}&page={{ page_obj.previous_page_number }}">← Novější</a>
+      {% else %}
+        <span class="secondary pager-disabled">← Novější</span>
+      {% endif %}
+      <span class="pager-info">strana {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a class="secondary" href="?{{ page_querystring }}&page={{ page_obj.next_page_number }}">Starší →</a>
+      {% else %}
+        <span class="secondary pager-disabled">Starší →</span>
+      {% endif %}
+    </nav>
+  {% endif %}
+
+  {% comment %}Out-of-table cancel forms for every PLANNED row on the page (per
+     0066 planned rows also appear in "Vše") so the in-row "Zrušit" button never
+     nests a <form> inside tr.row-link (the locked row-link hook, per 0057
+     gotcha). _confirm_dialog.html is included globally in base.html (per 0061).{% endcomment %}
+  {% for mv in movements %}
+    {% if mv.status == "planned" %}
       <form id="plan-cancel-{{ mv.pk }}" method="post"
             action="{% url 'inventory:prijem_plan_cancel' pk=mv.pk %}" hidden>
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ request.get_full_path }}">
       </form>
-    {% endfor %}
-    {# _confirm_dialog.html is included globally in base.html (per 0061) #}
-  {% endif %}
+    {% endif %}
+  {% endfor %}
 {% elif filter_q or filter_kind or filter_date_from or filter_date_to or filter_edited or filter_branch %}
   <p>Žádné pohyby neodpovídají filtrům.
     <a href="{% url 'inventory:movement_history' %}">Vymazat filtry</a>

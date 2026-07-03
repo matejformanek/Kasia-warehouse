@@ -97,3 +97,9 @@ staff use it to find one of their own dodáky.
 > (no prices anywhere) and
 > [`decisions/0010-prices-on-dodaci-list.md`](../decisions/0010-prices-on-dodaci-list.md):
 > the dodací list does not carry prices, so no line totals to sum.
+
+## UX refresh — Phase 2 (2026-07-03)
+
+Seznam + detail dodacích listů ported to mockups `10`/`11` (visual restyle;
+index keeps the PDF button/column and filters). Detail gains a two-party
+header + meta row + version/mail badges.

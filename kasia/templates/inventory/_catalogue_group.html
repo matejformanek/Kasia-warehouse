@@ -1,0 +1,48 @@
+{% comment %}
+Katalog group section (per 0064). One state group = a .sub-head header + one
+table wrapped in a #{{ group_id }} section so the client filter can hide the
+whole group when nothing in it matches. Only rendered when group_rows exist.
+Params: group_rows, group_id, head_class, head_label, head_count,
+branch_kind ("empty"/"low"/""), eff_class ("eff-empty"/"eff-warn"/""),
+show_branch_chips (bool).
+{% endcomment %}
+<section class="cat-group" id="{{ group_id }}">
+  <div class="sub-head {{ head_class }}">
+    <span class="dot"></span>{{ head_label }}<span class="count">{{ head_count }}</span>
+  </div>
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Název</th>
+        <th style="text-align:right;">Na skladě</th>
+        <th style="text-align:right;">Rezerv.</th>
+        <th style="text-align:right;">Efektivně</th>
+        <th style="text-align:right;">Práh</th>
+        {% if branch_kind == "empty" %}<th>Prázdný na</th>{% elif branch_kind == "low" %}<th>Dochází na</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody class="cat-body" data-filter-group="#{{ group_id }}">
+      {% for row in group_rows %}
+        <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=row.product.pk %}"
+            data-filter-text="{{ row.product.name_cs }}"{% if not row.product.is_active %} style="opacity:.6;"{% endif %}>
+          <td>
+            <strong>{{ row.product.name_cs }}</strong>
+            {% if not row.product.is_active %}
+              <span class="muted" style="font-size:.85rem;">(archivováno)</span>
+            {% endif %}
+            <div class="prod-sub">{{ row.product.get_kind_display }}{% if row.product.kind == "mixture" and row.has_recipe %} <span class="rec">· má recepturu</span>{% endif %}</div>
+          </td>
+          <td class="num">{{ row.total|floatformat:1 }}</td>
+          <td class="num{% if row.reserved <= 0 %} muted{% endif %}">{{ row.reserved|floatformat:1 }}</td>
+          <td class="num {{ eff_class }}">{{ row.effective|floatformat:1 }}</td>
+          <td class="num">{% if row.threshold is not None %}{{ row.threshold|floatformat:1 }}{% else %}—{% endif %}</td>
+          {% if branch_kind == "empty" %}
+            <td>{% if show_branch_chips %}{% for b in row.low_branches %}<span class="empty-branch">{{ b.code }}</span>{% endfor %}{% endif %}</td>
+          {% elif branch_kind == "low" %}
+            <td>{% if show_branch_chips %}{% for b in row.low_branches %}<span class="low-branch">{{ b.code }}</span>{% endfor %}{% endif %}</td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>

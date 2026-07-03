@@ -3,6 +3,22 @@
 
 {% block title %}Nový výdej — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Výdej — airier numbered steps (mockup 05). #23 stock-warn mechanics kept. */
+  .content { max-width: 1180px; }
+  .overdraw { background: var(--error-tint); border: 1px solid #e6c4c2; border-left: 3px solid var(--error); padding: 1.3rem 1.4rem; margin-bottom: 2rem; }
+  .overdraw h2 { margin: 0 0 .5rem; font-size: 1.05rem; color: var(--error); }
+  .overdraw p { margin: 0 0 .9rem; font-size: .94rem; }
+  .overdraw .num.short { color: var(--error); font-weight: bold; }
+  /* Blocking banner (live JS): the inventura jump inside it is a prominent
+     green CTA so a wrong system count can be corrected inline. */
+  #stock-block-banner { background: var(--error-tint); border-left: 3px solid var(--error); color: var(--error); font-weight: bold; }
+  #stock-block-inventura { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; margin-left: .6rem; }
+  #stock-block-inventura:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Nový výdej zboží</h1>
 
@@ -12,11 +28,9 @@
 </div>
 
 {% if overdraw_warnings %}
-  <div class="card" style="background:#fbe8e8;border-left:3px solid var(--error);">
-    <h2 style="font-size:1.05rem;margin-top:0;color:var(--error);">
-      Nedostatek na skladě — výdej nelze uložit
-    </h2>
-    <p style="font-size:0.95rem;">
+  <div class="overdraw">
+    <h2>Nedostatek na skladě — výdej nelze uložit</h2>
+    <p>
       Vypadá to, že systémový stav neodpovídá realitě. Před uložením
       výdeje opravte skladové množství u následujících položek
       {% if user.is_vlastnik %}(tlačítko otevře úpravu stavu v novém okně){% else %}— stav skladu upraví jen vlastník, kontaktujte Karolínu/Petra{% endif %}:
@@ -35,15 +49,9 @@
         {% for w in overdraw_warnings %}
           <tr>
             <td><strong>{{ w.product.name_cs }}</strong></td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">
-              {{ w.current|floatformat:1 }} kg
-            </td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">
-              {{ w.requested|floatformat:1 }} kg
-            </td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--error);font-weight:bold;">
-              −{{ w.shortfall|floatformat:1 }} kg
-            </td>
+            <td class="num">{{ w.current|floatformat:1 }} kg</td>
+            <td class="num">{{ w.requested|floatformat:1 }} kg</td>
+            <td class="num short">−{{ w.shortfall|floatformat:1 }} kg</td>
             <td>
               {% if user.is_vlastnik %}
                 <a class="secondary" target="_blank"
@@ -58,7 +66,7 @@
         {% endfor %}
       </tbody>
     </table>
-    <p style="color:var(--fg-soft); font-size:0.9rem; margin-top:0.5rem;">
+    <p style="color:var(--fg-soft); font-size:0.9rem; margin:0;">
       Po úpravě stavu se vraťte sem a znovu klikněte „Vystavit dodací
       list a uložit výdej". Vyplněné položky zůstanou.
     </p>
@@ -69,56 +77,69 @@
 
 <form method="post">
   {% csrf_token %}
+
+  <!-- STEP 1: Odběratel a pobočka -->
   <div class="card">
-    <div class="field">
-      <label class="field-required" for="id_branch">Pobočka</label>
-      {{ form.branch }}
-      {{ form.branch.errors }}
-    </div>
-    <div class="field">
-      <label class="field-required" for="id_odberatel">Odběratel</label>
-      {{ form.odberatel }}
-      <a class="secondary" href="{% url 'inventory:customer_create' %}" target="_blank"
-         style="margin-left:0.5rem;font-size:0.85rem;padding:0.2rem 0.5rem;"
-         title="Otevře nového odběratele v novém panelu — vyplněný formulář tu zůstane.">
-        + Nový odběratel ↗
-      </a>
-      {{ form.odberatel.errors }}
-    </div>
-    <div class="field">
-      <label class="field-required" for="id_date_issued">Datum vystavení</label>
-      {{ form.date_issued }}
-      {{ form.date_issued.errors }}
-    </div>
-    <div class="field">
-      <label for="id_note">Poznámka</label>
-      {{ form.note }}
+    <div class="step-head"><span class="step-no">1</span><h2>Odběratel a pobočka</h2></div>
+    <div class="field-grid">
+      <div class="field">
+        <label class="field-required" for="id_branch">Pobočka</label>
+        {{ form.branch }}
+        {{ form.branch.errors }}
+      </div>
+      <div class="field">
+        <label class="field-required" for="id_odberatel">Odběratel</label>
+        {{ form.odberatel }}
+        <a class="secondary" href="{% url 'inventory:customer_create' %}" target="_blank"
+           style="margin-left:0.5rem;font-size:0.85rem;padding:0.2rem 0.5rem;"
+           title="Otevře nového odběratele v novém panelu — vyplněný formulář tu zůstane.">
+          + Nový odběratel ↗
+        </a>
+        {{ form.odberatel.errors }}
+      </div>
+      <div class="field">
+        <label class="field-required" for="id_date_issued">Datum vystavení</label>
+        {{ form.date_issued }}
+        {{ form.date_issued.errors }}
+      </div>
+      <div class="field">
+        <label for="id_note">Poznámka</label>
+        {{ form.note }}
+      </div>
     </div>
   </div>
 
+  <!-- STEP 2: Položky + running summary (over-stock check inline, #23) -->
   <div class="card">
-    <h2 style="font-size:1.1rem;margin-top:0;">Položky</h2>
+    <div class="step-head"><span class="step-no">2</span><h2>Položky</h2></div>
     {{ stock_map|json_script:"vydej-stock-map" }}
     {% if user.is_vlastnik %}{{ branch_inventura|json_script:"vydej-inventura-urls" }}{% endif %}
     {% include "inventory/_movement_form_lines.html" with show_stock_warn=True %}
+    <p class="line-summary" id="summary-mid"></p>
+
+    <div id="stock-block-banner" class="card" style="margin-top:1.2rem;" hidden>
+      Některé položky překračují stav skladu — opravte množství před uložením.
+      {% if user.is_vlastnik %}
+        <a id="stock-block-inventura" class="secondary" href="#" hidden>
+          Upravit stav skladu pro tyto suroviny
+        </a>
+      {% endif %}
+    </div>
   </div>
 
-  <div id="stock-block-banner" class="card"
-       style="background:#fbe8e8;border-left:3px solid var(--error);color:var(--error);font-weight:bold;"
-       hidden>
-    Některé položky překračují stav skladu — opravte množství před uložením.
-    {% if user.is_vlastnik %}
-      <a id="stock-block-inventura" class="secondary" href="#"
-         style="margin-left:0.5rem;font-weight:normal;" hidden>
-        Upravit stav skladu pro tyto suroviny
-      </a>
-    {% endif %}
+  <!-- STEP 3: Odeslání -->
+  <div class="card">
+    <div class="step-head"><span class="step-no">3</span><h2>Odeslání</h2></div>
+    <p class="muted" style="font-size:.95rem;margin-top:0;">
+      Dodací list odejde e-mailem na fixní dvojici příjemců z Nastavení
+      (Petr + Karolína).
+    </p>
+    <p class="line-summary final" id="summary"></p>
+    <p class="submit-bar">
+      <button class="primary" type="submit" id="vydej-submit">Vystavit dodací list a uložit výdej</button>
+      <a class="secondary" href="{% url 'inventory:home' %}">Zrušit</a>
+    </p>
   </div>
-
-  <p>
-    <button class="primary" type="submit" id="vydej-submit">Vystavit dodací list a uložit výdej</button>
-    <a class="secondary" href="{% url 'inventory:home' %}">Zrušit</a>
-  </p>
 </form>
 
 {% if user.is_obsluha %}

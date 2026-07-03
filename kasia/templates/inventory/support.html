@@ -2,115 +2,159 @@
 
 {% block title %}Podpora — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Podpora — návod (details accordions) + report form + Historie hlášení. */
+
+  .support-intro { color: var(--fg-soft); max-width: 720px; }
+
+  /* details accordions — sharp / bordered, brand-green summary marker.
+     Overrides base.html's simpler details style for this návod list. */
+  details summary {
+    padding: .8rem 1rem; font-weight: 600; color: var(--fg);
+    list-style: none; display: flex; align-items: center; gap: .6rem;
+  }
+  details summary:hover { text-decoration: none; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before {
+    content: "+"; font-family: var(--mono); color: var(--accent);
+    font-weight: 700; width: 1rem; display: inline-block;
+  }
+  details[open] summary::before { content: "–"; }
+  details[open] summary { border-bottom: 1px solid var(--line-soft); margin-bottom: 0; }
+  details { padding: 0; margin-bottom: .6rem; }
+  details .details-body { padding: .5rem 1.2rem 1rem; }
+  details .details-body ul, details .details-body ol { margin: .3rem 0 .6rem; padding-left: 1.4rem; }
+  details .details-body li { margin-bottom: .35rem; }
+  details .details-body h3:first-child { margin-top: .4rem; }
+
+  /* Form fields on this page span the card width, not the base 320px cap. */
+  #support-form .field { max-width: 620px; }
+  .field-required::after { content: " *"; color: var(--error); font-weight: bold; }
+
+  .stav-open { color: var(--warn); white-space: nowrap; }
+  .stav-done { color: var(--ok); white-space: nowrap; }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Podpora</h1>
 
-<p style="color:var(--fg-soft);">
+<p class="support-intro">
   Návod k použití, postupy a&nbsp;formulář pro hlášení chyb nebo požadavků.
   Všechna hlášení vidí celý tým — vlastník je označí jako vyřešená,
   jakmile je oprava nasazená.
 </p>
 
-<h2 style="margin-top:1.5rem;">Návod k použití</h2>
+<h2>Návod k použití</h2>
 
 <details>
   <summary>Co kde najdu (stručný přehled obrazovek)</summary>
-  <ul>
-    <li><strong>Přehled (/)</strong> — domovská stránka. Vlastník vidí přehled obou poboček, panel „Dochází zboží“ a poslední pohyby. Obsluha vidí svoji pobočku.</li>
-    <li><strong>Pobočka (/pobocka/&lt;kód&gt;/)</strong> — stav zásob na jedné pobočce. Status každého produktu: prázdné / dochází / v pořádku. Tlačítka pro nový příjem a výdej.</li>
-    <li><strong>Katalog (/katalog/)</strong> — seznam všech produktů a směsí. Filtr podle typu, hledání podle názvu, sloupce „Na skladě“, „Rezerv.“, „Efektivně“, „Práh“. Zelený řádek = vše v pořádku, žlutý = pod prahem.</li>
-    <li><strong>Detail produktu</strong> — stav po pobočkách včetně šarží, receptura u směsí, ruční úprava stavu, archivace.</li>
-    <li><strong>Příjem (/prijem/novy/)</strong> — příjemka od dodavatele. Hmotnost, šarže, poznámka. Po uložení se zásoby zvýší a&nbsp;vznikne záznam v Historii.</li>
-    <li><strong>Výdej (/vydej/novy/)</strong> — výdejka odběrateli (výchozí Říčany). Po uložení se zásoby sníží, <strong>automaticky se vystaví dodací list a&nbsp;odešle e-mailem</strong> Petrovi a&nbsp;Karolíně.</li>
-    <li><strong>Dodací listy (/dodaky/)</strong> — přehled vystavených dodáků, filtr podle pobočky a&nbsp;období, znovuodeslání PDF e-mailem.</li>
-    <li><strong>Historie pohybů (/pohyby/)</strong> — kompletní log všech pohybů. Filtry podle druhu, pobočky, období; možnost vyfiltrovat jen editované záznamy.</li>
-    <li><strong>Míchání (/michani/)</strong> — receptury směsí a&nbsp;dávky. Vyberte směs a&nbsp;cílové množství — suroviny se odečtou a&nbsp;směs se přidá na sklad jedním krokem. Chybí-li surovina, můžete rovnou upravit její stav a&nbsp;vrátit se namíchat.</li>
-    <li><strong>Dodavatelé (/dodavatele/) · Odběratelé (/odberatele/)</strong> — seznam partnerů, přidávání, archivace, editace.</li>
-    <li><strong>Pobočky (/pobocky/)</strong> — vlastník: přidání a&nbsp;editace fyzických poboček.</li>
-    <li><strong>Uživatelé (/uzivatele/)</strong> — vlastník: správa účtů, rolí, pobočková příslušnost.</li>
-    <li><strong>Nastavení (/nastaveni/)</strong> — vlastník: adresa firmy, e-maily, šablony, dodací listy.</li>
-    <li><strong>Podpora (/podpora/)</strong> — tato stránka. Návod + hlášení.</li>
-  </ul>
+  <div class="details-body">
+    <ul>
+      <li><strong>Přehled</strong> — domovská stránka. Vlastník vidí obě pobočky, panel „Dochází / Prázdné“ a&nbsp;poslední pohyby. Obsluha vidí svoji pobočku. Vpravo nahoře je tlačítko „Inventura {pobočka}“.</li>
+      <li><strong>Pobočka</strong> — stav zásob jedné pobočky. Každý produkt má stav: prázdné (červená) / dochází (oranžová) / v&nbsp;pořádku. Odsud vede příjem, výdej i&nbsp;míchání.</li>
+      <li><strong>Katalog</strong> — seznam všech produktů a&nbsp;směsí, seskupený podle stavu. Hledání, filtr podle typu / stavu / pobočky. Sloupce „Na skladě“, „Rezerv.“, „Efektivně“ (= na skladě − rezervováno) a&nbsp;„Práh“.</li>
+      <li><strong>Detail produktu</strong> — stav po pobočkách včetně šarží, receptura u&nbsp;směsí, ruční úprava stavu, nastavení objednacího bodu (prahu), archivace.</li>
+      <li><strong>Příjem</strong> — příjemka od dodavatele. Položky (kg + šarže) a&nbsp;pole <strong>Očekávaný příjezd</strong>: necháte-li ho prázdné, zásoby naskladní hned; vyplníte-li ho, jde o&nbsp;<strong>plánovaný příjem (objednávku)</strong> — naskladní se až po potvrzení.</li>
+      <li><strong>Výdej</strong> — výdejka odběrateli. Po uložení se zásoby sníží, vystaví se <strong>dodací list (PDF)</strong> a&nbsp;automaticky odejde e-mailem Petrovi a&nbsp;Karolíně (ne zákazníkovi).</li>
+      <li><strong>Míchání</strong> — namíchání směsi jedním krokem. Vyberete pobočku, směs a&nbsp;cílové množství → suroviny se odečtou a&nbsp;směs naskladní. Žádné plánování / dokončování dávky.</li>
+      <li><strong>Inventura</strong> — hromadné přepočítání skladu pro jednu pobočku. Projdete řádky, zapíšete skutečné hodnoty, změněné řádky zezelenají, dole je součet (kolik řádků a&nbsp;čistá změna v&nbsp;kg); uložíte jedním tlačítkem.</li>
+      <li><strong>Dodací listy</strong> — přehled vystavených dodáků, filtr podle pobočky a&nbsp;období, znovuodeslání PDF e-mailem.</li>
+      <li><strong>Historie</strong> — kompletní log všech pohybů. Filtry podle druhu, pobočky, období. Záložka <strong>„Plánované“</strong> obsahuje objednané příjmy čekající na přijetí (tlačítko „Přijmout“).</li>
+      <li><strong>Dodavatelé · Odběratelé</strong> — seznam partnerů, přidávání, archivace, editace.</li>
+      <li><strong>Pobočky</strong> — vlastník: přidání a&nbsp;editace fyzických poboček.</li>
+      <li><strong>Uživatelé</strong> — vlastník: správa účtů, rolí a&nbsp;pobočkové příslušnosti.</li>
+      <li><strong>Nastavení</strong> — vlastník: adresa firmy, příjemci dodáků, šablony, dodací listy.</li>
+      <li><strong>Podpora</strong> — tato stránka. Návod + formulář pro hlášení.</li>
+    </ul>
+  </div>
 </details>
 
 <details>
   <summary>Postupy (krok za krokem)</summary>
+  <div class="details-body">
+    <h3>1. Příjem dodávky (okamžitý i&nbsp;plánovaný)</h3>
+    <ol>
+      <li>Klikněte „Příjem“ v&nbsp;menu (nebo tlačítko příjmu na pobočce).</li>
+      <li>Vyberte pobočku a&nbsp;dodavatele (nového lze přidat přímo z&nbsp;formuláře).</li>
+      <li>Pro každý řádek: produkt, hmotnost v&nbsp;kg, šarže (je-li na obalu — doporučeno).</li>
+      <li><strong>Očekávaný příjezd</strong> je klíčové pole:
+        <ul>
+          <li><strong>Prázdné</strong> = zboží je fyzicky tady. Po uložení se zásoby <strong>hned naskladní</strong>.</li>
+          <li><strong>Vyplněné datum</strong> = objednávka / <strong>plánovaný příjem</strong>. Zásoby se zatím <em>nepřipočtou</em>; řádek čeká v&nbsp;Historii → záložka „Plánované“.</li>
+        </ul>
+      </li>
+      <li>Klikněte „Uložit příjem“.</li>
+      <li>Až objednávka dorazí: Historie → „Plánované“ → u&nbsp;řádku „<strong>Přijmout</strong>“, zkontrolujte kg a&nbsp;šarže, potvrďte. Teprve teď se zásoby navýší.</li>
+    </ol>
 
-  <h3 style="margin-top:0;">1. Příjem nové dodávky</h3>
-  <ol>
-    <li>Klikněte „Příjem“ v menu.</li>
-    <li>Vyberte dodavatele (nebo přidejte nového přímo z&nbsp;formuláře).</li>
-    <li>Vyplňte datum (výchozí dnes) a&nbsp;poznámku.</li>
-    <li>Pro každou položku: produkt, hmotnost (kg), šarže (pokud je na obalu).</li>
-    <li>Klikněte „Uložit příjem“. Zásoby se okamžitě navýší a&nbsp;vznikne záznam v&nbsp;Historii.</li>
-  </ol>
+    <h3>2. Výdej zboží (rozvoz nebo prodej)</h3>
+    <ol>
+      <li>Klikněte „Výdej“.</li>
+      <li>Vyberte pobočku a&nbsp;odběratele (nového lze přidat z&nbsp;formuláře).</li>
+      <li>Vyplňte položky (produkt, kg, případně šarže).</li>
+      <li>Klikněte „Vystavit výdej“. Zásoby se sníží, vygeneruje se <strong>dodací list (PDF)</strong> a&nbsp;<strong>automaticky odejde e-mailem</strong> Petrovi a&nbsp;Karolíně. Zákazník PDF nedostává.</li>
+    </ol>
 
-  <h3>2. Výdej zboží (rozvoz nebo prodej)</h3>
-  <ol>
-    <li>Klikněte „Výdej“.</li>
-    <li>Odběratel: výchozí je <strong>Říčany</strong> (rozvoz do vlastní prodejny). Pro externího odběratele vyberte z&nbsp;rozbalovacího seznamu nebo přidejte nového.</li>
-    <li>Vyplňte položky stejně jako u&nbsp;příjmu.</li>
-    <li>Klikněte „Vystavit výdej“. Zásoby se sníží, vygeneruje se <strong>dodací list (PDF)</strong> a&nbsp;<strong>automaticky se odešle e-mailem</strong> Petrovi a&nbsp;Karolíně. Zákazník PDF e-mailem nedostává.</li>
-  </ol>
+    <h3>3. Míchání směsi (jeden krok)</h3>
+    <ol>
+      <li>Menu → „Míchání“.</li>
+      <li>Vyberte <strong>pobočku</strong>, <strong>směs</strong> a&nbsp;<strong>cílové množství</strong> (kolik kg směsi chcete).</li>
+      <li>Volitelně vyplňte „Skutečně vyrobeno“, liší-li se výsledek od cíle (prázdné = cíl).</li>
+      <li>Klikněte „<strong>Namíchat</strong>“. Suroviny se podle receptury <strong>odečtou</strong> a&nbsp;směs se <strong>naskladní</strong> — vše jedním krokem. Žádné plánování ani dokončování dávky.</li>
+      <li>Chybí-li surovina, zobrazí se zelené tlačítko „<strong>Upravit stav surovin</strong>“. Otevře inventuru <em>jen</em> pro suroviny této směsi — dosypte / opravte stavy, uložte, vraťte se a&nbsp;namíchejte.</li>
+    </ol>
 
-  <h3>3. Míchání směsi</h3>
-  <ol>
-    <li>Menu → „Míchání“ → „+ Nová dávka“.</li>
-    <li>Vyberte pobočku, recepturu a&nbsp;cílovou hmotnost směsi.</li>
-    <li>Volitelně zadejte „Skutečně vyrobeno“, pokud se výsledek liší od cíle (prázdné = cíl).</li>
-    <li>Klikněte „Namíchat“. Suroviny se <strong>odečtou</strong> a&nbsp;směs se <strong>přidá na sklad</strong> jedním krokem.</li>
-    <li>Chybí-li některá surovina, systém nabídne odkaz „Upravit stav surovin“ — otevře inventuru jen pro suroviny této směsi; po uložení se vrátíte zpět a&nbsp;namícháte.</li>
-  </ol>
+    <h3>4. Inventura (hromadné přepočítání skladu)</h3>
+    <ol>
+      <li>Otevřete „Inventura“ v&nbsp;menu, nebo přes oranžové tlačítko „Inventura {pobočka}“ na Přehledu / Katalogu (a&nbsp;u&nbsp;chybějící suroviny v&nbsp;Míchání).</li>
+      <li>Inventura je vždy pro <strong>jednu pobočku</strong> — potvrďte / vyberte ji.</li>
+      <li>Projděte řádky a&nbsp;do sloupce „skutečnost“ zapište skutečně napočítané kg. Upravený řádek se <strong>zvýrazní zeleně</strong>.</li>
+      <li>Dole vidíte průběžný <strong>součet</strong>: kolik řádků jste změnili a&nbsp;jaká je čistá změna v&nbsp;kg.</li>
+      <li>Uložte <strong>jedním tlačítkem</strong>. Rozdíly se zapíšou jako korekce stavu; nezměněné řádky zůstanou beze změny.</li>
+    </ol>
 
-  <h3>4. Ruční úprava stavu (rychlá korekce, ne formální inventura)</h3>
-  <ol>
-    <li>V&nbsp;Katalogu otevřete detail produktu.</li>
-    <li>Klikněte „Upravit stav ručně“.</li>
-    <li>Zadejte novou hmotnost a&nbsp;důvod (ztráta, přepalování, kontrola — zaškrtněte typ).</li>
-    <li>Uložte. Vytvoří se synthetic záznam v&nbsp;Historii s&nbsp;předponou <strong>[STAV]</strong>, který nelze přehlédnout.</li>
-  </ol>
-  <p style="color:var(--fg-soft); font-size:0.9rem;">
-    <em>Poznámka:</em> Formální inventura (počítání + porovnání + srovnání rozdílu)
-    zatím není v&nbsp;aplikaci; tento postup je pro rychlou korekci po fyzickém
-    přepočítání. Podrobnosti v&nbsp;rozhodnutí 0041.
-  </p>
-
-  <h3>5. Oprava starší příjemky nebo výdejky</h3>
-  <ol>
-    <li>Menu → „Historie“.</li>
-    <li>Najděte chybný pohyb a&nbsp;klikněte na řádek.</li>
-    <li>V&nbsp;detailu klikněte „Upravit“ — otevře se formulář úpravy pohybu.</li>
-    <li>Změňte hodnoty. <strong>Důvod opravy je povinný.</strong></li>
-    <li>Uložte. Pohyb dostane novou verzi (v2, v3, …) a&nbsp;pokud šlo o&nbsp;výdej, dodací list se přegeneruje a&nbsp;přepošle e-mailem s&nbsp;předponou <strong>[OPRAVA]</strong>.</li>
-  </ol>
+    <h3>5. Oprava staršího pohybu</h3>
+    <ol>
+      <li>Menu → „Historie“.</li>
+      <li>Najděte chybný pohyb a&nbsp;otevřete ho.
+        (Pozn.: řádek v&nbsp;záložce „Plánované“ není hotový pohyb — ten se neopravuje tady, ale tlačítkem „Přijmout“.)</li>
+      <li>Klikněte „Upravit“ a&nbsp;změňte hodnoty. <strong>Důvod opravy je povinný.</strong></li>
+      <li>Uložte. Šlo-li o&nbsp;výdej, dodací list se přegeneruje a&nbsp;přepošle Petrovi a&nbsp;Karolíně s&nbsp;předponou <strong>[OPRAVA]</strong> v&nbsp;předmětu.</li>
+    </ol>
+  </div>
 </details>
 
 <details>
   <summary>Tipy a triky</summary>
-  <ul>
-    <li><strong>Pobočku vybírá obsluha automaticky — sama svoji.</strong> Vlastník může přepnout, obsluha ne.</li>
-    <li><strong>Říčany jsou výchozí odběratel pro výdej.</strong> Pokud rozvážíte do vlastní prodejny, nemusíte nic přepínat.</li>
-    <li><strong>Dodací list jde automaticky Petrovi a&nbsp;Karolíně, ne zákazníkovi.</strong> Vy obvykle nemusíte řešit zaslání zvlášť.</li>
-    <li><strong>Šarže není povinná, ale doporučená</strong> — bez ní nelze trasovat původ při reklamaci.</li>
-    <li><strong>Editace pohybu vyžaduje důvod.</strong> Pohyb se nepřepisuje, jen se přidá další verze; původní zůstává v&nbsp;audit trailu.</li>
-    <li><strong>Editace výdeje znovu odešle dodák.</strong> Petr + Karolína dostanou novou verzi PDF e-mailem s&nbsp;předponou [OPRAVA] — počítejte s&nbsp;tím.</li>
-    <li><strong>Plánované rezervace zmenšují „Efektivní“ zásoby, ne „Na skladě“.</strong> Fyzicky kg ještě jsou, ale jsou slíbené.</li>
-    <li><strong>Ruční úprava stavu nepřepisuje pohyby</strong> — vznikne nový záznam [STAV], který srovná rozdíl. Historie zůstane neporušená.</li>
-    <li><strong>Pokud nevíte, kam co zapsat, zeptejte se přes formulář níže</strong> — všichni vidíme váš dotaz a&nbsp;vlastník odpoví.</li>
-    <li><strong>Stav „dochází“ znamená pod prahem objednacího bodu</strong>, ne že je úplně prázdno. Práh nastavuje vlastník v&nbsp;detailu produktu.</li>
-    <li><strong>Archivace produktu ho neodstraní z&nbsp;historie.</strong> Jen ho skryje z&nbsp;výchozího seznamu v&nbsp;Katalogu.</li>
-  </ul>
+  <div class="details-body">
+    <ul>
+      <li><strong>„Dochází“ ≠ „prázdné“.</strong> Dochází (oranžová) = pod objednacím bodem, kg ještě jsou. Prázdné (červená) = efektivně 0&nbsp;kg. Práh nastavuje vlastník v&nbsp;detailu produktu.</li>
+      <li><strong>Řiďte se sloupcem „Efektivně“, ne „Na skladě“.</strong> Efektivně = na skladě − rezervováno. To je to, s&nbsp;čím reálně můžete počítat; rezervované kg jsou fyzicky tady, ale už slíbené.</li>
+      <li><strong>Dodací list jde Petrovi a&nbsp;Karolíně, ne zákazníkovi.</strong> Po výdeji odchází automaticky — zvlášť ho neřešíte.</li>
+      <li><strong>Plánovaný příjem se přičte až po „Přijmout“.</strong> Dokud objednávka nedorazí a&nbsp;nepotvrdíte ji v&nbsp;Historii → „Plánované“, zásoby zůstávají beze změny.</li>
+      <li><strong>Chce-li Míchání dosypat surovinu</strong>, použijte zelené „Upravit stav surovin“ přímo z&nbsp;chybové hlášky — otevře inventuru jen pro suroviny té směsi. Pak se vraťte a&nbsp;namíchejte.</li>
+      <li><strong>Míchání je jeden krok.</strong> Není žádné plánování, spouštění ani dokončování dávky — kliknete „Namíchat“ a&nbsp;je hotovo. „Skutečně vyrobeno“ nechte prázdné, pokud sedí na cíl.</li>
+      <li><strong>Šarže není povinná, ale doporučená</strong> — bez ní nelze dohledat původ při reklamaci.</li>
+      <li><strong>Oprava pohybu vyžaduje důvod</strong> a&nbsp;u&nbsp;výdeje znovu odešle dodák Petrovi&nbsp;+&nbsp;Karolíně s&nbsp;předponou <strong>[OPRAVA]</strong> — počítejte s&nbsp;tím, ať se nediví.</li>
+      <li><strong>Inventura je pro celou pobočku najednou.</strong> Změněné řádky zezelenají, dole je součet (kolik řádků, čistá změna kg); uložíte jedním tlačítkem. Ideální na pravidelný přepočet skladu.</li>
+      <li><strong>Čísla jsou na 1&nbsp;desetinné místo, s&nbsp;čárkou, váhy v&nbsp;kg.</strong> Při zadávání můžete psát čárku i&nbsp;tečku — systém si poradí.</li>
+      <li><strong>Archivace produktu ho nesmaže z&nbsp;historie.</strong> Jen ho skryje z&nbsp;výchozího seznamu v&nbsp;Katalogu; pohyby zůstanou dohledatelné.</li>
+      <li><strong>Nevíte si rady? Napište přes formulář níže.</strong> Hlášení vidí celý tým a&nbsp;vlastník odpoví / opraví.</li>
+    </ul>
+  </div>
 </details>
 
-<h2 style="margin-top:2rem;">Nahlásit chybu nebo požadavek</h2>
+<h2>Nahlásit chybu nebo požadavek</h2>
 
 <div class="card">
-  <p style="color:var(--fg-soft); margin-top:0;">
+  <p class="muted" style="margin-top:0;">
     Napište nám, co nefunguje, co chybí nebo čemu nerozumíte. Všichni
     v&nbsp;týmu hlášení vidí. Vlastník je označí jako vyřešená, jakmile
     je opraveno.
   </p>
-  <form method="post" action="{% url 'inventory:support' %}">
+  <form id="support-form" method="post" action="{% url 'inventory:support' %}">
     {% csrf_token %}
     {% if form.non_field_errors %}
       <div class="non-form-errors">{{ form.non_field_errors }}</div>
@@ -129,7 +173,7 @@
   </form>
 </div>
 
-<h2 style="margin-top:2rem;">Historie hlášení</h2>
+<h2>Historie hlášení</h2>
 
 {% if open_feedbacks %}
   <table class="lines">
@@ -148,11 +192,9 @@
         <tr>
           <td style="white-space:nowrap;">{{ f.created_at|date:"d. m. Y H:i" }}</td>
           <td>{{ f.created_by.email }}</td>
-          <td>{% if f.page_url %}<code>{{ f.page_url }}</code>{% else %}<span style="color:var(--fg-soft);">—</span>{% endif %}</td>
+          <td>{% if f.page_url %}<code>{{ f.page_url }}</code>{% else %}<span class="muted">—</span>{% endif %}</td>
           <td>{{ f.description|linebreaksbr }}</td>
-          <td style="white-space:nowrap;">
-            <span style="color:var(--warn);">● Otevřené</span>
-          </td>
+          <td><span class="stav-open">● Otevřené</span></td>
           {% if user.is_vlastnik %}
             <td style="white-space:nowrap;">
               <form method="post" action="{% url 'inventory:feedback_toggle' pk=f.pk %}" style="display:inline;">
@@ -166,7 +208,7 @@
     </tbody>
   </table>
 {% else %}
-  <p style="color:var(--fg-soft);"><em>Žádná otevřená hlášení.</em></p>
+  <p class="muted"><em>Žádná otevřená hlášení.</em></p>
 {% endif %}
 
 {% if show_resolved %}
@@ -188,11 +230,11 @@
           <tr>
             <td style="white-space:nowrap;">{{ f.created_at|date:"d. m. Y H:i" }}</td>
             <td>{{ f.created_by.email }}</td>
-            <td>{% if f.page_url %}<code>{{ f.page_url }}</code>{% else %}<span style="color:var(--fg-soft);">—</span>{% endif %}</td>
-            <td>{{ f.description|linebreaksbr }}</td>
-            <td style="white-space:nowrap;opacity:0.6;text-decoration:line-through;">
-              <span style="color:var(--ok);">✓ Vyřešené</span>
-              {% if f.resolved_by %}<br><small style="color:var(--fg-soft);">{{ f.resolved_by.email }}<br>{{ f.resolved_at|date:"d. m. Y H:i" }}</small>{% endif %}
+            <td>{% if f.page_url %}<code>{{ f.page_url }}</code>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td style="opacity:.7;">{{ f.description|linebreaksbr }}</td>
+            <td style="white-space:nowrap;">
+              <span class="stav-done">✓ Vyřešené</span>
+              {% if f.resolved_by %}<br><small class="muted">{{ f.resolved_by.email }}<br>{{ f.resolved_at|date:"d. m. Y H:i" }}</small>{% endif %}
             </td>
             {% if user.is_vlastnik %}
               <td style="white-space:nowrap;">
@@ -207,9 +249,9 @@
       </tbody>
     </table>
   {% else %}
-    <p style="color:var(--fg-soft);"><em>Žádná vyřešená hlášení.</em></p>
+    <p class="muted"><em>Žádná vyřešená hlášení.</em></p>
   {% endif %}
-  <p style="margin-top:0.75rem;">
+  <p style="margin-top:.75rem;">
     <a href="{% url 'inventory:support' %}">← Skrýt vyřešená</a>
   </p>
 {% elif resolved_count %}

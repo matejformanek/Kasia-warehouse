@@ -192,3 +192,10 @@ branch operator opens at the start of mixing and returns to at the end.
 > [`../decisions/0001-sarze-tracking.md`](../decisions/0001-sarze-tracking.md):
 > operator records source šarže per consumption line when known, skips
 > otherwise; the mixture batch may itself have a šarže recorded.
+
+## UX refresh — Phase 2 (2026-07-03)
+
+Míchání create + preview restyled per mockup `06` (airy immediate form, mono
+numeric inputs); preview partial gains Stav pills + a green white-text
+"Upravit stav surovin" shortage CTA. HTMX preview wiring + `inventura_link`
+preserved. Míchání historie restyled per mockup `18`.

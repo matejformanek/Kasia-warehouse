@@ -9,50 +9,67 @@
 
 <form method="post">
   {% csrf_token %}
+
+  <!-- STEP 1: Dodavatel a pobočka -->
   <div class="card">
-    <div class="field">
-      <label class="field-required" for="id_branch">Pobočka</label>
-      {{ form.branch }}
-      {{ form.branch.errors }}
-    </div>
-    <div class="field">
-      <label for="id_dodavatel">Dodavatel</label>
-      {{ form.dodavatel }}
-      <a class="secondary" href="{% url 'inventory:supplier_create' %}" target="_blank"
-         style="margin-left:0.5rem;font-size:0.85rem;padding:0.2rem 0.5rem;"
-         title="Otevře nového dodavatele v novém panelu — vyplněný formulář tu zůstane.">
-        + Nový dodavatel ↗
-      </a>
-      {{ form.dodavatel.errors }}
-    </div>
-    <div class="field">
-      <label class="field-required" for="id_date_issued">Datum vystavení</label>
-      {{ form.date_issued }}
-      {{ form.date_issued.errors }}
-    </div>
-    <div class="field">
-      <label for="id_expected_on">{{ form.expected_on.label }}</label>
-      {{ form.expected_on }}
-      <p style="color:var(--fg-soft);font-size:0.85rem;margin:0.25rem 0 0;">
-        {{ form.expected_on.help_text }}
-      </p>
-      {{ form.expected_on.errors }}
-    </div>
-    <div class="field">
-      <label for="id_note">Poznámka</label>
-      {{ form.note }}
+    <div class="step-head"><span class="step-no">1</span><h2>Dodavatel a pobočka</h2></div>
+    <div class="field-grid">
+      <div class="field">
+        <label class="field-required" for="id_branch">Pobočka</label>
+        {{ form.branch }}
+        {{ form.branch.errors }}
+      </div>
+      <div class="field">
+        <label for="id_dodavatel">Dodavatel</label>
+        {{ form.dodavatel }}
+        <a class="secondary" href="{% url 'inventory:supplier_create' %}" target="_blank"
+           style="margin-left:0.5rem;font-size:0.85rem;padding:0.2rem 0.5rem;"
+           title="Otevře nového dodavatele v novém panelu — vyplněný formulář tu zůstane.">
+          + Nový dodavatel ↗
+        </a>
+        {{ form.dodavatel.errors }}
+      </div>
+      <div class="field">
+        <label class="field-required" for="id_date_issued">Datum vystavení</label>
+        {{ form.date_issued }}
+        {{ form.date_issued.errors }}
+      </div>
+      <div class="field">
+        <label for="id_expected_on">{{ form.expected_on.label }}</label>
+        {{ form.expected_on }}
+        <p style="color:var(--fg-soft);font-size:0.85rem;margin:0.25rem 0 0;">
+          {{ form.expected_on.help_text }}
+        </p>
+        {{ form.expected_on.errors }}
+      </div>
+      <div class="field">
+        <label for="id_note">Poznámka</label>
+        {{ form.note }}
+      </div>
     </div>
   </div>
 
+  <!-- STEP 2: Položky + running summary (no over-stock check — příjem adds) -->
   <div class="card">
-    <h2 style="font-size:1.1rem;margin-top:0;">Položky</h2>
+    <div class="step-head"><span class="step-no">2</span><h2>Položky</h2></div>
     {% include "inventory/_movement_form_lines.html" with show_stock_warn=False %}
+    <p class="line-summary" id="summary-mid"></p>
   </div>
 
-  <p>
-    <button class="primary" type="submit">Uložit příjem</button>
-    <a class="secondary" href="{% url 'inventory:home' %}">Zrušit</a>
-  </p>
+  <!-- STEP 3: Uložit -->
+  <div class="card">
+    <div class="step-head"><span class="step-no">3</span><h2>Uložit</h2></div>
+    <p class="muted" style="font-size:.95rem;margin-top:0;">
+      Zkontrolujte položky a uložte příjem. Vyplněný <strong>Očekávaný příjezd</strong>
+      uloží příjem jako plánovaný (objednáno) — zboží se přičte na sklad až po
+      potvrzení příjezdu.
+    </p>
+    <p class="line-summary final" id="summary"></p>
+    <p class="submit-bar">
+      <button class="primary" type="submit">Uložit příjem</button>
+      <a class="secondary" href="{% url 'inventory:home' %}">Zrušit</a>
+    </p>
+  </div>
 </form>
 
 {% if user.is_obsluha %}

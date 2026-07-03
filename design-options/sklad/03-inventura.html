@@ -1,0 +1,284 @@
+<!-- Sklad mockup 03 — Inventura (bulk-edit form). Warn-dense → carries the warn-hue chooser.
+     Adds: sticky bottom tally bar, changed-row left-border accent, type-to-filter, per-row reset.
+     Retones the [STAV] explainer to --warn-tint (keeps 0041 provenance message). Restyle within 0054. -->
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventura — Kasia sklad (návrh)</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #1f6b3a; --accent-deep: #16432a; --accent-tint: #eef4ee;
+    --fg: #141719; --fg-soft: #565b66; --fg-faint: #868c97;
+    --bg: #f6f7f5; --bg-card: #ffffff; --line: #d9dcd9; --line-soft: #eef0ee;
+    --error: #a02525; --error-tint: #fbebea;
+    --warn: #c2410c; --warn-tint: #fdeee3;
+    --ok: #1f6b3a; --ok-soft: #e7f1ea;
+    --sidebar-w: 244px;
+    --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { font-family: var(--ui); color: var(--fg); background: var(--bg); margin: 0; font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -.01em; }
+  h1 { font-size: 1.45rem; margin: 0 0 1.1rem; }
+
+  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+  .sidebar { position: sticky; top: 0; align-self: start; height: 100vh; background: var(--bg-card); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 14px; }
+  .sidebar .brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 16px; margin-bottom: 6px; border-bottom: 1px solid var(--line-soft); text-decoration: none; }
+  .sidebar .brand img { height: 34px; width: auto; display: block; }
+  .sidebar .brand .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .sidebar .brand .brand-name { font-weight: 700; font-size: 16px; letter-spacing: .06em; color: var(--fg); }
+  .sidebar .brand .brand-sub { font-size: 11px; color: var(--fg-faint); letter-spacing: .14em; text-transform: uppercase; }
+  .nav { display: flex; flex-direction: column; gap: 1px; margin-top: 10px; flex: 1 1 auto; overflow-y: auto; }
+  .nav .nav-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); padding: 12px 10px 5px; font-weight: 600; }
+  .nav a { display: flex; align-items: center; gap: 10px; padding: 8px 11px; color: var(--fg-soft); font-weight: 500; font-size: 14px; text-decoration: none; border-left: 3px solid transparent; }
+  .nav a:hover { background: var(--line-soft); color: var(--fg); }
+  .nav a.active { background: var(--accent-tint); color: var(--accent-deep); font-weight: 600; border-left-color: var(--accent); }
+  .nav a .ic { width: 17px; height: 17px; flex: 0 0 17px; color: var(--fg-faint); }
+  .nav a.active .ic { color: var(--accent); }
+  .sidebar .user { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+  .sidebar .user .email { font-size: 12.5px; color: var(--fg-soft); text-decoration: none; }
+  .sidebar .user .logout { font-size: 13px; font-weight: 600; color: var(--fg); background: none; border: 1px solid var(--line); padding: 6px 10px; cursor: pointer; font-family: inherit; width: 100%; text-align: left; }
+
+  .content { padding: 30px 34px 120px; max-width: 1180px; width: 100%; min-width: 0; margin: 0 auto; }
+
+  .card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 0; padding: 1.2rem 1.35rem; margin-bottom: 1.2rem; }
+  .stav-card { background: var(--warn-tint); border-left: 3px solid var(--warn); }
+  .stav-card code { background: #fff; border: 1px solid var(--line); padding: 0 .3rem; font-family: var(--mono); font-size: .85em; }
+
+  .primary, a.primary, button.primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); padding: 0.5rem 1.1rem; border-radius: 0; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; }
+  .primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  a.secondary, button.secondary { background: #fff; color: var(--fg); border: 1px solid var(--line); padding: 0.5rem 0.9rem; border-radius: 0; font: inherit; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; }
+  a.secondary:hover { border-color: var(--fg-faint); }
+
+  .branch-row { margin-bottom: 1rem; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  form input[type=text], form input[type=number], form input[type=search] { font: inherit; padding: 0.45rem 0.6rem; border: 1px solid var(--line); border-radius: 0; background: #fcfdfc; color: var(--fg); }
+  form input:focus { outline: none; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+  .toolbar { display: flex; gap: .75rem; align-items: center; margin-bottom: .75rem; flex-wrap: wrap; }
+  .toolbar input[type=search] { min-width: 260px; }
+
+  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; }
+  table.lines th, table.lines td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  table.lines th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600; }
+  /* Hover keeps the zebra readable (subtle darken), and never overrides a changed (green) row. */
+table.lines tbody tr:hover td { background: #e2e5e2; }
+tr.inventura-row.changed:hover td { background: #d7ecdf; }
+  .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  td .qty { max-width: 130px; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  /* Changed-row accent: sharp left border marks any row whose input differs from data-current. */
+  tr.inventura-row td:first-child { border-left: 4px solid transparent; }
+  /* Edited row — clearly green (side edit border + green tint), overrides zebra. */
+  tr.inventura-row.changed td:first-child { border-left-color: var(--ok); }
+  tr.inventura-row.changed td { background: #e3f1e8 !important; }
+  .reset-btn { background: none; border: 1px solid var(--line); padding: .25rem .5rem; font: inherit; font-size: .8rem; cursor: pointer; color: var(--fg-soft); }
+  .reset-btn:hover { border-color: var(--warn); color: var(--warn); }
+  .muted { color: var(--fg-soft); }
+  .field { margin-bottom: .85rem; }
+  .field label { display:block; font-weight:600; margin-bottom:.3rem; }
+  .required-legend { font-size: 0.85rem; color: var(--fg-soft); margin-bottom: 0.5rem; }
+  .required-legend::before { content: "* "; color: var(--error); font-weight: bold; }
+  .field-required::after { content: " *"; color: var(--error); font-weight: bold; }
+
+  /* Sticky bottom action bar with live tally — the #1 safety question before saving. */
+  .tallybar { position: fixed; left: var(--sidebar-w); right: 0; bottom: 0; z-index: 50; background: var(--bg-card); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px -12px rgba(0,0,0,.25); padding: 12px 34px; display: flex; align-items: center; gap: 1.5rem; }
+  .tallybar .tally { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 14px; }
+  .tallybar .tally .pos { color: var(--ok); font-weight: 600; }
+  .tallybar .tally .neg { color: var(--error); font-weight: 600; }
+  .tallybar .tally .chg { color: var(--fg); font-weight: 600; }
+  .tallybar .spacer { flex: 1 1 auto; }
+
+  .swatcher { position: fixed; top: 12px; right: 16px; z-index: 100; background: #fff; border: 1px solid var(--line); box-shadow: 0 6px 20px -8px rgba(0,0,0,.25); padding: 8px 10px; font: 500 12px var(--ui); display: flex; gap: 6px; align-items: center; }
+  .swatcher b { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-faint); margin-right: 2px; }
+  .swatcher button { border: 1px solid var(--line); background: #fff; padding: 4px 8px; cursor: pointer; font: inherit; }
+  .swatcher button.on { border-color: var(--accent); background: var(--accent-tint); font-weight: 600; }
+  .swatcher .dot { width: 11px; height: 11px; display: inline-block; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+</style>
+</head>
+<body>
+
+<div class="swatcher" aria-label="Volba odstínu upozornění">
+  <b>Odstín</b>
+  <button data-warn="#b45309" data-tint="#fdf1e3"><span class="dot" style="background:#b45309"></span>Amber</button>
+  <button data-warn="#a16207" data-tint="#fdf7e3"><span class="dot" style="background:#a16207"></span>Honey</button>
+  <button data-warn="#c2410c" data-tint="#fdeee3" class="on"><span class="dot" style="background:#c2410c"></span>Orange</button>
+</div>
+
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="index.html">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="brand-text"><span class="brand-name">KASIA</span><span class="brand-sub">sklad</span></span>
+    </a>
+    <nav class="nav" aria-label="Hlavní navigace">
+      <span class="nav-label">Provoz</span>
+      <a href="02a-prehled-feed.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Přehled</a>
+      <a href="01b-katalog-grouped.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Katalog</a>
+      <a href="03-inventura.html" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M9 13l2 2 4-4"/></svg>Inventura</a>
+      <a href="08-prijem.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Příjem</a>
+      <a href="05-vydej.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>Výdej</a>
+      <a href="06-michani.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 0 1 15-6.7L21 6"/><path d="M21 3v3h-3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 18"/><path d="M3 21v-3h3"/></svg>Míchání</a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h13l-3-3m3 3-3 3"/><path d="M20 16H7l3-3m-3 3 3 3"/></svg>Převody</a>
+      <a href="10-dodaci-listy.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>Dodací listy</a>
+      <a href="09-historie.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/></svg>Historie</a>
+      <span class="nav-label">Správa</span>
+      <a href="14-pobocky.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 9l3-5h12l3 5"/><path d="M9 21v-6h6v6"/></svg>Pobočky</a>
+    </nav>
+    <div class="user">
+      <a href="#" class="email">petr@kasia.cz</a>
+      <button class="logout">Odhlásit</button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <h1>Inventura — TYN (Týniště nad Orlicí)</h1>
+
+    <div class="card stav-card">
+      <strong>Hromadná úprava stavu skladu.</strong>
+      Projděte řádky a zapište skutečně naměřené hodnoty. Změněné řádky se po uložení převedou na pohyby
+      s prefixem <code>[STAV]</code> (per rozhodnutí 0041). Beze změny ponechané řádky se nezapíšou.
+    </div>
+
+    <div class="branch-row">
+      <strong>Pobočka:</strong>
+      <span class="primary" style="padding:.3rem .7rem;">TYN — Týniště nad Orlicí</span>
+      <a class="secondary" href="#">SEZ — Sezimovo Ústí</a>
+    </div>
+
+    <form onsubmit="return false;">
+      <div class="toolbar">
+        <!-- Client-side type-to-filter over product name (long lists). -->
+        <input type="search" id="filter" placeholder="Filtrovat produkt v seznamu…">
+        <span class="muted" id="filter-count"></span>
+      </div>
+
+      <table class="lines">
+        <thead>
+          <tr>
+            <th>Produkt</th><th>Druh</th>
+            <th style="text-align:right;">Aktuálně skladem (kg)</th>
+            <th style="text-align:right;">Nový stav (kg)</th>
+            <th style="text-align:right;">Rozdíl</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr class="inventura-row" data-current="182.400"><td><strong>Pepř černý mletý</strong></td><td class="muted">koření</td><td class="num">182,4</td><td style="text-align:right;"><input class="qty" type="text" inputmode="decimal" value="182,4"></td><td class="num delta muted">—</td><td><button type="button" class="reset-btn" hidden>vrátit</button></td></tr>
+          <tr class="inventura-row" data-current="96.750"><td><strong>Paprika sladká mletá</strong></td><td class="muted">koření</td><td class="num">96,7</td><td style="text-align:right;"><input class="qty" type="text" inputmode="decimal" value="94,2"></td><td class="num delta muted">—</td><td><button type="button" class="reset-btn" hidden>vrátit</button></td></tr>
+          <tr class="inventura-row" data-current="14.200"><td><strong>Kmín celý</strong></td><td class="muted">koření</td><td class="num">14,2</td><td style="text-align:right;"><input class="qty" type="text" inputmode="decimal" value="14,2"></td><td class="num delta muted">—</td><td><button type="button" class="reset-btn" hidden>vrátit</button></td></tr>
+          <tr class="inventura-row" data-current="61.300"><td><strong>Skořice mletá</strong></td><td class="muted">koření</td><td class="num">61,3</td><td style="text-align:right;"><input class="qty" type="text" inputmode="decimal" value="63,0"></td><td class="num delta muted">—</td><td><button type="button" class="reset-btn" hidden>vrátit</button></td></tr>
+          <tr class="inventura-row" data-current="7.850"><td><strong>Muškátový oříšek mletý</strong></td><td class="muted">koření</td><td class="num">7,8</td><td style="text-align:right;"><input class="qty" type="text" inputmode="decimal" value="7,8"></td><td class="num delta muted">—</td><td><button type="button" class="reset-btn" hidden>vrátit</button></td></tr>
+          <tr class="inventura-row" data-current="33.900"><td><strong>Koriandr mletý</strong></td><td class="muted">koření</td><td class="num">33,9</td><td style="text-align:right;"><input class="qty" type="text" inputmode="decimal" value="33,9"></td><td class="num delta muted">—</td><td><button type="button" class="reset-btn" hidden>vrátit</button></td></tr>
+          <tr class="inventura-row" data-current="128.000"><td><strong>Grilovací koření</strong></td><td class="muted">směs</td><td class="num">128,0</td><td style="text-align:right;"><input class="qty" type="text" inputmode="decimal" value="128,0"></td><td class="num delta muted">—</td><td><button type="button" class="reset-btn" hidden>vrátit</button></td></tr>
+          <tr class="inventura-row" data-current="54.500"><td><strong>Gulášové koření</strong></td><td class="muted">směs</td><td class="num">54,5</td><td style="text-align:right;"><input class="qty" type="text" inputmode="decimal" value="52,7"></td><td class="num delta muted">—</td><td><button type="button" class="reset-btn" hidden>vrátit</button></td></tr>
+        </tbody>
+      </table>
+
+      <div class="card">
+        <p class="required-legend">povinné pole</p>
+        <div class="field">
+          <label class="field-required" for="reason">Důvod úpravy (jeden pro celou dávku)</label>
+          <input type="text" id="reason" size="60" style="width:100%;max-width:420px;" placeholder="např. inventura k 01. 07. 2026">
+        </div>
+      </div>
+    </form>
+  </main>
+</div>
+
+<!-- Sticky tally bar computes off the same recompute() the real screen already runs. -->
+<div class="tallybar">
+  <div class="tally">
+    <span class="chg" id="t-count">0 řádků změněno</span>
+    &nbsp;·&nbsp; čistá změna
+    <span class="pos" id="t-pos">+0,0</span> /
+    <span class="neg" id="t-neg">−0,0</span> kg
+  </div>
+  <div class="spacer"></div>
+  <a class="secondary" href="01b-katalog-grouped.html">Zrušit</a>
+  <button class="primary" type="button">Uložit všechny změny</button>
+</div>
+
+<script>
+  (function () {
+    const rows = Array.from(document.querySelectorAll(".inventura-row"));
+    const tCount = document.getElementById("t-count");
+    const tPos = document.getElementById("t-pos");
+    const tNeg = document.getElementById("t-neg");
+
+    function recompute(row) {
+      const input = row.querySelector(".qty");
+      const delta = row.querySelector(".delta");
+      const reset = row.querySelector(".reset-btn");
+      const current = parseFloat(row.dataset.current);
+      const next = parseFloat(String(input.value).replace(",", "."));
+      let changed = false;
+      if (!isFinite(next) || Math.abs(next - current) < 0.0005) {
+        delta.textContent = "—"; delta.className = "num delta muted"; delta.style.fontWeight = "";
+      } else {
+        const diff = next - current;
+        delta.textContent = (diff > 0 ? "+" : "−") + Math.abs(diff).toFixed(1).replace(".", ",");
+        delta.className = "num delta"; delta.style.color = diff > 0 ? "var(--ok)" : "var(--error)"; delta.style.fontWeight = "bold";
+        changed = true;
+      }
+      row.classList.toggle("changed", changed);
+      reset.hidden = !changed;
+      updateTally();
+    }
+    function updateTally() {
+      let n = 0, pos = 0, neg = 0;
+      rows.forEach(function (row) {
+        const current = parseFloat(row.dataset.current);
+        const next = parseFloat(String(row.querySelector(".qty").value).replace(",", "."));
+        if (!isFinite(next)) return;
+        const diff = next - current;
+        if (Math.abs(diff) < 0.0005) return;
+        n++; if (diff > 0) pos += diff; else neg += diff;
+      });
+      tCount.textContent = n + " " + (n === 1 ? "řádek změněn" : (n >= 2 && n <= 4 ? "řádky změněny" : "řádků změněno"));
+      tPos.textContent = "+" + pos.toFixed(1).replace(".", ",");
+      tNeg.textContent = "−" + Math.abs(neg).toFixed(1).replace(".", ",");
+    }
+    rows.forEach(function (row) {
+      row.querySelector(".qty").addEventListener("input", function () { recompute(row); });
+      row.querySelector(".reset-btn").addEventListener("click", function () {
+        row.querySelector(".qty").value = parseFloat(row.dataset.current).toFixed(1).replace(".", ",");
+        recompute(row);
+      });
+      recompute(row);
+    });
+
+    // Type-to-filter
+    const filter = document.getElementById("filter");
+    const fc = document.getElementById("filter-count");
+    filter.addEventListener("input", function () {
+      const q = filter.value.trim().toLowerCase();
+      let shown = 0;
+      rows.forEach(function (row) {
+        const name = row.querySelector("td strong").textContent.toLowerCase();
+        const match = !q || name.includes(q);
+        row.style.display = match ? "" : "none";
+        if (match) shown++;
+      });
+      fc.textContent = q ? (shown + " z " + rows.length + " odpovídá") : "";
+    });
+  })();
+
+  document.querySelectorAll(".swatcher button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.documentElement.style.setProperty("--warn", b.dataset.warn);
+      document.documentElement.style.setProperty("--warn-tint", b.dataset.tint);
+      document.querySelectorAll(".swatcher button").forEach(x => x.classList.remove("on"));
+      b.classList.add("on");
+    });
+  });
+</script>
+</body>
+</html>

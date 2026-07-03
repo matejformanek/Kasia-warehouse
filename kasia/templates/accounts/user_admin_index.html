@@ -1,14 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Uživatelé — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Uživatelé (user_admin_index) — header card + user table. */
+  .head-card { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .head-count strong { color: var(--fg); font-weight: 700; }
+  .foot-note { color: var(--fg-soft); font-size: 0.9rem; margin: 0.4rem 0 0; }
+  .email-cell { font-family: var(--mono); font-size: .88rem; }
+  .last-login { font-family: var(--mono); font-size: .85rem; font-variant-numeric: tabular-nums; color: var(--fg-soft); }
+  .self-tag { color: var(--fg-faint); font-weight: 500; font-size: .85rem; }
+  .stav-ok { color: var(--ok); font-weight: 600; }
+  .stav-off { color: var(--fg-faint); }
+  tr.user-off td { opacity: 0.55; }
+  td.row-actions { white-space: nowrap; }
+  td.row-actions form { display: inline; margin: 0; }
+  td.row-actions a.secondary, td.row-actions button.secondary { padding: 0.35rem 0.7rem; font-size: 0.85rem; }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Uživatelé</h1>
 
-<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-  <div>
-    <strong>Aktivních: {{ active_count }}</strong>
-    <span style="color:var(--fg-soft);">z přibližně {{ budget }} plánovaných</span>
-  </div>
+<div class="card head-card">
+  <span class="head-count muted"><strong>Aktivních: {{ active_count }}</strong></span>
   <a class="secondary" href="{% url 'accounts:user_create' %}">+ Přidat uživatele</a>
 </div>
 
@@ -21,37 +36,37 @@
       <th>Pobočka</th>
       <th>Stav</th>
       <th>Naposledy přihlášen</th>
-      <th></th>
+      <th>Akce</th>
     </tr>
   </thead>
   <tbody>
     {% for u in users %}
-      <tr {% if not u.is_active %}style="opacity:0.55;"{% endif %}>
+      <tr {% if not u.is_active %}class="user-off"{% endif %}>
         <td>
-          {{ u.first_name }} {{ u.last_name }}
-          {% if u == request.user %}<small style="color:var(--fg-soft);">(vy)</small>{% endif %}
+          <strong>{{ u.first_name }} {{ u.last_name }}</strong>
+          {% if u == request.user %}<span class="self-tag">(vy)</span>{% endif %}
         </td>
-        <td>{{ u.email }}</td>
+        <td class="email-cell">{{ u.email }}</td>
         <td>
           {% if u.is_superuser %}Superuser{% elif u.is_obsluha %}Obsluha pobočky{% else %}Vlastník / správce{% endif %}
         </td>
         <td>{% if u.branch %}{{ u.branch.code }} — {{ u.branch.name }}{% else %}—{% endif %}</td>
         <td>
           {% if u.is_active %}
-            <span style="color:var(--ok);">aktivní</span>
+            <span class="stav-ok">aktivní</span>
           {% else %}
-            <span style="color:var(--fg-soft);">deaktivovaný</span>
+            <span class="stav-off">deaktivovaný</span>
           {% endif %}
         </td>
-        <td>{% if u.last_login %}{{ u.last_login|date:"d. m. Y H:i" }}{% else %}—{% endif %}</td>
-        <td style="white-space:nowrap;">
+        <td class="last-login">{% if u.last_login %}{{ u.last_login|date:"d. m. Y H:i" }}{% else %}—{% endif %}</td>
+        <td class="row-actions">
           <a class="secondary" href="{% url 'accounts:user_edit' u.pk %}">Upravit</a>
           {% if u.is_active %}
-            <form method="post" action="{% url 'accounts:user_password_reset' u.pk %}" style="display:inline;">
+            <form method="post" action="{% url 'accounts:user_password_reset' u.pk %}">
               {% csrf_token %}
               <button class="secondary" type="submit">Resetovat heslo</button>
             </form>
-            <form method="post" action="{% url 'accounts:user_deactivate' u.pk %}" style="display:inline;">
+            <form method="post" action="{% url 'accounts:user_deactivate' u.pk %}">
               {% csrf_token %}
               <button class="secondary js-confirm" type="submit"
                       data-confirm-title="Deaktivovat uživatele?"
@@ -59,7 +74,7 @@
                       data-confirm-cta="Deaktivovat">Deaktivovat</button>
             </form>
           {% else %}
-            <form method="post" action="{% url 'accounts:user_reactivate' u.pk %}" style="display:inline;">
+            <form method="post" action="{% url 'accounts:user_reactivate' u.pk %}">
               {% csrf_token %}
               <button class="secondary" type="submit">Aktivovat</button>
             </form>
@@ -67,12 +82,10 @@
         </td>
       </tr>
     {% empty %}
-      <tr><td colspan="7" style="color:var(--fg-soft);">Zatím žádní uživatelé.</td></tr>
+      <tr><td colspan="7" class="muted">Zatím žádní uživatelé.</td></tr>
     {% endfor %}
   </tbody>
 </table>
 
-<p style="color:var(--fg-soft); font-size:0.9rem; margin-top:1rem;">
-  Uživatelé se nemažou — pouze deaktivují. Tím se zachová historie pohybů.
-</p>
+<p class="foot-note">Uživatelé se nemažou — pouze deaktivují. Tím se zachová historie pohybů.</p>
 {% endblock %}

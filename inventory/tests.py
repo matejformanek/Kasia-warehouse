@@ -1905,10 +1905,11 @@ def test_dashboard_clean_morning(user_tyn) -> None:
     response = client.get("/sklad/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
-    assert "K vyřešení dnes nic není" in body
     assert "TYN" in body and "SEZ" in body
-    assert "Zatím žádné zboží na skladě" in body
-    assert "Zatím nebyly vystaveny žádné dodací listy" in body
+    # Clean state: nothing below threshold, no activity yet.
+    assert "Vše nad objednacím bodem" in body
+    assert "Zatím žádné pohyby" in body
+    assert "Zatím žádné dodací listy" in body
 
 
 @pytest.mark.django_db
@@ -1922,10 +1923,13 @@ def test_dashboard_shows_branch_stock(user_tyn, tyn, sez, pepper, paprika) -> No
     response = client.get("/sklad/")
     body = response.content.decode("utf-8")
     # TYN total = 11.0 kg with 2 products; SEZ total = 1.5 kg with 1
-    # product. Displayed at 1 dp with a Czech comma (per 0061).
+    # product. Displayed at 1 dp with a Czech comma (per 0061). The Přehled
+    # shows per-branch totals + product counts (the full stock list lives on
+    # the branch dashboard, not here).
     assert "11,0" in body
     assert "1,5" in body
-    assert pepper.name_cs in body
+    assert "2 produktů" in body
+    assert "1 produktů" in body
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1936,7 +1940,7 @@ def test_dashboard_lists_recent_dodaky(user_tyn, tyn, ricany, pepper) -> None:
     client.force_login(user_tyn)
     response = client.get("/sklad/")
     body = response.content.decode("utf-8")
-    assert "Dodací listy k revizi" in body
+    assert "Poslední dodací listy" in body
     assert dl.cislo in body
 
 
@@ -1960,7 +1964,7 @@ def test_dashboard_flags_edited_dodak(user_tyn, tyn, ricany, pepper) -> None:
     client.force_login(user_tyn)
     response = client.get("/sklad/")
     body = response.content.decode("utf-8")
-    assert "Nedávno editované dodáky" in body
+    assert "Editovaný" in body  # K vyřešení task badge
     # The edited dodák appears with its v2 marker.
     assert dl.cislo in body
     assert "v2" in body
@@ -1989,7 +1993,7 @@ def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch)
     client.force_login(user_tyn)
     response = client.get("/sklad/")
     body = response.content.decode("utf-8")
-    assert "Nedoručené e-maily" in body
+    assert "Nedoručený" in body  # K vyřešení task badge
     assert dl.cislo in body
     # to_resolve_count should be ≥ 1
     assert "K vyřešení" in body
@@ -2005,7 +2009,7 @@ def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch)
     )
     response2 = client.get("/sklad/")
     body2 = response2.content.decode("utf-8")
-    assert "Nedoručené e-maily" not in body2
+    assert "Nedoručený" not in body2
 
 
 @pytest.mark.django_db
@@ -2058,8 +2062,9 @@ def test_home_owner_lands_on_owner_dashboard(user_vlastnik) -> None:
     response = client.get("/sklad/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
-    # Owner dashboard markers.
-    assert "Dodací listy k revizi" in body
+    # Owner dashboard markers (KPI strip always renders).
+    assert "Vyprodáno" in body
+    assert "K vyřešení" in body
 
 
 @pytest.mark.django_db
@@ -5569,7 +5574,10 @@ def test_low_stock_panel_appears_on_owner_dashboard(
     client.force_login(user_vlastnik)
     response = client.get("/sklad/")
     assert response.status_code == 200
-    assert b"Doch\xc3\xa1z\xc3\xad zbo\xc5\xbe\xc3\xad" in response.content
+    body = response.content.decode("utf-8")
+    # Pepper is below threshold → it shows in TYN's "Dochází" group.
+    assert "Dochází" in body
+    assert pepper.name_cs in body
 
 
 # ---------------------------------------------------------------------------
@@ -6174,9 +6182,11 @@ def test_catalogue_index_shows_branch_low_stock_chips(
     response = client.get("/sklad/katalog/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
-    # Find the pepper row and inspect just its low-branches cell.
-    # The new <th>Nízký na</th> column should render exactly one chip.
-    assert "Nízký na" in body
+    # Pepper is low (not empty) → it lands in the "Dochází" group, whose
+    # branch column is "Dochází na" and renders one low-branch chip.
+    assert "sub-head low" in body  # the Dochází group header renders
+    assert "sub-head empty" not in body  # no empty products → no empty group
+    assert "Dochází na" in body
     assert ">TYN<" in body  # chip text
     # No SEZ chip on this row (SEZ has 20 kg > 5 kg threshold).
     pepper_row_idx = body.index("Pepř")
@@ -6227,14 +6237,12 @@ def test_catalogue_filter_branch_does_not_show_per_branch_chip(
     body = response.content.decode("utf-8")
     pepper_row_idx = body.index("Pepř")
     snippet = body[pepper_row_idx : pepper_row_idx + 2000]
-    # No chip in the snippet (TYN appears in the page header / filter chip
-    # is a different element).
-    assert "tab-chip" in body  # template still has tab-chip class somewhere
-    # The exact chip element `<span class="tab-chip" ... >TYN</span>` for
-    # the low-branches column must not be present in this row.
+    # With a single branch in scope the per-branch chip column is suppressed.
+    assert "Pepř" in body
+    # No branch chip element for the branch column must be present in this row.
     import re
     chips = re.findall(
-        r"<span class=\"tab-chip\"[^>]*>([A-Z]{3})</span>", snippet
+        r"<span class=\"(?:low|empty)-branch\"[^>]*>([A-Z]{3})</span>", snippet
     )
     assert chips == []
 
@@ -6257,7 +6265,7 @@ def test_catalogue_obsluha_does_not_show_per_branch_chip(
     snippet = body[pepper_row_idx : pepper_row_idx + 2000]
     import re
     chips = re.findall(
-        r"<span class=\"tab-chip\"[^>]*>([A-Z]{3})</span>", snippet
+        r"<span class=\"(?:low|empty)-branch\"[^>]*>([A-Z]{3})</span>", snippet
     )
     assert chips == []
 
@@ -6656,7 +6664,7 @@ def test_catalogue_chip_omits_branch_without_stock_row(
     import re
 
     chips = re.findall(
-        r"<span class=\"tab-chip\"[^>]*>([A-Z]{3})</span>", snippet
+        r"<span class=\"(?:low|empty)-branch\"[^>]*>([A-Z]{3})</span>", snippet
     )
     assert "SEZ" in chips
     assert "TYN" not in chips
@@ -7277,8 +7285,9 @@ def test_home_low_stock_panel_shows_resolve_button_and_orders_badge(
     client = Client()
     client.force_login(user_vlastnik)
     body = client.get("/sklad/").content.decode("utf-8")
-    assert "Upravit" in body
-    assert "/sklad/katalog/inventura/dochazi/" in body
+    # Per-branch Inventura button opens that branch's inventura.
+    assert "Inventura TYN" in body
+    assert "/sklad/katalog/inventura/TYN/" in body
 
     _make_planned_prijem(
         branch=tyn, product=pepper, qty=Decimal("9.000"),
@@ -7518,10 +7527,14 @@ def test_history_planned_tab_lists_only_planned(
     client = Client()
     client.force_login(user_vlastnik)
 
+    # Per 0066: "Vše" now unions DONE + PLANNED (1 + 1 = 2), and the planned
+    # confirm link appears there too. The other tabs still exclude planned.
     all_tab = client.get("/sklad/pohyby/?tab=all").content.decode("utf-8")
-    assert "Nalezeno: 1" in all_tab  # DONE only
+    assert "Nalezeno: 2" in all_tab
+    assert f"/sklad/prijem/{planned.pk}/potvrdit/" in all_tab
     prijem_tab = client.get("/sklad/pohyby/?tab=prijem").content.decode("utf-8")
     assert "Nalezeno: 1" in prijem_tab
+    assert f"/sklad/prijem/{planned.pk}/potvrdit/" not in prijem_tab
 
     planned_tab = client.get("/sklad/pohyby/?tab=planned")
     body = planned_tab.content.decode("utf-8")
@@ -7529,9 +7542,34 @@ def test_history_planned_tab_lists_only_planned(
     assert "Plánováno" in body
     assert f"/sklad/prijem/{planned.pk}/potvrdit/" in body
 
-    # PLANNED must not appear in the owner home recent panel.
+    # A FUTURE planned (Dec 31) is not yet due → absent from the home K-vyřešení.
     home = client.get("/sklad/").content.decode("utf-8")
     assert f"/sklad/prijem/{planned.pk}/potvrdit/" not in home
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_home_surfaces_due_planned_prijem(
+    tyn, pepper, user_vlastnik
+) -> None:
+    """Per 0066: a PLANNED příjem whose expected_on <= today is a K-vyřešení
+    task on the Přehled (Přijmout link); a future one is not."""
+    today = date.today()
+    due = _make_planned_prijem(
+        branch=tyn, product=pepper, qty=Decimal("9.000"), eta=today,
+        user=user_vlastnik,
+    )
+    future = _make_planned_prijem(
+        branch=tyn, product=pepper, qty=Decimal("5.000"),
+        eta=date(today.year + 1, 1, 15), user=user_vlastnik,
+    )
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/").content.decode("utf-8")
+    assert "Očekávaný" in body  # due-planned task badge
+    assert f"/sklad/prijem/{due.pk}/potvrdit/" in body
+    assert f"/sklad/prijem/{future.pk}/potvrdit/" not in body
 
 
 @pytest.mark.django_db

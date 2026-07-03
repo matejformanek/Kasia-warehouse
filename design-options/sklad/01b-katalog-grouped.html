@@ -1,0 +1,311 @@
+<!-- Sklad mockup 01b — Katalog (based on A), SESKUPENO PODLE STAVU. Chosen direction.
+     Type (koření/směs) under the name (no column); per-branch "Nízký na" chips when unfiltered;
+     whole row clickable (no per-row upravit); more visible neutral zebra; full-width filter bar;
+     bold Na skladě (main stat); per-section branch column ("Prázdný na" / "Dochází na", none for V pořádku).
+     Prázdné = red like the Přehled, Dochází = orange. Consistent with the Přehled. -->
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Katalog produktů — Kasia sklad (návrh)</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #1f6b3a; --accent-deep: #16432a; --accent-tint: #eef4ee;
+    --fg: #141719; --fg-soft: #565b66; --fg-faint: #868c97;
+    --bg: #f6f7f5; --bg-card: #ffffff; --line: #d9dcd9; --line-soft: #eef0ee;
+    --error: #a02525; --error-tint: #fbebea;
+    --warn: #c2410c; --warn-tint: #fdeee3;
+    --ok: #1f6b3a; --ok-soft: #e7f1ea;
+    --sidebar-w: 244px;
+    --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { font-family: var(--ui); color: var(--fg); background: var(--bg); margin: 0; font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -.01em; }
+  h1 { font-size: 1.45rem; margin: 0 0 1.1rem; }
+
+  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+  .sidebar { position: sticky; top: 0; align-self: start; height: 100vh; background: var(--bg-card); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 14px; }
+  .sidebar .brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 16px; margin-bottom: 6px; border-bottom: 1px solid var(--line-soft); text-decoration: none; }
+  .sidebar .brand img { height: 34px; width: auto; display: block; }
+  .sidebar .brand .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .sidebar .brand .brand-name { font-weight: 700; font-size: 16px; letter-spacing: .06em; color: var(--fg); }
+  .sidebar .brand .brand-sub { font-size: 11px; color: var(--fg-faint); letter-spacing: .14em; text-transform: uppercase; }
+  .nav { display: flex; flex-direction: column; gap: 1px; margin-top: 10px; flex: 1 1 auto; overflow-y: auto; }
+  .nav .nav-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); padding: 12px 10px 5px; font-weight: 600; }
+  .nav a { display: flex; align-items: center; gap: 10px; padding: 8px 11px; color: var(--fg-soft); font-weight: 500; font-size: 14px; text-decoration: none; border-left: 3px solid transparent; }
+  .nav a:hover { background: var(--line-soft); color: var(--fg); }
+  .nav a.active { background: var(--accent-tint); color: var(--accent-deep); font-weight: 600; border-left-color: var(--accent); }
+  .nav a .ic { width: 17px; height: 17px; flex: 0 0 17px; color: var(--fg-faint); }
+  .nav a.active .ic { color: var(--accent); }
+  .sidebar .user { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+  .sidebar .user .email { font-size: 12.5px; color: var(--fg-soft); text-decoration: none; }
+  .sidebar .user .logout { font-size: 13px; font-weight: 600; color: var(--fg); background: none; border: 1px solid var(--line); padding: 6px 10px; cursor: pointer; font-family: inherit; width: 100%; text-align: left; }
+
+  .content { padding: 30px 34px 56px; max-width: 1180px; width: 100%; min-width: 0; margin: 0 auto; }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; background: var(--bg-card); border: 1px solid var(--line); margin-bottom: 1.2rem; }
+  .kpi { padding: 16px 18px; border-left: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 7px; }
+  .kpi:first-child { border-left: 0; }
+  .kpi.warn { border-top: 2px solid var(--warn); }
+  .kpi .lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: var(--fg-faint); }
+  .kpi .k-val { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 31px; font-weight: 600; line-height: 1; letter-spacing: -.02em; color: var(--fg); display: flex; align-items: baseline; gap: 5px; }
+  .kpi.warn .k-val { color: var(--warn); }
+  .kpi .k-unit { font-size: 13px; font-weight: 500; color: var(--fg-faint); letter-spacing: 0; }
+  .kpi .k-sub { font-size: 11.5px; color: var(--fg-soft); }
+
+  .card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 0; padding: 1.2rem 1.35rem; margin-bottom: 1.2rem; }
+
+  form .field { margin-bottom: 0; }
+  form label { display: block; font-weight: 600; margin-bottom: 0.3rem; color: var(--fg); }
+  form input[type=text], form input[type=search], form select { font: inherit; padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 0; width: 100%; background: #fcfdfc; color: var(--fg); }
+  form select { appearance: none; -webkit-appearance: none; padding-right: 1.9rem; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23565b66' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.6rem center; }
+
+  .primary, a.primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); padding: 0.5rem 1.1rem; border-radius: 0; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; vertical-align: middle; }
+  .primary:hover, a.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  a.secondary, button.secondary { background: #fff; color: var(--fg); border: 1px solid var(--line); padding: 0.5rem 0.9rem; border-radius: 0; font: inherit; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; vertical-align: middle; }
+  a.secondary:hover { border-color: var(--fg-faint); }
+  /* Inventura CTA — orange (the single warning/attention standard). */
+  a.cta-inventura { background: var(--warn); color: #fff; border-color: var(--warn); }
+  a.cta-inventura:hover { filter: brightness(0.92); }
+
+  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; }
+  table.lines th, table.lines td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  /* More visible neutral zebra (no green cast). */
+  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  table.lines th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600; }
+  table.lines tbody tr:hover td { background: #e2e5e2; }
+  .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  tr.row-link { cursor: pointer; }
+  tr.row-link:hover td { background: #e2e5e2; }
+
+  .prod-sub { font-size: .8rem; color: var(--fg-soft); margin-top: 2px; }
+  .prod-sub .rec { color: var(--accent); }
+  /* Per-branch "low on" chips — orange only. */
+  .low-branch { display: inline-block; background: var(--warn); color: #fff; border: 1px solid var(--warn); font-size: .76rem; font-weight: 600; padding: .12rem .5rem; margin-right: 4px; font-family: var(--mono); letter-spacing: .02em; }
+
+  .filterbar { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; width: 100%; }
+  .filterbar .field.grow { flex: 1 1 220px; }
+  .muted { color: var(--fg-soft); }
+  .scope-note { color: var(--fg-soft); font-size: 0.9rem; margin: 0 0 0.6rem; }
+  .variant-note{background:var(--accent-tint);border-left:3px solid var(--accent);padding:.5rem .8rem;font-size:.85rem;margin-bottom:1rem;}
+
+  /* ---- .sub-head section headers — consistent with the Přehled (orange / neutral only) ---- */
+  .sub-head{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;padding:.45rem .6rem;margin:1.6rem 0 .6rem;display:flex;align-items:center;gap:.45rem;}
+  .sub-head:first-of-type{margin-top:.4rem;}
+  .sub-head.low{color:var(--warn);border-left:3px solid var(--warn);background:var(--warn-tint);}
+  .sub-head.ok{color:var(--fg-soft);border-left:3px solid var(--line);background:var(--line-soft);}
+  .sub-head .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px;}
+  .sub-head.low .dot{background:var(--warn);}
+  .sub-head.ok .dot{background:var(--fg-faint);}
+  .sub-head .count{margin-left:auto;font-weight:600;color:var(--fg-faint);letter-spacing:0;text-transform:none;}
+  .eff-warn{color:var(--warn);}
+  /* Prázdné = red, like the Přehled (more urgent than dochází). */
+  .eff-empty{color:var(--error);font-weight:600;}
+  .sub-head.empty{color:var(--error);border-left:3px solid var(--error);background:var(--error-tint);}
+  .sub-head.empty .dot{background:var(--error);}
+  .kpi.err{border-top:2px solid var(--error);}
+  .kpi.err .k-val{color:var(--error);}
+  .empty-branch{display:inline-block;background:var(--error);color:#fff;border:1px solid var(--error);font-size:.76rem;font-weight:600;padding:.12rem .5rem;margin-right:4px;font-family:var(--mono);letter-spacing:.02em;}
+  /* Bold the main stat — Na skladě (2nd column). */
+  table.lines td:nth-child(2){font-weight:700;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="index.html">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="brand-text"><span class="brand-name">KASIA</span><span class="brand-sub">sklad</span></span>
+    </a>
+    <nav class="nav" aria-label="Hlavní navigace">
+      <span class="nav-label">Provoz</span>
+      <a href="02a-prehled.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Přehled</a>
+      <a href="01b-katalog-grouped.html" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Katalog</a>
+      <a href="03-inventura.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M9 13l2 2 4-4"/></svg>Inventura</a>
+      <a href="08-prijem.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Příjem</a>
+      <a href="05-vydej.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>Výdej</a>
+      <a href="06-michani.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 0 1 15-6.7L21 6"/><path d="M21 3v3h-3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 18"/><path d="M3 21v-3h3"/></svg>Míchání</a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h13l-3-3m3 3-3 3"/><path d="M20 16H7l3-3m-3 3 3 3"/></svg>Převody</a>
+      <a href="10-dodaci-listy.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>Dodací listy</a>
+      <a href="09-historie.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/></svg>Historie</a>
+      <a href="17-podpora.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .8-1 1.7"/><path d="M12 17h.01"/></svg>Podpora</a>
+      <span class="nav-label">Číselníky</span>
+      <a href="12-dodavatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V8l6-4 6 4v13"/><path d="M15 21V11l6 4v6"/><path d="M3 21h18"/></svg>Dodavatelé</a>
+      <a href="13-odberatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/><path d="M21 21v-1a5 5 0 0 0-4-4.9"/></svg>Odběratelé</a>
+      <span class="nav-label">Správa</span>
+      <a href="14-pobocky.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 9l3-5h12l3 5"/><path d="M9 21v-6h6v6"/></svg>Pobočky</a>
+      <a href="15-uzivatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/></svg>Uživatelé</a>
+      <a href="16-nastaveni.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-2.88 1.2V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 7 19.6a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 2.6 14H2.5a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.4 9Z"/></svg>Nastavení</a>
+    </nav>
+    <div class="user">
+      <a href="#" class="email">petr@kasia.cz</a>
+      <button class="logout">Odhlásit</button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <h1>Katalog produktů</h1>
+
+    <!-- KPI strip — orange for attention states, neutral for context (no red, no green accent). -->
+    <section class="kpis" aria-label="Souhrn katalogu">
+      <div class="kpi">
+        <span class="lbl">Produktů</span>
+        <span class="k-val">48</span>
+        <span class="k-sub">aktivních, napříč TYN + SEZ</span>
+      </div>
+      <div class="kpi warn">
+        <span class="lbl">Dochází</span>
+        <span class="k-val">3</span>
+        <span class="k-sub">pod objednacím bodem</span>
+      </div>
+      <div class="kpi err">
+        <span class="lbl">Prázdné</span>
+        <span class="k-val">2</span>
+        <span class="k-sub">efektivně 0 kg</span>
+      </div>
+      <div class="kpi">
+        <span class="lbl">Celková zásoba</span>
+        <span class="k-val">1&nbsp;284 <span class="k-unit">kg</span></span>
+        <span class="k-sub">součet obou poboček</span>
+      </div>
+    </section>
+
+    <!-- Filter bar — spans the whole box (like prod): fields left, actions pushed right. -->
+    <form class="card filterbar" onsubmit="return false;">
+      <div class="field grow">
+        <label>Hledat</label>
+        <input type="search" placeholder="česky, např. „pepř"…">
+      </div>
+      <div class="field">
+        <label>Typ</label>
+        <select><option>— vše —</option><option>koření</option><option>směs</option></select>
+      </div>
+      <div class="field">
+        <label>Stav skladu</label>
+        <select><option>— vše —</option><option>Dochází</option><option>Prázdné</option></select>
+      </div>
+      <div class="field">
+        <label>Pobočka</label>
+        <select><option>— všechny pobočky —</option><option>TYN — Týniště n. O.</option><option>SEZ — Sezimovo Ústí</option></select>
+      </div>
+      <div><button class="primary" type="button">Filtrovat</button> <a class="secondary" href="#">Vymazat</a></div>
+      <div style="margin-left:auto;display:flex;gap:.5rem;">
+        <a class="primary cta-inventura" href="03-inventura.html">Inventura TYN</a>
+        <a class="primary" href="#">+ Nový produkt</a>
+      </div>
+    </form>
+
+    <p class="scope-note">Stavy a rezervace sečtené přes všechny aktivní pobočky; sloupec „Nízký na" ukazuje, kde produkt dochází/chybí. Pro per-branch pohled vyberte pobočku ve filtru výše.</p>
+
+    <!-- ===== PRÁZDNÉ (red, like Přehled) ===== -->
+    <div class="sub-head empty"><span class="dot"></span>Prázdné<span class="count">2 produkty</span></div>
+    <table class="lines">
+      <thead>
+        <tr><th>Název</th><th style="text-align:right;">Na skladě</th><th style="text-align:right;">Rezerv.</th><th style="text-align:right;">Efektivně</th><th style="text-align:right;">Práh</th><th>Prázdný na</th></tr>
+      </thead>
+      <tbody>
+        <tr class="row-link" data-href="04-detail-produktu.html">
+          <td><strong>Zázvor mletý</strong><div class="prod-sub">koření</div></td>
+          <td class="num">0,0</td><td class="num muted">0,0</td>
+          <td class="num eff-empty">0,0</td><td class="num">8,0</td>
+          <td><span class="empty-branch">TYN</span></td>
+        </tr>
+        <tr class="row-link" data-href="04-detail-produktu.html">
+          <td><strong>Kari koření</strong><div class="prod-sub">směs</div></td>
+          <td class="num">0,0</td><td class="num muted">0,0</td>
+          <td class="num eff-empty">0,0</td><td class="num">6,0</td>
+          <td><span class="empty-branch">SEZ</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ===== DOCHÁZÍ ===== -->
+    <div class="sub-head low"><span class="dot"></span>Dochází<span class="count">3 produkty</span></div>
+    <table class="lines">
+      <thead>
+        <tr><th>Název</th><th style="text-align:right;">Na skladě</th><th style="text-align:right;">Rezerv.</th><th style="text-align:right;">Efektivně</th><th style="text-align:right;">Práh</th><th>Dochází na</th></tr>
+      </thead>
+      <tbody>
+        <tr class="row-link" data-href="04-detail-produktu.html">
+          <td><strong>Kmín celý</strong><div class="prod-sub">koření</div></td>
+          <td class="num">14,2</td><td class="num">6,0</td>
+          <td class="num eff-warn">8,2</td><td class="num">25,0</td>
+          <td><span class="low-branch">TYN</span></td>
+        </tr>
+        <tr class="row-link" data-href="04-detail-produktu.html">
+          <td><strong>Muškátový oříšek mletý</strong><div class="prod-sub">koření</div></td>
+          <td class="num">7,8</td><td class="num muted">0,0</td>
+          <td class="num eff-warn">7,8</td><td class="num">10,0</td>
+          <td><span class="low-branch">TYN</span><span class="low-branch">SEZ</span></td>
+        </tr>
+        <tr class="row-link" data-href="04-detail-produktu.html">
+          <td><strong>Nové koření mleté</strong><div class="prod-sub">koření</div></td>
+          <td class="num">2,4</td><td class="num muted">0,0</td>
+          <td class="num eff-warn">2,4</td><td class="num">12,0</td>
+          <td><span class="low-branch">TYN</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ===== V POŘÁDKU (no branch column) ===== -->
+    <div class="sub-head ok"><span class="dot"></span>V pořádku<span class="count">7 produktů</span></div>
+    <table class="lines">
+      <thead>
+        <tr><th>Název</th><th style="text-align:right;">Na skladě</th><th style="text-align:right;">Rezerv.</th><th style="text-align:right;">Efektivně</th><th style="text-align:right;">Práh</th></tr>
+      </thead>
+      <tbody>
+        <tr class="row-link" data-href="04-detail-produktu.html">
+          <td><strong>Pepř černý mletý</strong><div class="prod-sub">koření</div></td>
+          <td class="num">182,4</td><td class="num muted">0,0</td><td class="num">182,4</td><td class="num">40,0</td>
+        </tr>
+        <tr class="row-link" data-href="04-detail-produktu.html">
+          <td><strong>Paprika sladká mletá</strong><div class="prod-sub">koření</div></td>
+          <td class="num">96,7</td><td class="num muted">0,0</td><td class="num">96,7</td><td class="num">30,0</td>
+        </tr>
+        <tr class="row-link" data-href="04-detail-produktu.html">
+          <td><strong>Skořice mletá</strong><div class="prod-sub">koření</div></td>
+          <td class="num">61,3</td><td class="num muted">0,0</td><td class="num">61,3</td><td class="num">20,0</td>
+        </tr>
+        <tr class="row-link" data-href="04-detail-produktu.html">
+          <td><strong>Koriandr mletý</strong><div class="prod-sub">koření</div></td>
+          <td class="num">33,9</td><td class="num muted">0,0</td><td class="num">33,9</td><td class="num">15,0</td>
+        </tr>
+        <tr class="row-link" data-href="04-detail-produktu.html">
+          <td><strong>Grilovací koření</strong><div class="prod-sub">směs <span class="rec">· má recepturu</span></div></td>
+          <td class="num">128,0</td><td class="num">25,0</td><td class="num">103,0</td><td class="num">50,0</td>
+        </tr>
+        <tr class="row-link" data-href="04-detail-produktu.html">
+          <td><strong>Gulášové koření</strong><div class="prod-sub">směs <span class="rec">· má recepturu</span></div></td>
+          <td class="num">54,5</td><td class="num muted">0,0</td><td class="num">54,5</td><td class="num">25,0</td>
+        </tr>
+        <tr class="row-link" data-href="04-detail-produktu.html" style="opacity:.6;">
+          <td><strong>Bobkový list celý</strong> <span class="muted" style="font-size:.85rem;">(archivováno)</span><div class="prod-sub">koření</div></td>
+          <td class="num">0,0</td><td class="num muted">0,0</td><td class="num">0,0</td><td class="num">—</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="muted" style="font-size:.9rem;">Zobrazeno 12 z 48 produktů (výběr pro náhled).</p>
+  </main>
+</div>
+
+<script>
+  // Whole-row nav (base.html contract): tr.row-link[data-href], ignore interactive elements.
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("a, button, input, select, label")) return;
+    const tr = e.target.closest("tr.row-link[data-href]");
+    if (tr) window.location = tr.dataset.href;
+  });
+</script>
+</body>
+</html>

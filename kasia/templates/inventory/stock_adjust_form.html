@@ -6,11 +6,11 @@
 {% block content %}
 <h1>Úprava stavu — {{ product.name_cs }}</h1>
 
-<div class="card" style="background:#fbf3e0;border-left:3px solid var(--warn);">
+<div class="card" style="background:var(--warn-tint);border-left:3px solid var(--warn);">
   <strong>Ruční úprava stavu napříč pobočkami.</strong>
   Změňte hodnoty v sloupci „Nový stav" — pro každý změněný řádek se
-  zapíše jeden pohyb s prefixem <code>[STAV]</code> do Historie
-  (per rozhodnutí 0041). Beze změny ponechané řádky se nezapíšou.
+  zapíše jeden pohyb s prefixem <code>[STAV]</code> do Historie.
+  Beze změny ponechané řádky se nezapíšou.
   Pokud chcete opravit chybu v dříve zaznamenaném příjmu/výdeji,
   použijte „Upravit pohyb" v Historii.
 </div>

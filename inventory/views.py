@@ -17,6 +17,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -128,6 +129,26 @@ def home(request):
     from django.db.models import Sum
 
     branches = list(Branch.objects.filter(is_active=True).order_by("code"))
+
+    # "Dochází zboží" rows per 0043 + 0044 (same low_stock_rows() that feeds
+    # the daily digest), grouped per branch into vyprodáno / dochází / objednáno.
+    # Objednáno reuses the existing PLANNED-příjem order overlay (0057) — a row
+    # with an open order sinks into its own "on the way" group.
+    low_stock = low_stock_rows()
+    rows_by_branch = {
+        b.pk: {"empty": [], "low": [], "ordered": []} for b in branches
+    }
+    for r in low_stock:
+        grp = rows_by_branch.get(r.branch.pk)
+        if grp is None:
+            continue
+        if r.ordered_kg is not None:
+            grp["ordered"].append(r)
+        elif r.effective <= 0:
+            grp["empty"].append(r)
+        else:
+            grp["low"].append(r)
+
     branch_panels = []
     for b in branches:
         stocks = list(
@@ -145,6 +166,12 @@ def home(request):
             .prefetch_related("lines__product")
             .order_by("-date_issued", "-id")[:5]
         )
+        branch_dodaky = list(
+            DodaciList.objects.filter(branch=b)
+            .select_related("odberatel")
+            .order_by("-date_issued", "-id")[:5]
+        )
+        grp = rows_by_branch[b.pk]
         branch_panels.append(
             {
                 "branch": b,
@@ -152,13 +179,20 @@ def home(request):
                 "total_mass": total_mass,
                 "top_stocks": stocks[:5],
                 "recent_movements": recent_movements,
+                "recent_dodaky": branch_dodaky,
+                "empty_rows": grp["empty"],
+                "low_rows": grp["low"],
+                "ordered_rows": grp["ordered"],
             }
         )
 
-    recent_dodaky = list(
-        DodaciList.objects.select_related("branch", "odberatel")
-        .order_by("-date_issued", "-id")[:10]
-    )
+    def _breakdown(key):
+        parts = [
+            f"{b.code} {len(rows_by_branch[b.pk][key])}"
+            for b in branches
+            if rows_by_branch[b.pk][key]
+        ]
+        return " · ".join(parts)
 
     # K vyřešení: failed sends whose dodák hasn't yet been re-sent
     # successfully at the current version. Uses the same rule as the
@@ -187,36 +221,48 @@ def home(request):
         .order_by("-id")[:5]
     )
 
-    # "Dochází zboží" panel per 0043 + 0044 — reads the same
-    # low_stock_rows() that feeds the daily summary e-mail.
-    low_stock = low_stock_rows()
-    # Per 0057: sink rows that already have an open objednávka to the
-    # bottom. Presentation only — membership + the service deficit-DESC
-    # sort are untouched, so this panel and the digest agree on contents.
-    low_stock_display = [r for r in low_stock if r.ordered_kg is None] + [
-        r for r in low_stock if r.ordered_kg is not None
-    ]
+    # Due planned příjmy (per 0066): a PLANNED objednávka whose promised arrival
+    # date has arrived (or passed) is a K-vyřešení task — confirm the receipt.
+    today = timezone.localdate()
+    due_planned = list(
+        Movement.objects.filter(
+            status=Movement.Status.PLANNED,
+            kind=Movement.Kind.PRIJEM,
+            expected_on__lte=today,
+        )
+        .select_related("branch", "dodavatel")
+        .prefetch_related("lines__product")
+        .order_by("expected_on", "id")
+    )
+    for mv in due_planned:
+        mv.total_kg = sum(
+            (line.quantity_kg for line in mv.lines.all()), Decimal("0.000")
+        )
 
-    # KPI overview strip (decision 0054). All four are derivable from the
-    # aggregates already computed above for the per-branch panels.
-    kpi_products = sum(p["product_count"] for p in branch_panels)
-    kpi_total_mass = sum((p["total_mass"] for p in branch_panels), Decimal("0.000"))
+    # KPI overview strip (decision 0054, per-branch grouped Přehled): the
+    # attention buckets, with a per-branch breakdown sub-label.
+    kpi_empty = sum(len(rows_by_branch[b.pk]["empty"]) for b in branches)
+    kpi_low = sum(len(rows_by_branch[b.pk]["low"]) for b in branches)
+    kpi_ordered = sum(len(rows_by_branch[b.pk]["ordered"]) for b in branches)
 
     return render(
         request,
         "inventory/home.html",
         {
             "branch_panels": branch_panels,
-            "recent_dodaky": recent_dodaky,
             "failed_dodaky": failed_dodaky,
             "edited_dodaky": edited_dodaky,
-            "low_stock_rows": low_stock_display,
+            "due_planned": due_planned,
             "can_order": request.user.is_vlastnik,
-            "to_resolve_count": len(failed_dodaky) + len(edited_dodaky),
-            "kpi_products": kpi_products,
-            "kpi_total_mass": kpi_total_mass,
-            "kpi_low_stock": len(low_stock),
-            "kpi_branches": len(branches),
+            "to_resolve_count": (
+                len(failed_dodaky) + len(edited_dodaky) + len(due_planned)
+            ),
+            "kpi_empty": kpi_empty,
+            "kpi_low": kpi_low,
+            "kpi_ordered": kpi_ordered,
+            "kpi_empty_breakdown": _breakdown("empty"),
+            "kpi_low_breakdown": _breakdown("low"),
+            "kpi_ordered_breakdown": _breakdown("ordered"),
         },
     )
 
@@ -318,13 +364,15 @@ def movement_history(request):
     )
 
     inventura_filter = Q(note__startswith="[STAV] ")
+    planned_count = planned_base.count()
     tab_counts = {
-        "all": done_base.count(),
+        # "Vše" now unions DONE + PLANNED (per 0066) — planned surfaces here too.
+        "all": done_base.count() + planned_count,
         "prijem": done_base.filter(kind=Movement.Kind.PRIJEM).count(),
         "vydej": done_base.filter(kind=Movement.Kind.VYDEJ).count(),
         "inventura": done_base.filter(inventura_filter).count(),
         "edited": done_base.filter(audit_entries__isnull=False).distinct().count(),
-        "planned": planned_base.count(),
+        "planned": planned_count,
     }
 
     # Resolve the active tab. Legacy `?kind=` / `?edited=1` map onto
@@ -342,7 +390,12 @@ def movement_history(request):
 
     if tab == "planned":
         # Worklist ordering: soonest arrival first.
-        qs = planned_base.order_by("expected_on", "id")[:200]
+        items = list(planned_base.order_by("expected_on", "id"))
+    elif tab == "all":
+        # Per 0066: upcoming planned first (soonest arrival), then done history.
+        items = list(planned_base.order_by("expected_on", "id")) + list(
+            done_base.order_by("-date_issued", "-id")
+        )
     else:
         qs = done_base
         if tab == Movement.Kind.PRIJEM:
@@ -353,9 +406,31 @@ def movement_history(request):
             qs = qs.filter(inventura_filter)
         elif tab == "edited":
             qs = qs.filter(audit_entries__isnull=False).distinct()
-        # tab == "all" → no extra filter.
-        qs = qs.order_by("-date_issued", "-id")[:200]
-    movements = list(qs)
+        items = list(qs.order_by("-date_issued", "-id"))
+
+    # Paginate at 50 rows/page (per 0066), replacing the old 200 cap.
+    paginator = Paginator(items, 50)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    movements = list(page_obj.object_list)
+
+    # Per-movement total kg for the "Množství" column. Lines are already
+    # prefetched, so this sums in Python without extra queries.
+    for mv in movements:
+        mv.total_kg = sum(
+            (line.quantity_kg for line in mv.lines.all()), Decimal("0.000")
+        )
+
+    # Query string (minus page) so pagination links keep the current filters.
+    page_params = {"tab": tab}
+    if request.GET.get("branch"):
+        page_params["branch"] = request.GET.get("branch")
+    if date_from:
+        page_params["date_from"] = date_from
+    if date_to:
+        page_params["date_to"] = date_to
+    if search:
+        page_params["q"] = search
+    page_querystring = urlencode(page_params)
 
     branches = list(Branch.objects.filter(is_active=True).order_by("code"))
 
@@ -373,7 +448,9 @@ def movement_history(request):
         "inventory/movement_history.html",
         {
             "movements": movements,
-            "count": len(movements),
+            "count": paginator.count,
+            "page_obj": page_obj,
+            "page_querystring": page_querystring,
             "branches": branches,
             "branch_locked": branch_locked,
             "filter_branch": request.GET.get("branch") or "",
@@ -1021,27 +1098,33 @@ def catalogue_index(request):
             }
         )
 
+    # Stock state per row (empty overrides low). Reused for the KPI strip,
+    # the grouped tables and the ?state= filter.
+    def _is_empty(r):
+        return r["effective"] <= 0 and r["threshold"] is not None
+
+    def _is_low(r):
+        return r["is_low"] and not _is_empty(r)
+
+    # KPI strip aggregates — computed over the whole current scope
+    # (status/kind/branch), before the ?state= filter narrows the display.
+    kpi_products = len(rows)
+    kpi_empty = sum(1 for r in rows if _is_empty(r))
+    kpi_low = sum(1 for r in rows if _is_low(r))
+    kpi_total_kg = sum((r["total"] for r in rows), Decimal("0.000"))
+
     state_filter = (request.GET.get("state") or "").strip()
     if state_filter == "low":
-        rows = [
-            r
-            for r in rows
-            if r["is_low"]
-            and not (r["effective"] <= 0 and r["threshold"] is not None)
-        ]
+        rows = [r for r in rows if _is_low(r)]
     elif state_filter == "empty":
-        rows = [
-            r
-            for r in rows
-            if r["effective"] <= 0 and r["threshold"] is not None
-        ]
+        rows = [r for r in rows if _is_empty(r)]
     elif state_filter == "ok":
-        rows = [
-            r
-            for r in rows
-            if not r["is_low"]
-            and not (r["effective"] <= 0 and r["threshold"] is not None)
-        ]
+        rows = [r for r in rows if not _is_empty(r) and not _is_low(r)]
+
+    # Grouped tables (per 0064) — the template renders only non-empty groups.
+    empty_rows = [r for r in rows if _is_empty(r)]
+    low_rows = [r for r in rows if _is_low(r)]
+    ok_rows = [r for r in rows if not _is_empty(r) and not _is_low(r)]
 
     return render(
         request,
@@ -1049,12 +1132,24 @@ def catalogue_index(request):
         {
             "rows": rows,
             "count": len(rows),
+            "empty_rows": empty_rows,
+            "low_rows": low_rows,
+            "ok_rows": ok_rows,
+            "kpi_products": kpi_products,
+            "kpi_empty": kpi_empty,
+            "kpi_low": kpi_low,
+            "kpi_total_kg": kpi_total_kg,
             "filter_q": search,
             "filter_kind": kind,
             "filter_status": status,
             "filter_branch_code": filter_branch_code,
             "filter_state": state_filter,
             "selected_branch": selected_branch,
+            # Per-branch "low/empty on" chips only make sense in the
+            # all-branches view (a single branch in scope needs no chip).
+            "show_branch_chips": (
+                selected_branch is None and not request.user.is_obsluha
+            ),
             "branches": Branch.objects.filter(is_active=True).order_by("code"),
             "obsluha_branch": (
                 request.user.branch if request.user.is_obsluha else None
@@ -1133,6 +1228,14 @@ def product_detail(request, pk: int):
         )
     recent_movements = list(recent_movements_qs.order_by("-date_issued", "-id")[:20])
 
+    # Overall stock state for the detail-page "Stav" chip (rail fact tile).
+    if total <= 0:
+        stock_state = "empty"
+    elif any(r["is_low"] for r in branch_rows):
+        stock_state = "low"
+    else:
+        stock_state = "ok"
+
     return render(
         request,
         "inventory/product_detail.html",
@@ -1142,6 +1245,7 @@ def product_detail(request, pk: int):
             "total_quantity": total,
             "total_reserved": total_reserved,
             "total_effective": total_effective,
+            "stock_state": stock_state,
             "branch_rows": branch_rows,
             "recipe": recipe,
             "used_in": used_in,

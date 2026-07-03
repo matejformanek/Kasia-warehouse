@@ -2,11 +2,23 @@
 
 {% block title %}Pobočky — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  .filterbar { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; width: 100%; }
+  .filterbar .field { margin-bottom: 0; }
+  .stav-ok { color: var(--ok); font-weight: 600; }
+  .stav-arch { color: var(--fg-faint); }
+  td.row-actions { white-space: nowrap; }
+  td.row-actions a.secondary, td.row-actions button.secondary { padding: .35rem .7rem; font-size: .85rem; }
+  .foot-note { color: var(--fg-soft); font-size: .9rem; margin: 1rem 0 0; }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Pobočky</h1>
 
-<form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
-  <div class="field" style="margin-bottom:0;">
+<form method="get" class="card filterbar">
+  <div class="field">
     <label for="id_filter_status">Stav</label>
     <select name="status" id="id_filter_status" onchange="this.form.submit()">
       <option value="active" {% if filter_status == "active" %}selected{% endif %}>aktivní</option>
@@ -18,15 +30,6 @@
     <a class="primary" href="{% url 'inventory:branch_create' %}">+ Nová pobočka</a>
   </div>
 </form>
-
-{# Standalone (out-of-form) live name filter per 0063 — kept outside the
-   status <form> so an accidental Enter can't submit + lose the typed text. #}
-<div style="margin-bottom:0.75rem;">
-  <input type="search" placeholder="Hledat podle kódu nebo názvu…"
-         style="min-width:280px;"
-         data-filter-rows="#branch-table tbody"
-         data-filter-empty="#branch-empty">
-</div>
 
 <p style="color:var(--fg-soft);">Nalezeno: {{ rows|length }} poboček.</p>
 
@@ -52,15 +55,15 @@
           </td>
           <td>{{ row.branch.name }}</td>
           <td>{{ row.branch.address|default:"—" }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.dodak_count }}</td>
+          <td class="num">{{ row.dodak_count }}</td>
           <td>
             {% if row.branch.is_active %}
-              <span style="color:var(--ok);">aktivní</span>
+              <span class="stav-ok">aktivní</span>
             {% else %}
-              <span style="color:var(--fg-soft);">archivovaná</span>
+              <span class="stav-arch">archivovaná</span>
             {% endif %}
           </td>
-          <td style="white-space:nowrap;">
+          <td class="row-actions">
             <a class="secondary" href="{% url 'inventory:branch_edit' code=row.branch.code %}">Upravit</a>
             {% if row.branch.is_active %}
               <form method="post" action="{% url 'inventory:branch_archive' code=row.branch.code %}" style="display:inline;">
@@ -81,14 +84,12 @@
       {% endfor %}
     </tbody>
   </table>
-  <p id="branch-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá hledání.</p>
 {% else %}
   <p style="color:var(--fg-soft);">Žádné pobočky v tomto filtru.</p>
 {% endif %}
 
-<p style="color:var(--fg-soft); font-size:0.9rem; margin-top:1rem;">
-  Kód pobočky je součástí čísla dodacího listu (<code>&lt;KÓD&gt;-&lt;YYYY&gt;-&lt;NNNN&gt;</code>,
-  per rozhodnutí 0008). Po vystavení prvního dodáku z dané pobočky se kód uzamkne.
-  Říčany nejsou pobočka — jsou výchozí odběratel (per 0030).
+<p class="foot-note">
+  Kód pobočky je součástí čísla dodacího listu (<code>&lt;KÓD&gt;-&lt;YYYY&gt;-&lt;NNNN&gt;</code>). Po vystavení prvního dodáku z dané pobočky se kód uzamkne.
+  Říčany nejsou pobočka — jsou výchozí odběratel.
 </p>
 {% endblock %}

@@ -1,0 +1,343 @@
+<!-- Sklad mockup 04b — Detail produktu, LAYOUT variant "Návrh B" (two-column, fakta jako dlaždice).
+     Mixture (Grilovací koření). LEFT (main): Stav skladu KPI strip + per-branch table + scope note.
+     RIGHT (rail ~320px, sticky): Rychlá fakta as small stacked bordered mini-cards
+     (Typ · Na skladě · Efektivně · Stav-chip), number prominent in mono; actions below.
+     Below full-width: Receptura + recipe-scaler + Nedávné pohyby. Collapses under ~1000px.
+     Recipe-scaler JS contract preserved verbatim (recipe-scaler* IDs, data-ratio, .scaler-preset). -->
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grilovací koření — Katalog (návrh B, fakta jako dlaždice)</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #1f6b3a; --accent-deep: #16432a; --accent-tint: #eef4ee;
+    --fg: #141719; --fg-soft: #565b66; --fg-faint: #868c97;
+    --bg: #f6f7f5; --bg-card: #ffffff; --line: #d9dcd9; --line-soft: #eef0ee;
+    --error: #a02525; --error-tint: #fbebea;
+    --warn: #c2410c; --warn-tint: #fdeee3;
+    --ok: #1f6b3a; --ok-soft: #e7f1ea;
+    --sidebar-w: 244px;
+    --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { font-family: var(--ui); color: var(--fg); background: var(--bg); margin: 0; font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -.01em; }
+  h1 { font-size: 1.45rem; margin: 0 0 1.1rem; }
+
+  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+  .sidebar { position: sticky; top: 0; align-self: start; height: 100vh; background: var(--bg-card); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 14px; }
+  .sidebar .brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 16px; margin-bottom: 6px; border-bottom: 1px solid var(--line-soft); text-decoration: none; }
+  .sidebar .brand img { height: 34px; width: auto; display: block; }
+  .sidebar .brand .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .sidebar .brand .brand-name { font-weight: 700; font-size: 16px; letter-spacing: .06em; color: var(--fg); }
+  .sidebar .brand .brand-sub { font-size: 11px; color: var(--fg-faint); letter-spacing: .14em; text-transform: uppercase; }
+  .nav { display: flex; flex-direction: column; gap: 1px; margin-top: 10px; flex: 1 1 auto; overflow-y: auto; }
+  .nav .nav-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); padding: 12px 10px 5px; font-weight: 600; }
+  .nav a { display: flex; align-items: center; gap: 10px; padding: 8px 11px; color: var(--fg-soft); font-weight: 500; font-size: 14px; text-decoration: none; border-left: 3px solid transparent; }
+  .nav a:hover { background: var(--line-soft); color: var(--fg); }
+  .nav a.active { background: var(--accent-tint); color: var(--accent-deep); font-weight: 600; border-left-color: var(--accent); }
+  .nav a .ic { width: 17px; height: 17px; flex: 0 0 17px; color: var(--fg-faint); }
+  .nav a.active .ic { color: var(--accent); }
+  .sidebar .user { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+  .sidebar .user .email { font-size: 12.5px; color: var(--fg-soft); text-decoration: none; }
+  .sidebar .user .logout { font-size: 13px; font-weight: 600; color: var(--fg); background: none; border: 1px solid var(--line); padding: 6px 10px; cursor: pointer; font-family: inherit; width: 100%; text-align: left; }
+
+  .content { padding: 30px 34px 56px; max-width: 1180px; width: 100%; min-width: 0; margin: 0 auto; }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; background: var(--bg-card); border: 1px solid var(--line); margin-bottom: 1.2rem; }
+  .kpi { padding: 16px 18px; border-left: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 7px; }
+  .kpi:first-child { border-left: 0; }
+  .kpi.accent { border-top: 2px solid var(--accent); }
+  .kpi.warn { border-top: 2px solid var(--warn); }
+  .kpi .lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: var(--fg-faint); }
+  .kpi .k-val { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 31px; font-weight: 600; line-height: 1; letter-spacing: -.02em; color: var(--fg); display: flex; align-items: baseline; gap: 5px; }
+  .kpi.accent .k-val { color: var(--accent); }
+  .kpi.warn .k-val { color: var(--warn); }
+  .kpi .k-unit { font-size: 13px; font-weight: 500; color: var(--fg-faint); letter-spacing: 0; }
+  .kpi .k-sub { font-size: 11.5px; color: var(--fg-soft); }
+
+  .card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 0; padding: 1.2rem 1.35rem; margin-bottom: 1.2rem; }
+  .card h2 { font-size: 1.05rem; margin-top: 0; }
+  .muted { color: var(--fg-soft); }
+  .scope-note { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1rem; padding: .5rem .75rem; background: var(--accent-tint); border-left: 3px solid var(--accent); }
+
+  .primary, a.primary, button.primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); padding: 0.5rem 1.1rem; border-radius: 0; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; }
+  .primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  a.secondary, button.secondary { background: #fff; color: var(--fg); border: 1px solid var(--line); padding: 0.5rem 0.9rem; border-radius: 0; font: inherit; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; }
+  a.secondary:hover { border-color: var(--fg-faint); }
+  .actions { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+  .field { margin-bottom: .85rem; }
+  .field label { display:block; font-weight:600; margin-bottom:.3rem; }
+  .scaler-preset { background:#fff; }
+  input[type=text] { font: inherit; padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 0; background: #fcfdfc; color: var(--fg); }
+
+  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; }
+  table.lines th, table.lines td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  table.lines th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600; }
+  table.lines tbody tr:hover td { background: #fafbfa; }
+  .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  tr.row-link { cursor: pointer; }
+  tr.row-link:hover td { background: var(--line-soft); }
+  tr.row-link td a { color: var(--fg); }
+  .recipe-notes { background: var(--accent-tint); border-left: 3px solid var(--accent); padding: 0.75rem 1rem; margin-top: 1rem; }
+  .archived-banner { background: var(--warn-tint); border-left: 3px solid var(--warn); color: var(--warn); padding: .6rem .85rem; margin-bottom: 1rem; font-weight: 600; }
+
+  /* Variant note banner. */
+  .variant-note { background: var(--accent-tint); border-left: 3px solid var(--accent); color: var(--fg-soft); padding: .55rem .85rem; margin-bottom: 1.1rem; font-size: .9rem; }
+  .variant-note strong { color: var(--fg); }
+
+  /* Two-column layout: main + sticky rail. */
+  .two-col { display: grid; grid-template-columns: 1fr 320px; gap: 1.2rem; align-items: start; }
+  .two-col .rail { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 1.2rem; }
+  .chip { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; letter-spacing: .01em; }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); }
+  .chip.warn { background: var(--warn-tint); color: var(--warn); }
+  .chip.err { background: var(--error-tint); color: var(--error); }
+  .rail .card h2 { font-size: .95rem; }
+  .rail-actions { display: flex; flex-direction: column; gap: .55rem; }
+  .rail-actions .primary, .rail-actions .secondary { text-align: center; width: 100%; }
+
+  /* Návrh B — fakta jako dlaždice (bordered mini-cards, number prominent in mono). */
+  .fact-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+  .fact-tile { border: 1px solid var(--line); background: var(--bg-card); padding: .7rem .8rem; display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
+  .fact-tile .ft-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); }
+  .fact-tile .ft-val { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em; color: var(--fg); }
+  .fact-tile .ft-val .ft-unit { font-size: 12px; font-weight: 500; color: var(--fg-faint); }
+  .fact-tile .ft-val.plain { font-family: var(--ui); font-size: 16px; }
+  .fact-tile.accent { border-top: 2px solid var(--accent); }
+  .fact-tile.accent .ft-val { color: var(--accent); }
+  @media (max-width: 1000px) {
+    .two-col { grid-template-columns: 1fr; }
+    .two-col .rail { position: static; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="index.html">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="brand-text"><span class="brand-name">KASIA</span><span class="brand-sub">sklad</span></span>
+    </a>
+    <nav class="nav" aria-label="Hlavní navigace">
+      <span class="nav-label">Provoz</span>
+      <a href="02a-prehled.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Přehled</a>
+      <a href="01b-katalog-grouped.html" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Katalog</a>
+      <a href="03-inventura.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M9 13l2 2 4-4"/></svg>Inventura</a>
+      <a href="08-prijem.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Příjem</a>
+      <a href="05-vydej.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>Výdej</a>
+      <a href="06-michani.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 0 1 15-6.7L21 6"/><path d="M21 3v3h-3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 18"/><path d="M3 21v-3h3"/></svg>Míchání</a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h13l-3-3m3 3-3 3"/><path d="M20 16H7l3-3m-3 3 3 3"/></svg>Převody</a>
+      <a href="10-dodaci-listy.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>Dodací listy</a>
+      <a href="09-historie.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/></svg>Historie</a>
+    </nav>
+    <div class="user">
+      <a href="#" class="email">karolina@kasia.cz</a>
+      <button class="logout">Odhlásit</button>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <h1>Grilovací koření <span style="font-weight:normal;color:var(--fg-soft);font-size:1rem;">· směs</span></h1>
+
+    <div class="two-col">
+      <!-- LEFT: Stav skladu KPI strip + per-branch table + scope note -->
+      <div class="col-main">
+        <div class="card">
+          <h2>Stav skladu</h2>
+          <p class="muted" style="margin-top:0;">Objednací bod: <strong>50,0 kg</strong> (výchozí pro produkt).</p>
+
+          <section class="kpis" aria-label="Souhrn skladu produktu">
+            <div class="kpi">
+              <span class="lbl">Na skladě</span>
+              <span class="k-val">128,0 <span class="k-unit">kg</span></span>
+              <span class="k-sub">celkem obě pobočky</span>
+            </div>
+            <div class="kpi">
+              <span class="lbl">Rezervováno</span>
+              <span class="k-val">25,0 <span class="k-unit">kg</span></span>
+              <span class="k-sub">plánované míchání/převody</span>
+            </div>
+            <div class="kpi accent">
+              <span class="lbl">Efektivně</span>
+              <span class="k-val">103,0 <span class="k-unit">kg</span></span>
+              <span class="k-sub">na skladě − rezervováno</span>
+            </div>
+            <div class="kpi">
+              <span class="lbl">Práh</span>
+              <span class="k-val">50,0 <span class="k-unit">kg</span></span>
+              <span class="k-sub">objednací bod</span>
+            </div>
+          </section>
+
+          <table class="lines">
+            <thead>
+              <tr><th>Pobočka</th><th style="text-align:right;">Na skladě</th><th style="text-align:right;">Rezervováno</th><th style="text-align:right;">Efektivně</th><th style="text-align:right;">Práh</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>TYN — Týniště nad Orlicí</td><td class="num">78,0</td><td class="num">25,0</td><td class="num">53,0</td><td class="num">30,0</td></tr>
+              <tr><td>SEZ — Sezimovo Ústí</td><td class="num">50,0</td><td class="num">0,0</td><td class="num">50,0</td><td class="num">20,0</td></tr>
+              <tr><td><strong>Celkem</strong></td><td class="num"><strong>128,0</strong></td><td class="num"><strong>25,0</strong></td><td class="num"><strong>103,0</strong></td><td></td></tr>
+            </tbody>
+          </table>
+          <p class="scope-note" style="margin-bottom:0;">Obsluha vidí obě pobočky; úpravy stavu skladu smí provádět jen vlastník.</p>
+        </div>
+      </div>
+
+      <!-- RIGHT: sticky rail — Rychlá fakta as bordered mini-tiles + actions -->
+      <aside class="rail">
+        <div class="card">
+          <h2>Rychlá fakta</h2>
+          <div class="fact-tiles">
+            <!-- Top row: identity + status. -->
+            <div class="fact-tile">
+              <span class="ft-lbl">Typ</span>
+              <span class="ft-val plain">Směs</span>
+            </div>
+            <div class="fact-tile">
+              <span class="ft-lbl">Stav</span>
+              <span class="ft-val plain"><span class="chip ok">ok</span></span>
+            </div>
+            <!-- Bottom row: the kg numbers. -->
+            <div class="fact-tile">
+              <span class="ft-lbl">Na skladě</span>
+              <span class="ft-val">128,0 <span class="ft-unit">kg</span></span>
+            </div>
+            <div class="fact-tile accent">
+              <span class="ft-lbl">Efektivně</span>
+              <span class="ft-val">103,0 <span class="ft-unit">kg</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Akce</h2>
+          <div class="rail-actions">
+            <a class="primary" href="#">Upravit produkt</a>
+            <a class="secondary" href="#">Upravit stav skladu</a>
+            <a class="secondary" href="06-michani.html">Zahájit míchání</a>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- BELOW full-width: Receptura -->
+    <div class="card">
+      <h2>Receptura</h2>
+      <table class="lines">
+        <thead><tr><th>Surovina</th><th style="text-align:right;">Podíl</th></tr></thead>
+        <tbody>
+          <tr><td><a href="04-detail-produktu.html">Paprika sladká mletá</a></td><td class="num">0,40</td></tr>
+          <tr><td><a href="04-detail-produktu.html">Sůl</a></td><td class="num">0,30</td></tr>
+          <tr><td><a href="04-detail-produktu.html">Pepř černý mletý</a></td><td class="num">0,15</td></tr>
+          <tr><td><a href="04-detail-produktu.html">Kmín celý</a></td><td class="num">0,15</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">Receptura se snapshotuje při zahájení míchání (per decision 0005).</p>
+      <div class="recipe-notes">
+        <h3 style="font-size:.95rem;margin:0 0 .4rem;">Poznámky k míchání</h3>
+        <p style="margin:0;white-space:pre-wrap;">Míchat 8–10 minut. Paprika se přidává jako poslední, aby se nepřepálila.</p>
+      </div>
+      <div class="actions" style="margin-top:1.1rem;">
+        <a class="primary" href="06-michani.html">Zahájit míchání →</a>
+      </div>
+    </div>
+
+    <!-- Recipe-scaler — JS contract preserved verbatim (recipe-scaler* IDs, data-ratio, .scaler-preset). -->
+    <form class="card" id="recipe-scaler" onsubmit="return false;" data-pdf-base="#">
+      <h2>Spočítat dávku</h2>
+      <p class="muted" style="font-size:.9rem;">
+        Zvolte cílové množství směsi — v tabulce uvidíte, kolik každé suroviny budete potřebovat,
+        a recepturu pro toto množství si můžete stáhnout jako PDF.
+      </p>
+      <div class="field">
+        <label for="recipe-scaler-target">Cílové množství (kg)</label>
+        <input type="text" inputmode="decimal" id="recipe-scaler-target" value="10" style="max-width:160px;">
+      </div>
+      <div class="actions" style="margin:-0.2rem 0 1rem;">
+        <button type="button" class="secondary scaler-preset" data-kg="5">5 kg</button>
+        <button type="button" class="secondary scaler-preset" data-kg="10">10 kg</button>
+        <button type="button" class="secondary scaler-preset" data-kg="25">25 kg</button>
+        <button type="button" class="secondary scaler-preset" data-kg="50">50 kg</button>
+        <button type="button" class="secondary scaler-preset" data-kg="100">100 kg</button>
+      </div>
+      <table class="lines">
+        <thead><tr><th>Surovina</th><th style="text-align:right;">Podíl</th><th style="text-align:right;">Potřeba (kg)</th></tr></thead>
+        <tbody>
+          <tr><td>Paprika sladká mletá</td><td class="num">0,40</td><td class="num recipe-scaler-out" data-ratio="0.40">—</td></tr>
+          <tr><td>Sůl</td><td class="num">0,30</td><td class="num recipe-scaler-out" data-ratio="0.30">—</td></tr>
+          <tr><td>Pepř černý mletý</td><td class="num">0,15</td><td class="num recipe-scaler-out" data-ratio="0.15">—</td></tr>
+          <tr><td>Kmín celý</td><td class="num">0,15</td><td class="num recipe-scaler-out" data-ratio="0.15">—</td></tr>
+        </tbody>
+      </table>
+      <div class="actions" style="margin-top:1rem;">
+        <a class="primary" id="recipe-pdf-link" href="#" target="_blank" rel="noopener">Stáhnout recepturu (PDF)</a>
+      </div>
+    </form>
+
+    <div class="card">
+      <h2>Nedávné pohyby s tímto produktem</h2>
+      <table class="lines">
+        <thead>
+          <tr><th>Datum</th><th>Druh</th><th>Pobočka</th><th>Protistrana</th><th style="text-align:right;">Množství</th></tr>
+        </thead>
+        <tbody>
+          <tr class="row-link" data-href="#"><td>30. 06. 2026</td><td>Výdej</td><td>TYN</td><td>Restaurace U Kotvy</td><td class="num">12,0 kg</td></tr>
+          <tr class="row-link" data-href="#"><td>27. 06. 2026</td><td>Míchání (výstup)</td><td>TYN</td><td>—</td><td class="num">50,0 kg</td></tr>
+          <tr class="row-link" data-href="#"><td>21. 06. 2026</td><td>Výdej</td><td>SEZ</td><td>Lahůdky Vávra</td><td class="num">6,5 kg</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Actions repeated at the very bottom (also in the right rail) so a long page doesn't force a scroll up. -->
+    <p class="actions">
+      <a class="primary" href="#">Upravit produkt</a>
+      <a class="secondary" href="#">Upravit stav skladu</a>
+      <a class="secondary" href="06-michani.html">Zahájit míchání</a>
+      <a class="secondary" href="01b-katalog-grouped.html">Zpět na katalog</a>
+    </p>
+  </main>
+</div>
+
+<script>
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("a, button, input, select, label")) return;
+    const tr = e.target.closest("tr.row-link[data-href]");
+    if (tr) window.location = tr.dataset.href;
+  });
+  // Recipe scaler — same logic/contract as product_detail.html.
+  (function () {
+    const form = document.getElementById("recipe-scaler");
+    const target = document.getElementById("recipe-scaler-target");
+    if (!form || !target) return;
+    const outs = form.querySelectorAll(".recipe-scaler-out");
+    const pdf = document.getElementById("recipe-pdf-link");
+    const pdfBase = form.dataset.pdfBase;
+    function currentQty() { return parseFloat(String(target.value).replace(",", ".").trim()); }
+    function recompute() {
+      const t = currentQty();
+      const ok = isFinite(t) && t > 0;
+      outs.forEach(function (el) {
+        const r = parseFloat(el.dataset.ratio);
+        el.textContent = (ok && isFinite(r)) ? (t * r).toFixed(1).replace(".", ",") : "—";
+      });
+      if (pdf && pdfBase) { pdf.href = ok ? pdfBase + "?qty=" + encodeURIComponent(t) : pdfBase; }
+    }
+    target.addEventListener("input", recompute);
+    form.querySelectorAll(".scaler-preset").forEach(function (btn) {
+      btn.addEventListener("click", function () { target.value = btn.dataset.kg; recompute(); });
+    });
+    recompute();
+  })();
+</script>
+</body>
+</html>

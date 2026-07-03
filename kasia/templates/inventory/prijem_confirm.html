@@ -5,7 +5,7 @@
 {% block content %}
 <h1>Potvrdit příjezd zboží</h1>
 
-<div class="card" style="background:#fbf3e0;border-left:3px solid var(--warn);">
+<div class="card" style="background:var(--warn-tint);border-left:3px solid var(--warn);">
   <strong>Plánovaný příjem</strong> na pobočku {{ movement.branch.code }} —
   očekávaný příjezd <strong>{{ movement.expected_on|date:"d. m. Y" }}</strong>.
   Upravte množství podle toho, co skutečně dorazilo (řádek s nulou se vynechá),

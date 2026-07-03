@@ -140,3 +140,8 @@ poslat ještě jednou?".
 - **PDF template specifics** (logo, layout, signature line, footer)
   — remains *Decide before MVP*, resolved when Phase B reaches
   [`14-nastaveni.md`](14-nastaveni.md).
+
+## UX refresh — Phase 2 (2026-07-03)
+
+Detail dodacího listu restyled per mockup `11` (two-party header, meta row,
+version/mail badges); `#fbe8e8` -> `var(--error-tint)`. Behavior unchanged.

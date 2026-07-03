@@ -2,186 +2,273 @@
 {% load static %}
 {% block title %}Nastavení — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Nastavení — spacing/clarity redesign (návrh 16). Airy section cards, a 2-col
+     field grid for compact fields, an anchor-chip section index, and a sticky
+     save bar. Base.html provides tokens + shared .card/.field/.primary/etc. */
+  .page-intro { color: var(--fg-soft); font-size: .96rem; margin: 0 0 1.3rem; max-width: 640px; }
+
+  /* Section index / anchor chips under the H1 — smooth-scroll to each card. */
+  .anchor-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 2rem; padding: 0 0 1.3rem; border-bottom: 1px solid var(--line-soft); }
+  .anchor-chips a { font-size: .82rem; font-weight: 600; color: var(--fg-soft); background: var(--bg-card); border: 1px solid var(--line); padding: .4rem .8rem; border-radius: 0; text-decoration: none; line-height: 1.2; }
+  .anchor-chips a:hover { border-color: var(--accent); color: var(--accent-deep); background: var(--accent-tint); }
+
+  /* Airy section cards: generous padding + big gap between topics. */
+  .settings-card { padding: 2rem 2.2rem; margin-bottom: 2.4rem; scroll-margin-top: 24px; }
+  .settings-card > h2 { font-size: 1.3rem; margin: 0 0 .25rem; }
+  .settings-card .sub { color: var(--fg-soft); font-size: .92rem; margin: 0 0 1.6rem; max-width: 640px; }
+  .settings-card .note { color: var(--fg-soft); font-size: 0.9rem; margin: -.6rem 0 1.4rem; max-width: 640px; }
+  .settings-card code { font-family: var(--mono); font-size: .86em; background: var(--line-soft); padding: .05rem .3rem; }
+
+  /* Form fields — airy: label above input, roomy vertical rhythm. */
+  .settings-card .field { margin-bottom: 1.5rem; }
+  .settings-card label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--fg); font-size: .95rem; }
+  .settings-card input[type=text], .settings-card input[type=email], .settings-card input[type=password],
+  .settings-card input[type=number], .settings-card input[type=file], .settings-card select, .settings-card textarea {
+    max-width: 420px;
+  }
+  /* Addresses + template bodies get more room. */
+  .settings-card textarea { resize: vertical; min-height: 3.4rem; max-width: 640px; }
+  .settings-card .field small { color: var(--fg-soft); display: block; margin-top: .35rem; font-size: .85rem; }
+
+  /* 2-column grid for compact company/SMTP fields; .field-grid .field cancels its own bottom margin. */
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2rem; }
+  .field-grid .field { margin-bottom: 0; }
+  .field-grid .full { grid-column: 1 / -1; }
+  .field-grid .full input, .field-grid .full textarea { max-width: 640px; }
+  @media (max-width: 720px) { .field-grid { grid-template-columns: 1fr; } }
+
+  /* Sticky, clearly separated save bar for the primary action. */
+  .save-bar { position: sticky; bottom: 0; background: var(--bg-card); border: 1px solid var(--line); border-top: 2px solid var(--accent); padding: 1rem 1.4rem; margin-bottom: 2.4rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .save-bar .save-hint { color: var(--fg-soft); font-size: .88rem; margin-left: auto; }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Nastavení</h1>
+<p class="page-intro">Firemní hlavička dokumentů, odesílání dodacích listů e-mailem a šablony zpráv. Změny se ukládají tlačítkem <strong>Uložit nastavení</strong> dole.</p>
 
-<form method="post" enctype="multipart/form-data" class="card">
+<!-- Section index / anchor chips — smooth-scroll to each card. -->
+<nav class="anchor-chips" aria-label="Rychlá navigace v nastavení">
+  <a href="#sec-spolecnost">Společnost</a>
+  <a href="#sec-smtp">SMTP</a>
+  <a href="#sec-prijemci">Příjemci</a>
+  <a href="#sec-sablony">Šablony</a>
+  <a href="#sec-test">Test</a>
+  <a href="#sec-dodak">Dodací list</a>
+  <a href="#sec-pobocky">Pobočky</a>
+</nav>
+
+<form method="post" enctype="multipart/form-data">
   {% csrf_token %}
 
   {% if form.errors %}
-    <div class="msg error" style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fbe8e8;color:var(--error);border-radius:4px;">
+    <div class="non-form-errors">
       <strong>Formulář se nepodařilo uložit.</strong>
       Zkontrolujte zvýrazněná pole níže.
       {{ form.non_field_errors }}
     </div>
   {% endif %}
 
-  <h2 style="margin-top:0;">Společnost / hlavička dokumentu</h2>
-  {% for f in form %}
-    {% if f.name == "company_name" or f.name == "company_ico" or f.name == "company_dic" or f.name == "company_address" or f.name == "company_phone" or f.name == "company_email" or f.name == "logo" or f.name == "footer_text" %}
-      <div class="field">
-        <label for="{{ f.id_for_label }}">{{ f.label }}</label>
-        {{ f }}
-        {% if f.name == "logo" and settings.logo %}
-          <small style="color:var(--fg-soft); display:block;">
-            Aktuální: <a href="{{ settings.logo.url }}" target="_blank">{{ settings.logo.name }}</a>
-          </small>
+  <!-- ===== Společnost / hlavička dokumentu ===== -->
+  <section class="card settings-card" id="sec-spolecnost">
+    <h2>Společnost / hlavička dokumentu</h2>
+    <p class="sub">Údaje se tisknou do hlavičky a patičky dodacího listu. Logo se použije jako obrázek dokumentu.</p>
+
+    <div class="field-grid">
+      {% for f in form %}
+        {% if f.name == "company_name" or f.name == "company_ico" or f.name == "company_dic" or f.name == "company_phone" or f.name == "company_email" or f.name == "logo" or f.name == "company_address" or f.name == "footer_text" %}
+          <div class="field{% if f.name == "company_address" or f.name == "footer_text" %} full{% endif %}">
+            <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+            {{ f }}
+            {% if f.name == "logo" and settings.logo %}
+              <small>Aktuální: <a href="{{ settings.logo.url }}" target="_blank">{{ settings.logo.name }}</a></small>
+            {% endif %}
+            {% if f.help_text %}<small>{{ f.help_text }}</small>{% endif %}
+            {{ f.errors }}
+          </div>
         {% endif %}
-        {% if f.help_text %}<small style="color:var(--fg-soft); display:block;">{{ f.help_text }}</small>{% endif %}
-        {{ f.errors }}
-      </div>
-    {% endif %}
-  {% endfor %}
+      {% endfor %}
+    </div>
+  </section>
 
-  <h2>Odeslání dodacích listů — SMTP</h2>
-  <p style="color:var(--fg-soft); font-size:0.9rem;">
-    Pole jsou volitelná. Pokud necháte prázdná, použije se konfigurace
-    z <code>.env</code> souboru na serveru. Změna polí se projeví okamžitě.
-  </p>
-  {% for f in form %}
-    {% if f.name == "smtp_host" or f.name == "smtp_port" or f.name == "smtp_use_tls" or f.name == "smtp_user" or f.name == "smtp_password" or f.name == "email_from_address" or f.name == "email_from_name" %}
-      <div class="field">
-        <label for="{{ f.id_for_label }}">{{ f.label }}</label>
-        {{ f }}
-        {% if f.name == "smtp_password" %}
-          <small style="color:var(--fg-soft); display:block;">
-            Heslo se nikdy nezobrazuje. Prázdný vstup ponechá uložené heslo beze změny.
-          </small>
+  <!-- ===== SMTP ===== -->
+  <section class="card settings-card" id="sec-smtp">
+    <h2>Odeslání dodacích listů — SMTP</h2>
+    <p class="sub">Konfigurace poštovního serveru pro odesílání dodacích listů a souhrnů.</p>
+    <p class="note">
+      Pole jsou volitelná. Pokud necháte prázdná, použije se konfigurace
+      z <code>.env</code> souboru na serveru. Změna polí se projeví okamžitě.
+    </p>
+
+    <div class="field-grid">
+      {% for f in form %}
+        {% if f.name == "smtp_host" or f.name == "smtp_port" or f.name == "smtp_user" or f.name == "smtp_password" or f.name == "email_from_address" or f.name == "email_from_name" %}
+          <div class="field">
+            <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+            {{ f }}
+            {% if f.name == "smtp_password" %}
+              <small>Heslo se nikdy nezobrazuje. Prázdný vstup ponechá uložené heslo beze změny.</small>
+            {% endif %}
+            {{ f.errors }}
+          </div>
         {% endif %}
-        {{ f.errors }}
-      </div>
+      {% endfor %}
+      {% for f in form %}
+        {% if f.name == "smtp_use_tls" %}
+          <div class="field full">
+            <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+            {{ f }}
+            {{ f.errors }}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ===== Příjemci dodacího listu ===== -->
+  <section class="card settings-card" id="sec-prijemci">
+    <h2>Příjemci dodacího listu</h2>
+    <p class="sub">Seznam interních adres, na které míří každý dodací list a souhrn „dochází zboží".</p>
+    <p class="note">
+      Každý dodací list se odesílá na všechny aktivní adresy v seznamu níže.
+      Adresy odběratelů nejsou nikdy v cestě e-mailu. Souhrn „dochází zboží"
+      chodí jen příjemcům s odpovídajícím zaškrtnutím.
+    </p>
+
+    {{ recipient_formset.management_form }}
+    {% if recipient_formset.non_form_errors %}
+      <div class="non-form-errors">{{ recipient_formset.non_form_errors }}</div>
     {% endif %}
-  {% endfor %}
 
-  <h2>Příjemci dodacího listu</h2>
-  <p style="color:var(--fg-soft); font-size:0.9rem;">
-    Každý dodací list se odesílá na všechny aktivní adresy v seznamu níže.
-    Adresy odběratelů nejsou nikdy v cestě e-mailu (rozhodnutí
-    <code>0031</code> + <code>0052</code>). Souhrn „dochází zboží"
-    chodí jen příjemcům s odpovídajícím zaškrtnutím.
-  </p>
+    <table class="lines" id="recipient-table">
+      <thead>
+        <tr>
+          <th class="field-required">E-mail</th>
+          <th>Popisek</th>
+          <th style="text-align:center;">Aktivní</th>
+          <th style="text-align:center;">Souhrn dochází zboží</th>
+          <th style="text-align:right;">Pořadí</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="recipient-body">
+        {% for r_form in recipient_formset.forms %}
+          <tr class="line-row" data-index="{{ forloop.counter0 }}">
+            <td>
+              {{ r_form.id }}
+              {{ r_form.email }}
+              {{ r_form.email.errors }}
+            </td>
+            <td>{{ r_form.label }}{{ r_form.label.errors }}</td>
+            <td style="text-align:center;">{{ r_form.is_active }}</td>
+            <td style="text-align:center;">{{ r_form.is_low_stock_recipient }}</td>
+            <td style="text-align:right;">{{ r_form.sort_order }}</td>
+            <td>
+              <input type="checkbox" name="{{ r_form.DELETE.html_name }}"
+                     id="{{ r_form.DELETE.id_for_label }}" hidden>
+              <button type="button" class="row-delete-btn"
+                      data-target="{{ r_form.DELETE.id_for_label }}">
+                × Smazat
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
-  {{ recipient_formset.management_form }}
-  {% if recipient_formset.non_form_errors %}
-    <div class="non-form-errors">{{ recipient_formset.non_form_errors }}</div>
-  {% endif %}
-
-  <table class="lines" id="recipient-table">
-    <thead>
-      <tr>
-        <th class="field-required">E-mail</th>
-        <th>Popisek</th>
-        <th>Aktivní</th>
-        <th>Souhrn dochází zboží</th>
-        <th>Pořadí</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody id="recipient-body">
-      {% for r_form in recipient_formset.forms %}
-        <tr class="line-row" data-index="{{ forloop.counter0 }}">
+    {# Hidden empty-row template; JS clones it on "+ Přidat příjemce" click. #}
+    {% with prefix=recipient_formset.prefix %}
+      <template id="recipient-empty-row">
+        <tr class="line-row" data-index="__INDEX__">
           <td>
-            {{ r_form.id }}
-            {{ r_form.email }}
-            {{ r_form.email.errors }}
+            <input type="email" name="{{ prefix }}-__INDEX__-email"
+                   id="id_{{ prefix }}-__INDEX__-email" maxlength="254">
           </td>
-          <td>{{ r_form.label }}{{ r_form.label.errors }}</td>
-          <td style="text-align:center;">{{ r_form.is_active }}</td>
-          <td style="text-align:center;">{{ r_form.is_low_stock_recipient }}</td>
-          <td style="text-align:right;">{{ r_form.sort_order }}</td>
           <td>
-            <input type="checkbox" name="{{ r_form.DELETE.html_name }}"
-                   id="{{ r_form.DELETE.id_for_label }}" hidden>
+            <input type="text" name="{{ prefix }}-__INDEX__-label"
+                   id="id_{{ prefix }}-__INDEX__-label" maxlength="64">
+          </td>
+          <td style="text-align:center;">
+            <input type="checkbox" name="{{ prefix }}-__INDEX__-is_active"
+                   id="id_{{ prefix }}-__INDEX__-is_active" checked>
+          </td>
+          <td style="text-align:center;">
+            <input type="checkbox" name="{{ prefix }}-__INDEX__-is_low_stock_recipient"
+                   id="id_{{ prefix }}-__INDEX__-is_low_stock_recipient">
+          </td>
+          <td style="text-align:right;">
+            <input type="number" name="{{ prefix }}-__INDEX__-sort_order"
+                   id="id_{{ prefix }}-__INDEX__-sort_order"
+                   value="0" min="0" style="width:5rem;">
+          </td>
+          <td>
+            <input type="checkbox" name="{{ prefix }}-__INDEX__-DELETE"
+                   id="id_{{ prefix }}-__INDEX__-DELETE" hidden>
             <button type="button" class="row-delete-btn"
-                    data-target="{{ r_form.DELETE.id_for_label }}">
+                    data-target="id_{{ prefix }}-__INDEX__-DELETE">
               × Smazat
             </button>
           </td>
         </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </template>
 
-  {# Hidden empty-row template; JS clones it on "+ Přidat příjemce" click. #}
-  {% with prefix=recipient_formset.prefix %}
-    <template id="recipient-empty-row">
-      <tr class="line-row" data-index="__INDEX__">
-        <td>
-          <input type="email" name="{{ prefix }}-__INDEX__-email"
-                 id="id_{{ prefix }}-__INDEX__-email" maxlength="254">
-        </td>
-        <td>
-          <input type="text" name="{{ prefix }}-__INDEX__-label"
-                 id="id_{{ prefix }}-__INDEX__-label" maxlength="64">
-        </td>
-        <td style="text-align:center;">
-          <input type="checkbox" name="{{ prefix }}-__INDEX__-is_active"
-                 id="id_{{ prefix }}-__INDEX__-is_active" checked>
-        </td>
-        <td style="text-align:center;">
-          <input type="checkbox" name="{{ prefix }}-__INDEX__-is_low_stock_recipient"
-                 id="id_{{ prefix }}-__INDEX__-is_low_stock_recipient">
-        </td>
-        <td style="text-align:right;">
-          <input type="number" name="{{ prefix }}-__INDEX__-sort_order"
-                 id="id_{{ prefix }}-__INDEX__-sort_order"
-                 value="0" min="0" style="width:5rem;">
-        </td>
-        <td>
-          <input type="checkbox" name="{{ prefix }}-__INDEX__-DELETE"
-                 id="id_{{ prefix }}-__INDEX__-DELETE" hidden>
-          <button type="button" class="row-delete-btn"
-                  data-target="id_{{ prefix }}-__INDEX__-DELETE">
-            × Smazat
-          </button>
-        </td>
-      </tr>
-    </template>
+      <p>
+        <button type="button" class="secondary" id="recipient-add-row">
+          + Přidat příjemce
+        </button>
+      </p>
 
-    <p>
-      <button type="button" class="secondary" id="recipient-add-row">
-        + Přidat příjemce
-      </button>
+      <script>
+        (function () {
+          const btn = document.getElementById("recipient-add-row");
+          if (!btn) return;
+          btn.addEventListener("click", function () {
+            const body = document.getElementById("recipient-body");
+            const total = document.querySelector("[name={{ prefix }}-TOTAL_FORMS]");
+            const idx = parseInt(total.value, 10);
+            const tpl = document.getElementById("recipient-empty-row").innerHTML;
+            body.insertAdjacentHTML("beforeend", tpl.replace(/__INDEX__/g, idx));
+            total.value = idx + 1;
+          });
+        })();
+      </script>
+    {% endwith %}
+  </section>
+
+  <!-- ===== Šablony e-mailů ===== -->
+  <section class="card settings-card" id="sec-sablony">
+    <h2>Šablony e-mailů</h2>
+    <p class="sub">Předmět a tělo automatických zpráv. Delší texty mají širší pole pro pohodlnou úpravu.</p>
+    <p class="note">
+      Zástupné značky: <code>&lt;číslo&gt;</code>, <code>&lt;datum&gt;</code>,
+      <code>&lt;text zdůvodnění od operátorky&gt;</code>. Systém je při
+      odeslání dosadí automaticky.
     </p>
+    {% for f in form %}
+      {% if f.name == "template_initial_subject" or f.name == "template_initial_body" or f.name == "template_oprava_subject" or f.name == "template_oprava_body" or f.name == "template_low_stock_subject" or f.name == "template_low_stock_body" %}
+        <div class="field">
+          <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+          {{ f }}
+          {{ f.errors }}
+        </div>
+      {% endif %}
+    {% endfor %}
+  </section>
 
-    <script>
-      (function () {
-        const btn = document.getElementById("recipient-add-row");
-        if (!btn) return;
-        btn.addEventListener("click", function () {
-          const body = document.getElementById("recipient-body");
-          const total = document.querySelector("[name={{ prefix }}-TOTAL_FORMS]");
-          const idx = parseInt(total.value, 10);
-          const tpl = document.getElementById("recipient-empty-row").innerHTML;
-          body.insertAdjacentHTML("beforeend", tpl.replace(/__INDEX__/g, idx));
-          total.value = idx + 1;
-        });
-      })();
-    </script>
-  {% endwith %}
-
-  <h2>Šablony e-mailů</h2>
-  <p style="color:var(--fg-soft); font-size:0.9rem;">
-    Zástupné značky: <code>&lt;číslo&gt;</code>, <code>&lt;datum&gt;</code>,
-    <code>&lt;text zdůvodnění od operátorky&gt;</code>. Systém je při
-    odeslání dosadí automaticky.
-  </p>
-  {% for f in form %}
-    {% if f.name == "template_initial_subject" or f.name == "template_initial_body" or f.name == "template_oprava_subject" or f.name == "template_oprava_body" or f.name == "template_low_stock_subject" or f.name == "template_low_stock_body" %}
-      <div class="field">
-        <label for="{{ f.id_for_label }}">{{ f.label }}</label>
-        {{ f }}
-        {{ f.errors }}
-      </div>
-    {% endif %}
-  {% endfor %}
-
-  <button type="submit" class="primary">Uložit nastavení</button>
+  <!-- Sticky, prominent primary action for the whole form. -->
+  <div class="save-bar">
+    <button type="submit" class="primary">Uložit nastavení</button>
+    <span class="save-hint">Uloží Společnost, SMTP, Příjemce i Šablony najednou.</span>
+  </div>
 </form>
 
-<div class="card">
-  <h2 style="margin-top:0;">Otestovat odeslání</h2>
-  <p style="color:var(--fg-soft); font-size:0.9rem;">
+<!-- ===== Otestovat odeslání ===== -->
+<section class="card settings-card" id="sec-test">
+  <h2>Otestovat odeslání</h2>
+  <p class="sub">Ověří, že SMTP nastavení funguje, bez vystavení skutečného dodacího listu.</p>
+  <p class="note">
     Odešle krátký testovací e-mail přes výše uložené SMTP nastavení.
     Pokud SMTP ještě nebylo uloženo, použijí se uložené hodnoty z databáze.
   </p>
@@ -191,19 +278,20 @@
       <label for="{{ smtp_test_form.to_email.id_for_label }}">{{ smtp_test_form.to_email.label }}</label>
       {{ smtp_test_form.to_email }}
       {% if smtp_test_form.to_email.help_text %}
-        <small style="color:var(--fg-soft); display:block;">{{ smtp_test_form.to_email.help_text }}</small>
+        <small>{{ smtp_test_form.to_email.help_text }}</small>
       {% endif %}
     </div>
     <button type="submit" class="secondary">Odeslat testovací e-mail</button>
   </form>
-</div>
+</section>
 
-<div class="card">
-  <h2 style="margin-top:0;">Dodací list — formát</h2>
-  <p>
+<!-- ===== Dodací list — formát ===== -->
+<section class="card settings-card" id="sec-dodak">
+  <h2>Dodací list — formát</h2>
+  <p class="sub">Přehled číselné řady dodacích listů podle poboček. Formát je pevně daný.</p>
+  <p class="note">
     Číslování je pevně <code>&lt;BRANCH&gt;-&lt;YYYY&gt;-&lt;NNNN&gt;</code>
-    podle rozhodnutí
-    <code>0008</code>. Formát není uživatelsky konfigurovatelný — je součástí
+    podle pevného formátu. Formát není uživatelsky konfigurovatelný — je součástí
     schématu databáze.
   </p>
   <table class="lines">
@@ -221,20 +309,22 @@
           <td>{{ row.year }}</td>
           <td>
             {% if row.last_counter %}
-              {{ row.preview }}
+              <code>{{ row.preview }}</code>
             {% else %}
-              <span style="color:var(--fg-soft);">letos ještě nic</span>
+              <span class="muted">letos ještě nic</span>
             {% endif %}
           </td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
-</div>
+</section>
 
-<div class="card">
-  <h2 style="margin-top:0;">Pobočky</h2>
-  <p style="color:var(--fg-soft); font-size:0.9rem;">
+<!-- ===== Pobočky ===== -->
+<section class="card settings-card" id="sec-pobocky">
+  <h2>Pobočky</h2>
+  <p class="sub">Evidované pobočky a jejich stabilní třípísmenné kódy.</p>
+  <p class="note">
     Třípísmenný kód je stabilní po prvním vystavení dodacího listu —
     editace identit poboček mimo název / adresu není v MVP.
   </p>
@@ -254,16 +344,28 @@
           <td>{{ b.address|default:"—" }}</td>
         </tr>
       {% endfor %}
-      <tr style="color:var(--fg-soft);">
+      <tr class="muted">
         <td>—</td>
         <td>Říčany</td>
         <td>HQ; bez evidence skladu (výchozí odběratel na výdeji).</td>
       </tr>
     </tbody>
   </table>
-</div>
+</section>
 
-<p style="color:var(--fg-soft); font-size:0.85rem; text-align:center;">
+<p class="muted" style="font-size:0.85rem; text-align:center;">
   Kasia vera — sklad · MVP
 </p>
+
+<script>
+  // Smooth scroll for the anchor chips (scroll-margin-top on .settings-card handles the offset).
+  document.querySelectorAll('.anchor-chips a').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      const target = document.querySelector(a.getAttribute('href'));
+      if (!target) return;
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
 {% endblock %}

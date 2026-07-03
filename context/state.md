@@ -5,6 +5,55 @@
 
 ## Done
 
+- **2026-07-03** — **Sklad UX refresh — Phase 2 (the swap) complete on
+  `ft_sklad_ux_refresh`.** Every locked mockup ported into its real Django
+  template, one commit per screen, full suite green (**403 pass**) + `manage.py
+  check` clean throughout. Merged `origin/main` first (#21 1dp polish / #22
+  0063 filter / #23 výdej JS over-stock; `_stock_warn.html` gone).
+  - **Phase A (self-contained restyles):** Detail produktu (two-col + fakta
+    tiles, recipe-scaler JS kept), Dodací listy index+detail, Míchání historie,
+    Míchání create + preview, Uživatelé, Nastavení, Podpora. Added a
+    `{% block extra_head %}` to `base.html` for per-screen CSS.
+  - **Phase B:** Katalog grouped-by-state (Prázdné/Dochází/V pořádku, whole-row
+    no-buttons) + KPI strip — decision
+    [`0064`](./decisions/0064-grouped-catalogue-client-filter.md) (multi-tbody
+    `data-filter-group` filter extension in `base.html`); Výdej + Příjem numbered
+    steps + running summary (shared `_line_row`/`_movement_form_lines`, #23
+    stock-warn JS kept verbatim); Inventura sticky tally + green edited rows +
+    own type-to-filter (all JS/names/1dp-compare kept); Historie compact columns
+    + Množství + `.btn-mini` PLANNED actions; Číselníky filterbar polish; Branch
+    dashboard clickable stock rows; **Přehled** rebuilt as a per-branch command
+    center (empty/low/ordered groups, KPI Vyprodáno/Dochází/Objednáno/K vyřešení,
+    K vyřešení task-list, per-branch Poslední aktivita; `_low_stock_panel.html`
+    retired).
+  - **Finish:** Inventura vlastník-only sidebar nav item — decision
+    [`0065`](./decisions/0065-inventura-sidebar-nav.md); `design-system.md`
+    updated (`.sub-head` + `extra_head` shared, 0064 filter extension, grouped
+    Katalog + Inventura nav notes); screens docs + this file + memory refreshed.
+  - **Pending:** Matej's live localhost walkthrough (Výdej over-stock especially)
+    + prod deploy — both out of this plan's scope.
+- **2026-07-02** — **Sklad UX refresh — Phase 1 (mockups) complete + locked;
+  Phase 2 step 1 shipped.** Branch `ft_sklad_ux_refresh` (pushed; 2 commits on
+  top of main `c5627e9`). Restyle **within decision 0054** (no new decision
+  doc needed — retone + polish). See the handoff block below and
+  [`design-options/sklad/`](../design-options/sklad/) (served at
+  `/static/navrhy/sklad/`) — **the mockups are the spec** for the replace.
+  - **Phase 1:** every warehouse screen mocked + iterated to lock with Matej:
+    Katalog (grouped-by-state), Přehled (per-branch command center),
+    Detail (two-col + fakta tiles), Inventura (sticky tally + green edited
+    rows), Výdej + Příjem (airy numbered sections, Šarže/Expirace/Poznámka +
+    auto-append), Míchání (immediate), Historie (compact + unified actions),
+    Dodací listy (+detail, +PDF), Míchání-historie, Dodavatelé, Odběratelé,
+    Pobočky, Uživatelé, Nastavení, Podpora, branch dashboard. Locked choices:
+    **warn = orange `#c2410c` / tint `#fdeee3`**, **1-decimal comma** numbers
+    (recipe ratios stay 2dp), **neutral zebra `#ebebeb`**, red=prázdné /
+    orange=dochází / green=ok+action.
+  - **Phase 2 step 1 (adopted into prod templates):** `base.html` retone
+    (`--warn` → orange, add `--warn-tint`), replaced the 8 `#fbf3e0` + the
+    `#fff4e6` literals with `var(--warn-tint)`, dropped a stray radius; removed
+    developer text from the UI (decision refs "per rozhodnutí NNNN", the
+    "z přibližně N plánovaných" note) → code comments only. `make test` = **396
+    pass**, `manage.py check` clean. Live via `make up`.
 - **2026-07-02** — Výdej live over-stock check **rewritten as pure client-side
   JS** (supersedes the htmx approach in the entry below, same session). The
   htmx round-trip (`stock_warn_partial`) reliably swapped the per-line box in but
@@ -2063,6 +2112,82 @@
   stock-warn assertions updated to 1dp comma).
 
 ## Hand-off for the next session (post-compact)
+
+### ★ CURRENT (2026-07-02) — Sklad UX refresh, Phase 2 "replace" in progress
+
+**Branch:** `ft_sklad_ux_refresh` (pushed to origin; renamed off the
+`worktree-` prefix). Working in the git worktree at
+`.claude/worktrees/ft_sklad_ux_refresh` — **stay in the worktree**, commit
+only when Matej asks, one commit per screen. `.env` was copied into the
+worktree (gitignored) so `make up` works.
+
+**The spec = the mockups.** `design-options/sklad/*.html` (served at
+`/static/navrhy/sklad/`, gallery `index.html`) are the **locked, signed-off
+designs**. Each maps to a real template to rewrite. Open the gallery to see
+the target; everything except numbers/data is the intended prod look.
+
+**Done:** Phase 2 **step 1** — `base.html` orange retone + `--warn-tint`,
+`#fbf3e0`/`#fff4e6` → `var(--warn-tint)` everywhere, internal dev text stripped
+from UI. Committed. 396 tests pass.
+
+**Next — the "replace" (each = its own commit, run `make test` + `manage.py
+check` between; rebuild image `docker compose build web` to see it live):**
+1. **Katalog** `inventory/catalogue_index.html` → grouped-by-state (Prázdné
+   red / Dochází orange / V pořádku), type (koření/směs) as sub-line under the
+   name (drop Typ column), branch chips per section ("Prázdný na"/"Dochází na",
+   none for V pořádku), **bold Na skladě**, whole-row click (no per-row
+   upravit), KPI strip. Mock: `01b-katalog-grouped.html`. Needs the `home`/
+   catalogue view to expose grouping (or group in-template from existing rows).
+2. **Přehled** `inventory/home.html` (+ `home` view context) → per-branch
+   command center: KPI strip Vyprodáno(red)/Dochází(orange)/Objednáno(green)/
+   K vyřešení; TYN|SEZ side-by-side cards each with Vyprodáno→Dochází→Objednáno
+   groups + per-branch **Inventura** button; K vyřešení with resend/open
+   actions; bottom "Poslední aktivita" TYN|SEZ columns (pohyby + dodáky).
+   Mock: `02a-prehled.html`. **Objednáno** = planned příjem (Movement
+   status=planned) — data exists; wire it. Heaviest view change.
+3. **Detail** `inventory/product_detail.html` → two columns; right rail
+   "Rychlá fakta" tiles = **Typ · Stav (top) / Na skladě · Efektivně (bottom)**
+   + action buttons; **repeat action buttons at page bottom**; keep recipe-
+   scaler JS contract. Mock: `04-detail-produktu.html`.
+4. **Inventura** `inventory/inventura_edit.html` → sticky bottom tally
+   (řádků změněno · čistá změna +X/−Y), **whole edited row green + green left
+   edge**, hover darkens (never whitens), type-to-filter. Mock: `03-inventura.html`.
+5. **Výdej** `inventory/vydej_form.html` + **Příjem** `prijem_form.html` →
+   airy numbered sections (1 hlavička / 2 Položky / 3 odeslání|uložit). Výdej:
+   overdraw **inside step 2** with row-level "Upravit stav" + full-width green
+   inventura button; recipients note; bottom summary. Příjem: same shell,
+   **Očekávaný příjezd** field, no overdraw/recipients. Line table already has
+   Šarže/Expirace/Poznámka + auto-append in `_movement_form_lines.html`. Mocks:
+   `05-vydej.html`, `08-prijem.html`.
+6. **Míchání** `inventory/mixing_job_create.html` + `_mixing_preview.html` →
+   the shortage "Upravit stav surovin" link becomes a **green white-text
+   button**. Mock: `06-michani.html`. (Model already immediate per 0060.)
+7. **Historie** `inventory/movement_history.html` → compact table; **unify the
+   planned-row Přijmout/Zrušit + the Doklad column** (mini buttons; DL link /
+   "editováno ×N" chip). Consider a **Množství (celkem kg)** column. Mock:
+   `09-historie.html`.
+8. **Číselníky / Nastavení / Podpora** — mostly restyle (buttons already
+   prod-accurate). Nastavení: split into section cards + anchor chips (breathe).
+   Podpora: návod/postupy/tipy already rewritten in the mock to current
+   behavior — port the copy. Mocks: `12`–`17`, `18`.
+9. **Sidebar:** add an **Inventura** nav item (needs a URL target — inventura
+   is per-branch; pick the user's branch or a chooser). Update `context/
+   screens/*` where behavior changed; keep `context/state.md` current.
+
+**Locked contracts (do NOT break — see `.claude/rules/design-system.md`):**
+shared class names, `:root` var names, and JS/HTMX hooks (`tr.row-link[data-href]`
++ ignore-list, `.row-delete-btn`, `stockWarnVals`, inventura `recompute`,
+recipe-scaler `recipe-scaler*`/`data-ratio`/`.scaler-preset`, HTMX line-append).
+Only token **values** change. **No native `confirm()/alert()`** (per 0061 use
+`.js-confirm`). **No internal/dev text in UI** (decision refs, capacity notes).
+**1 decimal + comma** for kg display (0061); ratios 2dp.
+
+**Verify loop:** `make up` → click real `/sklad/…` screens; `make test`
+(keep ≥396); `uv run ruff check` (host) or in-container; `manage.py check`;
+`grep -rn '8a5a12\|fbf3e0\|fff4e6' kasia/templates` → nothing.
+
+---
+### Older hand-off (2026-06-13, superseded by the above)
 
 **Origin/main head: `16b9081` (2026-06-13 Pass 5g).** Local main
 and origin/main are in sync.

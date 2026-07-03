@@ -2,18 +2,86 @@
 
 {% block title %}Katalog produktů — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Katalog — grouped by stock state (per 0064). Sharp/technical per 0054. */
+  .kpi.warn { border-top: 2px solid var(--warn); }
+  .kpi.warn .k-val { color: var(--warn); }
+  .kpi.err { border-top: 2px solid var(--error); }
+  .kpi.err .k-val { color: var(--error); }
+
+  .filterbar { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; width: 100%; }
+  .filterbar .field { margin-bottom: 0; }
+  .filterbar .field.grow { flex: 1 1 220px; }
+  .scope-note { color: var(--fg-soft); font-size: 0.9rem; margin: 0 0 0.6rem; }
+
+  /* Attention CTA — orange (the single warning/attention standard). */
+  a.cta-inventura { background: var(--warn); color: #fff; border-color: var(--warn); }
+  a.cta-inventura:hover { filter: brightness(0.92); }
+
+  /* Grouped tables: neutral zebra (no green cast), bold Na skladě (2nd col). */
+  .cat-group table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  .cat-group table.lines tbody tr:hover td { background: #e2e5e2; }
+  .cat-group table.lines td:nth-child(2) { font-weight: 700; }
+
+  .prod-sub { font-size: .8rem; color: var(--fg-soft); margin-top: 2px; }
+  .prod-sub .rec { color: var(--accent); }
+  .low-branch { display: inline-block; background: var(--warn); color: #fff; border: 1px solid var(--warn); font-size: .76rem; font-weight: 600; padding: .12rem .5rem; margin-right: 4px; font-family: var(--mono); letter-spacing: .02em; }
+  .empty-branch { display: inline-block; background: var(--error); color: #fff; border: 1px solid var(--error); font-size: .76rem; font-weight: 600; padding: .12rem .5rem; margin-right: 4px; font-family: var(--mono); letter-spacing: .02em; }
+  .eff-warn { color: var(--warn); }
+  .eff-empty { color: var(--error); font-weight: 600; }
+
+  /* Section headers — orange / red / neutral, consistent with the Přehled. */
+  .sub-head { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: .45rem .6rem; margin: 1.6rem 0 .6rem; display: flex; align-items: center; gap: .45rem; }
+  .sub-head:first-of-type { margin-top: .4rem; }
+  .sub-head.empty { color: var(--error); border-left: 3px solid var(--error); background: var(--error-tint); }
+  .sub-head.low { color: var(--warn); border-left: 3px solid var(--warn); background: var(--warn-tint); }
+  .sub-head.ok { color: var(--fg-soft); border-left: 3px solid var(--line); background: var(--line-soft); }
+  .sub-head .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+  .sub-head.empty .dot { background: var(--error); }
+  .sub-head.low .dot { background: var(--warn); }
+  .sub-head.ok .dot { background: var(--fg-faint); }
+  .sub-head .count { margin-left: auto; font-weight: 600; color: var(--fg-faint); letter-spacing: 0; text-transform: none; }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Katalog produktů</h1>
 
-<form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
-  <div class="field" style="margin-bottom:0;">
+{% if rows or filter_state or filter_q or filter_kind or filter_status != "active" %}
+  <section class="kpis" aria-label="Souhrn katalogu">
+    <div class="kpi">
+      <span class="lbl">Produktů</span>
+      <span class="k-val">{{ kpi_products }}</span>
+      <span class="k-sub">v tomto výběru</span>
+    </div>
+    <div class="kpi warn">
+      <span class="lbl">Dochází</span>
+      <span class="k-val">{{ kpi_low }}</span>
+      <span class="k-sub">pod objednacím bodem</span>
+    </div>
+    <div class="kpi err">
+      <span class="lbl">Prázdné</span>
+      <span class="k-val">{{ kpi_empty }}</span>
+      <span class="k-sub">efektivně 0 kg</span>
+    </div>
+    <div class="kpi">
+      <span class="lbl">Celková zásoba</span>
+      <span class="k-val">{{ kpi_total_kg|floatformat:1 }} <span class="k-unit">kg</span></span>
+      <span class="k-sub">součet zásob ve výběru</span>
+    </div>
+  </section>
+{% endif %}
+
+<form method="get" class="card filterbar">
+  <div class="field grow">
     <label for="id_filter_q">Hledat</label>
     <input type="search" name="q" id="id_filter_q" value="{{ filter_q }}"
-           placeholder="česky, např. „pepř"…" style="min-width:240px;"
-           data-filter-rows="#catalogue-table tbody"
+           placeholder="česky, např. „pepř"…"
+           data-filter-rows=".cat-body"
            data-filter-empty="#catalogue-empty">
   </div>
-  <div class="field" style="margin-bottom:0;">
+  <div class="field">
     <label for="id_filter_kind">Typ</label>
     <select name="kind" id="id_filter_kind">
       <option value="">— vše —</option>
@@ -21,7 +89,7 @@
       <option value="mixture" {% if filter_kind == "mixture" %}selected{% endif %}>směs</option>
     </select>
   </div>
-  <div class="field" style="margin-bottom:0;">
+  <div class="field">
     <label for="id_filter_status">Stav</label>
     <select name="status" id="id_filter_status">
       <option value="active" {% if filter_status == "active" %}selected{% endif %}>aktivní</option>
@@ -29,7 +97,7 @@
       <option value="all" {% if filter_status == "all" %}selected{% endif %}>vše</option>
     </select>
   </div>
-  <div class="field" style="margin-bottom:0;">
+  <div class="field">
     <label for="id_filter_state">Stav skladu</label>
     <select name="state" id="id_filter_state">
       <option value="" {% if not filter_state %}selected{% endif %}>— vše —</option>
@@ -39,7 +107,7 @@
     </select>
   </div>
   {% if not obsluha_branch %}
-    <div class="field" style="margin-bottom:0;">
+    <div class="field">
       <label for="id_filter_branch">Pobočka</label>
       <select name="branch" id="id_filter_branch">
         <option value="">— všechny pobočky —</option>
@@ -55,119 +123,55 @@
     <button class="primary" type="submit">Filtrovat</button>
     <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Vymazat</a>
   </div>
-  <div style="margin-left:auto;">
+  <div style="margin-left:auto;display:flex;gap:.5rem;">
     {% if user.is_vlastnik %}
       {% if selected_branch %}
-        <a class="primary"
-           href="{% url 'inventory:inventura_edit' code=selected_branch.code %}"
-           style="background:var(--warn);">
+        <a class="primary cta-inventura" href="{% url 'inventory:inventura_edit' code=selected_branch.code %}">
           Inventura {{ selected_branch.code }}
         </a>
       {% else %}
-        <a class="primary"
-           href="{% url 'inventory:inventura_edit' code='vse' %}"
-           style="background:var(--warn);">
+        <a class="primary cta-inventura" href="{% url 'inventory:inventura_edit' code='vse' %}">
           Inventura — vše
         </a>
       {% endif %}
-    {% endif %}
-    {% if user.is_vlastnik %}
       <a class="primary" href="{% url 'inventory:xls_import_upload' %}">Importovat z XLS</a>
     {% endif %}
     <a class="primary" href="{% url 'inventory:product_create' %}">+ Nový produkt</a>
   </div>
 </form>
 
-<p style="color:var(--fg-soft);">Nalezeno: {{ count }} produktů.</p>
+<p class="scope-note">Nalezeno: {{ count }} produktů.</p>
 
 {% if rows %}
   {% if obsluha_branch %}
-    {% with scope_label=obsluha_branch.code %}
-      <p style="color:var(--fg-soft);font-size:0.9rem;">
-        Stavy a rezervace zobrazené pro pobočku <strong>{{ scope_label }}</strong>.
-      </p>
-    {% endwith %}
+    <p class="scope-note">
+      Stavy a rezervace zobrazené pro pobočku <strong>{{ obsluha_branch.code }}</strong>.
+    </p>
   {% elif selected_branch %}
-    <p style="color:var(--fg-soft);font-size:0.9rem;">
+    <p class="scope-note">
       Stavy a rezervace zobrazené pro pobočku <strong>{{ selected_branch.code }}</strong>.
       <a href="?{% if filter_q %}q={{ filter_q }}&{% endif %}{% if filter_kind %}kind={{ filter_kind }}&{% endif %}{% if filter_status and filter_status != 'active' %}status={{ filter_status }}&{% endif %}{% if filter_state %}state={{ filter_state }}{% endif %}">
         Zobrazit všechny pobočky
       </a>
     </p>
   {% else %}
-    <p style="color:var(--fg-soft);font-size:0.9rem;">
-      Stavy a rezervace sečtené přes všechny aktivní pobočky.
-      Pro per-branch pohled vyberte pobočku ve filtru výše.
+    <p class="scope-note">
+      Stavy a rezervace sečtené přes všechny aktivní pobočky; sloupec „Dochází na" /
+      „Prázdný na" ukazuje, kde produkt dochází/chybí. Pro per-branch pohled vyberte
+      pobočku ve filtru výše.
     </p>
   {% endif %}
-  <table class="lines" id="catalogue-table">
-    <thead>
-      <tr>
-        <th>Název</th>
-        <th>Typ</th>
-        <th style="text-align:right;" title="Aktuální skladová zásoba">Na skladě</th>
-        <th style="text-align:right;" title="Plánované míchání a plánované převody (per 0044)">Rezerv.</th>
-        <th style="text-align:right;" title="Efektivně = na skladě − rezervováno">Efektivně</th>
-        <th style="text-align:right;" title="Objednací bod (per 0043). Pokud má produkt per-pobočkovou výjimku, zobrazuje se nejnižší nastavený práh.">Práh</th>
-        <th>Stav</th>
-        <th title="Pobočky pod prahem objednacího bodu (efektivně = na skladě − rezervováno)">Nízký na</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in rows %}
-        <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=row.product.pk %}"
-            data-filter-text="{{ row.product.name_cs }}"
-            {% if row.is_low %}style="background:#fbf3e0;"{% endif %}>
-          <td>
-            <strong>{{ row.product.name_cs }}</strong>
-            {% if not row.product.is_active %}
-              <span style="color:var(--fg-soft);font-size:0.85rem;">(archivováno)</span>
-            {% endif %}
-            {% if row.product.kind == "mixture" and row.has_recipe %}
-              <br><span style="color:var(--accent);font-size:0.8rem;">má recepturu</span>
-            {% endif %}
-          </td>
-          <td>{{ row.product.get_kind_display }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            {{ row.total|floatformat:1 }}
-          </td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;color:{% if row.reserved > 0 %}var(--accent){% else %}var(--fg-soft){% endif %};">
-            {{ row.reserved|floatformat:1 }}
-          </td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;{% if row.is_low %}color:var(--warn);font-weight:bold;{% endif %}">
-            {{ row.effective|floatformat:1 }}
-          </td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            {% if row.threshold is not None %}{{ row.threshold|floatformat:1 }}{% else %}—{% endif %}
-          </td>
-          <td>
-            {% if row.effective <= 0 and row.threshold is not None %}
-              <span style="color:var(--error);font-weight:bold;">prázdné</span>
-            {% elif row.is_low %}
-              <span class="tab-chip active" style="background:var(--warn);">dochází</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if not selected_branch and not obsluha_branch %}
-              {% for b in row.low_branches %}
-                <span class="tab-chip" style="background:var(--warn);color:#fff;">{{ b.code }}</span>
-              {% endfor %}
-            {% endif %}
-          </td>
-          <td>
-            {% if user.is_vlastnik %}
-              <a href="{% url 'inventory:product_edit' pk=row.product.pk %}"
-                 style="font-size:0.85rem;"
-                 onclick="event.stopPropagation();">
-                upravit ↗
-              </a>
-            {% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+  {% if empty_rows %}
+    {% include "inventory/_catalogue_group.html" with group_rows=empty_rows group_id="cat-group-empty" head_class="empty" head_label="Prázdné" head_count=empty_rows|length branch_kind="empty" eff_class="eff-empty" show_branch_chips=show_branch_chips %}
+  {% endif %}
+  {% if low_rows %}
+    {% include "inventory/_catalogue_group.html" with group_rows=low_rows group_id="cat-group-low" head_class="low" head_label="Dochází" head_count=low_rows|length branch_kind="low" eff_class="eff-warn" show_branch_chips=show_branch_chips %}
+  {% endif %}
+  {% if ok_rows %}
+    {% include "inventory/_catalogue_group.html" with group_rows=ok_rows group_id="cat-group-ok" head_class="ok" head_label="V pořádku" head_count=ok_rows|length branch_kind="" eff_class="" show_branch_chips=False %}
+  {% endif %}
+
   <p id="catalogue-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá filtru.</p>
 {% elif filter_q or filter_kind or filter_status != "active" or filter_state %}
   <p>Nic neodpovídá filtru.

@@ -2,6 +2,14 @@
 
 {% block title %}{{ branch.code }} — {{ branch.name }} — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  .asof { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1.2rem; }
+  #stock-table tbody tr:nth-child(even) td { background: #ebebeb; }
+  #stock-table tbody tr:hover td { background: #e2e5e2; }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>{{ branch.code }} — {{ branch.name }}</h1>
 {% if branch.address %}
@@ -33,7 +41,7 @@
 
 <div class="card row between">
   <div class="muted">
-    Stav skladu k {% now "d. m. Y H:i" %}.
+    Zboží na této pobočce (stav k {% now "d. m. Y H:i" %}). Klikněte na řádek pro detail produktu.
   </div>
   <div class="actions">
     <a class="secondary" href="{% url 'inventory:prijem_create' %}">Nový příjem</a>
@@ -70,16 +78,17 @@
       </thead>
       <tbody>
         {% for row in stock_rows %}
-          <tr data-filter-text="{{ row.stock.product.name_cs }}">
+          <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=row.stock.product.pk %}"
+              data-filter-text="{{ row.stock.product.name_cs }}">
             <td>{{ row.stock.product.name_cs }}</td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.stock.quantity|floatformat:1 }}</td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.reserved|floatformat:1 }}</td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ row.effective|floatformat:1 }}</td>
+            <td class="num">{{ row.stock.quantity|floatformat:1 }}</td>
+            <td class="num">{{ row.reserved|floatformat:1 }}</td>
+            <td class="num">{{ row.effective|floatformat:1 }}</td>
             <td>
               {% if row.status == "prazdne" %}
                 <span style="color:var(--error);font-weight:bold;">prázdné</span>
               {% elif row.status == "dochazi" %}
-                <span class="tab-chip active" style="background:var(--warn);">dochází</span>
+                <span class="tab-chip active" style="background:var(--warn);border-color:var(--warn);">dochází</span>
               {% endif %}
             </td>
           </tr>
@@ -103,7 +112,7 @@
           <th>Datum</th>
           <th>Druh</th>
           <th>Protistrana</th>
-          <th>Položky</th>
+          <th style="text-align:right;">Položky</th>
           <th>Operátor</th>
         </tr>
       </thead>
@@ -115,7 +124,7 @@
             <td>
               {% if mv.kind == "vydej" %}{{ mv.odberatel.name }}{% else %}{{ mv.dodavatel.name }}{% endif %}
             </td>
-            <td>{{ mv.lines.count }}</td>
+            <td class="num">{{ mv.lines.count }}</td>
             <td style="color:var(--fg-soft);">{{ mv.created_by.email }}</td>
           </tr>
         {% endfor %}

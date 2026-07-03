@@ -115,3 +115,9 @@ None for MVP. Future considerations are tracked in
 § Future considerations: e-mail digest of new hlášení, per-page
 deep-link auto-filling `page_url`, categories/labels, vlastník
 reply field, Markdown.
+
+## UX refresh — Phase 2 (2026-07-03)
+
+Podpora restyled per mockup `17` with refreshed Czech návod (Inventura,
+planned příjem, immediate míchání, effective stock, 1 dp). Report form +
+feedback-toggle logic preserved.

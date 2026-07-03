@@ -2,8 +2,21 @@
 
 {% block title %}Nová výrobní dávka — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Míchání — nová výrobní dávka. Two-column form grid + mono numeric inputs. */
+  .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.4rem; }
+  .form-grid .full { grid-column: 1 / -1; }
+  .field .num-in { max-width: 12rem; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .field-help { font-size: .85rem; color: var(--fg-soft); margin: .3rem 0 0; }
+  .card-sub { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1rem; }
+  .btn-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+  @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
 {% block content %}
-<h1>Nová výrobní dávka</h1>
+<h1>Nová výrobní dávka <span class="muted" style="font-weight:500;font-size:1rem;">· míchání</span></h1>
 
 {% if error %}
   <div class="non-form-errors">{{ error }}</div>
@@ -14,79 +27,79 @@
 <form method="post">
   {% csrf_token %}
   <div class="card">
-    {% if is_branch_locked %}
+    <div class="form-grid">
+      {% if is_branch_locked %}
+        <div class="field">
+          <label class="field-required">Pobočka</label>
+          <input type="text" value="{{ default_branch.code }} — {{ default_branch.name }}" disabled>
+          <input type="hidden" name="branch" value="{{ default_branch.pk }}">
+        </div>
+      {% else %}
+        <div class="field">
+          <label class="field-required" for="id_branch">Pobočka</label>
+          <select name="branch" id="id_branch"
+                  hx-get="{% url 'inventory:mixing_preview_partial' %}"
+                  hx-trigger="change"
+                  hx-target="#mixing-preview"
+                  hx-include="closest form"
+                  hx-params="branch,mixture,target_qty">
+            {% for b in branches %}
+              <option value="{{ b.pk }}"{% if b.pk|stringformat:"s" == selected_branch_id %} selected{% endif %}>
+                {{ b.code }} — {{ b.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+
       <div class="field">
-        <label class="field-required">Pobočka</label>
-        <input type="text" value="{{ default_branch.code }} — {{ default_branch.name }}" disabled>
-        <input type="hidden" name="branch" value="{{ default_branch.pk }}">
-      </div>
-    {% else %}
-      <div class="field">
-        <label class="field-required" for="id_branch">Pobočka</label>
-        <select name="branch" id="id_branch"
+        <label class="field-required" for="id_mixture">Směs</label>
+        <select name="mixture" id="id_mixture"
                 hx-get="{% url 'inventory:mixing_preview_partial' %}"
                 hx-trigger="change"
                 hx-target="#mixing-preview"
                 hx-include="closest form"
                 hx-params="branch,mixture,target_qty">
-          {% for b in branches %}
-            <option value="{{ b.pk }}"{% if b.pk|stringformat:"s" == selected_branch_id %} selected{% endif %}>
-              {{ b.code }} — {{ b.name }}
-            </option>
+          <option value="">— vyberte směs —</option>
+          {% for m in mixtures %}
+            <option value="{{ m.pk }}"{% if m.pk|stringformat:"s" == selected_mixture_id %} selected{% endif %}>{{ m.name_cs }}</option>
           {% endfor %}
         </select>
       </div>
-    {% endif %}
 
-    <div class="field">
-      <label class="field-required" for="id_mixture">Směs</label>
-      <select name="mixture" id="id_mixture"
-              hx-get="{% url 'inventory:mixing_preview_partial' %}"
-              hx-trigger="change"
-              hx-target="#mixing-preview"
-              hx-include="closest form"
-              hx-params="branch,mixture,target_qty">
-        <option value="">— vyberte směs —</option>
-        {% for m in mixtures %}
-          <option value="{{ m.pk }}"{% if m.pk|stringformat:"s" == selected_mixture_id %} selected{% endif %}>{{ m.name_cs }}</option>
-        {% endfor %}
-      </select>
-    </div>
+      <div class="field">
+        <label class="field-required" for="id_target_qty">Cílové množství (kg)</label>
+        <input class="num-in" type="number" step="0.1" min="0.1"
+               name="target_qty" id="id_target_qty"
+               value="{{ target_qty_value }}"
+               hx-get="{% url 'inventory:mixing_preview_partial' %}"
+               hx-trigger="input changed delay:400ms"
+               hx-target="#mixing-preview"
+               hx-include="closest form"
+               hx-params="branch,mixture,target_qty">
+      </div>
 
-    <div class="field">
-      <label class="field-required" for="id_target_qty">Cílové množství (kg)</label>
-      <input type="number" step="0.1" min="0.1"
-             name="target_qty" id="id_target_qty"
-             value="{{ target_qty_value }}"
-             hx-get="{% url 'inventory:mixing_preview_partial' %}"
-             hx-trigger="input changed delay:400ms"
-             hx-target="#mixing-preview"
-             hx-include="closest form"
-             hx-params="branch,mixture,target_qty">
-    </div>
+      <div class="field">
+        <label for="id_actual_produced_qty">Skutečně vyrobeno (kg)</label>
+        <input class="num-in" type="number" step="0.1" min="0"
+               name="actual_produced_qty" id="id_actual_produced_qty"
+               value="{{ actual_produced_value }}"
+               placeholder="—">
+        <p class="field-help">Volitelné — vyplňte jen když se vyrobené množství liší od cíle.</p>
+      </div>
 
-    <div class="field">
-      <label for="id_actual_produced_qty">Skutečně vyrobeno (kg)</label>
-      <input type="number" step="0.1" min="0"
-             name="actual_produced_qty" id="id_actual_produced_qty"
-             value="{{ actual_produced_value }}"
-             placeholder="ponechte prázdné = cílové množství">
-      <small style="color:var(--fg-soft);display:block;">
-        Volitelné — vyplňte jen když se vyrobené množství liší od cíle.
-      </small>
-    </div>
-
-    <div class="field">
-      <label for="id_note">Poznámka</label>
-      <textarea name="note" id="id_note" rows="2">{{ note_value }}</textarea>
+      <div class="field full">
+        <label for="id_note">Poznámka</label>
+        <textarea name="note" id="id_note" rows="2" placeholder="Nepovinná poznámka k dávce…">{{ note_value }}</textarea>
+      </div>
     </div>
   </div>
 
   <div id="mixing-preview"></div>
 
-  <p>
+  <div class="btn-row">
     <button class="primary" type="submit">Namíchat</button>
     <a class="secondary" href="{% url 'inventory:home' %}">Zrušit</a>
-  </p>
+  </div>
 </form>
 {% endblock %}

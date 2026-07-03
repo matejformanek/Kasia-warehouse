@@ -1,0 +1,257 @@
+<!-- Sklad mockup 11 — Dodací list detail (dodaci_list_detail). Shell reused from 01b verbatim.
+     Header card two columns (dodavatel/vystavil + odběratel), meta row, lines table + Celkem,
+     actions (PDF primary / znovu odeslat secondary / zpět), historie verzí. v2 + failed e-mail. -->
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dodací list 2026-0142 — Kasia sklad (návrh)</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #1f6b3a; --accent-deep: #16432a; --accent-tint: #eef4ee;
+    --fg: #141719; --fg-soft: #565b66; --fg-faint: #868c97;
+    --bg: #f6f7f5; --bg-card: #ffffff; --line: #d9dcd9; --line-soft: #eef0ee;
+    --error: #a02525; --error-tint: #fbebea;
+    --warn: #c2410c; --warn-tint: #fdeee3;
+    --ok: #1f6b3a; --ok-soft: #e7f1ea;
+    --sidebar-w: 244px;
+    --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { font-family: var(--ui); color: var(--fg); background: var(--bg); margin: 0; font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  h1, h2, h3 { font-weight: 600; letter-spacing: -.01em; }
+  h1 { font-size: 1.45rem; margin: 0 0 1.1rem; }
+
+  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+  .sidebar { position: sticky; top: 0; align-self: start; height: 100vh; background: var(--bg-card); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 14px; }
+  .sidebar .brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 16px; margin-bottom: 6px; border-bottom: 1px solid var(--line-soft); text-decoration: none; }
+  .sidebar .brand img { height: 34px; width: auto; display: block; }
+  .sidebar .brand .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .sidebar .brand .brand-name { font-weight: 700; font-size: 16px; letter-spacing: .06em; color: var(--fg); }
+  .sidebar .brand .brand-sub { font-size: 11px; color: var(--fg-faint); letter-spacing: .14em; text-transform: uppercase; }
+  .nav { display: flex; flex-direction: column; gap: 1px; margin-top: 10px; flex: 1 1 auto; overflow-y: auto; }
+  .nav .nav-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); padding: 12px 10px 5px; font-weight: 600; }
+  .nav a { display: flex; align-items: center; gap: 10px; padding: 8px 11px; color: var(--fg-soft); font-weight: 500; font-size: 14px; text-decoration: none; border-left: 3px solid transparent; }
+  .nav a:hover { background: var(--line-soft); color: var(--fg); }
+  .nav a.active { background: var(--accent-tint); color: var(--accent-deep); font-weight: 600; border-left-color: var(--accent); }
+  .nav a .ic { width: 17px; height: 17px; flex: 0 0 17px; color: var(--fg-faint); }
+  .nav a.active .ic { color: var(--accent); }
+  .sidebar .user { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+  .sidebar .user .email { font-size: 12.5px; color: var(--fg-soft); text-decoration: none; }
+  .sidebar .user .logout { font-size: 13px; font-weight: 600; color: var(--fg); background: none; border: 1px solid var(--line); padding: 6px 10px; cursor: pointer; font-family: inherit; width: 100%; text-align: left; }
+
+  .content { padding: 30px 34px 56px; max-width: 1180px; width: 100%; min-width: 0; margin: 0 auto; }
+
+  .card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 0; padding: 1.2rem 1.35rem; margin-bottom: 1.2rem; }
+  .card h2 { font-size: 1.05rem; margin: 0 0 .8rem; }
+
+  .primary, a.primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); padding: 0.5rem 1.1rem; border-radius: 0; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; vertical-align: middle; }
+  .primary:hover, a.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  a.secondary, button.secondary { background: #fff; color: var(--fg); border: 1px solid var(--line); padding: 0.5rem 0.9rem; border-radius: 0; font: inherit; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1.4; vertical-align: middle; }
+  a.secondary:hover, button.secondary:hover { border-color: var(--fg-faint); }
+
+  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 0.5rem; }
+  table.lines th, table.lines td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  table.lines th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600; }
+  table.lines tfoot td { border-top: 2px solid var(--line); border-bottom: 0; font-weight: 700; }
+  .num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .muted { color: var(--fg-soft); }
+  .cislo { font-family: var(--mono); }
+
+  /* Two-column header (dodavatel | odběratel). */
+  .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .party { padding: .2rem 1.35rem .2rem 0; }
+  .party + .party { border-left: 1px solid var(--line-soft); padding-left: 1.35rem; padding-right: 0; }
+  .party .p-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--fg-faint); margin: 0 0 .5rem; }
+  .party .p-name { font-weight: 700; font-size: 1.02rem; margin: 0 0 .25rem; }
+  .party address { font-style: normal; color: var(--fg-soft); font-size: .92rem; line-height: 1.5; }
+
+  /* Meta row under parties. */
+  .meta { display: flex; flex-wrap: wrap; gap: 1.4rem 2rem; margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--line-soft); }
+  .meta .m { display: flex; flex-direction: column; gap: 3px; }
+  .meta .m-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); }
+  .meta .m-val { font-weight: 600; }
+  .meta .m-val.mono { font-family: var(--mono); }
+
+  .ver { display: inline-block; font-family: var(--mono); font-size: .82rem; font-weight: 600; padding: .1rem .45rem; border: 1px solid var(--warn); background: var(--warn-tint); color: var(--warn); }
+  .mail { display: inline-block; font-size: .82rem; font-weight: 600; padding: .1rem .5rem; }
+  .mail-ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
+  .mail-fail { background: var(--error-tint); color: var(--error); border: 1px solid var(--error); }
+
+  .fail-note { background: var(--warn-tint); border-left: 3px solid var(--warn); padding: .65rem .85rem; font-size: .9rem; margin: 0 0 1.2rem; color: var(--fg); }
+  .fail-note strong { color: var(--warn); }
+
+  .actions { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+
+  /* Version history list. */
+  .verlist { list-style: none; margin: 0; padding: 0; }
+  .verlist li { display: flex; gap: .9rem; align-items: baseline; padding: .5rem 0; border-bottom: 1px solid var(--line-soft); }
+  .verlist li:last-child { border-bottom: 0; }
+  .verlist .v-tag { font-family: var(--mono); font-weight: 700; flex: 0 0 2.6rem; }
+  .verlist .v-date { font-family: var(--mono); color: var(--fg-soft); flex: 0 0 7rem; }
+  .verlist .v-desc { color: var(--fg); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="index.html">
+      <img src="assets/kasia-logo.jpg" alt="Kasia">
+      <span class="brand-text"><span class="brand-name">KASIA</span><span class="brand-sub">sklad</span></span>
+    </a>
+    <nav class="nav" aria-label="Hlavní navigace">
+      <span class="nav-label">Provoz</span>
+      <a href="02a-prehled.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Přehled</a>
+      <a href="01b-katalog-grouped.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Katalog</a>
+      <a href="03-inventura.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M9 13l2 2 4-4"/></svg>Inventura</a>
+      <a href="08-prijem.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Příjem</a>
+      <a href="05-vydej.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>Výdej</a>
+      <a href="06-michani.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 0 1 15-6.7L21 6"/><path d="M21 3v3h-3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 18"/><path d="M3 21v-3h3"/></svg>Míchání</a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h13l-3-3m3 3-3 3"/><path d="M20 16H7l3-3m-3 3 3 3"/></svg>Převody</a>
+      <a href="10-dodaci-listy.html" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>Dodací listy</a>
+      <a href="09-historie.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/></svg>Historie</a>
+      <a href="17-podpora.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .8-1 1.7"/><path d="M12 17h.01"/></svg>Podpora</a>
+      <span class="nav-label">Číselníky</span>
+      <a href="12-dodavatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V8l6-4 6 4v13"/><path d="M15 21V11l6 4v6"/><path d="M3 21h18"/></svg>Dodavatelé</a>
+      <a href="13-odberatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/><path d="M21 21v-1a5 5 0 0 0-4-4.9"/></svg>Odběratelé</a>
+      <span class="nav-label">Správa</span>
+      <a href="14-pobocky.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 9l3-5h12l3 5"/><path d="M9 21v-6h6v6"/></svg>Pobočky</a>
+      <a href="15-uzivatele.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/></svg>Uživatelé</a>
+      <a href="16-nastaveni.html"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-2.88 1.2V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 7 19.6a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 2.6 14H2.5a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.4 9Z"/></svg>Nastavení</a>
+    </nav>
+    <div class="user">
+      <a href="#" class="email">petr@kasia.cz</a>
+      <button class="logout">Odhlásit</button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <h1>Dodací list <span class="cislo">2026-0142</span></h1>
+    <p class="muted" style="margin:0 0 1.1rem;">Detail vystaveného dodacího listu. Aktuální verze v2.</p>
+
+    <!-- E-mail selhalo → orange note. -->
+    <p class="fail-note"><strong>Poslední odeslání verze v2 se nezdařilo.</strong> E-mail se nepodařilo doručit (odmítnut serverem příjemce). Zkuste <em>Znovu odeslat e-mail</em> níže.</p>
+
+    <!-- Header: two parties + meta row. -->
+    <div class="card">
+      <div class="parties">
+        <div class="party">
+          <p class="p-lbl">Dodavatel / vystavil</p>
+          <p class="p-name">KASIA VERA s.r.o.</p>
+          <address>
+            Mírové náměstí 92<br>
+            517 21 Týniště nad Orlicí<br>
+            IČO 25921436 · DIČ CZ25921436<br>
+            <span class="muted">Vystavil: jan@kasia.cz</span>
+          </address>
+        </div>
+        <div class="party">
+          <p class="p-lbl">Odběratel</p>
+          <p class="p-name">Restaurace U Kotvy s.r.o.</p>
+          <address>
+            Nádražní 14<br>
+            500 02 Hradec Králové<br>
+            IČO 04788231
+          </address>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div class="m"><span class="m-lbl">Datum vystavení</span><span class="m-val mono">02. 07. 2026</span></div>
+        <div class="m"><span class="m-lbl">Pobočka</span><span class="m-val">TYN — Týniště n. O.</span></div>
+        <div class="m"><span class="m-lbl">Verze</span><span class="m-val"><span class="ver">v2</span></span></div>
+        <div class="m"><span class="m-lbl">Stav e-mailu</span><span class="m-val"><span class="mail mail-fail">nedoručeno</span></span></div>
+      </div>
+    </div>
+
+    <!-- Actions. -->
+    <div class="card">
+      <div class="actions">
+        <a class="primary" href="#">Stáhnout PDF</a>
+        <button class="secondary" type="button">Znovu odeslat e-mail</button>
+        <a class="secondary" href="10-dodaci-listy.html">Zpět na seznam</a>
+      </div>
+    </div>
+
+    <!-- Lines. -->
+    <div class="card">
+      <h2>Položky</h2>
+      <table class="lines">
+        <thead>
+          <tr>
+            <th>Produkt</th>
+            <th style="text-align:right;">Množství (kg)</th>
+            <th>Šarže</th>
+            <th>Expirace</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Pepř černý mletý</td>
+            <td class="num">18,0</td>
+            <td class="cislo">L-2604-77</td>
+            <td class="cislo">31. 12. 2027</td>
+          </tr>
+          <tr>
+            <td>Paprika sladká mletá</td>
+            <td class="num">15,5</td>
+            <td class="cislo">L-2605-12</td>
+            <td class="cislo">30. 09. 2027</td>
+          </tr>
+          <tr>
+            <td>Grilovací koření</td>
+            <td class="num">9,0</td>
+            <td class="cislo">M-2606-04</td>
+            <td class="cislo">31. 05. 2027</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td>Celkem</td>
+            <td class="num">42,5</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <!-- Version history. -->
+    <div class="card">
+      <h2>Historie verzí</h2>
+      <ul class="verlist">
+        <li>
+          <span class="v-tag">v2</span>
+          <span class="v-date">02. 07. 2026</span>
+          <span class="v-desc">Oprava množství u položky „Grilovací koření" (8,0 → 9,0 kg). Odeslán <code>[OPRAVA]</code> e-mail — <span style="color:var(--error);font-weight:600;">doručení selhalo</span>.</span>
+        </li>
+        <li>
+          <span class="v-tag">v1</span>
+          <span class="v-date">02. 07. 2026</span>
+          <span class="v-desc">Původní vystavení. E-mail odeslán a doručen odběrateli.</span>
+        </li>
+      </ul>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Whole-row nav (base.html contract): tr.row-link[data-href], ignore interactive elements.
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("a, button, input, select, label")) return;
+    const tr = e.target.closest("tr.row-link[data-href]");
+    if (tr) window.location = tr.dataset.href;
+  });
+</script>
+</body>
+</html>

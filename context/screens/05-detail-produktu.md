@@ -123,3 +123,9 @@ list of recepturní složky that defines what the mixture is made of.
 - Whether a per-product "default šarže prompt" flag is worth adding —
   e.g. force the operator to remember to enter šarže for products
   Petr cares about traceability on. Defer; not blocking.
+
+## UX refresh — Phase 2 (2026-07-03)
+
+Detail ported to mockup `04`: two-column layout with a sticky right rail
+(**Rychlá fakta** tiles + **Akce**), left KPI strip + per-branch table.
+Recipe-scaler JS/ids preserved verbatim. Actions repeated at the page bottom.

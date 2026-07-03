@@ -223,5 +223,6 @@ blocks and in `0054` — point there rather than copying hex into this rule.
 - [`0063-diacritic-insensitive-client-filtering.md`](../../context/decisions/0063-diacritic-insensitive-client-filtering.md) — the `data-filter-*` live filter hook
 - [`0064-grouped-catalogue-client-filter.md`](../../context/decisions/0064-grouped-catalogue-client-filter.md) — grouped Katalog + multi-tbody filter extension
 - [`0065-inventura-sidebar-nav.md`](../../context/decisions/0065-inventura-sidebar-nav.md) — Inventura nav landing
+- [`0066-planned-in-vse-and-prehled.md`](../../context/decisions/0066-planned-in-vse-and-prehled.md) — planned in Historie "Vše" + Přehled; history pagination
 - [`context/public-site.md`](../../context/public-site.md) — public visual assets
 - [`no-premature-tech-choices.md`](./no-premature-tech-choices.md) — why design direction is gated

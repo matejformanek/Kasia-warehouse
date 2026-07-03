@@ -17,6 +17,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -220,6 +221,24 @@ def home(request):
         .order_by("-id")[:5]
     )
 
+    # Due planned příjmy (per 0066): a PLANNED objednávka whose promised arrival
+    # date has arrived (or passed) is a K-vyřešení task — confirm the receipt.
+    today = timezone.localdate()
+    due_planned = list(
+        Movement.objects.filter(
+            status=Movement.Status.PLANNED,
+            kind=Movement.Kind.PRIJEM,
+            expected_on__lte=today,
+        )
+        .select_related("branch", "dodavatel")
+        .prefetch_related("lines__product")
+        .order_by("expected_on", "id")
+    )
+    for mv in due_planned:
+        mv.total_kg = sum(
+            (line.quantity_kg for line in mv.lines.all()), Decimal("0.000")
+        )
+
     # KPI overview strip (decision 0054, per-branch grouped Přehled): the
     # attention buckets, with a per-branch breakdown sub-label.
     kpi_empty = sum(len(rows_by_branch[b.pk]["empty"]) for b in branches)
@@ -233,8 +252,11 @@ def home(request):
             "branch_panels": branch_panels,
             "failed_dodaky": failed_dodaky,
             "edited_dodaky": edited_dodaky,
+            "due_planned": due_planned,
             "can_order": request.user.is_vlastnik,
-            "to_resolve_count": len(failed_dodaky) + len(edited_dodaky),
+            "to_resolve_count": (
+                len(failed_dodaky) + len(edited_dodaky) + len(due_planned)
+            ),
             "kpi_empty": kpi_empty,
             "kpi_low": kpi_low,
             "kpi_ordered": kpi_ordered,
@@ -342,13 +364,15 @@ def movement_history(request):
     )
 
     inventura_filter = Q(note__startswith="[STAV] ")
+    planned_count = planned_base.count()
     tab_counts = {
-        "all": done_base.count(),
+        # "Vše" now unions DONE + PLANNED (per 0066) — planned surfaces here too.
+        "all": done_base.count() + planned_count,
         "prijem": done_base.filter(kind=Movement.Kind.PRIJEM).count(),
         "vydej": done_base.filter(kind=Movement.Kind.VYDEJ).count(),
         "inventura": done_base.filter(inventura_filter).count(),
         "edited": done_base.filter(audit_entries__isnull=False).distinct().count(),
-        "planned": planned_base.count(),
+        "planned": planned_count,
     }
 
     # Resolve the active tab. Legacy `?kind=` / `?edited=1` map onto
@@ -366,7 +390,12 @@ def movement_history(request):
 
     if tab == "planned":
         # Worklist ordering: soonest arrival first.
-        qs = planned_base.order_by("expected_on", "id")[:200]
+        items = list(planned_base.order_by("expected_on", "id"))
+    elif tab == "all":
+        # Per 0066: upcoming planned first (soonest arrival), then done history.
+        items = list(planned_base.order_by("expected_on", "id")) + list(
+            done_base.order_by("-date_issued", "-id")
+        )
     else:
         qs = done_base
         if tab == Movement.Kind.PRIJEM:
@@ -377,9 +406,12 @@ def movement_history(request):
             qs = qs.filter(inventura_filter)
         elif tab == "edited":
             qs = qs.filter(audit_entries__isnull=False).distinct()
-        # tab == "all" → no extra filter.
-        qs = qs.order_by("-date_issued", "-id")[:200]
-    movements = list(qs)
+        items = list(qs.order_by("-date_issued", "-id"))
+
+    # Paginate at 50 rows/page (per 0066), replacing the old 200 cap.
+    paginator = Paginator(items, 50)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    movements = list(page_obj.object_list)
 
     # Per-movement total kg for the "Množství" column. Lines are already
     # prefetched, so this sums in Python without extra queries.
@@ -387,6 +419,18 @@ def movement_history(request):
         mv.total_kg = sum(
             (line.quantity_kg for line in mv.lines.all()), Decimal("0.000")
         )
+
+    # Query string (minus page) so pagination links keep the current filters.
+    page_params = {"tab": tab}
+    if request.GET.get("branch"):
+        page_params["branch"] = request.GET.get("branch")
+    if date_from:
+        page_params["date_from"] = date_from
+    if date_to:
+        page_params["date_to"] = date_to
+    if search:
+        page_params["q"] = search
+    page_querystring = urlencode(page_params)
 
     branches = list(Branch.objects.filter(is_active=True).order_by("code"))
 
@@ -404,7 +448,9 @@ def movement_history(request):
         "inventory/movement_history.html",
         {
             "movements": movements,
-            "count": len(movements),
+            "count": paginator.count,
+            "page_obj": page_obj,
+            "page_querystring": page_querystring,
             "branches": branches,
             "branch_locked": branch_locked,
             "filter_branch": request.GET.get("branch") or "",

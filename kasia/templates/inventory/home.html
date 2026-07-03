@@ -45,6 +45,7 @@
   .task-list .t-badge { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: .2rem .5rem; white-space: nowrap; flex: 0 0 auto; }
   .task-list .t-badge.mail { background: var(--error-tint); color: var(--error); border: 1px solid var(--error); }
   .task-list .t-badge.edit { background: var(--warn-tint); color: var(--warn); border: 1px solid var(--warn); }
+  .task-list .t-badge.due { background: var(--accent-tint); color: var(--accent-deep); border: 1px solid var(--accent); }
   .task-list .t-body { font-size: .9rem; line-height: 1.4; flex: 1 1 220px; }
   .task-list .t-body .t-sub { color: var(--fg-soft); font-size: .82rem; }
   .task-list .t-actions { flex: 0 0 auto; }
@@ -158,10 +159,22 @@
   {% endfor %}
 </div>
 
-{% if failed_dodaky or edited_dodaky %}
+{% if failed_dodaky or edited_dodaky or due_planned %}
 <section class="card" aria-label="K vyřešení">
   <h2 style="font-size:1.05rem;margin:0 0 .6rem;">K vyřešení</h2>
   <ul class="task-list">
+    {% for mv in due_planned %}
+      <li>
+        <span class="t-badge due">Očekávaný&nbsp;příjem</span>
+        <span class="t-body">
+          <strong>{% if mv.dodavatel %}{{ mv.dodavatel.name }}{% else %}Objednávka{% endif %}</strong> — {{ mv.branch.code }} · {{ mv.total_kg|floatformat:1 }} kg<br>
+          <span class="t-sub">Očekávaný příjezd {{ mv.expected_on|date:"d. m. Y" }} — potvrďte příjem.</span>
+        </span>
+        <span class="t-actions">
+          <a class="primary" href="{% url 'inventory:prijem_confirm' pk=mv.pk %}">Přijmout →</a>
+        </span>
+      </li>
+    {% endfor %}
     {% for item in failed_dodaky %}
       <li>
         <span class="t-badge mail">Nedoručený&nbsp;e-mail</span>

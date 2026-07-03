@@ -7527,10 +7527,14 @@ def test_history_planned_tab_lists_only_planned(
     client = Client()
     client.force_login(user_vlastnik)
 
+    # Per 0066: "Vše" now unions DONE + PLANNED (1 + 1 = 2), and the planned
+    # confirm link appears there too. The other tabs still exclude planned.
     all_tab = client.get("/sklad/pohyby/?tab=all").content.decode("utf-8")
-    assert "Nalezeno: 1" in all_tab  # DONE only
+    assert "Nalezeno: 2" in all_tab
+    assert f"/sklad/prijem/{planned.pk}/potvrdit/" in all_tab
     prijem_tab = client.get("/sklad/pohyby/?tab=prijem").content.decode("utf-8")
     assert "Nalezeno: 1" in prijem_tab
+    assert f"/sklad/prijem/{planned.pk}/potvrdit/" not in prijem_tab
 
     planned_tab = client.get("/sklad/pohyby/?tab=planned")
     body = planned_tab.content.decode("utf-8")
@@ -7538,9 +7542,34 @@ def test_history_planned_tab_lists_only_planned(
     assert "Plánováno" in body
     assert f"/sklad/prijem/{planned.pk}/potvrdit/" in body
 
-    # PLANNED must not appear in the owner home recent panel.
+    # A FUTURE planned (Dec 31) is not yet due → absent from the home K-vyřešení.
     home = client.get("/sklad/").content.decode("utf-8")
     assert f"/sklad/prijem/{planned.pk}/potvrdit/" not in home
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_home_surfaces_due_planned_prijem(
+    tyn, pepper, user_vlastnik
+) -> None:
+    """Per 0066: a PLANNED příjem whose expected_on <= today is a K-vyřešení
+    task on the Přehled (Přijmout link); a future one is not."""
+    today = date.today()
+    due = _make_planned_prijem(
+        branch=tyn, product=pepper, qty=Decimal("9.000"), eta=today,
+        user=user_vlastnik,
+    )
+    future = _make_planned_prijem(
+        branch=tyn, product=pepper, qty=Decimal("5.000"),
+        eta=date(today.year + 1, 1, 15), user=user_vlastnik,
+    )
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/").content.decode("utf-8")
+    assert "Očekávaný" in body  # due-planned task badge
+    assert f"/sklad/prijem/{due.pk}/potvrdit/" in body
+    assert f"/sklad/prijem/{future.pk}/potvrdit/" not in body
 
 
 @pytest.mark.django_db

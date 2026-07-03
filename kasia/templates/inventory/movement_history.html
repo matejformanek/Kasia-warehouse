@@ -38,6 +38,10 @@
   .btn-mini.accept:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
   .btn-mini.cancel { background: #fff; color: var(--error); border-color: #e6c4c2; }
   .btn-mini.cancel:hover { background: var(--error-tint); border-color: var(--error); }
+
+  .pager { display: flex; align-items: center; gap: 1rem; margin: .5rem 0 1rem; }
+  .pager .pager-info { color: var(--fg-soft); font-size: .9rem; font-variant-numeric: tabular-nums; }
+  .pager .pager-disabled { opacity: .45; pointer-events: none; }
 </style>
 {% endblock %}
 
@@ -98,8 +102,7 @@
 </form>
 
 <p style="color:var(--fg-soft);">
-  Nalezeno: {{ count }} pohybů
-  {% if count == 200 %}(omezeno na 200 nejnovějších){% endif %}.
+  Nalezeno: {{ count }} pohybů{% if page_obj.paginator.num_pages > 1 %} · strana {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}{% endif %}.
 </p>
 
 {% if movements %}
@@ -193,19 +196,35 @@
   </table>
   <p id="history-empty" style="display:none;color:var(--fg-soft);">Žádné pohyby neodpovídají hledání.</p>
 
-  {% if active_tab == "planned" %}
-    {% comment %}Out-of-table cancel forms so the in-row "Zrušit" button never
-       nests a <form> inside tr.row-link (the locked row-link hook, per 0057
-       gotcha).{% endcomment %}
-    {% for mv in movements %}
+  {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="pager" aria-label="Stránkování">
+      {% if page_obj.has_previous %}
+        <a class="secondary" href="?{{ page_querystring }}&page={{ page_obj.previous_page_number }}">← Novější</a>
+      {% else %}
+        <span class="secondary pager-disabled">← Novější</span>
+      {% endif %}
+      <span class="pager-info">strana {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a class="secondary" href="?{{ page_querystring }}&page={{ page_obj.next_page_number }}">Starší →</a>
+      {% else %}
+        <span class="secondary pager-disabled">Starší →</span>
+      {% endif %}
+    </nav>
+  {% endif %}
+
+  {% comment %}Out-of-table cancel forms for every PLANNED row on the page (per
+     0066 planned rows also appear in "Vše") so the in-row "Zrušit" button never
+     nests a <form> inside tr.row-link (the locked row-link hook, per 0057
+     gotcha). _confirm_dialog.html is included globally in base.html (per 0061).{% endcomment %}
+  {% for mv in movements %}
+    {% if mv.status == "planned" %}
       <form id="plan-cancel-{{ mv.pk }}" method="post"
             action="{% url 'inventory:prijem_plan_cancel' pk=mv.pk %}" hidden>
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ request.get_full_path }}">
       </form>
-    {% endfor %}
-    {# _confirm_dialog.html is included globally in base.html (per 0061) #}
-  {% endif %}
+    {% endif %}
+  {% endfor %}
 {% elif filter_q or filter_kind or filter_date_from or filter_date_to or filter_edited or filter_branch %}
   <p>Žádné pohyby neodpovídají filtrům.
     <a href="{% url 'inventory:movement_history' %}">Vymazat filtry</a>

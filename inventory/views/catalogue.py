@@ -40,6 +40,47 @@ from ..services import (
 from ._shared import _require_vlastnik, _safe_next
 
 
+def _catalogue_rows(products, reserved_branches, carried_stocks_by_pair, has_recipe, totals):
+    """One display row per product: total / reserved / effective / threshold /
+    low-flag (+ the branches under threshold, per /podpora/ feedback #4). Only
+    branches that carry the product (a Stock row exists, 0053) are counted.
+    Shares ``reserved_kg`` / ``threshold_for`` with the dashboard panel."""
+    rows = []
+    for p in products:
+        reserved = Decimal("0.000")
+        effective_total = Decimal("0.000")
+        threshold_min: Decimal | None = None
+        is_low = False
+        low_branches: list[Branch] = []
+        for b in reserved_branches:
+            on_hand = carried_stocks_by_pair.get((p.pk, b.pk))
+            if on_hand is None:
+                continue  # branch does not carry this product
+            r = reserved_kg(p, b)
+            reserved += r
+            eff_b = on_hand - r
+            effective_total += eff_b
+            t = threshold_for(p, b)
+            if t is not None:
+                threshold_min = t if threshold_min is None else min(threshold_min, t)
+                if eff_b < t:
+                    is_low = True
+                    low_branches.append(b)
+        rows.append(
+            {
+                "product": p,
+                "total": totals.get(p.pk, Decimal("0.000")),
+                "reserved": reserved.quantize(Decimal("0.001")),
+                "effective": effective_total.quantize(Decimal("0.001")),
+                "threshold": threshold_min,
+                "is_low": is_low,
+                "low_branches": low_branches,
+                "has_recipe": p.pk in has_recipe,
+            }
+        )
+    return rows
+
+
 @require_GET
 def catalogue_index(request):
     """Browse the product catalogue. Filters: q (icontains on name),
@@ -121,44 +162,9 @@ def catalogue_index(request):
         )
     }
 
-    rows = []
-    # Per /podpora/ feedback #4: each row carries the list of branches
-    # currently under threshold; the template renders one chip per
-    # branch but only when no single branch is in scope (the existing
-    # per-row "dochází" badge already covers the single-branch case).
-    for p in products:
-        reserved = Decimal("0.000")
-        effective_total = Decimal("0.000")
-        threshold_min: Decimal | None = None
-        is_low = False
-        low_branches: list[Branch] = []
-        for b in reserved_branches:
-            on_hand = carried_stocks_by_pair.get((p.pk, b.pk))
-            if on_hand is None:
-                # Branch does not carry this product — skip.
-                continue
-            r = reserved_kg(p, b)
-            reserved += r
-            eff_b = on_hand - r
-            effective_total += eff_b
-            t = threshold_for(p, b)
-            if t is not None:
-                threshold_min = t if threshold_min is None else min(threshold_min, t)
-                if eff_b < t:
-                    is_low = True
-                    low_branches.append(b)
-        rows.append(
-            {
-                "product": p,
-                "total": totals.get(p.pk, Decimal("0.000")),
-                "reserved": reserved.quantize(Decimal("0.001")),
-                "effective": effective_total.quantize(Decimal("0.001")),
-                "threshold": threshold_min,
-                "is_low": is_low,
-                "low_branches": low_branches,
-                "has_recipe": p.pk in has_recipe,
-            }
-        )
+    rows = _catalogue_rows(
+        products, reserved_branches, carried_stocks_by_pair, has_recipe, totals
+    )
 
     # Stock state per row (empty overrides low). Reused for the KPI strip,
     # the grouped tables and the ?state= filter.

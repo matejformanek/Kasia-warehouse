@@ -33,4 +33,15 @@ Anything that would is escalated here, not absorbed.
 
 ## Follow-ups deferred (not fixed in this restructure)
 
-- _(none yet)_
+- **D3 scope (right-sizing call).** Extracted the cleanly-separable phase from
+  `catalogue_index` (per-row builder → `_catalogue_rows`, 121→85 LOC). The other
+  long functions were evaluated and **deliberately left cohesive**:
+  `edit_movement` (186), `start_mixing_job` (183), `finish_mixing_job` (120) are
+  linear `transaction.atomic` orchestrators where splitting would scatter the
+  transaction flow across helpers and hurt readability; `_build_rows` (257) /
+  `_row_for` (131) in inventura and `_apply_date` (128) in movements are nested
+  closures over view-local state — extracting them means threading many params
+  for little gain and non-trivial regression risk on tested code. Per
+  `right-sized-for-small-business.md` ("reject the enterprise-shaped
+  suggestion"), forcing these splits is not worth it. Revisit a specific one
+  only if it actually changes (a new phase gets added).

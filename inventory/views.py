@@ -357,6 +357,13 @@ def movement_history(request):
         qs = qs.order_by("-date_issued", "-id")[:200]
     movements = list(qs)
 
+    # Per-movement total kg for the "Množství" column. Lines are already
+    # prefetched, so this sums in Python without extra queries.
+    for mv in movements:
+        mv.total_kg = sum(
+            (line.quantity_kg for line in mv.lines.all()), Decimal("0.000")
+        )
+
     branches = list(Branch.objects.filter(is_active=True).order_by("code"))
 
     tabs = [

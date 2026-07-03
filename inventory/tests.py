@@ -4541,6 +4541,51 @@ def test_inventura_edit_renders_for_vlastnik(
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_edit_low_toggle_single_branch(
+    user_vlastnik, tyn, pepper, paprika
+) -> None:
+    # Single-branch inventura carries the "Dochází" checkbox, and each row is
+    # marked below/above its reorder threshold (data-low). pepper sits above
+    # its threshold, paprika below → one data-low="1" and one data-low="0".
+    from inventory.models import StockThresholdOverride
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("5.500"))
+    StockThresholdOverride.objects.create(
+        product=pepper, branch=tyn, threshold_kg=Decimal("5.000")
+    )
+    StockThresholdOverride.objects.create(
+        product=paprika, branch=tyn, threshold_kg=Decimal("20.000")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/katalog/inventura/TYN/")
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert 'id="inventura-low-only"' in body
+    assert "Dochází" in body
+    assert 'data-low="1"' in body
+    assert 'data-low="0"' in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_edit_low_toggle_hidden_cross_branch(
+    user_vlastnik, tyn, pepper
+) -> None:
+    # The "Dochází" toggle is single-branch only — never on the cross-branch
+    # "Vše" or "Dochází zboží" views.
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    for code in ("vse", "dochazi"):
+        response = client.get(f"/sklad/katalog/inventura/{code}/")
+        assert response.status_code == 200
+        assert b'id="inventura-low-only"' not in response.content
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_inventura_edit_data_current_uses_dot_decimal(
     user_vlastnik, tyn, pepper
 ) -> None:

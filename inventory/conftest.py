@@ -220,3 +220,11 @@ def settings_with_recipients(db) -> Settings:
             ]
         )
     return s
+
+
+@pytest.fixture
+def admin_user(db):
+    User = get_user_model()
+    return User.objects.create_superuser(email="admin@example.cz", password="x" * 12)
+
+

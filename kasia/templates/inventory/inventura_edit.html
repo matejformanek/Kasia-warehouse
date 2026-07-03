@@ -3,6 +3,37 @@
 
 {% block title %}{% if is_low %}Dochází zboží — upravit{% elif is_all %}Inventura — vše{% else %}Inventura — {{ branch.code }}{% endif %} — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Inventura — sticky tally + green edited rows (mockup 03). CSS-only restyle;
+     all input names / data-current / delta+reason logic unchanged. */
+  .content { padding-bottom: 92px; }
+  .stav-card { background: var(--warn-tint); border-left: 3px solid var(--warn); }
+  .stav-card code { background: #fff; border: 1px solid var(--line); padding: 0 .3rem; font-family: var(--mono); font-size: .85em; }
+  .branch-row { margin-bottom: 1rem; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  .toolbar { display: flex; gap: .75rem; align-items: center; margin-bottom: .75rem; flex-wrap: wrap; }
+  .toolbar input[type=search] { min-width: 260px; }
+
+  /* Zebra + hover that never blanks to white, and never overrides a green row. */
+  .inventura-row:nth-child(even) td { background: #ebebeb; }
+  .inventura-row:hover td { background: #e2e5e2; }
+  .inventura-row.changed:hover td { background: #d7ecdf; }
+  /* Edited row — green left border + green tint, overrides zebra. */
+  .inventura-row td:first-child { border-left: 4px solid transparent; }
+  .inventura-row.changed td:first-child { border-left-color: var(--ok); }
+  .inventura-row.changed td { background: #e3f1e8 !important; }
+
+  /* Sticky bottom action bar with live tally — the #1 safety question before saving. */
+  .tallybar { position: fixed; left: var(--sidebar-w); right: 0; bottom: 0; z-index: 50; background: var(--bg-card); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px -12px rgba(0,0,0,.25); padding: 12px 34px; display: flex; align-items: center; gap: 1.5rem; }
+  .tallybar .tally { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 14px; }
+  .tallybar .tally .pos { color: var(--ok); font-weight: 600; }
+  .tallybar .tally .neg { color: var(--error); font-weight: 600; }
+  .tallybar .tally .chg { color: var(--fg); font-weight: 600; }
+  .tallybar .spacer { flex: 1 1 auto; }
+  @media (max-width: 720px) { .tallybar { left: 0; padding: 10px 16px; } }
+</style>
+{% endblock %}
+
 {% block content %}
 {% if is_low %}
   <h1>Dochází zboží — upravit</h1>
@@ -12,7 +43,7 @@
   <h1>Inventura — {{ branch.code }} ({{ branch.name }})</h1>
 {% endif %}
 
-<div class="card" style="background:var(--warn-tint);border-left:3px solid var(--warn);">
+<div class="card stav-card">
   <strong>Hromadná úprava.</strong>
   U každého řádku vyplňte hodnotu a volitelně datum příjezdu:
   <ul style="margin:0.5rem 0 0;padding-left:1.2rem;">
@@ -21,7 +52,7 @@
   </ul>
 </div>
 
-<div style="margin-bottom:1rem;">
+<div class="branch-row">
   <strong>Pobočka:</strong>
   {% for b in all_branches %}
     {% if branch and b.code == branch.code %}
@@ -45,9 +76,14 @@
 {% if is_low and not rows %}
   <p style="color:var(--fg-soft);">Žádné položky pod objednacím bodem. Vše v pořádku.</p>
 {% else %}
-<form method="post">
+<form method="post" id="inventura-form">
   {% csrf_token %}
   {% if next_value %}<input type="hidden" name="next" value="{{ next_value }}">{% endif %}
+
+  <div class="toolbar">
+    <input type="search" id="inventura-filter" placeholder="Filtrovat produkt v seznamu…">
+    <span class="muted" id="inventura-filter-count"></span>
+  </div>
 
   <table class="lines">
     <thead>
@@ -67,18 +103,14 @@
           <td><strong>{{ row.product.name_cs }}</strong></td>
           {% if cross_branch %}<td>{{ row.branch.code }}</td>{% endif %}
           <td style="color:var(--fg-soft);">{{ row.product.get_kind_display }}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">
-            {{ row.current|floatformat:1 }}
-          </td>
+          <td class="num">{{ row.current|floatformat:1 }}</td>
           <td style="text-align:right;">
             <input type="number" step="0.1" min="0"
                    name="{{ row.qty_field }}"
                    value="{{ row.qty_value }}"
                    style="max-width:140px;text-align:right;font-variant-numeric:tabular-nums;">
           </td>
-          <td class="inventura-delta" style="text-align:right;font-variant-numeric:tabular-nums;color:var(--fg-soft);">
-            —
-          </td>
+          <td class="inventura-delta num" style="color:var(--fg-soft);">—</td>
           <td style="white-space:nowrap;">
             <input type="date" name="{{ row.eta_field }}" class="inventura-eta"
                    value="{{ row.eta_value }}">
@@ -101,7 +133,7 @@
     </tbody>
   </table>
 
-  <div class="card" style="margin-top:1.5rem;">
+  <div class="card">
     <div class="field">
       <label for="id_reason">
         Důvod úpravy stavu
@@ -117,16 +149,6 @@
         (Historie → Plánované).
       </p>
     </div>
-    <p>
-      <button type="submit" class="primary">Uložit vše</button>
-      {% if is_low %}
-        <a class="secondary" href="{% url 'inventory:home' %}">Zpět</a>
-      {% elif is_all %}
-        <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Zrušit</a>
-      {% else %}
-        <a class="secondary" href="{% url 'inventory:catalogue_index' %}?branch={{ branch.code }}">Zrušit</a>
-      {% endif %}
-    </p>
   </div>
 </form>
 
@@ -142,12 +164,49 @@
   </form>
 {% endfor %}
 
+<!-- Sticky bottom bar: live tally + save/cancel (submits #inventura-form). -->
+<div class="tallybar">
+  <div class="tally">
+    <span class="chg" id="t-count">0 řádků změněno</span>
+    &nbsp;·&nbsp; čistá změna
+    <span class="pos" id="t-pos">+0,0</span> /
+    <span class="neg" id="t-neg">−0,0</span> kg
+  </div>
+  <div class="spacer"></div>
+  {% if is_low %}
+    <a class="secondary" href="{% url 'inventory:home' %}">Zpět</a>
+  {% elif is_all %}
+    <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Zrušit</a>
+  {% else %}
+    <a class="secondary" href="{% url 'inventory:catalogue_index' %}?branch={{ branch.code }}">Zrušit</a>
+  {% endif %}
+  <button type="submit" form="inventura-form" class="primary">Uložit všechny změny</button>
+</div>
+
 {# _confirm_dialog.html is included globally in base.html (per 0061) #}
 
 <script>
   // Live "rozdíl" indicator (only meaningful when no date = stock correction);
   // when a date is set the value is an ordered amount, so we grey the delta.
+  // Also toggles the green .changed row class + feeds the sticky tally.
   (function () {
+    const rows = Array.from(document.querySelectorAll(".inventura-row"));
+    const tCount = document.getElementById("t-count");
+    const tPos = document.getElementById("t-pos");
+    const tNeg = document.getElementById("t-neg");
+
+    // A row is an IMMEDIATE stock change iff it has no date and its 1-dp value
+    // differs from the current 1-dp value (#21 compare). Dated rows are orders.
+    function isStockChange(row) {
+      const input = row.querySelector("input[name^=qty_]");
+      const eta = row.querySelector(".inventura-eta");
+      if (eta && eta.value) return false;
+      const current = parseFloat(row.dataset.current);
+      const next = parseFloat(input.value);
+      if (!isFinite(next) || !isFinite(current)) return false;
+      return Math.round(next * 10) !== Math.round(current * 10);
+    }
+
     function recompute(row) {
       const input = row.querySelector("input[name^=qty_]");
       const eta = row.querySelector(".inventura-eta");
@@ -158,43 +217,58 @@
         delta.textContent = "objednávka";
         delta.style.color = "var(--accent)";
         delta.style.fontWeight = "normal";
+        row.classList.remove("changed");
+        updateTally();
         return;
       }
       if (!isFinite(next) || !isFinite(current)) {
         delta.textContent = "—";
         delta.style.color = "var(--fg-soft)";
+        delta.style.fontWeight = "";
+        row.classList.remove("changed");
+        updateTally();
         return;
       }
       const diff = next - current;
       if (Math.round(next * 10) === Math.round(current * 10)) {
         delta.textContent = "—";
         delta.style.color = "var(--fg-soft)";
+        delta.style.fontWeight = "";
+        row.classList.remove("changed");
+        updateTally();
         return;
       }
       const sign = diff > 0 ? "+" : "−";
       delta.textContent = `${sign}${Math.abs(diff).toFixed(1).replace(".", ",")}`;
       delta.style.color = diff > 0 ? "var(--ok)" : "var(--error)";
       delta.style.fontWeight = "bold";
+      row.classList.add("changed");
+      updateTally();
     }
-    // Does any row represent an IMMEDIATE stock change (no date, qty differs
-    // from current)? If so, the reason becomes required.
-    function anyImmediateChange() {
-      let any = false;
-      document.querySelectorAll(".inventura-row").forEach(function (row) {
-        const input = row.querySelector("input[name^=qty_]");
-        const eta = row.querySelector(".inventura-eta");
-        if (eta && eta.value) { return; }          // dated row = order, not a stock change
+
+    function updateTally() {
+      let n = 0, pos = 0, neg = 0;
+      rows.forEach(function (row) {
+        if (!isStockChange(row)) return;
         const current = parseFloat(row.dataset.current);
-        const next = parseFloat(input.value);
-        if (!isFinite(next)) { return; }
-        if (Math.round(next * 10) !== Math.round(current * 10)) { any = true; }
+        const next = parseFloat(row.querySelector("input[name^=qty_]").value);
+        const diff = next - current;
+        n++; if (diff > 0) pos += diff; else neg += diff;
       });
-      return any;
+      if (tCount) {
+        tCount.textContent = n + " " + (n === 1 ? "řádek změněn" : (n >= 2 && n <= 4 ? "řádky změněny" : "řádků změněno"));
+      }
+      if (tPos) tPos.textContent = "+" + pos.toFixed(1).replace(".", ",");
+      if (tNeg) tNeg.textContent = "−" + Math.abs(neg).toFixed(1).replace(".", ",");
+    }
+
+    // Does any row represent an IMMEDIATE stock change? If so, reason is required.
+    function anyImmediateChange() {
+      return rows.some(isStockChange);
     }
 
     const reason = document.getElementById("id_reason");
     const reqMark = document.querySelector(".req-mark");
-    const form = reason ? reason.closest("form") : null;
 
     function syncReasonRequired() {
       const needed = anyImmediateChange();
@@ -208,11 +282,12 @@
     let dirty = false;
     function markDirty() { dirty = true; }
 
-    document.querySelectorAll(".inventura-row").forEach(function (row) {
+    rows.forEach(function (row) {
       const input = row.querySelector("input[name^=qty_]");
       const eta = row.querySelector(".inventura-eta");
       input.addEventListener("input", function () { recompute(row); syncReasonRequired(); markDirty(); });
       if (eta) { eta.addEventListener("input", function () { recompute(row); syncReasonRequired(); markDirty(); }); }
+      recompute(row);
     });
     if (reason) { reason.addEventListener("input", markDirty); }
 
@@ -225,7 +300,25 @@
       if (dirty) { e.preventDefault(); e.returnValue = ""; return ""; }
     });
 
+    // Type-to-filter over the product name (its own filter, not the 0063 hook).
+    const filter = document.getElementById("inventura-filter");
+    const fc = document.getElementById("inventura-filter-count");
+    if (filter) {
+      filter.addEventListener("input", function () {
+        const q = filter.value.trim().toLowerCase();
+        let shown = 0;
+        rows.forEach(function (row) {
+          const name = row.querySelector("td strong").textContent.toLowerCase();
+          const match = !q || name.includes(q);
+          row.style.display = match ? "" : "none";
+          if (match) shown++;
+        });
+        fc.textContent = q ? (shown + " z " + rows.length + " odpovídá") : "";
+      });
+    }
+
     syncReasonRequired();
+    updateTally();
   })();
 </script>
 {% endif %}

@@ -128,6 +128,26 @@ def home(request):
     from django.db.models import Sum
 
     branches = list(Branch.objects.filter(is_active=True).order_by("code"))
+
+    # "Dochází zboží" rows per 0043 + 0044 (same low_stock_rows() that feeds
+    # the daily digest), grouped per branch into vyprodáno / dochází / objednáno.
+    # Objednáno reuses the existing PLANNED-příjem order overlay (0057) — a row
+    # with an open order sinks into its own "on the way" group.
+    low_stock = low_stock_rows()
+    rows_by_branch = {
+        b.pk: {"empty": [], "low": [], "ordered": []} for b in branches
+    }
+    for r in low_stock:
+        grp = rows_by_branch.get(r.branch.pk)
+        if grp is None:
+            continue
+        if r.ordered_kg is not None:
+            grp["ordered"].append(r)
+        elif r.effective <= 0:
+            grp["empty"].append(r)
+        else:
+            grp["low"].append(r)
+
     branch_panels = []
     for b in branches:
         stocks = list(
@@ -145,6 +165,12 @@ def home(request):
             .prefetch_related("lines__product")
             .order_by("-date_issued", "-id")[:5]
         )
+        branch_dodaky = list(
+            DodaciList.objects.filter(branch=b)
+            .select_related("odberatel")
+            .order_by("-date_issued", "-id")[:5]
+        )
+        grp = rows_by_branch[b.pk]
         branch_panels.append(
             {
                 "branch": b,
@@ -152,13 +178,20 @@ def home(request):
                 "total_mass": total_mass,
                 "top_stocks": stocks[:5],
                 "recent_movements": recent_movements,
+                "recent_dodaky": branch_dodaky,
+                "empty_rows": grp["empty"],
+                "low_rows": grp["low"],
+                "ordered_rows": grp["ordered"],
             }
         )
 
-    recent_dodaky = list(
-        DodaciList.objects.select_related("branch", "odberatel")
-        .order_by("-date_issued", "-id")[:10]
-    )
+    def _breakdown(key):
+        parts = [
+            f"{b.code} {len(rows_by_branch[b.pk][key])}"
+            for b in branches
+            if rows_by_branch[b.pk][key]
+        ]
+        return " · ".join(parts)
 
     # K vyřešení: failed sends whose dodák hasn't yet been re-sent
     # successfully at the current version. Uses the same rule as the
@@ -187,36 +220,27 @@ def home(request):
         .order_by("-id")[:5]
     )
 
-    # "Dochází zboží" panel per 0043 + 0044 — reads the same
-    # low_stock_rows() that feeds the daily summary e-mail.
-    low_stock = low_stock_rows()
-    # Per 0057: sink rows that already have an open objednávka to the
-    # bottom. Presentation only — membership + the service deficit-DESC
-    # sort are untouched, so this panel and the digest agree on contents.
-    low_stock_display = [r for r in low_stock if r.ordered_kg is None] + [
-        r for r in low_stock if r.ordered_kg is not None
-    ]
-
-    # KPI overview strip (decision 0054). All four are derivable from the
-    # aggregates already computed above for the per-branch panels.
-    kpi_products = sum(p["product_count"] for p in branch_panels)
-    kpi_total_mass = sum((p["total_mass"] for p in branch_panels), Decimal("0.000"))
+    # KPI overview strip (decision 0054, per-branch grouped Přehled): the
+    # attention buckets, with a per-branch breakdown sub-label.
+    kpi_empty = sum(len(rows_by_branch[b.pk]["empty"]) for b in branches)
+    kpi_low = sum(len(rows_by_branch[b.pk]["low"]) for b in branches)
+    kpi_ordered = sum(len(rows_by_branch[b.pk]["ordered"]) for b in branches)
 
     return render(
         request,
         "inventory/home.html",
         {
             "branch_panels": branch_panels,
-            "recent_dodaky": recent_dodaky,
             "failed_dodaky": failed_dodaky,
             "edited_dodaky": edited_dodaky,
-            "low_stock_rows": low_stock_display,
             "can_order": request.user.is_vlastnik,
             "to_resolve_count": len(failed_dodaky) + len(edited_dodaky),
-            "kpi_products": kpi_products,
-            "kpi_total_mass": kpi_total_mass,
-            "kpi_low_stock": len(low_stock),
-            "kpi_branches": len(branches),
+            "kpi_empty": kpi_empty,
+            "kpi_low": kpi_low,
+            "kpi_ordered": kpi_ordered,
+            "kpi_empty_breakdown": _breakdown("empty"),
+            "kpi_low_breakdown": _breakdown("low"),
+            "kpi_ordered_breakdown": _breakdown("ordered"),
         },
     )
 

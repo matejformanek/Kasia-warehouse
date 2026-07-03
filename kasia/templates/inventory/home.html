@@ -2,39 +2,61 @@
 
 {% block title %}Přehled — Kasia vera{% endblock %}
 
+{% block extra_head %}
+<style>
+  /* Přehled — per-branch command center (mockup 02a). */
+  .asof { color: var(--fg-soft); font-size: .9rem; margin: 0; }
+  .kpi.err { border-top: 2px solid var(--error); }
+  .kpi.err .k-val { color: var(--error); }
+  .kpi.warn { border-top: 2px solid var(--warn); }
+  .kpi.warn .k-val { color: var(--warn); }
+  .kpi.ordered { border-top: 2px solid var(--accent); }
+  .kpi.ordered .k-val { color: var(--accent); }
+
+  .branch-card { background: var(--bg-card); border: 1px solid var(--line); padding: 1.1rem 1.25rem; margin-bottom: 0; }
+  .branch-top { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; margin-bottom: .7rem; padding-bottom: .7rem; border-bottom: 1px solid var(--line-soft); }
+  .branch-head { margin: 0; font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; }
+  .branch-head .b-code { font-family: var(--mono); color: var(--accent); }
+  .branch-sum { margin: .3rem 0 0; color: var(--fg-soft); font-size: .85rem; }
+  .inv-btn { white-space: nowrap; border-color: var(--warn); color: var(--warn); font-weight: 600; }
+  .inv-btn:hover { background: var(--warn-tint); border-color: var(--warn); }
+
+  .branch-card table.lines th, .branch-card table.lines td { padding: .55rem .6rem; }
+  .prod-name { font-weight: 600; }
+
+  /* Section-level colour: header + left border; rows stay neutral. */
+  .sub-head { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: .45rem .6rem; margin: 1.3rem 0 .55rem; display: flex; align-items: center; gap: .45rem; }
+  .sub-head:first-of-type { margin-top: .25rem; }
+  .sub-head .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+  .sub-head.empty { color: var(--error); border-left: 3px solid var(--error); background: var(--error-tint); }
+  .sub-head.empty .dot { background: var(--error); }
+  .sub-head.low { color: var(--warn); border-left: 3px solid var(--warn); background: var(--warn-tint); }
+  .sub-head.low .dot { background: var(--warn); }
+  .sub-head.ordered { color: var(--accent-deep); border-left: 3px solid var(--accent); background: var(--accent-tint); }
+  .sub-head.ordered .dot { background: var(--accent); }
+  .branch-ok { color: var(--fg-soft); font-size: .9rem; margin: .5rem 0 0; }
+
+  .feed-sub { margin: 1rem 0 .35rem; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-faint); font-weight: 700; }
+  .feed-sub:first-of-type { margin-top: 0; }
+
+  .task-list { list-style: none; margin: 0; padding: 0; }
+  .task-list li { display: flex; gap: .7rem; align-items: center; padding: .7rem 0; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap; }
+  .task-list li:last-child { border-bottom: 0; }
+  .task-list .t-badge { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: .2rem .5rem; white-space: nowrap; flex: 0 0 auto; }
+  .task-list .t-badge.mail { background: var(--error-tint); color: var(--error); border: 1px solid var(--error); }
+  .task-list .t-badge.edit { background: var(--warn-tint); color: var(--warn); border: 1px solid var(--warn); }
+  .task-list .t-body { font-size: .9rem; line-height: 1.4; flex: 1 1 220px; }
+  .task-list .t-body .t-sub { color: var(--fg-soft); font-size: .82rem; }
+  .task-list .t-actions { flex: 0 0 auto; }
+  .task-list form { margin: 0; }
+</style>
+{% endblock %}
+
 {% block content %}
-<h1>Přehled <span class="muted" style="font-weight:500;">— {{ user.email }}</span></h1>
-
-<section class="kpis" aria-label="Klíčové ukazatele">
-  <div class="kpi accent">
-    <span class="lbl">K vyřešení</span>
-    <span class="k-val">{{ to_resolve_count }}</span>
-    <span class="k-sub">úkoly vyžadující pozornost</span>
-  </div>
-  <div class="kpi">
-    <span class="lbl">Produktů skladem</span>
-    <span class="k-val">{{ kpi_products }}</span>
-    <span class="k-sub">napříč {{ kpi_branches }} pobočkami</span>
-  </div>
-  <div class="kpi">
-    <span class="lbl">Celková zásoba</span>
-    <span class="k-val">{{ kpi_total_mass|floatformat:1 }} <span class="k-unit">kg</span></span>
-    <span class="k-sub">součet všech poboček</span>
-  </div>
-  <div class="kpi">
-    <span class="lbl">Dochází zboží</span>
-    <span class="k-val">{{ kpi_low_stock }}</span>
-    <span class="k-sub">pod nastaveným prahem</span>
-  </div>
-</section>
-
-<div class="card row between">
+<div class="row between" style="margin-bottom:1rem;">
   <div>
-    {% if to_resolve_count %}
-      <strong>K vyřešení: {{ to_resolve_count }}</strong>
-    {% else %}
-      <span style="color:var(--ok);">K vyřešení dnes nic není.</span>
-    {% endif %}
+    <h1 style="margin-bottom:.2rem;">Přehled <span class="muted" style="font-weight:500;">— {{ user.email }}</span></h1>
+    <p class="asof">Stav k {% now "d. m. Y H:i" %}</p>
   </div>
   <div class="actions">
     <a class="secondary" href="{% url 'inventory:prijem_create' %}">Nový příjem</a>
@@ -42,128 +64,190 @@
   </div>
 </div>
 
-{% include "inventory/_low_stock_panel.html" %}
+<section class="kpis" aria-label="Přehledové ukazatele">
+  <div class="kpi err">
+    <span class="lbl">Vyprodáno</span>
+    <span class="k-val">{{ kpi_empty }}</span>
+    <span class="k-sub">{% if kpi_empty_breakdown %}{{ kpi_empty_breakdown }}{% else %}úplně došlo{% endif %}</span>
+  </div>
+  <div class="kpi warn">
+    <span class="lbl">Dochází</span>
+    <span class="k-val">{{ kpi_low }}</span>
+    <span class="k-sub">{% if kpi_low_breakdown %}{{ kpi_low_breakdown }}{% else %}k doobjednání{% endif %}</span>
+  </div>
+  <div class="kpi ordered">
+    <span class="lbl">Objednáno</span>
+    <span class="k-val">{{ kpi_ordered }}</span>
+    <span class="k-sub">{% if kpi_ordered_breakdown %}{{ kpi_ordered_breakdown }} · na cestě{% else %}na cestě{% endif %}</span>
+  </div>
+  <div class="kpi">
+    <span class="lbl">K vyřešení</span>
+    <span class="k-val">{{ to_resolve_count }}</span>
+    <span class="k-sub">e-mail · dodák</span>
+  </div>
+</section>
+
+<div class="grid-2">
+  {% for panel in branch_panels %}
+    <section class="branch-card" aria-label="Pobočka {{ panel.branch.code }}">
+      <div class="branch-top">
+        <div>
+          <h2 class="branch-head">
+            <a href="{% url 'inventory:branch_dashboard' code=panel.branch.code %}" style="color:inherit;text-decoration:none;">
+              <span class="b-code">{{ panel.branch.code }}</span> — {{ panel.branch.name }}
+            </a>
+          </h2>
+          <p class="branch-sum">{{ panel.product_count }} produktů · <span class="num" style="display:inline;">{{ panel.total_mass|floatformat:1 }}</span> kg skladem</p>
+        </div>
+        {% if can_order %}
+          <a class="secondary inv-btn" href="{% url 'inventory:inventura_edit' code=panel.branch.code %}">Inventura {{ panel.branch.code }} →</a>
+        {% endif %}
+      </div>
+
+      {% if panel.empty_rows %}
+        <div class="sub-head empty"><span class="dot"></span>Vyprodáno</div>
+        <table class="lines" style="margin-bottom:.4rem;">
+          <thead><tr><th>Produkt</th><th style="text-align:right;">Efektivně / Práh</th></tr></thead>
+          <tbody>
+            {% for r in panel.empty_rows %}
+              <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=r.product.pk %}">
+                <td><span class="prod-name">{{ r.product.name_cs }}</span></td>
+                <td class="num"><span style="color:var(--error);">{{ r.effective|floatformat:1 }}</span> / {{ r.threshold|floatformat:1 }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+
+      {% if panel.low_rows %}
+        <div class="sub-head low"><span class="dot"></span>Dochází</div>
+        <table class="lines" style="margin-bottom:.4rem;">
+          <thead><tr><th>Produkt</th><th style="text-align:right;">Efektivně / Práh</th><th style="text-align:right;">Schodek</th></tr></thead>
+          <tbody>
+            {% for r in panel.low_rows %}
+              <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=r.product.pk %}">
+                <td><span class="prod-name">{{ r.product.name_cs }}</span></td>
+                <td class="num">{{ r.effective|floatformat:1 }} / {{ r.threshold|floatformat:1 }}</td>
+                <td class="num" style="color:var(--warn);">{{ r.deficit|floatformat:1 }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+
+      {% if panel.ordered_rows %}
+        <div class="sub-head ordered"><span class="dot"></span>Objednáno</div>
+        <table class="lines" style="margin-bottom:0;">
+          <thead><tr><th>Produkt</th><th style="text-align:right;">Efektivně / Práh</th><th style="text-align:right;">Objednáno</th></tr></thead>
+          <tbody>
+            {% for r in panel.ordered_rows %}
+              <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=r.product.pk %}">
+                <td><span class="prod-name">{{ r.product.name_cs }}</span></td>
+                <td class="num">{{ r.effective|floatformat:1 }} / {{ r.threshold|floatformat:1 }}</td>
+                <td class="num">{{ r.ordered_kg|floatformat:1 }} kg · {{ r.ordered_eta|date:"d. m." }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+
+      {% if not panel.empty_rows and not panel.low_rows and not panel.ordered_rows %}
+        <p class="branch-ok">Vše nad objednacím bodem. Nic k doobjednání.</p>
+      {% endif %}
+    </section>
+  {% endfor %}
+</div>
 
 {% if failed_dodaky or edited_dodaky %}
-<div class="card">
-  <h2 style="font-size:1.05rem;margin-top:0;">K vyřešení</h2>
-  {% if failed_dodaky %}
-    <p style="margin-bottom:0.5rem;color:var(--error);"><strong>Nedoručené e-maily</strong></p>
-    <ul style="margin-top:0;">
-      {% for item in failed_dodaky %}
-        <li>
-          <a href="{% url 'inventory:dodaci_list_detail' cislo=item.dodaci_list.cislo %}">
-            {{ item.dodaci_list.cislo }}
-          </a> — {{ item.dodaci_list.odberatel.name }} — naposledy selhalo
-          {{ item.last_failed.sent_at|date:"d. m. Y H:i" }}
-          {% if item.last_failed.error_message %}
-            <span style="color:var(--fg-soft);">({{ item.last_failed.error_message|truncatechars:60 }})</span>
-          {% endif %}
-        </li>
-      {% endfor %}
-    </ul>
-  {% endif %}
-  {% if edited_dodaky %}
-    <p style="margin-bottom:0.5rem;color:var(--warn);"><strong>Nedávno editované dodáky</strong></p>
-    <ul style="margin-top:0;">
-      {% for dl in edited_dodaky %}
-        <li>
-          <a href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">
-            {{ dl.cislo }}
-          </a> — {{ dl.odberatel.name }} — v{{ dl.current_version }}
-        </li>
-      {% endfor %}
-    </ul>
-  {% endif %}
-</div>
+<section class="card" aria-label="K vyřešení">
+  <h2 style="font-size:1.05rem;margin:0 0 .6rem;">K vyřešení</h2>
+  <ul class="task-list">
+    {% for item in failed_dodaky %}
+      <li>
+        <span class="t-badge mail">Nedoručený&nbsp;e-mail</span>
+        <span class="t-body">
+          <strong>{{ item.dodaci_list.cislo }}</strong> — {{ item.dodaci_list.odberatel.name }}<br>
+          <span class="t-sub">
+            Odeslání selhalo {{ item.last_failed.sent_at|date:"d. m. Y H:i" }}
+            {% if item.last_failed.error_message %}({{ item.last_failed.error_message|truncatechars:60 }}){% endif %}
+          </span>
+        </span>
+        <span class="t-actions">
+          <form method="post" action="{% url 'inventory:dodaci_list_resend' cislo=item.dodaci_list.cislo %}">
+            {% csrf_token %}
+            <button type="submit" class="primary js-confirm"
+                    data-confirm-danger="false"
+                    data-confirm-title="Odeslat dodací list znovu?"
+                    data-confirm-body="Znovu odeslat e-mail s dodacím listem {{ item.dodaci_list.cislo }}?"
+                    data-confirm-cta="Odeslat znovu">Zkusit odeslat znovu</button>
+          </form>
+        </span>
+      </li>
+    {% endfor %}
+    {% for dl in edited_dodaky %}
+      <li>
+        <span class="t-badge edit">Editovaný&nbsp;dodák</span>
+        <span class="t-body">
+          <strong>{{ dl.cislo }}</strong> — {{ dl.odberatel.name }}<br>
+          <span class="t-sub">Upraveno na verzi v{{ dl.current_version }} — zkontrolovat</span>
+        </span>
+        <span class="t-actions">
+          <a class="secondary" href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">Otevřít dodák →</a>
+        </span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
 {% endif %}
 
 <div class="grid-2">
   {% for panel in branch_panels %}
-    <div class="card">
-      <h2 style="font-size:1.05rem;margin-top:0;">
-        <a href="{% url 'inventory:branch_dashboard' code=panel.branch.code %}"
-           style="color:inherit;text-decoration:none;">
-          {{ panel.branch.code }} — {{ panel.branch.name }}
-        </a>
-      </h2>
-      {% if panel.branch.address %}
-        <p style="color:var(--fg-soft);margin-top:0;">{{ panel.branch.address }}</p>
-      {% endif %}
-      <p>
-        <strong>{{ panel.product_count }}</strong> produktů skladem,
-        celkem <strong style="font-variant-numeric:tabular-nums;">{{ panel.total_mass|floatformat:1 }}</strong> kg.
-      </p>
+    <section class="branch-card" aria-label="{{ panel.branch.code }} — poslední aktivita">
+      <h2 class="branch-head" style="margin:0 0 .3rem;"><span class="b-code">{{ panel.branch.code }}</span> — poslední aktivita</h2>
 
-      {% if panel.top_stocks %}
+      <h3 class="feed-sub">Poslední pohyby</h3>
+      {% if panel.recent_movements %}
         <table class="lines">
-          <thead>
-            <tr><th>Produkt</th><th style="text-align:right;">Kg</th></tr>
-          </thead>
+          <thead><tr><th>Datum</th><th>Druh</th><th>Protistrana</th><th style="text-align:right;">Pol.</th></tr></thead>
           <tbody>
-            {% for s in panel.top_stocks %}
-              <tr>
-                <td>{{ s.product.name_cs }}</td>
-                <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ s.quantity|floatformat:1 }}</td>
+            {% for mv in panel.recent_movements %}
+              <tr class="row-link" data-href="{% url 'inventory:movement_edit' pk=mv.pk %}">
+                <td>{{ mv.date_issued|date:"d. m." }}</td>
+                <td>{{ mv.get_kind_display }}</td>
+                <td>{% if mv.kind == "vydej" %}{{ mv.odberatel.name }}{% else %}{{ mv.dodavatel.name }}{% endif %}</td>
+                <td class="num">{{ mv.lines.count }}</td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       {% else %}
-        <p style="color:var(--fg-soft);">Zatím žádné zboží na skladě.</p>
-      {% endif %}
-
-      <h3 style="font-size:0.95rem;margin-bottom:0.25rem;">Nedávné pohyby</h3>
-      {% if panel.recent_movements %}
-        <ul style="margin-top:0;padding-left:1.2rem;">
-          {% for mv in panel.recent_movements %}
-            <li>
-              <a href="{% url 'inventory:movement_edit' pk=mv.pk %}">
-                {{ mv.date_issued|date:"d. m." }} ·
-                {{ mv.get_kind_display }} ·
-                {% if mv.kind == "vydej" %}{{ mv.odberatel.name }}{% else %}{{ mv.dodavatel.name }}{% endif %}
-                · {{ mv.lines.count }} pol.
-              </a>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
         <p style="color:var(--fg-soft);">Zatím žádné pohyby.</p>
       {% endif %}
-    </div>
-  {% endfor %}
-</div>
 
-<div class="card">
-  <h2 style="font-size:1.05rem;margin-top:0;">Dodací listy k revizi</h2>
-  {% if recent_dodaky %}
-    <table class="lines">
-      <thead>
-        <tr>
-          <th>Číslo</th>
-          <th>Datum</th>
-          <th>Pobočka</th>
-          <th>Odběratel</th>
-          <th>Verze</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for dl in recent_dodaky %}
-          <tr class="row-link" data-href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">
-            <td>{{ dl.cislo }}</td>
-            <td>{{ dl.date_issued|date:"d. m. Y" }}</td>
-            <td>{{ dl.branch.code }}</td>
-            <td>{{ dl.odberatel.name }}</td>
-            <td>{% if dl.is_edited %}<span style="color:var(--warn);">v{{ dl.current_version }}</span>{% else %}v1{% endif %}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <p>
-      <a class="secondary" href="{% url 'inventory:dodaci_list_index' %}">Celý seznam</a>
-    </p>
-  {% else %}
-    <p style="color:var(--fg-soft);">Zatím nebyly vystaveny žádné dodací listy.</p>
-  {% endif %}
+      <h3 class="feed-sub">Poslední dodací listy</h3>
+      {% if panel.recent_dodaky %}
+        <table class="lines">
+          <thead><tr><th>Číslo</th><th>Datum</th><th>Odběratel</th><th>Verze</th></tr></thead>
+          <tbody>
+            {% for dl in panel.recent_dodaky %}
+              <tr class="row-link" data-href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">
+                <td>{{ dl.cislo }}</td>
+                <td>{{ dl.date_issued|date:"d. m." }}</td>
+                <td>{{ dl.odberatel.name }}</td>
+                <td>{% if dl.is_edited %}<span style="color:var(--warn);">v{{ dl.current_version }}</span>{% else %}v1{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p style="color:var(--fg-soft);">Zatím žádné dodací listy.</p>
+      {% endif %}
+
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+        <a class="secondary" href="{% url 'inventory:movement_history' %}?branch={{ panel.branch.pk }}">Celá historie →</a>
+        <a class="secondary" href="{% url 'inventory:dodaci_list_index' %}?branch={{ panel.branch.pk }}">Dodací listy →</a>
+      </div>
+    </section>
+  {% endfor %}
 </div>
 {% endblock %}

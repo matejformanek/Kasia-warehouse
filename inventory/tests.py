@@ -1905,10 +1905,11 @@ def test_dashboard_clean_morning(user_tyn) -> None:
     response = client.get("/sklad/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
-    assert "K vyřešení dnes nic není" in body
     assert "TYN" in body and "SEZ" in body
-    assert "Zatím žádné zboží na skladě" in body
-    assert "Zatím nebyly vystaveny žádné dodací listy" in body
+    # Clean state: nothing below threshold, no activity yet.
+    assert "Vše nad objednacím bodem" in body
+    assert "Zatím žádné pohyby" in body
+    assert "Zatím žádné dodací listy" in body
 
 
 @pytest.mark.django_db
@@ -1922,10 +1923,13 @@ def test_dashboard_shows_branch_stock(user_tyn, tyn, sez, pepper, paprika) -> No
     response = client.get("/sklad/")
     body = response.content.decode("utf-8")
     # TYN total = 11.0 kg with 2 products; SEZ total = 1.5 kg with 1
-    # product. Displayed at 1 dp with a Czech comma (per 0061).
+    # product. Displayed at 1 dp with a Czech comma (per 0061). The Přehled
+    # shows per-branch totals + product counts (the full stock list lives on
+    # the branch dashboard, not here).
     assert "11,0" in body
     assert "1,5" in body
-    assert pepper.name_cs in body
+    assert "2 produktů" in body
+    assert "1 produktů" in body
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1936,7 +1940,7 @@ def test_dashboard_lists_recent_dodaky(user_tyn, tyn, ricany, pepper) -> None:
     client.force_login(user_tyn)
     response = client.get("/sklad/")
     body = response.content.decode("utf-8")
-    assert "Dodací listy k revizi" in body
+    assert "Poslední dodací listy" in body
     assert dl.cislo in body
 
 
@@ -1960,7 +1964,7 @@ def test_dashboard_flags_edited_dodak(user_tyn, tyn, ricany, pepper) -> None:
     client.force_login(user_tyn)
     response = client.get("/sklad/")
     body = response.content.decode("utf-8")
-    assert "Nedávno editované dodáky" in body
+    assert "Editovaný" in body  # K vyřešení task badge
     # The edited dodák appears with its v2 marker.
     assert dl.cislo in body
     assert "v2" in body
@@ -1989,7 +1993,7 @@ def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch)
     client.force_login(user_tyn)
     response = client.get("/sklad/")
     body = response.content.decode("utf-8")
-    assert "Nedoručené e-maily" in body
+    assert "Nedoručený" in body  # K vyřešení task badge
     assert dl.cislo in body
     # to_resolve_count should be ≥ 1
     assert "K vyřešení" in body
@@ -2005,7 +2009,7 @@ def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch)
     )
     response2 = client.get("/sklad/")
     body2 = response2.content.decode("utf-8")
-    assert "Nedoručené e-maily" not in body2
+    assert "Nedoručený" not in body2
 
 
 @pytest.mark.django_db
@@ -2058,8 +2062,9 @@ def test_home_owner_lands_on_owner_dashboard(user_vlastnik) -> None:
     response = client.get("/sklad/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
-    # Owner dashboard markers.
-    assert "Dodací listy k revizi" in body
+    # Owner dashboard markers (KPI strip always renders).
+    assert "Vyprodáno" in body
+    assert "K vyřešení" in body
 
 
 @pytest.mark.django_db
@@ -5569,7 +5574,10 @@ def test_low_stock_panel_appears_on_owner_dashboard(
     client.force_login(user_vlastnik)
     response = client.get("/sklad/")
     assert response.status_code == 200
-    assert b"Doch\xc3\xa1z\xc3\xad zbo\xc5\xbe\xc3\xad" in response.content
+    body = response.content.decode("utf-8")
+    # Pepper is below threshold → it shows in TYN's "Dochází" group.
+    assert "Dochází" in body
+    assert pepper.name_cs in body
 
 
 # ---------------------------------------------------------------------------
@@ -7277,8 +7285,9 @@ def test_home_low_stock_panel_shows_resolve_button_and_orders_badge(
     client = Client()
     client.force_login(user_vlastnik)
     body = client.get("/sklad/").content.decode("utf-8")
-    assert "Upravit" in body
-    assert "/sklad/katalog/inventura/dochazi/" in body
+    # Per-branch Inventura button opens that branch's inventura.
+    assert "Inventura TYN" in body
+    assert "/sklad/katalog/inventura/TYN/" in body
 
     _make_planned_prijem(
         branch=tyn, product=pepper, qty=Decimal("9.000"),

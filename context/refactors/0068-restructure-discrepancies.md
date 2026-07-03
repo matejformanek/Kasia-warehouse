@@ -29,7 +29,7 @@ Anything that would is escalated here, not absorbed.
 
 | # | Location | Discrepancy | Variants | Resolution | Approved? |
 |---|----------|-------------|----------|------------|-----------|
-| _(none yet — populated during D1–D4)_ | | | | | |
+| 1 | `inventory/tests.py` (6 tests) | White-box tests monkeypatched `services.<helper>`/`services.EmailMessage`; after the services split the call-sites look those names up in submodule namespaces. | patch `services.X` vs patch where used | **Inert** — re-pointed 6 monkeypatch targets to `services.dodaci_list.*` / `services.email.*` (patch where the name is looked up). Assertions unchanged; no app-behavior change. | n/a (inert) |
 
 ## Follow-ups deferred (not fixed in this restructure)
 

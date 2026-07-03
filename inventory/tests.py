@@ -897,7 +897,7 @@ def test_apply_vydej_failed_send_writes_failed_log(
     def _raise(self, *args, **kwargs):
         raise RuntimeError("smtp down")
 
-    monkeypatch.setattr(services.EmailMessage, "send", _raise)
+    monkeypatch.setattr(services.dodaci_list.EmailMessage, "send", _raise)
 
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     mv = apply_movement(
@@ -937,7 +937,7 @@ def test_smtp_connection_helper_uses_settings_db_when_set(monkeypatch) -> None:
         captured.update(kwargs)
         return object()
 
-    monkeypatch.setattr(services, "get_connection", _fake_get_connection)
+    monkeypatch.setattr(services.email, "get_connection", _fake_get_connection)
     services._smtp_connection_from_settings(Settings.load())
 
     assert captured == {
@@ -970,7 +970,7 @@ def test_smtp_connection_helper_passes_none_for_blank_db_fields(monkeypatch) -> 
         captured.update(kwargs)
         return object()
 
-    monkeypatch.setattr(services, "get_connection", _fake_get_connection)
+    monkeypatch.setattr(services.email, "get_connection", _fake_get_connection)
     services._smtp_connection_from_settings(Settings.load())
 
     assert captured == {
@@ -1002,7 +1002,7 @@ def test_send_dodaci_list_email_calls_helper(
         calls.append(settings_obj.smtp_host)
         return real_helper(settings_obj)
 
-    monkeypatch.setattr(services, "_smtp_connection_from_settings", _spy)
+    monkeypatch.setattr(services.dodaci_list, "_smtp_connection_from_settings", _spy)
 
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     apply_movement(
@@ -1026,7 +1026,7 @@ def test_send_dodaci_list_email_failure_still_logs_failed_row(
     def _raise(self, *args, **kwargs):
         raise RuntimeError("smtp boom")
 
-    monkeypatch.setattr(services.EmailMessage, "send", _raise)
+    monkeypatch.setattr(services.dodaci_list.EmailMessage, "send", _raise)
 
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     mv = apply_movement(
@@ -1983,7 +1983,7 @@ def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch)
     def _fail(self, *args, **kwargs):
         raise RuntimeError("smtp down")
 
-    monkeypatch.setattr(services.EmailMessage, "send", _fail)
+    monkeypatch.setattr(services.dodaci_list.EmailMessage, "send", _fail)
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
     assert DodaciListEmailLog.objects.filter(
         dodaci_list=dl, status=DodaciListEmailLog.Status.FAILED

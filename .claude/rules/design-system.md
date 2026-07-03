@@ -110,9 +110,11 @@ or restructure:
   emit `\"` that `dataset` reads literally). Renaming `data-filter-rows` /
   `-count` / `-empty` / `-text`, or the `foldText` / `levenshtein` /
   `matchesQuery` helpers, is a new decision. Used on `#history-table` /
-  `#stock-table` / `#supplier-table` / `#customer-table` / `#branch-table`
-  (+ matching `-count` / `-empty`). Do **not** reuse the reserved ids
-  `#lines-table` / `#lines-body` (movement-form hook above).
+  `#stock-table` and the grouped Katalog (+ matching `-count` / `-empty`).
+  The číselníky (Dodavatelé / Odběratelé / Pobočky) carry **no** name search
+  (the locked mockups 12–14 show only the Stav filter) — the 0063 standalone
+  input added there was removed in the Phase-2 swap. Do **not** reuse the
+  reserved ids `#lines-table` / `#lines-body` (movement-form hook above).
 - **Grouped multi-tbody filter (extends 0063, per
   [`0064`](../../context/decisions/0064-grouped-catalogue-client-filter.md)):**
   `apply()` uses `querySelectorAll(data-filter-rows)`, so `data-filter-rows` may

@@ -296,9 +296,26 @@
     document.querySelectorAll("form").forEach(function (f) {
       f.addEventListener("submit", function () { dirty = false; });
     });
-    window.addEventListener("beforeunload", function (e) {
-      if (dirty) { e.preventDefault(); e.returnValue = ""; return ""; }
-    });
+    // Unsaved-changes guard using the in-app dialog (no native beforeunload,
+    // per 0061). Intercept in-app navigation links (sidebar, Zrušit, in-row
+    // "upravit") while there are unsaved edits and confirm before leaving.
+    document.addEventListener("click", async function (e) {
+      if (!dirty) return;
+      const a = e.target.closest("a[href]");
+      if (!a) return;
+      const href = a.getAttribute("href");
+      if (!href || href.charAt(0) === "#" || href.indexOf("javascript:") === 0) return;
+      if (a.target && a.target !== "_self") return;  // new-tab links leave the page intact
+      e.preventDefault();
+      e.stopPropagation();
+      const ok = await window.kasiaConfirm({
+        title: "Neuložené změny",
+        body: "Máte rozdělané změny inventury, které se neuložily. Opravdu odejít bez uložení?",
+        cta: "Odejít bez uložení",
+        danger: true,
+      });
+      if (ok) { dirty = false; window.location = a.href; }
+    }, true);
 
     // Type-to-filter over the product name (its own filter, not the 0063 hook).
     const filter = document.getElementById("inventura-filter");

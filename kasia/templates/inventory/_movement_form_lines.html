@@ -7,9 +7,11 @@ Context:
 {% endcomment %}
 {{ formset.management_form }}
 
-{# Shared movement-form chrome (výdej + příjem): numbered step heads, 2-col
-   header grid, running summary, roomy line inputs. Defined once here since
-   both forms include this partial. #}
+{% comment %}
+Shared movement-form chrome (výdej + příjem): numbered step heads, 2-col
+header grid, running summary, roomy line inputs. Defined once here since both
+forms include this partial.
+{% endcomment %}
 <style>
   .step-head { display: flex; align-items: center; gap: .85rem; margin: 0 0 1.3rem; }
   .step-head .step-no { flex: 0 0 auto; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; font-family: var(--mono); font-weight: 600; font-size: 1rem; }
@@ -88,8 +90,10 @@ Context:
 
   // Running summary (výdej + příjem): count non-deleted lines with a positive
   // quantity and sum the kg (1 dp, Czech comma per 0061). Writes into every
-  // .line-summary element on the page (the mid + final summaries).
-  (function () {
+  // .line-summary element on the page (the mid + final summaries). Wired on
+  // DOMContentLoaded because the final summary sits later in the DOM than this
+  // partial's inline <script>, so it isn't parsed yet when this runs.
+  document.addEventListener("DOMContentLoaded", function () {
     const body = document.getElementById("lines-body");
     const targets = document.querySelectorAll(".line-summary");
     if (!body || !targets.length) return;
@@ -113,7 +117,7 @@ Context:
       if (e.target.closest(".row-delete-btn")) queueMicrotask(refresh);
     });
     refresh();
-  })();
+  });
 </script>
 
 {% if show_stock_warn %}

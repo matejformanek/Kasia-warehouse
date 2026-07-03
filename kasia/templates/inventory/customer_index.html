@@ -6,8 +6,6 @@
 <style>
   .filterbar { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; width: 100%; }
   .filterbar .field { margin-bottom: 0; }
-  #customer-table tbody tr:nth-child(even) td { background: #ebebeb; }
-  #customer-table tbody tr:hover td { background: #e2e5e2; }
   .ico { font-family: var(--mono); font-variant-numeric: tabular-nums; }
   .stav-ok { color: var(--ok); font-weight: 600; }
   .stav-arch { color: var(--fg-faint); }
@@ -33,15 +31,6 @@
     <a class="primary" href="{% url 'inventory:customer_create' %}">+ Nový odběratel</a>
   </div>
 </form>
-
-{# Standalone (out-of-form) live name filter per 0063 — kept outside the
-   status <form> so an accidental Enter can't submit + lose the typed text. #}
-<div style="margin-bottom:0.75rem;">
-  <input type="search" placeholder="Hledat podle názvu, IČO nebo e-mailu…"
-         style="min-width:280px;"
-         data-filter-rows="#customer-table tbody"
-         data-filter-empty="#customer-empty">
-</div>
 
 <p style="color:var(--fg-soft);">Nalezeno: {{ customers|length }} odběratelů.</p>
 
@@ -105,7 +94,6 @@
       {% endfor %}
     </tbody>
   </table>
-  <p id="customer-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá hledání.</p>
 {% else %}
   <p style="color:var(--fg-soft);">Žádní odběratelé v tomto filtru.</p>
 {% endif %}

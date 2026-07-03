@@ -239,7 +239,8 @@
 
 {% if recipe %}
 <form class="card" id="recipe-scaler" onsubmit="return false;"
-      data-pdf-base="{% url 'inventory:recipe_pdf' pk=product.pk %}">
+      data-pdf-base="{% url 'inventory:recipe_pdf' pk=product.pk %}"
+      data-mix-base="{% url 'inventory:mixing_job_create' %}?mixture={{ product.pk }}">
   <h2 style="font-size:1.05rem;margin-top:0;">Spočítat dávku</h2>
   <p style="color:var(--fg-soft);font-size:0.9rem;">
     Zvolte cílové množství směsi — v tabulce uvidíte, kolik každé suroviny
@@ -280,7 +281,11 @@
     </tbody>
   </table>
   <div class="actions" style="margin-top:1rem;">
-    <a class="primary" id="recipe-pdf-link"
+    <a class="primary" id="recipe-mix-link"
+       href="{% url 'inventory:mixing_job_create' %}?mixture={{ product.pk }}">
+      Zahájit míchání s tímto množstvím →
+    </a>
+    <a class="secondary" id="recipe-pdf-link"
        href="{% url 'inventory:recipe_pdf' pk=product.pk %}"
        target="_blank" rel="noopener">Stáhnout recepturu (PDF)</a>
   </div>
@@ -293,6 +298,8 @@
     const outs = form.querySelectorAll(".recipe-scaler-out");
     const pdf = document.getElementById("recipe-pdf-link");
     const pdfBase = form.dataset.pdfBase;
+    const mix = document.getElementById("recipe-mix-link");
+    const mixBase = form.dataset.mixBase;
     function currentQty() {
       // Accept both "12.5" and Czech "12,5".
       return parseFloat(String(target.value).replace(",", ".").trim());
@@ -310,6 +317,10 @@
       });
       if (pdf && pdfBase) {
         pdf.href = ok ? pdfBase + "?qty=" + encodeURIComponent(t) : pdfBase;
+      }
+      // Start-mixing link carries the chosen batch size as target_qty prefill.
+      if (mix && mixBase) {
+        mix.href = ok ? mixBase + "&target_qty=" + encodeURIComponent(t) : mixBase;
       }
     }
     target.addEventListener("input", recompute);

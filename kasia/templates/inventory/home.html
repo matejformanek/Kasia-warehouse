@@ -36,8 +36,8 @@
   .sub-head.ordered .dot { background: var(--accent); }
   .branch-ok { color: var(--fg-soft); font-size: .9rem; margin: .5rem 0 0; }
 
-  .feed-sub { margin: 1rem 0 .35rem; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-faint); font-weight: 700; }
-  .feed-sub:first-of-type { margin-top: 0; }
+  .feed-sub { margin: 1.8rem 0 .4rem; padding-top: 1rem; border-top: 1px solid var(--line-soft); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-faint); font-weight: 700; }
+  .feed-sub:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
 
   .task-list { list-style: none; margin: 0; padding: 0; }
   .task-list li { display: flex; gap: .7rem; align-items: center; padding: .7rem 0; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap; }
@@ -166,7 +166,7 @@
       <li>
         <span class="t-badge mail">Nedoručený&nbsp;e-mail</span>
         <span class="t-body">
-          <strong>{{ item.dodaci_list.cislo }}</strong> — {{ item.dodaci_list.odberatel.name }}<br>
+          <a href="{% url 'inventory:dodaci_list_detail' cislo=item.dodaci_list.cislo %}"><strong>{{ item.dodaci_list.cislo }}</strong></a> — {{ item.dodaci_list.odberatel.name }}<br>
           <span class="t-sub">
             Odeslání selhalo {{ item.last_failed.sent_at|date:"d. m. Y H:i" }}
             {% if item.last_failed.error_message %}({{ item.last_failed.error_message|truncatechars:60 }}){% endif %}

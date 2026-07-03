@@ -197,7 +197,11 @@
     color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600;
   }
   table.lines td input, table.lines td select { max-width: 100%; }
-  table.lines tbody tr:hover td { background: #fafbfa; }
+  /* Neutral grey zebra + hover-darken (design 0054 / mockups), applied to
+     every .lines table. Attention rows (over-stock, inventura .changed) carry
+     higher-specificity backgrounds below so they always win over the zebra. */
+  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  table.lines tbody tr:hover td { background: #e2e5e2; }
 
   /* ============ STOCK / MOVEMENT WIDGETS ============ */
   /* Výdej renders the live stock message in the (unused) Šarže column cell.
@@ -212,9 +216,10 @@
     background: #fbe8e8; border-left: 3px solid var(--error);
     padding: 0.3rem 0.45rem; margin-top: 0.35rem;
   }
-  /* Whole-row highlight while a výdej line exceeds branch stock. */
-  .line-row.over-stock > td { background: #fbe8e8; }
-  .line-row.over-stock:hover > td { background: #f7dcdc; }
+  /* Whole-row highlight while a výdej line exceeds branch stock. Selector is
+     specific enough to beat the table.lines zebra above on even rows. */
+  table.lines tbody tr.line-row.over-stock td { background: #fbe8e8; }
+  table.lines tbody tr.line-row.over-stock:hover td { background: #f7dcdc; }
   .recipients {
     background: var(--accent-tint); border-left: 3px solid var(--accent);
     padding: 0.5rem 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;

@@ -51,10 +51,13 @@ performs all day — record a příjem, record a výdej, look up a product.
   výdeje per
   [`decisions/0030-vydej-default-ricany-supersedes-0004.md`](../decisions/0030-vydej-default-ricany-supersedes-0004.md)),
   and operator name.
-- Quick-action buttons: "Nový příjem", "Nový výdej". (A výdej to
-  Říčany is just "Nový výdej" with the default odběratel — no
+- Quick-action buttons (top-right): "Inventura", "Nový příjem", "Nový výdej".
+  (A výdej to Říčany is just "Nový výdej" with the default odběratel — no
   separate quick-action per
   [`decisions/0030-vydej-default-ricany-supersedes-0004.md`](../decisions/0030-vydej-default-ricany-supersedes-0004.md).)
+  The **Inventura** button opens this branch's inventura — available to the
+  branch operator for their **own** branch per
+  [`decisions/0073-obsluha-own-branch-inventura.md`](../decisions/0073-obsluha-own-branch-inventura.md).
 
 ## What you can do here
 - Search and scroll the stock list.
@@ -71,6 +74,10 @@ performs all day — record a příjem, record a výdej, look up a product.
   switch to a different customer with one click.
 - Open the full [Historie pohybů](10-historie-pohybu.md) for this
   branch via a "celá historie" link.
+- Open **Inventura** for this branch (top-right button / sidebar) to count and
+  correct stock. Branch staff may run it for their **own** branch only per
+  [`decisions/0073-obsluha-own-branch-inventura.md`](../decisions/0073-obsluha-own-branch-inventura.md);
+  the cross-branch "Vše" / "Dochází zboží" roll-ups stay owner-only.
 
 ## What it links to / from
 - Reached from:

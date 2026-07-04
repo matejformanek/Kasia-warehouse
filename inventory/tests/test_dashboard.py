@@ -288,6 +288,17 @@ def test_branch_dashboard_groups_by_stock_state(user_obsluha_tyn, tyn) -> None:
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_has_inventura_button(user_obsluha_tyn, tyn) -> None:
+    # Per 0073: the Přehled links obsluha to their own-branch inventura.
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    body = client.get("/sklad/pobocka/TYN/").content.decode("utf-8")
+    assert "/katalog/inventura/TYN/" in body
+    assert ">Inventura<" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_branch_dashboard_unstocked_product_is_empty(
     user_obsluha_tyn, tyn, pepper
 ) -> None:

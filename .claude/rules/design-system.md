@@ -302,16 +302,29 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   flatten this back to a plain status-badge table** or rename the shared group
   hooks; that is a new decision.
 - **Inventura** (per
-  [`0065`](../../context/decisions/0065-inventura-sidebar-nav.md)) has a
-  **vlastník-only** sidebar + mobile nav item in the Provoz group, under Katalog.
-  Its href is conditional in `base.html`: the user's own branch
-  (`inventura_edit code=<user.branch.code>`) if they have one, else the
-  all-branch **"Vše"** (`code='vse'`). No new view/chooser. A **single-branch**
-  inventura carries a **"Dochází"** checkbox next to the name filter that scopes
-  the visible rows to products below their reorder threshold at that branch
-  (`data-low` row attr from `low_stock_rows()`, ANDed with the name query in the
-  screen's own custom filter — not the 0063 `data-filter-*` hook). Hidden on the
-  cross-branch "Vše" / "Dochází zboží" views.
+  [`0065`](../../context/decisions/0065-inventura-sidebar-nav.md), access
+  amended by [`0073`](../../context/decisions/0073-obsluha-own-branch-inventura.md))
+  has a sidebar + mobile nav item in the Provoz group, under Katalog, shown for
+  **`is_vlastnik or is_obsluha`**. Its href is conditional in `base.html`: the
+  user's own branch (`inventura_edit code=<user.branch.code>`) if they have one,
+  else the all-branch **"Vše"** (`code='vse'`). No new view/chooser. A
+  **single-branch** inventura carries a **"Dochází"** checkbox next to the name
+  filter that scopes the visible rows to products below their reorder threshold
+  at that branch (`data-low` row attr from `low_stock_rows()`, ANDed with the
+  name query in the screen's own custom filter — not the 0063 `data-filter-*`
+  hook). Hidden on the cross-branch "Vše" / "Dochází zboží" views.
+  - **Obsluha access (0073) — hard constraint.** `inventura_edit` lets an
+    **obsluha run inventura only for their OWN branch** (the full editor —
+    `[STAV]` corrections **and** dated objednávky); the cross-branch **"Vše"**
+    (`vse`) / **"Dochází zboží"** (`dochazi`) views and any other branch code
+    raise **403** for a non-vlastník. The inventura template's **branch switcher
+    / Vše / Dochází links are `{% if user.is_vlastnik %}`-gated** (obsluha would
+    403 on them); the single-branch "Dochází" **toggle** stays available to
+    obsluha. The branch **Přehled** (`branch_dashboard`) carries a top-right
+    **Inventura** button (`.inv-btn`, orange) → `inventura_edit code=branch.code`.
+    The Katalog's own `cta-inventura` button stays **vlastník-only**. Don't
+    re-restrict inventura to vlastník-only or widen obsluha to cross-branch —
+    that's a new decision.
 
 ## Dodací listy are obsluha own-branch scoped (per 0040)
 

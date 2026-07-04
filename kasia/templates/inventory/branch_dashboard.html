@@ -39,6 +39,7 @@
     Zboží na této pobočce (stav k {% now "d. m. Y H:i" %}). Klikněte na řádek pro detail produktu.
   </div>
   <div class="actions">
+    <a class="secondary inv-btn" href="{% url 'inventory:inventura_edit' code=branch.code %}">Inventura</a>
     <a class="secondary" href="{% url 'inventory:prijem_create' %}">Nový příjem</a>
     <a class="primary" href="{% url 'inventory:vydej_create' %}">Nový výdej</a>
   </div>

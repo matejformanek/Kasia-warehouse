@@ -33,6 +33,16 @@
     `#stock-table` rules dropped from `pages/branch_dashboard.css`.
   - Docs: `design-system.md` (CSS layer order + grouped Přehled + dodací locked
     contract), `context/screens/03-prehled-pobocky.md` (grouped stock list).
+  - **P3 — obsluha own-branch inventura ([`0073`](./decisions/0073-obsluha-own-branch-inventura.md),
+    amends 0040 + 0065).** `inventura_edit` now lets an **obsluha run the full
+    inventura (stock corrections + objednávky) for their OWN branch only** —
+    cross-branch "Vše"/"Dochází" and other-branch codes raise 403 for non-vlastník.
+    Nav Inventura item shown for `is_vlastnik or is_obsluha`; inventura template's
+    branch switcher gated vlastník-only; branch **Přehled** gains a top-right
+    orange **Inventura** button. Katalog `cta-inventura` stays vlastník-only.
+    Tests: obsluha own-branch 200 + POST correction writes `[STAV]`; 403 on
+    other-branch / vse / dochazi; Přehled button present. Petr opted obsluha into
+    the objednávka (Příjezd) column.
 - **2026-07-04** — **Walkthrough feedback batch 1** on `ft_inv_walkthrough_fixes`
   (off post-restructure `main`). Three fixes from the live prod walkthrough:
   - **Part A — inventura phantom edit (no decision; aligns

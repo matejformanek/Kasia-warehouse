@@ -30,9 +30,18 @@
     thresholds on None-or-0. Mailing (`send_low_stock_summary`) untouched (separate
     session). New tests: default 0, empty grouping, product_detail 0, migration
     backfill.
+  - **Follow-up (same PR) — unsaved-changes guard on data-entry forms.** Leaving
+    příjem/výdej with a half-filled form via an in-page link dropped the work
+    silently (only inventura confirmed). Added a reusable opt-in guard
+    (`data-guard-unsaved` on a `<form>`) in `_confirm_dialog.html`; wired on
+    příjem/výdej/míchání/plánovaný převod+míchání/produkt/číselníky/nastavení/
+    úprava stavu/potvrzení plánovaného příjmu. inventura keeps its own bespoke
+    guard (no double dialog). Documented in `design-system.md`. No decision (a
+    mechanism consistent with 0061's no-native-dialogs).
   - Gates green: **411 pass · ruff · check · makemigrations no-changes ·
-    collectstatic**. Still to do: push, PR, merge→prod, mark the 3 Podpora entries
-    **Vyřešit** after deploy.
+    collectstatic**; guard IIFE `node --check` OK; rendered-HTML check confirms
+    exactly one guarded `<form>` per page and inventura unguarded. Still to do:
+    push, merge→prod, mark the 3 Podpora entries **Vyřešit** after deploy.
 - **2026-07-03** — **Restructure Round 2 (inert-only) complete on
   `ft_arch_restructure` (PR #26).** Decision
   [`0070`](./decisions/0070-round2-structure-refinements.md) (the gate — drafted +

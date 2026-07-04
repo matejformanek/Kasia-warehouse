@@ -5,6 +5,34 @@
 
 ## Done
 
+- **2026-07-04** — **Walkthrough feedback batch 1** on `ft_inv_walkthrough_fixes`
+  (off post-restructure `main`). Three fixes from the live prod walkthrough:
+  - **Part A — inventura phantom edit (no decision; aligns
+    [`0061`](./decisions/0061-display-1dp-comma.md)).** Display used HALF_UP
+    (`floatformat:1`) but prefill used `f"{x:.1f}"` HALF_EVEN and `data-current`
+    the raw 3 dp → a `.x5` row (45,45) loaded looking edited and re-submitted as a
+    spurious `[STAV]` correction. Now a shared `_kg1()` HALF_UP-1dp helper drives
+    display / prefill / `data-current` / server no-op compare from one value;
+    `current_1dp` exposed in every row-building path; `data-current` → `current_1dp`.
+    `.x5` regression test added. Rounding mandate + `f"{x:.1f}"` ban recorded in
+    `design-system.md`.
+  - **Part B — [`0071`](./decisions/0071-prijem-dedup-products.md).** Příjem now
+    blocks duplicate products across lines like výdej. `refreshProductOptions()`
+    moved to an always-run IIFE in `_movement_form_lines.html`; stock-warn block's
+    listeners call `recompute()` directly. Client-side only (server unchanged).
+    Reverses the "repeatable products for multiple batches" line.
+  - **Part C — [`0072`](./decisions/0072-reorder-threshold-not-null.md)
+    (supersedes part of [`0043`](./decisions/0043-reorder-threshold.md)).**
+    `Product.reorder_threshold_kg` → `null=False, default 0`; migration `0018`
+    backfills NULLs→0 before the `AlterField`. `ProductForm` coerces empty→0.
+    Katalog `_is_empty` drops the threshold gate — effective ≤ 0 always groups as
+    "Prázdné". product_detail drops dead `is not None` guards; seed gates demo
+    thresholds on None-or-0. Mailing (`send_low_stock_summary`) untouched (separate
+    session). New tests: default 0, empty grouping, product_detail 0, migration
+    backfill.
+  - Gates green: **411 pass · ruff · check · makemigrations no-changes ·
+    collectstatic**. Still to do: push, PR, merge→prod, mark the 3 Podpora entries
+    **Vyřešit** after deploy.
 - **2026-07-03** — **Restructure Round 2 (inert-only) complete on
   `ft_arch_restructure` (PR #26).** Decision
   [`0070`](./decisions/0070-round2-structure-refinements.md) (the gate — drafted +

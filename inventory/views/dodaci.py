@@ -24,15 +24,37 @@ from ..services import (
 from ._shared import _dl_failed_at_current_version
 
 
+def _deny_other_branch(request, branch_id):
+    """403 if an obsluha tries to reach a dodák outside their own branch.
+    Mirrors the `movement_history` / `branch_dashboard` own-branch scoping
+    (decision 0040 §"obsluha sees only own-branch documents")."""
+    if request.user.is_obsluha and request.user.branch_id != branch_id:
+        return HttpResponse(
+            "Nemáte oprávnění zobrazit tento dodací list.",
+            status=403,
+            content_type="text/plain; charset=utf-8",
+        )
+    return None
+
+
 @require_GET
 def dodaci_list_index(request):
     qs = DodaciList.objects.select_related("branch", "odberatel", "created_by")
-    branch_id = request.GET.get("branch") or ""
     year = request.GET.get("year") or ""
     edited_only = request.GET.get("edited") == "1"
 
-    if branch_id:
-        qs = qs.filter(branch_id=branch_id)
+    # Branch scoping — obsluha is forced to own branch (0040); the branch
+    # filter/dropdown is only for vlastník. Mirrors movement_history.
+    if request.user.is_obsluha and request.user.branch_id:
+        qs = qs.filter(branch_id=request.user.branch_id)
+        branch_locked = request.user.branch
+        branch_id = ""
+    else:
+        branch_locked = None
+        branch_id = request.GET.get("branch") or ""
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
+
     if year:
         qs = qs.filter(year_issued=year)
     if edited_only:
@@ -56,6 +78,7 @@ def dodaci_list_index(request):
             "filter_branch": branch_id,
             "filter_year": year,
             "filter_edited": edited_only,
+            "branch_locked": branch_locked,
         },
     )
 
@@ -73,6 +96,9 @@ def dodaci_list_detail(request, cislo: str):
         ),
         cislo=cislo,
     )
+    denied = _deny_other_branch(request, dodaci_list.branch_id)
+    if denied is not None:
+        return denied
     lines = list(dodaci_list.movement.lines.select_related("product").order_by("id"))
     email_logs = list(
         dodaci_list.email_logs.order_by("sent_at", "id").all()
@@ -96,6 +122,9 @@ def dodaci_list_detail(request, cislo: str):
 @require_GET
 def dodaci_list_pdf(request, cislo: str):
     dodaci_list = get_object_or_404(DodaciList, cislo=cislo)
+    denied = _deny_other_branch(request, dodaci_list.branch_id)
+    if denied is not None:
+        return denied
     pdf_bytes = render_dodaci_list_pdf(dodaci_list)
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'inline; filename="{dodaci_list.cislo}.pdf"'
@@ -126,6 +155,9 @@ def recipe_pdf(request, pk: int):
 @require_POST
 def dodaci_list_resend(request, cislo: str):
     dodaci_list = get_object_or_404(DodaciList, cislo=cislo)
+    denied = _deny_other_branch(request, dodaci_list.branch_id)
+    if denied is not None:
+        return denied
     pdf_bytes = render_dodaci_list_pdf(dodaci_list)
     log = send_dodaci_list_email(
         dodaci_list=dodaci_list,

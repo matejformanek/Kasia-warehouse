@@ -14,14 +14,14 @@ from ..models import (
     DodaciList,
     DodaciListEmailLog,
     Movement,
+    Product,
     Stock,
 )
 from ..services import (
     low_stock_rows,
-    reserved_kg,
-    threshold_for,
 )
 from ._shared import _dl_failed_at_current_version
+from .catalogue import catalogue_stock_groups
 
 
 @require_GET
@@ -197,39 +197,21 @@ def branch_dashboard(request, code: str):
                 status=403,
             )
 
-    stocks_qs = (
-        Stock.objects.filter(branch=branch)
-        .select_related("product")
-        .order_by("product__name_cs")
-    )
     # Per 0063: the product search (`q`) is filtered client-side in the browser
     # over the rendered stock rows. The server only echoes the term back into
     # the input. KPIs are branch-wide (not search-scoped), so they are
     # unaffected.
     search = (request.GET.get("q") or "").strip()
-    stocks = list(stocks_qs)
-    # Threshold-aware status per 0043 + 0044. Replaces the old hardcoded
-    # `< 1 kg` near-empty marker.
-    stock_rows = []
-    for s in stocks:
-        threshold = threshold_for(s.product, branch)
-        reserved = reserved_kg(s.product, branch)
-        effective = (s.quantity - reserved).quantize(Decimal("0.001"))
-        if effective <= 0:
-            status = "prazdne"
-        elif threshold is not None and effective < threshold:
-            status = "dochazi"
-        else:
-            status = ""
-        stock_rows.append(
-            {
-                "stock": s,
-                "reserved": reserved,
-                "effective": effective,
-                "threshold": threshold,
-                "status": status,
-            }
-        )
+
+    # Stock section — the same grouped design (Prázdné / Dochází / V pořádku)
+    # the obsluha sees in the branch-scoped Katalog, via the shared helper
+    # (0064 + 0072). Iterates *all* active products (not just those with a
+    # Stock row): per 0053 creating a product seeds a 0-kg row on every active
+    # branch, so an un-stocked product surfaces as Prázdné — matching Katalog.
+    active_products = list(
+        Product.objects.filter(is_active=True).order_by("name_cs")
+    )
+    groups = catalogue_stock_groups(active_products, [branch])
 
     recent_movements = list(
         Movement.objects.filter(branch=branch, status=Movement.Status.DONE)
@@ -240,28 +222,29 @@ def branch_dashboard(request, code: str):
 
     # Per-branch KPI header (decision 0054). Computed branch-wide, not over
     # the search-filtered list, so the numbers stay stable while searching.
+    # Dochází / Prázdné come from `groups` so the header counts match the
+    # group sub-heads exactly (0064) — not from low_stock_rows().
     from django.db.models import Sum
 
     kpi_products = Stock.objects.filter(branch=branch, quantity__gt=0).count()
     kpi_total_mass = Stock.objects.filter(branch=branch).aggregate(
         s=Sum("quantity")
     )["s"] or Decimal("0.000")
-    kpi_low_stock = sum(
-        1 for r in low_stock_rows() if r.branch.pk == branch.pk
-    )
 
     return render(
         request,
         "inventory/branch_dashboard.html",
         {
             "branch": branch,
-            "stocks": stocks,
-            "stock_rows": stock_rows,
+            "empty_rows": groups["empty_rows"],
+            "low_rows": groups["low_rows"],
+            "ok_rows": groups["ok_rows"],
             "recent_movements": recent_movements,
             "search": search,
             "kpi_products": kpi_products,
             "kpi_total_mass": kpi_total_mass,
-            "kpi_low_stock": kpi_low_stock,
+            "kpi_low": groups["kpi_low"],
+            "kpi_empty": groups["kpi_empty"],
         },
     )
 

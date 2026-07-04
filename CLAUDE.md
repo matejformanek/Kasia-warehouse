@@ -28,6 +28,10 @@ decision 0067 — the mockups stay in `design-options/` but are not served.)
 3. **`.claude/rules/`** — load-bearing rules that govern how you work in this
    repo. Pay particular attention to `decision-log-discipline.md`,
    `state-file-discipline.md`, and `right-sized-for-small-business.md`.
+   **Before editing any template or CSS, read `frontend-and-templates.md`** —
+   it maps the post-0068 layout and lists the silently-wrong gotchas (e.g.
+   multi-line `{# #}` comments render as page text), two of which are enforced
+   by `inventory/tests/test_template_hygiene.py`.
 4. **`context/decisions/`** — read in numeric order. 0028–0034 supersede
    parts of 0001–0013 (Petr's 2026-06-09 brief); 0044 supersedes part
    of 0039 (reservations); 0050 + 0051 add the public site and move the

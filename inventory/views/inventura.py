@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -188,12 +188,23 @@ _INVENTURA_ALL_CODE = "vse"
 def inventura_edit(request, code: str):
     from datetime import date
 
-    _require_vlastnik(request)
-
     is_low = code.lower() == _INVENTURA_LOW_CODE
     is_all = code.lower() == _INVENTURA_ALL_CODE
     cross_branch = is_low or is_all
     all_branches = list(Branch.objects.filter(is_active=True).order_by("code"))
+
+    # Per 0073: vlastník may run any inventura (per-branch, "Vše", "Dochází").
+    # Obsluha may run inventura ONLY for their own branch — no cross-branch
+    # roll-ups, no other branch (403). The single-branch "Dochází" toggle is a
+    # client-side row filter, not a separate view, so it stays available.
+    if not request.user.is_vlastnik:
+        own_code = (
+            request.user.branch.code
+            if request.user.is_obsluha and request.user.branch_id
+            else None
+        )
+        if own_code is None or cross_branch or code.upper() != own_code:
+            raise PermissionDenied("Nemáte oprávnění k této inventuře.")
 
     branch = None
     if not cross_branch:

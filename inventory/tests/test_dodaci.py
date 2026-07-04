@@ -685,4 +685,122 @@ def test_email_log_admin_is_readonly(admin_user) -> None:
     assert response.status_code == 403
 
 
+# Obsluha branch-scoping (decision 0040 + screen 08) -----------------------
+
+
+def _make_vydej_dodak(branch, ricany, user, product, qty="1.000"):
+    """Post a výdej at `branch` and return the auto-issued DodaciList."""
+    Stock.objects.create(product=product, branch=branch, quantity=Decimal("9.000"))
+    mv = apply_movement(
+        movement=Movement(
+            branch=branch,
+            kind=Movement.Kind.VYDEJ,
+            date_issued=date(2026, 6, 12),
+            odberatel=ricany,
+        ),
+        lines=[MovementLine(product=product, quantity_kg=Decimal(qty))],
+        user=user,
+    )
+    return DodaciList.objects.get(movement=mv)
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_PLAIN_STATIC, **_LOCMEM_EMAIL)
+def test_dodaci_index_obsluha_scoped_to_own_branch(
+    user_obsluha_sez, user_tyn, tyn, sez, ricany, pepper, paprika
+) -> None:
+    dl_tyn = _make_vydej_dodak(tyn, ricany, user_tyn, pepper)
+    dl_sez = _make_vydej_dodak(sez, ricany, user_tyn, paprika)
+
+    client = Client()
+    client.force_login(user_obsluha_sez)
+    response = client.get(reverse("inventory:dodaci_list_index"))
+    body = response.content.decode("utf-8")
+    assert response.status_code == 200
+    assert "Nalezeno: 1" in body
+    assert dl_sez.cislo in body
+    assert dl_tyn.cislo not in body
+    # No branch dropdown for obsluha.
+    assert 'name="branch"' not in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_PLAIN_STATIC, **_LOCMEM_EMAIL)
+def test_dodaci_vlastnik_sees_all_branches(
+    user_vlastnik, user_tyn, tyn, sez, ricany, pepper, paprika
+) -> None:
+    dl_tyn = _make_vydej_dodak(tyn, ricany, user_tyn, pepper)
+    dl_sez = _make_vydej_dodak(sez, ricany, user_tyn, paprika)
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(reverse("inventory:dodaci_list_index"))
+    body = response.content.decode("utf-8")
+    assert "Nalezeno: 2" in body
+    assert dl_tyn.cislo in body
+    assert dl_sez.cislo in body
+    # Vlastník keeps the branch dropdown.
+    assert 'name="branch"' in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_PLAIN_STATIC, **_LOCMEM_EMAIL)
+def test_dodaci_detail_obsluha_forbidden_other_branch(
+    user_obsluha_sez, user_tyn, tyn, ricany, pepper
+) -> None:
+    dl_tyn = _make_vydej_dodak(tyn, ricany, user_tyn, pepper)
+
+    client = Client()
+    client.force_login(user_obsluha_sez)
+    response = client.get(
+        reverse("inventory:dodaci_list_detail", kwargs={"cislo": dl_tyn.cislo})
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_PLAIN_STATIC, **_LOCMEM_EMAIL)
+def test_dodaci_pdf_obsluha_forbidden_other_branch(
+    user_obsluha_sez, user_tyn, tyn, ricany, pepper
+) -> None:
+    dl_tyn = _make_vydej_dodak(tyn, ricany, user_tyn, pepper)
+
+    client = Client()
+    client.force_login(user_obsluha_sez)
+    response = client.get(
+        reverse("inventory:dodaci_list_pdf", kwargs={"cislo": dl_tyn.cislo})
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_PLAIN_STATIC, **_LOCMEM_EMAIL)
+def test_dodaci_resend_obsluha_forbidden_other_branch(
+    user_obsluha_sez, user_tyn, tyn, ricany, pepper
+) -> None:
+    dl_tyn = _make_vydej_dodak(tyn, ricany, user_tyn, pepper)
+
+    client = Client()
+    client.force_login(user_obsluha_sez)
+    response = client.post(
+        reverse("inventory:dodaci_list_resend", kwargs={"cislo": dl_tyn.cislo})
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_PLAIN_STATIC, **_LOCMEM_EMAIL)
+def test_dodaci_detail_obsluha_own_branch_ok(
+    user_obsluha_sez, user_tyn, sez, ricany, paprika
+) -> None:
+    dl_sez = _make_vydej_dodak(sez, ricany, user_tyn, paprika)
+
+    client = Client()
+    client.force_login(user_obsluha_sez)
+    response = client.get(
+        reverse("inventory:dodaci_list_detail", kwargs={"cislo": dl_sez.cislo})
+    )
+    assert response.status_code == 200
+
+
 # ---------------------------------------------------------------------------

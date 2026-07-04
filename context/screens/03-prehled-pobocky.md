@@ -17,32 +17,47 @@ performs all day — record a příjem, record a výdej, look up a product.
 ## What it shows
 - Branch name and address.
 - An "as of" timestamp making clear the data is live.
-- A **stock list** for this branch — every **product** that has a
-  non-zero or recently non-zero quantity, per
-  [`decisions/0028-mass-only-supersedes-0006.md`](../decisions/0028-mass-only-supersedes-0006.md):
-  - Product name (Czech).
-  - On-hand mass in kg per
-    [`decisions/0003-primary-unit-kg-decimals.md`](../decisions/0003-primary-unit-kg-decimals.md).
-  - A **threshold-aware status badge** per
-    [`../decisions/0043-reorder-threshold.md`](../decisions/0043-reorder-threshold.md)
-    + [`../decisions/0044-reservations-planned-states.md`](../decisions/0044-reservations-planned-states.md):
-    three states — `prázdné` (effective stock ≤ 0), `dochází` (effective
-    stock < per-(product, branch) threshold), normal (no badge).
-    *Effective* = `Stock.quantity − reserved_kg` where `reserved_kg`
-    sums PLANNED mixing job consumption and PLANNED outgoing transfers
-    from this branch. Replaces the original hardcoded "near-zero"
-    marker.
-  - A search box to filter the list by product name.
+- A **stock list** for this branch — the **same grouped design as the
+  Katalog** (per
+  [`../decisions/0064-grouped-catalogue-client-filter.md`](../decisions/0064-grouped-catalogue-client-filter.md)),
+  branch-scoped. Instead of one flat table with a status badge, products
+  are split into three grouped sections under coloured `.sub-head`
+  headers, rendered top-to-bottom (only non-empty groups appear):
+  - **Prázdné** (red) — effective stock ≤ 0, per
+    [`../decisions/0072-reorder-threshold-not-null.md`](../decisions/0072-reorder-threshold-not-null.md).
+  - **Dochází** (orange) — effective stock below the per-(product, branch)
+    reorder threshold (and not empty).
+  - **V pořádku** (neutral) — everything else.
+  *Effective* = `Stock.quantity − reserved_kg` where `reserved_kg`
+  sums PLANNED mixing job consumption and PLANNED outgoing transfers
+  from this branch, per
+  [`../decisions/0043-reorder-threshold.md`](../decisions/0043-reorder-threshold.md)
+  + [`../decisions/0044-reservations-planned-states.md`](../decisions/0044-reservations-planned-states.md).
+  Each row shows the product name (Czech), on-hand / reserved / effective
+  mass in kg per
+  [`decisions/0003-primary-unit-kg-decimals.md`](../decisions/0003-primary-unit-kg-decimals.md),
+  and the threshold. The list iterates **all active products** (not only
+  those with a non-zero quantity); an un-stocked product surfaces in
+  **Prázdné** — matching the branch-scoped Katalog the operator already
+  sees (near-moot in practice: per
+  [`decisions/0053-branch-carriage.md`](../decisions/0053-branch-carriage.md)
+  a new product is seeded with a 0-kg row on every active branch). The KPI
+  header's **Dochází / Prázdné** counts equal the group sub-head counts.
+  - A search box filters across the groups by product name (client-side,
+    diacritic-insensitive), hiding groups that end up empty.
 - A **recent movements** strip for this branch, latest first, with
   type (příjem / výdej), date, item, quantity in kg, counterparty
   (supplier or odběratel — Říčany shows as the odběratel for internal
   výdeje per
   [`decisions/0030-vydej-default-ricany-supersedes-0004.md`](../decisions/0030-vydej-default-ricany-supersedes-0004.md)),
   and operator name.
-- Quick-action buttons: "Nový příjem", "Nový výdej". (A výdej to
-  Říčany is just "Nový výdej" with the default odběratel — no
+- Quick-action buttons (top-right): "Inventura", "Nový příjem", "Nový výdej".
+  (A výdej to Říčany is just "Nový výdej" with the default odběratel — no
   separate quick-action per
   [`decisions/0030-vydej-default-ricany-supersedes-0004.md`](../decisions/0030-vydej-default-ricany-supersedes-0004.md).)
+  The **Inventura** button opens this branch's inventura — available to the
+  branch operator for their **own** branch per
+  [`decisions/0073-obsluha-own-branch-inventura.md`](../decisions/0073-obsluha-own-branch-inventura.md).
 
 ## What you can do here
 - Search and scroll the stock list.
@@ -59,6 +74,10 @@ performs all day — record a příjem, record a výdej, look up a product.
   switch to a different customer with one click.
 - Open the full [Historie pohybů](10-historie-pohybu.md) for this
   branch via a "celá historie" link.
+- Open **Inventura** for this branch (top-right button / sidebar) to count and
+  correct stock. Branch staff may run it for their **own** branch only per
+  [`decisions/0073-obsluha-own-branch-inventura.md`](../decisions/0073-obsluha-own-branch-inventura.md);
+  the cross-branch "Vše" / "Dochází zboží" roll-ups stay owner-only.
 
 ## What it links to / from
 - Reached from:

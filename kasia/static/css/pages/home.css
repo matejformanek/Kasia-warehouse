@@ -14,16 +14,11 @@
   .branch-card table.lines th, .branch-card table.lines td { padding: .55rem .6rem; }
   .prod-name { font-weight: 600; }
 
-  /* Section-level colour: header + left border; rows stay neutral. */
-  .sub-head { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: .45rem .6rem; margin: 1.3rem 0 .55rem; display: flex; align-items: center; gap: .45rem; }
+  /* Grouped-section headers (.sub-head + state variants + .dot) are shared,
+     in components/groups.css (0070). Only the home-specific margins are kept
+     here — they differ from the Katalog canonical and load later, so win. */
+  .sub-head { margin: 1.3rem 0 .55rem; }
   .sub-head:first-of-type { margin-top: .25rem; }
-  .sub-head .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
-  .sub-head.empty { color: var(--error); border-left: 3px solid var(--error); background: var(--error-tint); }
-  .sub-head.empty .dot { background: var(--error); }
-  .sub-head.low { color: var(--warn); border-left: 3px solid var(--warn); background: var(--warn-tint); }
-  .sub-head.low .dot { background: var(--warn); }
-  .sub-head.ordered { color: var(--accent-deep); border-left: 3px solid var(--accent); background: var(--accent-tint); }
-  .sub-head.ordered .dot { background: var(--accent); }
   .branch-ok { color: var(--fg-soft); font-size: .9rem; margin: .5rem 0 0; }
 
   .feed-sub { margin: 1.8rem 0 .4rem; padding-top: 1rem; border-top: 1px solid var(--line-soft); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-faint); font-weight: 700; }

@@ -24,6 +24,8 @@
   </ul>
 </div>
 
+{% comment %}Branch switcher + cross-branch Vše/Dochází roll-ups are vlastník-only: obsluha is scoped to their own branch (0073) and would 403 on the others.{% endcomment %}
+{% if user.is_vlastnik %}
 <div class="branch-row">
   <strong>Pobočka:</strong>
   {% for b in all_branches %}
@@ -44,6 +46,7 @@
     <a class="secondary" href="{% url 'inventory:inventura_edit' code='dochazi' %}">Dochází zboží</a>
   {% endif %}
 </div>
+{% endif %}
 
 {% if is_low and not rows %}
   <p style="color:var(--fg-soft);">Žádné položky pod objednacím bodem. Vše v pořádku.</p>

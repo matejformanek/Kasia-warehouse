@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="{% static 'css/components/kpis.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/filters.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/chips.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/groups.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/dialogs.css' %}">
 {% block extra_head %}{% endblock %}
 <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
@@ -42,7 +43,7 @@
   <nav class="mob-nav" aria-label="Hlavní navigace (mobil)">
     <a href="{{ home_url }}"{% if un == 'home' or un == 'branch_dashboard' %} class="active"{% endif %}>Přehled</a>
     <a href="{% url 'inventory:catalogue_index' %}"{% if un == 'catalogue_index' %} class="active"{% endif %}>Katalog</a>
-    {% if user.is_vlastnik %}
+    {% if user.is_vlastnik or user.is_obsluha %}
       <a href="{% if user.branch %}{% url 'inventory:inventura_edit' code=user.branch.code %}{% else %}{% url 'inventory:inventura_edit' code='vse' %}{% endif %}"{% if un == 'inventura_edit' %} class="active"{% endif %}>Inventura</a>
     {% endif %}
     <a href="{% url 'inventory:prijem_create' %}"{% if un == 'prijem_create' %} class="active"{% endif %}>Příjem</a>
@@ -80,7 +81,7 @@
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h12"/></svg>
         Katalog
       </a>
-      {% if user.is_vlastnik %}
+      {% if user.is_vlastnik or user.is_obsluha %}
         <a href="{% if user.branch %}{% url 'inventory:inventura_edit' code=user.branch.code %}{% else %}{% url 'inventory:inventura_edit' code='vse' %}{% endif %}"{% if un == 'inventura_edit' %} class="active" aria-current="page"{% endif %}>
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="M9 13l2 2 4-4"/></svg>
         Inventura

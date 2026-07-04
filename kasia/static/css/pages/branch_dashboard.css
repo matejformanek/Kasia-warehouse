@@ -1,4 +1,8 @@
 /* Page CSS: branch_dashboard (decision 0069). */
+  /* The stock section now uses the grouped .cat-group tables (0064) whose
+     look lives in components/groups.css — no #stock-table rules here. */
   .asof { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1.2rem; }
-  #stock-table tbody tr:nth-child(even) td { background: #ebebeb; }
-  #stock-table tbody tr:hover td { background: #e2e5e2; }
+
+  /* Inventura action (per 0073) — orange, the attention/CTA standard. */
+  .inv-btn { border-color: var(--warn); color: var(--warn); font-weight: 600; }
+  .inv-btn:hover { background: var(--warn-tint); border-color: var(--warn); }

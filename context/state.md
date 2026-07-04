@@ -5,6 +5,54 @@
 
 ## Done
 
+- **2026-07-04** — **Obsluha parity fixes** on `ft_obsluha_parity` (off `main`).
+  Two gaps found comparing SEZ obsluha vs vlastník on prod; no new decision.
+  - **P1 — dodací-list branch scoping (bug fix; aligns
+    [`0040`](./decisions/0040-operator-crud-tiering.md) + screen 08).**
+    `dodaci_list_index` was unscoped — a SEZ obsluha saw/opened TYN's dodáky.
+    Now the index forces obsluha to their own branch and hides the Pobočka
+    dropdown; `dodaci_list_detail`/`_pdf`/`_resend` early-return 403 for another
+    branch via a shared `_deny_other_branch` helper. `recipe_pdf` left alone
+    (product doc). Tests: index scoping + dropdown absence, 403 on all three
+    per-object views, own-branch 200, vlastník-sees-all.
+  - **P2 — obsluha Přehled stock uses the grouped Katalog design (reuses
+    [`0064`](./decisions/0064-grouped-catalogue-client-filter.md) +
+    [`0072`](./decisions/0072-reorder-threshold-not-null.md)).** Extracted
+    `catalogue_stock_groups(products, branches)` from `catalogue_index` (module-level
+    `_is_empty`/`_is_low`; `test_catalogue.py` unchanged = behavior-preserving guard).
+    `branch_dashboard` now feeds `catalogue_stock_groups([branch])` into the
+    "Stav skladu" card → three `_catalogue_group.html` groups (Prázdné/Dochází/
+    V pořádku), `show_branch_chips=False`, grouped filter hook; header Dochází/Prázdné
+    KPIs sourced from the groups (not `low_stock_rows()`). Iterates all active
+    products (un-stocked → Prázdné; near-moot under 0053).
+  - **CSS (0070) — new `components/groups.css`.** `.sub-head`(+variants/dot/count),
+    `.cat-group`, `.prod-sub`, `.eff-*`, `.low-/empty-branch` promoted out of
+    `pages/catalogue_index.css`/`home.css` into a shared component file, `<link>`ed
+    after `chips.css`, before `dialogs.css`. Katalog + vlastník home render
+    byte-identically (home keeps only its `.sub-head` margin override). Dead
+    `#stock-table` rules dropped from `pages/branch_dashboard.css`.
+  - Docs: `design-system.md` (CSS layer order + grouped Přehled + dodací locked
+    contract), `context/screens/03-prehled-pobocky.md` (grouped stock list).
+  - **P3 — obsluha own-branch inventura ([`0073`](./decisions/0073-obsluha-own-branch-inventura.md),
+    amends 0040 + 0065).** `inventura_edit` now lets an **obsluha run the full
+    inventura (stock corrections + objednávky) for their OWN branch only** —
+    cross-branch "Vše"/"Dochází" and other-branch codes raise 403 for non-vlastník.
+    Nav Inventura item shown for `is_vlastnik or is_obsluha`; inventura template's
+    branch switcher gated vlastník-only; branch **Přehled** gains a top-right
+    orange **Inventura** button. Katalog `cta-inventura` stays vlastník-only.
+    Tests: obsluha own-branch 200 + POST correction writes `[STAV]`; 403 on
+    other-branch / vse / dochazi; Přehled button present. Petr opted obsluha into
+    the objednávka (Příjezd) column.
+  - **P4 — agent guardrails (no decision; tooling/docs).** Recurring frontend
+    mistake (multi-line `{# #}` comments render as page text — shipped twice)
+    turned into a mechanical guard: `inventory/tests/test_template_hygiene.py`
+    fails CI/`make test` on any multi-line `{# #}` or inline `<style>`/`@import`
+    (0069) outside the PDF/e-mail/error allowlist (118 parametrized checks). New
+    rule `.claude/rules/frontend-and-templates.md` (post-0068 layout + the
+    silently-wrong gotchas, WHY-focused, routes to design-system.md); registered
+    in `CLAUDE.md`. First real skill `.claude/skills/kasia-sklad-frontend/`
+    (on-demand orientation when editing templates/CSS); skills README updated.
+    Fixed the two live multi-line comments (inventura_edit, stock_adjust_form).
 - **2026-07-04** — **Walkthrough feedback batch 1** on `ft_inv_walkthrough_fixes`
   (off post-restructure `main`). Three fixes from the live prod walkthrough:
   - **Part A — inventura phantom edit (no decision; aligns

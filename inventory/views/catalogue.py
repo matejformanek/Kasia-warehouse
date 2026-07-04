@@ -81,6 +81,64 @@ def _catalogue_rows(products, reserved_branches, carried_stocks_by_pair, has_rec
     return rows
 
 
+def _is_empty(r):
+    # Per 0072: a product at effective ≤ 0 always groups as "Prázdné" —
+    # the threshold no longer gates empty (it is now always set, default 0).
+    return r["effective"] <= 0
+
+
+def _is_low(r):
+    return r["is_low"] and not _is_empty(r)
+
+
+def catalogue_stock_groups(products, branches):
+    """Display rows + stock-state groups + KPI aggregates for ``products``
+    scoped to ``branches``. One source of truth shared by the Katalog
+    (all-branches or a single ?branch=) and the obsluha Přehled
+    (single-branch). Per 0064 (grouping) + 0072 (empty rule).
+
+    Returns a dict: ``rows`` (one per product), ``empty_rows`` / ``low_rows``
+    / ``ok_rows`` (the three state groups), and the KPI counts
+    ``kpi_products`` / ``kpi_empty`` / ``kpi_low`` / ``kpi_total_kg``.
+    """
+    totals: dict[int, Decimal] = {}
+    for s in Stock.objects.filter(product__in=products, branch__in=branches):
+        totals[s.product_id] = totals.get(s.product_id, Decimal("0.000")) + s.quantity
+
+    has_recipe = set(
+        RecipeComponent.objects.filter(mixture_product__in=products)
+        .values_list("mixture_product_id", flat=True)
+        .distinct()
+    )
+
+    # Per 0053: a branch *carries* a product iff a Stock row exists for that
+    # pair. Pre-fetch existing rows in scope so chips/thresholds only consider
+    # branches that actually carry each product.
+    carried_stocks_by_pair: dict[tuple[int, int], Decimal] = {
+        (s.product_id, s.branch_id): s.quantity
+        for s in Stock.objects.filter(product__in=products, branch__in=branches)
+    }
+
+    rows = _catalogue_rows(
+        products, branches, carried_stocks_by_pair, has_recipe, totals
+    )
+
+    empty_rows = [r for r in rows if _is_empty(r)]
+    low_rows = [r for r in rows if _is_low(r)]
+    ok_rows = [r for r in rows if not _is_empty(r) and not _is_low(r)]
+
+    return {
+        "rows": rows,
+        "empty_rows": empty_rows,
+        "low_rows": low_rows,
+        "ok_rows": ok_rows,
+        "kpi_products": len(rows),
+        "kpi_empty": len(empty_rows),
+        "kpi_low": len(low_rows),
+        "kpi_total_kg": sum((r["total"] for r in rows), Decimal("0.000")),
+    }
+
+
 @require_GET
 def catalogue_index(request):
     """Browse the product catalogue. Filters: q (icontains on name),
@@ -110,91 +168,48 @@ def catalogue_index(request):
 
     products = list(qs)
 
-    # Per-product stock (in branch scope for obsluha, across both
-    # branches for vlastník) + recipe presence, zipped into one row
-    # struct so the template doesn't need custom filters to index a
-    # dict by primary key.
-    stock_qs = Stock.objects.filter(product__in=products).select_related("branch")
-
     # Branch filter — obsluha is forced to own branch; vlastník can
-    # pick TYN / SEZ / all via ?branch=<code>.
+    # pick TYN / SEZ / all via ?branch=<code>. Scope: the selected branch
+    # (if any) — else aggregate across active branches.
     filter_branch_code = ""
     selected_branch = None
     if request.user.is_obsluha and request.user.branch_id:
-        stock_qs = stock_qs.filter(branch_id=request.user.branch_id)
         selected_branch = request.user.branch
     else:
         filter_branch_code = (request.GET.get("branch") or "").strip().upper()
         if filter_branch_code:
             try:
                 selected_branch = Branch.objects.get(code=filter_branch_code)
-                stock_qs = stock_qs.filter(branch=selected_branch)
             except Branch.DoesNotExist:
                 filter_branch_code = ""
 
-    totals: dict[int, Decimal] = {}
-    for s in stock_qs:
-        totals[s.product_id] = totals.get(s.product_id, Decimal("0.000")) + s.quantity
-
-    has_recipe = set(
-        RecipeComponent.objects.filter(mixture_product__in=products)
-        .values_list("mixture_product_id", flat=True)
-        .distinct()
-    )
-
-    # Reserved + threshold per row, per 0043 + 0044. Scope: the branch
-    # in selected_branch (if any) — else aggregate across active branches.
-    # The same `reserved_kg` helper that feeds the dashboard panel keeps
-    # the numbers consistent.
     reserved_branches = (
         [selected_branch]
         if selected_branch is not None
         else list(Branch.objects.filter(is_active=True))
     )
 
-    # Per 0053: a branch *carries* a product iff a Stock row exists for
-    # that pair. Pre-fetch existing rows in scope so chips/thresholds
-    # only consider branches that actually carry each product.
-    carried_stocks_by_pair: dict[tuple[int, int], Decimal] = {
-        (s.product_id, s.branch_id): s.quantity
-        for s in Stock.objects.filter(
-            product__in=products, branch__in=reserved_branches
-        )
-    }
+    # Rows / groups / KPIs come from the shared helper (same source as the
+    # obsluha Přehled). KPIs are over the whole current scope, before the
+    # ?state= filter narrows the display.
+    groups = catalogue_stock_groups(products, reserved_branches)
+    rows = groups["rows"]
+    kpi_products = groups["kpi_products"]
+    kpi_empty = groups["kpi_empty"]
+    kpi_low = groups["kpi_low"]
+    kpi_total_kg = groups["kpi_total_kg"]
+    empty_rows = groups["empty_rows"]
+    low_rows = groups["low_rows"]
+    ok_rows = groups["ok_rows"]
 
-    rows = _catalogue_rows(
-        products, reserved_branches, carried_stocks_by_pair, has_recipe, totals
-    )
-
-    # Stock state per row (empty overrides low). Reused for the KPI strip,
-    # the grouped tables and the ?state= filter.
-    def _is_empty(r):
-        # Per 0072: a product at effective ≤ 0 always groups as "Prázdné" —
-        # the threshold no longer gates empty (it is now always set, default 0).
-        return r["effective"] <= 0
-
-    def _is_low(r):
-        return r["is_low"] and not _is_empty(r)
-
-    # KPI strip aggregates — computed over the whole current scope
-    # (status/kind/branch), before the ?state= filter narrows the display.
-    kpi_products = len(rows)
-    kpi_empty = sum(1 for r in rows if _is_empty(r))
-    kpi_low = sum(1 for r in rows if _is_low(r))
-    kpi_total_kg = sum((r["total"] for r in rows), Decimal("0.000"))
-
+    # ?state= narrows both the row count and the rendered groups.
     state_filter = (request.GET.get("state") or "").strip()
     if state_filter == "low":
-        rows = [r for r in rows if _is_low(r)]
+        rows, empty_rows, ok_rows = low_rows, [], []
     elif state_filter == "empty":
-        rows = [r for r in rows if _is_empty(r)]
+        rows, low_rows, ok_rows = empty_rows, [], []
     elif state_filter == "ok":
-        rows = [r for r in rows if not _is_empty(r) and not _is_low(r)]
-
-    # Grouped tables (per 0064) — the template renders only non-empty groups.
-    empty_rows = [r for r in rows if _is_empty(r)]
-    low_rows = [r for r in rows if _is_low(r)]
-    ok_rows = [r for r in rows if not _is_empty(r) and not _is_low(r)]
+        rows, empty_rows, low_rows = ok_rows, [], []
 
     return render(
         request,

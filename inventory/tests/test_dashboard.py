@@ -8,6 +8,7 @@ from inventory.models import (
     DodaciListEmailLog,
     Movement,
     MovementLine,
+    Product,
     Stock,
 )
 from inventory.services import (
@@ -205,6 +206,27 @@ def test_branch_dashboard_renders_for_obsluha(user_obsluha_tyn, tyn) -> None:
     assert "Nedávné pohyby" in body
 
 
+def _group_html(body: str, group_id: str) -> str:
+    """Return the inner HTML of the grouped <section id="cat-group-..."> or ""
+    if that group is absent (helper for grouped-branch-dashboard assertions)."""
+    marker = f'id="{group_id}"'
+    start = body.find(marker)
+    if start == -1:
+        return ""
+    end = body.find("</section>", start)
+    return body[start:end]
+
+
+def _kpi_block(body: str, label: str) -> str:
+    """Return the HTML of the KPI card whose `.lbl` is `label` (up to the next
+    </div>) — the k-val lives inside it."""
+    marker = f">{label}</span>"
+    start = body.find(marker)
+    if start == -1:
+        return ""
+    return body[start:body.find("</div>", start)]
+
+
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_branch_dashboard_lists_stock_for_branch(
@@ -222,6 +244,71 @@ def test_branch_dashboard_lists_stock_for_branch(
     assert paprika.name_cs in body
     # 99.000 from SEZ should NOT appear (TYN only has 8 and 3).
     assert "99,000" not in body and "99.000" not in body
+    # Grouped design (0064): both are stocked above their default (0) threshold,
+    # so they land in the "V pořádku" group. Rows keep data-filter-text.
+    assert 'class="cat-body"' in body
+    assert "V pořádku" in body
+    ok_html = _group_html(body, "cat-group-ok")
+    assert pepper.name_cs in ok_html
+    assert paprika.name_cs in ok_html
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_groups_by_stock_state(user_obsluha_tyn, tyn) -> None:
+    """A 0-kg / low / ok product each lands in the matching grouped section,
+    and the top KPI Dochází/Prázdné counts equal the group sizes (0064)."""
+    ok = Product.objects.create(
+        name_cs="OK zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    low = Product.objects.create(
+        name_cs="Dochazi zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    empty = Product.objects.create(
+        name_cs="Prazdne zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    Stock.objects.create(product=ok, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=low, branch=tyn, quantity=Decimal("3.000"))
+    Stock.objects.create(product=empty, branch=tyn, quantity=Decimal("0.000"))
+
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    body = client.get("/sklad/pobocka/TYN/").content.decode("utf-8")
+
+    assert ok.name_cs in _group_html(body, "cat-group-ok")
+    assert low.name_cs in _group_html(body, "cat-group-low")
+    assert empty.name_cs in _group_html(body, "cat-group-empty")
+    # Header KPI counts match the group sub-heads exactly (1 low, 1 empty).
+    assert '<span class="k-val">1</span>' in _kpi_block(body, "Dochází")
+    assert '<span class="k-val">1</span>' in _kpi_block(body, "Prázdné")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_has_inventura_button(user_obsluha_tyn, tyn) -> None:
+    # Per 0073: the Přehled links obsluha to their own-branch inventura.
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    body = client.get("/sklad/pobocka/TYN/").content.decode("utf-8")
+    assert "/katalog/inventura/TYN/" in body
+    assert ">Inventura<" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_unstocked_product_is_empty(
+    user_obsluha_tyn, tyn, pepper
+) -> None:
+    """An active product with NO Stock row at the branch surfaces in the
+    "Prázdné" group (the intended behavioral shift — all active products show)."""
+    # pepper exists but has no Stock row at TYN.
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    body = client.get("/sklad/pobocka/TYN/").content.decode("utf-8")
+    assert pepper.name_cs in _group_html(body, "cat-group-empty")
 
 
 @pytest.mark.django_db

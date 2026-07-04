@@ -299,11 +299,59 @@ def test_inventura_edit_requires_login() -> None:
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
-def test_inventura_edit_forbidden_for_obsluha(user_obsluha_tyn) -> None:
+def test_inventura_edit_obsluha_own_branch_ok(user_obsluha_tyn, tyn, pepper) -> None:
+    # Per 0073: obsluha may run inventura for their OWN branch.
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("4.000"))
     client = Client()
     client.force_login(user_obsluha_tyn)
     response = client.get("/sklad/katalog/inventura/TYN/")
-    assert response.status_code == 403
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Inventura — TYN" in body
+    assert pepper.name_cs in body
+    # No cross-branch switcher for obsluha (would 403).
+    assert "/katalog/inventura/vse/" not in body
+    assert "/katalog/inventura/dochazi/" not in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_edit_obsluha_other_branch_forbidden(user_obsluha_tyn, sez) -> None:
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    assert client.get("/sklad/katalog/inventura/SEZ/").status_code == 403
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_edit_obsluha_cross_branch_forbidden(user_obsluha_tyn) -> None:
+    # The cross-branch roll-ups ("Vše" / "Dochází zboží") stay owner-only.
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    assert client.get("/sklad/katalog/inventura/vse/").status_code == 403
+    assert client.get("/sklad/katalog/inventura/dochazi/").status_code == 403
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_edit_obsluha_can_correct_own_branch_stock(
+    user_obsluha_tyn, tyn, pepper
+) -> None:
+    # Per 0073: obsluha's own-branch inventura writes [STAV] corrections.
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("4.000"))
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(
+        "/sklad/katalog/inventura/TYN/",
+        {f"qty_{pepper.pk}": "9.0", "reason": "inventura obsluhy"},
+    )
+    assert response.status_code == 302
+    pepper.refresh_from_db()
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("9.000")
+    from inventory.models import Movement
+    assert Movement.objects.filter(
+        branch=tyn, status=Movement.Status.DONE
+    ).exists()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -587,15 +635,17 @@ def test_inventura_button_appears_when_branch_selected(
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
-def test_inventura_button_hidden_for_obsluha(user_obsluha_tyn) -> None:
+def test_katalog_inventura_cta_hidden_for_obsluha(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)
-    # Obsluha is auto-scoped — branch dropdown isn't even shown but
-    # the catalog page renders all products. The Inventura button
-    # must not appear for obsluha regardless of any URL params.
+    # The Katalog's own inventura CTA stays vlastník-only. Per 0073 obsluha
+    # reaches inventura via the nav + the Přehled button instead, so the nav
+    # link IS present — but the page-level cta-inventura button is not.
     response = client.get("/sklad/katalog/")
     assert response.status_code == 200
-    assert b"Inventura" not in response.content
+    assert b"cta-inventura" not in response.content
+    # Nav entry point exists for obsluha now (own-branch inventura).
+    assert b"/katalog/inventura/TYN/" in response.content
 
 
 # ---------------------------------------------------------------------------

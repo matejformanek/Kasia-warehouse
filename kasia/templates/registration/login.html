@@ -30,8 +30,7 @@
           {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
           <button class="btn btn-primary" type="submit">Přihlásit</button>
         </form>
-        {# Submit on Enter from any field — a safeguard against browsers /
-           password managers that swallow the implicit form submission. #}
+        {% comment %}Submit on Enter from any field — a safeguard against browsers / password managers that swallow the implicit form submission.{% endcomment %}
         <script>
           (function () {
             var f = document.getElementById('employee-login-form');

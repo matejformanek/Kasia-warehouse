@@ -44,9 +44,18 @@ depend on the static pipeline during a failure).
 ```
 tokens-sklad.css → base-sklad.css →
   components/tables.css → forms.css → kpis.css → filters.css → chips.css →
-  dialogs.css →
+  groups.css → dialogs.css →
 {% block extra_head %}  (pages/<screen>.css, still loads last, still wins)
 ```
+
+`components/groups.css` holds the grouped stock-state section look —
+`.sub-head` (+ `.empty`/`.low`/`.ok`/`.ordered` variants + `.dot`/`.count`),
+`.cat-group`, `.prod-sub`, `.eff-empty`/`.eff-warn`, `.low-branch`/
+`.empty-branch` — shared by the grouped Katalog, the vlastník Přehled (home)
+and the obsluha Přehled (branch_dashboard). These rules are **no longer**
+page-scoped or duplicated in `pages/catalogue_index.css` / `pages/home.css`;
+the only per-page override left is the `.sub-head` **margins** (home's differ
+from the Katalog canonical and load later, so win).
 
 The `components/` layer is **sklad-only** — the public surface keeps
 `base-web.css` and there is no shared cross-surface component tier (the `--line`
@@ -278,7 +287,20 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   Per [`0072`](../../context/decisions/0072-reorder-threshold-not-null.md) the
   **"Prázdné" group keys on effective ≤ 0 alone** — the reorder threshold (now
   always set, default 0) no longer gates it, so a genuinely-empty product always
-  lands in the red group.
+  lands in the red group. The grouping + KPI logic is the shared view helper
+  `catalogue_stock_groups(products, branches)` (in `inventory/views/catalogue.py`)
+  — **one source of truth** for both the Katalog and the obsluha Přehled below;
+  the group section itself is the `_catalogue_group.html` partial.
+- **Obsluha Přehled** (`branch_dashboard`) — its **"Stav skladu"** card uses the
+  **same grouped design** as the Katalog: `catalogue_stock_groups([branch])` fed
+  into the three `_catalogue_group.html` includes (Prázdné / Dochází / V pořádku),
+  branch-scoped, `show_branch_chips=False` (single branch → no per-branch chips).
+  The search input uses the grouped multi-tbody hook (`data-filter-rows=".cat-body"`
+  / `data-filter-empty="#branch-stock-empty"`). The header **Dochází/Prázdné** KPIs
+  are sourced from the groups (not `low_stock_rows()`) so they match the sub-heads.
+  All active products show — an un-stocked product surfaces as Prázdné. **Do not
+  flatten this back to a plain status-badge table** or rename the shared group
+  hooks; that is a new decision.
 - **Inventura** (per
   [`0065`](../../context/decisions/0065-inventura-sidebar-nav.md)) has a
   **vlastník-only** sidebar + mobile nav item in the Provoz group, under Katalog.
@@ -290,6 +312,17 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   (`data-low` row attr from `low_stock_rows()`, ANDed with the name query in the
   screen's own custom filter — not the 0063 `data-filter-*` hook). Hidden on the
   cross-branch "Vše" / "Dochází zboží" views.
+
+## Dodací listy are obsluha own-branch scoped (per 0040)
+
+The dodací-list views enforce branch scoping for `obsluha`, mirroring
+`movement_history`/`branch_dashboard`: `dodaci_list_index` filters to the
+operator's own branch and renders **no branch dropdown** (the vlastník keeps
+it); `dodaci_list_detail` / `_pdf` / `_resend` **early-return a 403** when the
+dodák belongs to another branch (shared `_deny_other_branch` helper). This is a
+locked contract per decision 0040 — don't drop the filter or expose the
+dropdown to obsluha. (`recipe_pdf` is a product document, not branch-scoped, and
+is deliberately exempt.)
 
 ## Out of scope for web chrome
 

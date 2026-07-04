@@ -22,15 +22,15 @@
     <span class="k-val">{{ kpi_total_mass|floatformat:1 }} <span class="k-unit">kg</span></span>
     <span class="k-sub">{{ branch.code }}</span>
   </div>
-  <div class="kpi">
-    <span class="lbl">Dochází zboží</span>
-    <span class="k-val">{{ kpi_low_stock }}</span>
-    <span class="k-sub">pod nastaveným prahem</span>
+  <div class="kpi warn">
+    <span class="lbl">Dochází</span>
+    <span class="k-val">{{ kpi_low }}</span>
+    <span class="k-sub">pod objednacím bodem</span>
   </div>
-  <div class="kpi">
-    <span class="lbl">Nedávné pohyby</span>
-    <span class="k-val">{{ recent_movements|length }}</span>
-    <span class="k-sub">posledních evidovaných</span>
+  <div class="kpi err">
+    <span class="lbl">Prázdné</span>
+    <span class="k-val">{{ kpi_empty }}</span>
+    <span class="k-sub">efektivně 0 kg</span>
   </div>
 </section>
 
@@ -50,8 +50,8 @@
     <input type="search" name="q" value="{{ search }}"
            placeholder="Hledat produkt…"
            style="max-width:280px;"
-           data-filter-rows="#stock-table tbody"
-           data-filter-empty="#stock-empty">
+           data-filter-rows=".cat-body"
+           data-filter-empty="#branch-stock-empty">
     <button class="secondary" type="submit">Hledat</button>
     {% if search %}
       <a class="secondary" href="{% url 'inventory:branch_dashboard' code=branch.code %}">
@@ -60,39 +60,11 @@
     {% endif %}
   </form>
 
-  {% if stock_rows %}
-    <table class="lines" id="stock-table">
-      <thead>
-        <tr>
-          <th>Produkt</th>
-          <th style="text-align:right;">Na skladě (kg)</th>
-          <th style="text-align:right;">Rezerv.</th>
-          <th style="text-align:right;">Efektivně</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in stock_rows %}
-          <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=row.stock.product.pk %}"
-              data-filter-text="{{ row.stock.product.name_cs }}">
-            <td>{{ row.stock.product.name_cs }}</td>
-            <td class="num">{{ row.stock.quantity|floatformat:1 }}</td>
-            <td class="num">{{ row.reserved|floatformat:1 }}</td>
-            <td class="num">{{ row.effective|floatformat:1 }}</td>
-            <td>
-              {% if row.status == "prazdne" %}
-                <span style="color:var(--error);font-weight:bold;">prázdné</span>
-              {% elif row.status == "dochazi" %}
-                <span class="tab-chip active" style="background:var(--warn);border-color:var(--warn);">dochází</span>
-              {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <p id="stock-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá hledání.</p>
-  {% elif search %}
-    <p style="color:var(--fg-soft);">Nic neodpovídá hledání „{{ search }}".</p>
+  {% if empty_rows or low_rows or ok_rows %}
+    {% if empty_rows %}{% include "inventory/_catalogue_group.html" with group_rows=empty_rows group_id="cat-group-empty" head_class="empty" head_label="Prázdné" head_count=empty_rows|length branch_kind="empty" eff_class="eff-empty" show_branch_chips=False %}{% endif %}
+    {% if low_rows %}{% include "inventory/_catalogue_group.html" with group_rows=low_rows group_id="cat-group-low" head_class="low" head_label="Dochází" head_count=low_rows|length branch_kind="low" eff_class="eff-warn" show_branch_chips=False %}{% endif %}
+    {% if ok_rows %}{% include "inventory/_catalogue_group.html" with group_rows=ok_rows group_id="cat-group-ok" head_class="ok" head_label="V pořádku" head_count=ok_rows|length branch_kind="" eff_class="" show_branch_chips=False %}{% endif %}
+    <p id="branch-stock-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá hledání.</p>
   {% else %}
     <p style="color:var(--fg-soft);">Na pobočce zatím není evidováno žádné zboží.</p>
   {% endif %}

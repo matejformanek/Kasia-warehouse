@@ -15,7 +15,7 @@
     <div class="login-panels" style="margin-top:1.5rem;">
       <section class="card" aria-label="Přihlášení pro zaměstnance">
         <h2>Zaměstnanci</h2>
-        <form method="post">
+        <form method="post" id="employee-login-form">
           {% csrf_token %}
           {{ form.non_field_errors }}
           <div class="field">
@@ -30,6 +30,22 @@
           {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
           <button class="btn btn-primary" type="submit">Přihlásit</button>
         </form>
+        {# Submit on Enter from any field — a safeguard against browsers /
+           password managers that swallow the implicit form submission. #}
+        <script>
+          (function () {
+            var f = document.getElementById('employee-login-form');
+            if (!f) return;
+            f.addEventListener('keydown', function (e) {
+              if (e.key !== 'Enter' || e.isComposing) return;
+              var t = e.target;
+              if (!t || t.tagName !== 'INPUT' || t.type === 'submit') return;
+              e.preventDefault();
+              if (typeof f.requestSubmit === 'function') { f.requestSubmit(); }
+              else { f.submit(); }
+            });
+          })();
+        </script>
         <p class="login-meta">
           <a href="{% url 'password_reset' %}">Zapomenuté heslo?</a>
         </p>

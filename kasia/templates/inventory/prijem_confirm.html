@@ -12,7 +12,7 @@
   a potvrďte. Teprve teď se navýší stav skladu.
 </div>
 
-<form method="post">
+<form method="post" data-guard-unsaved>
   {% csrf_token %}
 
   <div class="card">

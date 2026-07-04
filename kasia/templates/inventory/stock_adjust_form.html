@@ -15,7 +15,7 @@
   použijte „Upravit pohyb" v Historii.
 </div>
 
-<form method="post" id="stock-adjust-form">
+<form method="post" id="stock-adjust-form" data-guard-unsaved>
   {% csrf_token %}
 
   {% if non_field_error %}

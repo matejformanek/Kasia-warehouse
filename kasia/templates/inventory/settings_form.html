@@ -19,7 +19,7 @@
   <a href="#sec-pobocky">Pobočky</a>
 </nav>
 
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" data-guard-unsaved>
   {% csrf_token %}
 
   {% if form.errors %}

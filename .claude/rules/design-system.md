@@ -203,6 +203,21 @@ non-destructive confirm ("Provést převod?", "Spustit dávku?") sets
 must never sit inside a `tr.row-link` (whole-row-nav hook) — same gotcha as the
 row-delete button.
 
+**Unsaved-changes guard — `data-guard-unsaved` on a `<form>`.** A reusable,
+opt-in guard also lives in `_confirm_dialog.html` (so it ships everywhere
+`kasiaConfirm` does). Put `data-guard-unsaved` on any data-entry `<form>`: once
+the operator edits a field in it, an in-page link click (sidebar, "Zrušit",
+header — any `a[href]`) is intercepted and confirmed via `kasiaConfirm` before
+navigating away, so half-filled work isn't dropped silently. New-tab links
+(`target` set), `#anchors` and `javascript:` are left alone; any intentional
+form submit (the save, or an out-of-form `.js-confirm` cancel/remove) clears the
+guard. Wired on **příjem / výdej / míchání / plánovaný převod+míchání / produkt
+/ číselníky (pobočka·dodavatel·odběratel) / nastavení / úprava stavu / potvrzení
+plánovaného příjmu**. **`inventura_edit.html` keeps its own bespoke guard** (its
+message is inventura-specific and it works) — do **not** also add
+`data-guard-unsaved` there or the dialog fires twice. Renaming
+`data-guard-unsaved` is a new decision.
+
 ## Quantities display at 1 dp, comma from the locale (per 0061)
 
 Quantity displays use **`floatformat:1`** (never `:3`, never raw

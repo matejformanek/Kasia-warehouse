@@ -7,7 +7,7 @@
 
 <p class="required-legend">povinné</p>
 
-<form method="post" class="card">
+<form method="post" class="card" data-guard-unsaved>
   {% csrf_token %}
   {% if form.non_field_errors %}
     <div class="non-form-errors">

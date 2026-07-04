@@ -7,9 +7,10 @@
 
 {% block content %}
 <h1>Dodací listy</h1>
-<p class="scope-note">Vystavené dodací listy k výdejům, od nejnovějšího. Klikněte na řádek pro detail a PDF.</p>
+<p class="scope-note">Vystavené dodací listy k výdejům, od nejnovějšího. Klikněte na řádek pro detail a PDF.{% if branch_locked %} Pobočka {{ branch_locked.code }}.{% endif %}</p>
 
 <form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+  {% if not branch_locked %}
   <div class="field" style="margin-bottom:0;">
     <label for="id_filter_branch">Pobočka</label>
     <select name="branch" id="id_filter_branch">
@@ -21,6 +22,7 @@
       {% endfor %}
     </select>
   </div>
+  {% endif %}
   <div class="field" style="margin-bottom:0;">
     <label for="id_filter_year">Rok</label>
     <select name="year" id="id_filter_year">

@@ -210,9 +210,22 @@ comes free from the active `cs` locale — **no custom filter**. This applies to
 `step="0.1"` on `type="number"` inputs (browser shows the comma, submits a dot —
 no server comma-parsing). JS-truth / native-input attributes (`data-current`,
 `value=` on `type=number`) keep the **dot** — via `|unlocalize` (JS-math /
-URL params) or **`|stringformat:'.1f'`** / a view-side `f"{x:.1f}"` string for
-prefills. **Never `floatformat` inside a `type=number` `value=`** — it emits a
-comma the browser rejects, blanking the field. The **recipe** is the only
+URL params) or a **`ROUND_HALF_UP` 1-dp** value for prefills. **Never
+`floatformat` inside a `type=number` `value=`** — it emits a comma the browser
+rejects, blanking the field.
+
+**Rounding for kg is ROUND_HALF_UP at 1 dp — everywhere, one value.** Display
+(`floatformat:1`), the input **prefill**, the **`data-current`** JS-truth, and
+the **server no-op compare** must all round the *same* current value with
+`quantize(Decimal("0.1"), ROUND_HALF_UP)` (a shared view helper is the pattern —
+e.g. inventura's `_kg1`). `data-current` is that clean 1-dp dot value
+(`{{ row.current_1dp|unlocalize }}`), **not** the raw 3-dp stock.
+**Ban `f"{x:.1f}"` / `|stringformat:'.1f'` for kg prefills** — Python's default
+`Decimal`/`format` rounding is banker's (HALF_EVEN: `45.45 → 45.4`), which
+disagrees with `floatformat:1`'s HALF_UP (`45.45 → 45,5`); the mismatch makes a
+`.x5` row load looking edited and re-submit as a phantom correction demanding a
+reason. Use `quantize(Decimal("0.1"), ROUND_HALF_UP)` instead. The **recipe** is
+the only
 exception to 1 dp: recipe-PDF **percentages** stay at `floatformat:"2"` and the
 component **ratios** (`rc.ratio`, proportions not kg) render raw — both may need
 more precision. Model `decimal_places` stays 3 — no migration; values round to

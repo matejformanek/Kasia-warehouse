@@ -320,8 +320,10 @@ def test_inventura_edit_renders_for_vlastnik(
     body = response.content
     assert b"Inventura \xe2\x80\x94 TYN" in body  # "Inventura — TYN"
     assert pepper.name_cs.encode() in body
-    assert b"10.000" in body
-    assert b"5.500" in body
+    # Rows carry the current stock as a clean 1-dp dot value (data-current +
+    # prefill), per the Part A phantom-edit fix — no longer the raw 3dp residue.
+    assert b'data-current="10.0"' in body
+    assert b'data-current="5.5"' in body
 
 
 @pytest.mark.django_db(transaction=True)
@@ -378,8 +380,40 @@ def test_inventura_edit_data_current_uses_dot_decimal(
     client = Client()
     client.force_login(user_vlastnik)
     response = client.get("/sklad/katalog/inventura/TYN/")
-    assert b'data-current="1.500"' in response.content
-    assert b'data-current="1,500"' not in response.content
+    # data-current is the clean 1-dp value (dot), matching the floatformat:1
+    # display + the server compare (per 0061 / Part A phantom-edit fix).
+    assert b'data-current="1.5"' in response.content
+    assert b'data-current="1,5"' not in response.content
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_x5_value_no_phantom_edit(user_vlastnik, tyn, pepper) -> None:
+    """A `.x5` stock (45.450) rounds HALF_UP to 45.5 for display, prefill AND
+    data-current — so the row loads un-edited and re-submitting it is a no-op
+    (no movement, no reason required). Regression for the phantom-edit bug where
+    display used HALF_UP (45,5) but the prefill used HALF_EVEN (45,4)."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("45.450"))
+    client = Client()
+    client.force_login(user_vlastnik)
+
+    response = client.get("/sklad/katalog/inventura/TYN/")
+    assert response.status_code == 200
+    assert b'value="45.5"' in response.content       # prefill HALF_UP
+    assert b'data-current="45.5"' in response.content  # JS-truth HALF_UP
+    assert b'value="45.4"' not in response.content
+
+    before = Movement.objects.count()
+    response = client.post(
+        "/sklad/katalog/inventura/TYN/",
+        {f"qty_{pepper.pk}": "45.5", "reason": ""},
+    )
+    assert response.status_code == 302
+    assert Movement.objects.count() == before  # no phantom correction
+    assert (
+        Stock.objects.get(product=pepper, branch=tyn).quantity
+        == Decimal("45.450")
+    )
 
 
 @pytest.mark.django_db(transaction=True)

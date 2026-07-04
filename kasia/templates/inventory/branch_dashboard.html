@@ -12,6 +12,17 @@
 {% endif %}
 
 <section class="kpis" aria-label="Klíčové ukazatele pobočky">
+  {# Attention buckets first, matching the owner Přehled (Vyprodáno → Dochází → …). #}
+  <div class="kpi err">
+    <span class="lbl">Prázdné</span>
+    <span class="k-val">{{ kpi_empty }}</span>
+    <span class="k-sub">efektivně 0 kg</span>
+  </div>
+  <div class="kpi warn">
+    <span class="lbl">Dochází</span>
+    <span class="k-val">{{ kpi_low }}</span>
+    <span class="k-sub">pod objednacím bodem</span>
+  </div>
   <div class="kpi accent">
     <span class="lbl">Produktů skladem</span>
     <span class="k-val">{{ kpi_products }}</span>
@@ -21,16 +32,6 @@
     <span class="lbl">Celková zásoba</span>
     <span class="k-val">{{ kpi_total_mass|floatformat:1 }} <span class="k-unit">kg</span></span>
     <span class="k-sub">{{ branch.code }}</span>
-  </div>
-  <div class="kpi warn">
-    <span class="lbl">Dochází</span>
-    <span class="k-val">{{ kpi_low }}</span>
-    <span class="k-sub">pod objednacím bodem</span>
-  </div>
-  <div class="kpi err">
-    <span class="lbl">Prázdné</span>
-    <span class="k-val">{{ kpi_empty }}</span>
-    <span class="k-sub">efektivně 0 kg</span>
   </div>
 </section>
 

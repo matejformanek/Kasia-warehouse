@@ -102,6 +102,43 @@ forms include this partial.
     });
     refresh();
   });
+
+  // Block duplicate products across lines on BOTH movement forms (per 0071):
+  // once a product is chosen in one line, disable it in every other line's
+  // dropdown so the same product can't be picked twice. Mirrors výdej, which
+  // also runs the over-stock check below; příjem now runs this dedup too.
+  // Client-side only — a posted duplicate is harmless (two additive lines).
+  (function () {
+    const body = document.getElementById("lines-body");
+    if (!body) return;
+
+    function refreshProductOptions() {
+      const selects = [
+        ...body.querySelectorAll('.line-row:not(.marked-deleted) select[name$="-product"]'),
+      ];
+      const taken = new Set(selects.map((s) => s.value).filter(Boolean));
+      selects.forEach((sel) => {
+        [...sel.options].forEach((opt) => {
+          if (!opt.value) return; // keep the empty "— vyberte produkt —" option
+          opt.disabled = opt.value !== sel.value && taken.has(opt.value);
+        });
+      });
+    }
+
+    // Delegated on stable #lines-body, so htmx-added rows are covered with no
+    // observers. input + change both bubble from every row's product select.
+    body.addEventListener("input", refreshProductOptions);
+    body.addEventListener("change", refreshProductOptions);
+    // A fresh htmx row (Přidat řádek) arrives empty — re-disable already-taken
+    // products in its new dropdown before the user touches it.
+    body.addEventListener("htmx:afterSwap", refreshProductOptions);
+    // .row-delete-btn toggles .marked-deleted in base.html — recount after that
+    // (deferred microtask) so a removed row frees its product for reuse.
+    body.addEventListener("click", (e) => {
+      if (e.target.closest(".row-delete-btn")) queueMicrotask(refreshProductOptions);
+    });
+    refreshProductOptions();
+  })();
 </script>
 
 {% if show_stock_warn %}
@@ -206,43 +243,27 @@ forms include this partial.
       }
     }
 
-    // Výdej issues each product once (Šarže is unused here) — disable a product
-    // in every OTHER row's dropdown once it's chosen, so it can't be picked
-    // twice. Příjem keeps duplicates (multiple batches) — it never runs this.
-    function refreshProductOptions() {
-      const selects = [
-        ...body.querySelectorAll('.line-row:not(.marked-deleted) select[name$="-product"]'),
-      ];
-      const taken = new Set(selects.map((s) => s.value).filter(Boolean));
-      selects.forEach((sel) => {
-        [...sel.options].forEach((opt) => {
-          if (!opt.value) return; // keep the empty "— vyberte produkt —" option
-          opt.disabled = opt.value !== sel.value && taken.has(opt.value);
-        });
-      });
-    }
-
-    function refresh() { refreshProductOptions(); recompute(); }
+    // Product dedup (disable an already-chosen product in other rows) is wired
+    // once for BOTH forms in the always-run IIFE above (per 0071); this block
+    // only runs the výdej over-stock check.
 
     // Delegated on stable elements, so rows added later are covered with no
     // observers. input + change both bubble from every row's product/qty.
-    body.addEventListener("input", refresh);
-    body.addEventListener("change", refresh);
-    // A row added via htmx (Přidat řádek) arrives empty — re-disable the
-    // already-taken products in its fresh dropdown before the user touches it.
-    body.addEventListener("htmx:afterSwap", refresh);
+    body.addEventListener("input", recompute);
+    body.addEventListener("change", recompute);
+    // A row added via htmx (Přidat řádek) arrives empty — re-check stock.
+    body.addEventListener("htmx:afterSwap", recompute);
     // .row-delete-btn toggles .marked-deleted in base.html's handler — recount
-    // after that runs (deferred microtask), so the deleted row drops out and
-    // frees its product for reuse.
+    // after that runs (deferred microtask), so the deleted row drops out.
     body.addEventListener("click", (e) => {
-      if (e.target.closest(".row-delete-btn")) queueMicrotask(refresh);
+      if (e.target.closest(".row-delete-btn")) queueMicrotask(recompute);
     });
     // The branch select lives outside #lines-body — re-evaluate every row
     // against the new branch's stock when it changes.
     const branchEl = document.querySelector("[name=branch]");
     if (branchEl) branchEl.addEventListener("change", recompute);
 
-    refresh();
+    recompute();
   })();
 </script>
 {% endif %}

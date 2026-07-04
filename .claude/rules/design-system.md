@@ -131,13 +131,16 @@ or restructure:
   same as míchání: `?products=<all selected ids>&next=<výdej path>`, the 0060
   contract, same-tab); the per-branch base URLs come from a
   `{{ branch_inventura|json_script:"vydej-inventura-urls" }}` blob emitted only
-  for vlastník (obsluha can't open inventura). A second výdej-only helper,
+  for vlastník (obsluha can't open inventura). A second helper,
   `refreshProductOptions()`, **disables an already-chosen product in every other
-  row's dropdown** so a product can't be issued on two lines (výdej never uses
-  Šarže, so it has no reason to repeat a product); it runs on the same
-  `input`/`change` + `htmx:afterSwap` (fresh added rows) + row-delete events.
-  **Příjem does not run any of this** (`show_stock_warn=False`) — it keeps
-  repeatable products for multiple batches. Missing (branch, product)
+  row's dropdown** so a product can't be picked on two lines; it runs on the
+  same `input`/`change` + `htmx:afterSwap` (fresh added rows) + row-delete
+  events. Per [`0071`](../../context/decisions/0071-prijem-dedup-products.md)
+  this dedup runs on **both** movement forms (an always-rendered IIFE in
+  `_movement_form_lines.html`, outside the `show_stock_warn` block) — příjem now
+  blocks duplicate products too (client-side only; a posted duplicate is
+  harmless — two additive received lines). `show_stock_warn` still gates **only**
+  the výdej over-stock check, not the dedup. Missing (branch, product)
   ⇒ `0` avail. The server aggregate-duplicates overdraw check (0042) stays as a
   harmless safety net. The
   old htmx machinery (`stock_warn_partial` view/route, `_stock_warn.html`,

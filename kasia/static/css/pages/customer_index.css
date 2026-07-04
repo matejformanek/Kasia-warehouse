@@ -1,0 +1,5 @@
+/* Page CSS: customer_index (decision 0069). */
+  /* All furniture (.filterbar, .ico, .stav-*, td.row-actions, .foot-note) was
+     hoisted to components/filters.css (0070) — identical across the číselník
+     index pages. This file is intentionally rules-free; keep it as the page's
+     extra_head hook for any future customer-index-only styling. */

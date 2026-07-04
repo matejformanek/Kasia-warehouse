@@ -1,0 +1,41 @@
+/* Sklad component: KPI strip (decision 0070; moved byte-for-byte out of
+   base-sklad.css, plus the .kpi state modifiers hoisted from home.css /
+   catalogue_index.css — identical in both). The @media KPI-column overrides
+   move here too, kept AFTER the base .kpi rules so they still win at their
+   breakpoints (they'd lose if left in base-sklad.css, which loads first). */
+
+  /* ============ KPI STRIP ============ */
+  .kpis {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+    background: var(--bg-card); border: 1px solid var(--line); margin-bottom: 1.2rem;
+  }
+  .kpi { padding: 16px 18px; border-left: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 7px; }
+  .kpi:first-child { border-left: 0; }
+  .kpi.accent { border-top: 2px solid var(--accent); }
+  .kpi .lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: var(--fg-faint); }
+  .kpi .k-val {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: 31px; font-weight: 600; line-height: 1; letter-spacing: -.02em;
+    color: var(--fg); display: flex; align-items: baseline; gap: 5px;
+  }
+  .kpi.accent .k-val { color: var(--accent); }
+  .kpi .k-unit { font-size: 13px; font-weight: 500; color: var(--fg-faint); letter-spacing: 0; }
+  .kpi .k-sub { font-size: 11.5px; color: var(--fg-soft); }
+
+  /* State modifiers (hoisted from home.css / catalogue_index.css). */
+  .kpi.err { border-top: 2px solid var(--error); }
+  .kpi.err .k-val { color: var(--error); }
+  .kpi.warn { border-top: 2px solid var(--warn); }
+  .kpi.warn .k-val { color: var(--warn); }
+  .kpi.ordered { border-top: 2px solid var(--accent); }
+  .kpi.ordered .k-val { color: var(--accent); }
+
+  /* ============ RESPONSIVE (KPI columns) ============ */
+  @media (max-width: 720px) {
+    .kpis { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 480px) {
+    .kpis { grid-template-columns: 1fr; }
+    .kpi { border-left: 0; border-top: 1px solid var(--line-soft); }
+    .kpi:first-child { border-top: 0; }
+  }

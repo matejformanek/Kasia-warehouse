@@ -1,0 +1,4 @@
+/* Page CSS: branch_dashboard (decision 0069). */
+  .asof { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1.2rem; }
+  #stock-table tbody tr:nth-child(even) td { background: #ebebeb; }
+  #stock-table tbody tr:hover td { background: #e2e5e2; }

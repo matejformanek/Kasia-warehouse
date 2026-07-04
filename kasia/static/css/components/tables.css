@@ -1,0 +1,53 @@
+/* Sklad component: tables + row-link + row-delete + stock/over-stock widgets
+   (decision 0070; moved byte-for-byte out of base-sklad.css). Zebra and the
+   .over-stock red-fill stay in this one file, in source order, so the cascade
+   is preserved (0070). */
+
+  /* ============ TABLES ============ */
+  table.lines { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; }
+  table.lines th, table.lines td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  table.lines th {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--fg-faint); text-align: left; border-bottom: 1px solid var(--line); font-weight: 600;
+  }
+  table.lines td input, table.lines td select { max-width: 100%; }
+  /* Neutral grey zebra + hover-darken (design 0054 / mockups), applied to
+     every .lines table. Attention rows (over-stock, inventura .changed) carry
+     higher-specificity backgrounds below so they always win over the zebra. */
+  table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+  table.lines tbody tr:hover td { background: #e2e5e2; }
+
+  /* ============ STOCK / MOVEMENT WIDGETS ============ */
+  /* Výdej renders the live stock message in the (unused) Šarže column cell.
+     A stable min-width keeps it readable and avoids layout shift when the
+     box appears/disappears. */
+  .stock-warn-cell { min-width: 16rem; }
+  .stock-warn { font-size: 0.9rem; color: var(--warn); margin-top: 0.2rem; }
+  /* Faint placeholder shown in the Sklad column before a product is picked. */
+  .stock-warn.stock-hint { color: var(--fg-faint); font-weight: normal; }
+  .stock-warn.over {
+    color: var(--error); font-weight: bold;
+    background: #fbe8e8; border-left: 3px solid var(--error);
+    padding: 0.3rem 0.45rem; margin-top: 0.35rem;
+  }
+  /* Whole-row highlight while a výdej line exceeds branch stock. Selector is
+     specific enough to beat the table.lines zebra above on even rows. */
+  table.lines tbody tr.line-row.over-stock td { background: #fbe8e8; }
+  table.lines tbody tr.line-row.over-stock:hover td { background: #f7dcdc; }
+
+  /* ============ ROW-DELETE BUTTON (formset Smazat) ============ */
+  /* Matches the input box-model so it lines up inside a table.lines td. */
+  .row-delete-btn {
+    background: var(--error-tint); color: var(--error); border: 1px solid #e6c4c2;
+    border-radius: 0; padding: 0.4rem 0.6rem; line-height: 1.4; cursor: pointer;
+    font: inherit; vertical-align: middle; display: inline-block; white-space: nowrap;
+  }
+  .row-delete-btn:hover { background: #f6dad8; }
+  .line-row.marked-deleted { opacity: 0.45; text-decoration: line-through; }
+  .line-row.marked-deleted .row-delete-btn { background: var(--bg-card); color: var(--fg); text-decoration: none; }
+  .line-row.marked-deleted .row-delete-btn::before { content: "↺ "; }
+
+  /* ============ ROW LINK ============ */
+  tr.row-link { cursor: pointer; }
+  tr.row-link:hover { background: var(--line-soft); }
+  tr.row-link td a { color: var(--fg); }

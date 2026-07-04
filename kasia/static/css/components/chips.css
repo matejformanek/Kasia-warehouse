@@ -1,0 +1,10 @@
+/* Sklad component: tab chips (decision 0070; moved byte-for-byte out of
+   base-sklad.css). */
+
+  /* ============ CHIPS ============ */
+  .tab-chip {
+    padding: 0.3rem 0.8rem; border-radius: 0; font-size: 0.85rem; line-height: 1.3;
+    white-space: nowrap; display: inline-block; border: 1px solid var(--line); background: #fff; color: var(--fg-soft);
+  }
+  .tab-chip.active { color: #fff; background: var(--accent); border-color: var(--accent); }
+  a.tab-chip { text-decoration: none; }

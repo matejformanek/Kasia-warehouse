@@ -3,18 +3,10 @@ HTMX partial: derived consumption table for the current
 (branch, mixture, target_qty) selection. Returned by
 mixing_preview_partial. Empty body when inputs missing/invalid.
 
-Rendered standalone via HTMX swap (no {% block extra_head %}), so the
-few page-specific styles are inlined here. They reference base.html tokens.
+Rendered standalone via HTMX swap into the mixing-create page. Its
+`#mixing-preview` styles live in `css/pages/mixing_job_create.css` (loaded by
+that host page, per 0069) — not inlined here.
 {% endcomment %}
-<style>
-  #mixing-preview .card-sub { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1rem; }
-  #mixing-preview tr.short td { background: var(--error-tint); }
-  #mixing-preview .short-txt { color: var(--error); font-weight: bold; }
-  #mixing-preview .stav-ok { color: var(--ok); font-weight: 600; }
-  #mixing-preview .stav-short { color: var(--error); font-weight: 700; }
-  #mixing-preview .fix-stock-cta { margin-top: .6rem; }
-  #mixing-preview .fix-stock-cta a { color: #fff; }
-</style>
 <div class="card">
   <h2 style="font-size:1.05rem;margin-top:0;">
     Odvozená spotřeba pro {{ mixture.name_cs }}

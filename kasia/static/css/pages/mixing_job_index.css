@@ -1,0 +1,8 @@
+/* Page CSS: mixing_job_index (decision 0069). */
+  /* Míchání — historie dávek (mixing_job_index). Sharp/technical per 0054. */
+  .intro { color: var(--fg-soft); max-width: 66ch; margin: 0 0 1.4rem; }
+  .toolbar { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; margin: 0 0 1.4rem; }
+  .toolbar .count { color: var(--fg-soft); font-size: .9rem; margin-left: auto; }
+  .col-date { white-space: nowrap; font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--fg-soft); font-size: .9rem; }
+  .branch-code { font-family: var(--mono); font-weight: 600; letter-spacing: .03em; }
+  .op { color: var(--fg-soft); font-size: .9rem; }

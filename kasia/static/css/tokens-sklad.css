@@ -1,0 +1,26 @@
+/* Sklad design tokens — single source of truth (decision 0069). */
+  :root {
+    /* Sharp/technical warehouse system — decision 0054. Radius 0 everywhere. */
+    --accent: #1f6b3a;
+    --accent-deep: #16432a;
+    --accent-tint: #eef4ee;
+    --fg: #141719;
+    --fg-soft: #565b66;
+    --fg-faint: #868c97;
+    --bg: #f6f7f5;
+    --bg-card: #ffffff;
+    --line: #d9dcd9;
+    --line-soft: #eef0ee;
+    --error: #a02525;
+    --error-tint: #fbebea;
+    /* Warn = orange (decision: retone within 0054; replaces the old muddy ochre). */
+    --warn: #c2410c;
+    --warn-tint: #fdeee3;
+    --ok: #1f6b3a;
+    --ok-soft: #e7f1ea;
+    /* legacy alias kept so any stray var(--border) still resolves */
+    --border: #d9dcd9;
+    --sidebar-w: 244px;
+    --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }

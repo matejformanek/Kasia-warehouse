@@ -12,22 +12,6 @@ Shared movement-form chrome (výdej + příjem): numbered step heads, 2-col
 header grid, running summary, roomy line inputs. Defined once here since both
 forms include this partial.
 {% endcomment %}
-<style>
-  .step-head { display: flex; align-items: center; gap: .85rem; margin: 0 0 1.3rem; }
-  .step-head .step-no { flex: 0 0 auto; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; font-family: var(--mono); font-weight: 600; font-size: 1rem; }
-  .step-head h2 { margin: 0; font-size: 1.2rem; }
-  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem 1.6rem; }
-  .field-grid .field { margin-bottom: 0; }
-  .line-summary { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 1rem; color: var(--fg); padding: .8rem 1rem; background: var(--accent-tint); border-left: 3px solid var(--accent); margin: 1.2rem 0 0; }
-  .line-summary.final { font-size: 1.2rem; font-weight: 600; padding: 1rem 1.2rem; margin: 0 0 1.2rem; }
-  .submit-bar { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; margin: 0; }
-  td input.line-qty { max-width: 120px; text-align: right; font-family: var(--mono); }
-  td select.line-prod { max-width: 100%; }
-  td input.line-sarze { max-width: 130px; font-family: var(--mono); }
-  td input.line-exp { max-width: 160px; font-family: var(--mono); }
-  td input.line-note { max-width: 220px; }
-  @media (max-width: 640px) { .field-grid { grid-template-columns: 1fr; } }
-</style>
 
 {% if formset.non_form_errors %}
   <div class="non-form-errors">

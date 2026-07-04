@@ -5,6 +5,36 @@
 
 ## Done
 
+- **2026-07-03** — **Restructure Round 2 (inert-only) complete on
+  `ft_arch_restructure` (PR #26).** Decision
+  [`0070`](./decisions/0070-round2-structure-refinements.md) (the gate — drafted +
+  wording confirmed before any code) authorizes recursive sub-packaging +
+  executes 0069's `components/` CSS layer + a module-private on-commit helper.
+  All behavior-preserving; 0068/0069 not edited (append-only).
+  - **Part 1** — `inventory/views/movements.py` (832 LOC) → `movements/`
+    sub-package (`history`/`prijem`/`vydej`/`edit`/`partials` + package-local
+    `_shared`), re-exporting `__init__` (`__all__`). Both `from
+    inventory.views.movements import X` and `from inventory.views import X` still
+    resolve; `_compute_overdraw` stays public. Extracted
+    `_send_dodaci_on_commit(dodaci_list, trigger_reason)` in
+    `services/movement.py` (apply → `"vystavení"`, edit → `f"oprava: {reason}"`).
+  - **Part 2** — assembled sklad `components/*.css`
+    (tables/forms/kpis/filters/chips/dialogs), `<link>`ed from `base.html` in
+    fixed order after `base-sklad.css`. Byte-identical: set-equality diff (no
+    base rule lost) + **per-page cascade-winner equivalence = 0 mismatches, 0
+    rules lost** (home/catalogue/customer/supplier/vydej/historie/dodák). Two
+    cascade traps handled by co-location: `.over-stock`/zebra + KPI `@media`
+    overrides (both into their component file). Dedup: `.kpi.err/.warn/.ordered`
+    (home+catalogue) → kpis.css; číselník furniture (customer+supplier) →
+    filters.css.
+  - **Part 3** — README filled; `inventory/__init__.py` docstring;
+    `settings/base.py` `.env.example` pointer; `architecture.md` shows
+    `movements/`; `design-system.md` records the components file list + fixed
+    `<link>` order (sklad-scoped) as a hard constraint. Discrepancy log +3/+4
+    (both inert). Gates green throughout: **406 pass · ruff · check ·
+    makemigrations no-changes · collectstatic**. Browser spot-check substituted
+    with the static cascade proof (extension offline + local admin pw unknown;
+    logged as inert #4).
 - **2026-07-03** — **Inventura "Dochází" filter toggle (single-branch).** Added
   a "Dochází" checkbox next to the name filter on per-branch inventura
   (`inventura_edit`) that scopes visible rows to products below their reorder
@@ -2308,6 +2338,53 @@ purpose + test cases) at repo root.
 (overdraw policy, Historie redesign) merged as 0042 + 5g.
 Matej's local walkthrough is the next signal; until he
 feeds back, hold position and respond to direct asks.
+
+## In progress
+
+- **2026-07-03** — **Technical restructure (OOP / de-dup / CSS centralization)**
+  on `ft_arch_restructure`. Purely technical, behavior-preserving; decisions
+  [`0068`](./decisions/0068-code-architecture-restructure.md) (packages,
+  CBV/mixins, service classes, counterparty registry, MovementBuilder) +
+  [`0069`](./decisions/0069-css-externalization.md) (inline `<style>` →
+  `kasia/static/css/` layered token system, `<link>`-only). Principles in
+  [`architecture.md`](./architecture.md); inconsistencies surfaced while
+  centralizing are logged in
+  [`refactors/0068-restructure-discrepancies.md`](./refactors/0068-restructure-discrepancies.md)
+  (behavior/pixel changes need explicit approval, not silent fold-in). Baseline
+  suite green at **406 pass**; kept green at each checkpoint. `design-system.md`
+  updated for the new token/CSS locations (class + JS/HTMX hook contract
+  unchanged).
+  - **D0 done** — 0068/0069 + architecture.md + discrepancy log + rule/state
+    updates.
+  - **D1 done** — all six `inventory` monoliths split into packages with
+    re-exporting `__init__` (models 1253→pkg, admin 623, services 2030,
+    forms 716, views 3420, tests 7654→15 modules + `_support.py`). No file
+    now exceeds ~832 LOC. Every checkpoint: ruff clean, `manage.py check`
+    clean, `makemigrations --check` = no changes, 406 tests pass. One
+    inert discrepancy logged (#1: test monkeypatch targets re-pointed).
+  - **D2 done** — counterparty registry (killed 7 getters), single
+    `require_vlastnik` + `RequireVlastnikMixin` (killed 4 variants), shared
+    name-uniqueness validator (killed 3 copies), `build_movement()` for the 7
+    system-movement sites, Supplier/Customer CRUD → reusable `_crud` class-based
+    views (Branch left function-based — right-sizing).
+  - **D3 done** — extracted `catalogue_index` row builder (121→85); other long
+    fns (transaction orchestrators, view-state closures) deliberately left
+    cohesive (logged in `refactors/0068-restructure-discrepancies.md`).
+  - **D4 done** — all inline `<style>` externalized to `kasia/static/css/`
+    (`tokens-{sklad,web}.css` + `base-{sklad,web}.css` + `pages/*.css`),
+    `<link>`-only. Only PDF/e-mail + 404/500 keep inline style. collectstatic
+    OK; render byte-identical (cascade order preserved).
+  - **D5 dropped** — no test static-storage override needed (verified: tests
+    render `{% static 'css/…' %}` with and without a manifest).
+  - **Status: Round 1 + Round 2 done, on PR #26** (all phases green, 406 tests).
+    CI now also gates `collectstatic`. Local Docker stack is up (`make up`).
+    Round 2 (inert-only) landed per
+    [`0070`](./decisions/0070-round2-structure-refinements.md) — see the Done
+    entry above. The broader candidate list in
+    [`refactors/0068-round2-plan.md`](./refactors/0068-round2-plan.md) (revisit
+    long functions, Branch→CBV, visual polish) was **deliberately deferred** —
+    the user chose the inert-only scope; those extras were not pulled in.
+  - **→ next:** `/pr-harden` on PR #26, then merge to ship.
 
 ## Next
 

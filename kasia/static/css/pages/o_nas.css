@@ -1,0 +1,38 @@
+/* Page CSS: o_nas (decision 0069). */
+  /* ---------- O nás — people grid (page-specific) ---------- */
+  .people-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .person {
+    background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden; transition: border-color .18s ease, box-shadow .2s ease, transform .18s ease;
+  }
+  .person:hover { border-color: #c7cabf; box-shadow: 0 14px 34px -22px rgba(20,22,15,.4); transform: translateY(-2px); }
+  .person .portrait { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; filter: grayscale(.12) contrast(1.03); border-bottom: 1px solid var(--line); }
+  .person .body { padding: 24px 26px 28px; }
+  .person .role {
+    font-family: "Space Grotesk", sans-serif; font-size: 12.5px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--green); display: block; margin-bottom: 8px;
+  }
+  .person .name { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+
+  /* ---------- O nás — prose block (page-specific) ---------- */
+  .prose-block { font-size: 19px; color: var(--ink-2); }
+  .prose-block p { margin: 0 0 18px; }
+  .prose-block p:last-child { margin-bottom: 0; }
+
+  /* ---------- Deep-green statement band (page-specific) ---------- */
+  .proc .statement {
+    text-align: center; max-width: 22ch; margin: 0 auto;
+    font-family: "Space Grotesk", sans-serif; font-weight: 600; letter-spacing: -.03em;
+    font-size: clamp(30px, 4.4vw, 52px); color: #fff; line-height: 1.08;
+  }
+  .proc .statement-sub {
+    text-align: center; max-width: 50ch; margin: 26px auto 0;
+    font-size: 18px; color: rgba(255,255,255,.85);
+  }
+
+  @media (max-width: 960px) {
+    .people-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 680px) {
+    .people-grid { grid-template-columns: 1fr; }
+  }

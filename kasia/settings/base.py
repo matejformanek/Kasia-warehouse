@@ -3,7 +3,7 @@
 Per context/decisions/0015-framework-django.md and downstream tech
 decisions. Env-driven; the same module is used for local docker
 compose and for the production VPS — runtime differences come from
-.env.
+.env. See ``.env.example`` for all runtime-configurable variables.
 """
 
 import os

@@ -1,0 +1,39 @@
+/* Page CSS: settings_form (decision 0069). */
+  /* Nastavení — spacing/clarity redesign (návrh 16). Airy section cards, a 2-col
+     field grid for compact fields, an anchor-chip section index, and a sticky
+     save bar. Base.html provides tokens + shared .card/.field/.primary/etc. */
+  .page-intro { color: var(--fg-soft); font-size: .96rem; margin: 0 0 1.3rem; max-width: 640px; }
+
+  /* Section index / anchor chips under the H1 — smooth-scroll to each card. */
+  .anchor-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 2rem; padding: 0 0 1.3rem; border-bottom: 1px solid var(--line-soft); }
+  .anchor-chips a { font-size: .82rem; font-weight: 600; color: var(--fg-soft); background: var(--bg-card); border: 1px solid var(--line); padding: .4rem .8rem; border-radius: 0; text-decoration: none; line-height: 1.2; }
+  .anchor-chips a:hover { border-color: var(--accent); color: var(--accent-deep); background: var(--accent-tint); }
+
+  /* Airy section cards: generous padding + big gap between topics. */
+  .settings-card { padding: 2rem 2.2rem; margin-bottom: 2.4rem; scroll-margin-top: 24px; }
+  .settings-card > h2 { font-size: 1.3rem; margin: 0 0 .25rem; }
+  .settings-card .sub { color: var(--fg-soft); font-size: .92rem; margin: 0 0 1.6rem; max-width: 640px; }
+  .settings-card .note { color: var(--fg-soft); font-size: 0.9rem; margin: -.6rem 0 1.4rem; max-width: 640px; }
+  .settings-card code { font-family: var(--mono); font-size: .86em; background: var(--line-soft); padding: .05rem .3rem; }
+
+  /* Form fields — airy: label above input, roomy vertical rhythm. */
+  .settings-card .field { margin-bottom: 1.5rem; }
+  .settings-card label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--fg); font-size: .95rem; }
+  .settings-card input[type=text], .settings-card input[type=email], .settings-card input[type=password],
+  .settings-card input[type=number], .settings-card input[type=file], .settings-card select, .settings-card textarea {
+    max-width: 420px;
+  }
+  /* Addresses + template bodies get more room. */
+  .settings-card textarea { resize: vertical; min-height: 3.4rem; max-width: 640px; }
+  .settings-card .field small { color: var(--fg-soft); display: block; margin-top: .35rem; font-size: .85rem; }
+
+  /* 2-column grid for compact company/SMTP fields; .field-grid .field cancels its own bottom margin. */
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2rem; }
+  .field-grid .field { margin-bottom: 0; }
+  .field-grid .full { grid-column: 1 / -1; }
+  .field-grid .full input, .field-grid .full textarea { max-width: 640px; }
+  @media (max-width: 720px) { .field-grid { grid-template-columns: 1fr; } }
+
+  /* Sticky, clearly separated save bar for the primary action. */
+  .save-bar { position: sticky; bottom: 0; background: var(--bg-card); border: 1px solid var(--line); border-top: 2px solid var(--accent); padding: 1rem 1.4rem; margin-bottom: 2.4rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .save-bar .save-hint { color: var(--fg-soft); font-size: .88rem; margin-left: auto; }

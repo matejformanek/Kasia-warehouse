@@ -3,21 +3,7 @@
 
 {% block title %}Nový výdej — Kasia vera{% endblock %}
 
-{% block extra_head %}
-<style>
-  /* Výdej — airier numbered steps (mockup 05). #23 stock-warn mechanics kept. */
-  .content { max-width: 1180px; }
-  .overdraw { background: var(--error-tint); border: 1px solid #e6c4c2; border-left: 3px solid var(--error); padding: 1.3rem 1.4rem; margin-bottom: 2rem; }
-  .overdraw h2 { margin: 0 0 .5rem; font-size: 1.05rem; color: var(--error); }
-  .overdraw p { margin: 0 0 .9rem; font-size: .94rem; }
-  .overdraw .num.short { color: var(--error); font-weight: bold; }
-  /* Blocking banner (live JS): the inventura jump inside it is a prominent
-     green CTA so a wrong system count can be corrected inline. */
-  #stock-block-banner { background: var(--error-tint); border-left: 3px solid var(--error); color: var(--error); font-weight: bold; }
-  #stock-block-inventura { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; margin-left: .6rem; }
-  #stock-block-inventura:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
-</style>
-{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/vydej_form.css' %}">{% endblock %}
 
 {% block content %}
 <h1>Nový výdej zboží</h1>

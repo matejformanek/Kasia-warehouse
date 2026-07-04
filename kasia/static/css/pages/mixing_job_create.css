@@ -1,0 +1,18 @@
+/* Page CSS: mixing_job_create (decision 0069). */
+  /* Míchání — nová výrobní dávka. Two-column form grid + mono numeric inputs. */
+  .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.4rem; }
+  .form-grid .full { grid-column: 1 / -1; }
+  .field .num-in { max-width: 12rem; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .field-help { font-size: .85rem; color: var(--fg-soft); margin: .3rem 0 0; }
+  .card-sub { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1rem; }
+  .btn-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+  @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+
+/* Preview fragment (_mixing_preview.html, htmx-swapped into this page). */
+  #mixing-preview .card-sub { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1rem; }
+  #mixing-preview tr.short td { background: var(--error-tint); }
+  #mixing-preview .short-txt { color: var(--error); font-weight: bold; }
+  #mixing-preview .stav-ok { color: var(--ok); font-weight: 600; }
+  #mixing-preview .stav-short { color: var(--error); font-weight: 700; }
+  #mixing-preview .fix-stock-cta { margin-top: .6rem; }
+  #mixing-preview .fix-stock-cta a { color: #fff; }

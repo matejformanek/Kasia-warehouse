@@ -1,35 +1,10 @@
 {% extends "base.html" %}
+{% load static %}
 {% load l10n %}
 
 {% block title %}{{ product.name_cs }} — Katalog{% endblock %}
 
-{% block extra_head %}
-<style>
-  /* Detail produktu — two-column: main + sticky rail (návrh B, fakta jako dlaždice). */
-  .two-col { display: grid; grid-template-columns: 1fr 320px; gap: 1.2rem; align-items: start; }
-  .two-col .rail { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 1.2rem; }
-  .scope-note { color: var(--fg-soft); font-size: .9rem; margin: 0 0 1rem; padding: .5rem .75rem; background: var(--accent-tint); border-left: 3px solid var(--accent); }
-  .chip { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; letter-spacing: .01em; }
-  .chip.ok { background: var(--ok-soft); color: var(--ok); }
-  .chip.warn { background: var(--warn-tint); color: var(--warn); }
-  .chip.err { background: var(--error-tint); color: var(--error); }
-  .rail .card h2 { font-size: .95rem; }
-  .rail-actions { display: flex; flex-direction: column; gap: .55rem; }
-  .rail-actions .primary, .rail-actions .secondary { text-align: center; width: 100%; }
-  .fact-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
-  .fact-tile { border: 1px solid var(--line); background: var(--bg-card); padding: .7rem .8rem; display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
-  .fact-tile .ft-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); }
-  .fact-tile .ft-val { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em; color: var(--fg); }
-  .fact-tile .ft-val .ft-unit { font-size: 12px; font-weight: 500; color: var(--fg-faint); }
-  .fact-tile .ft-val.plain { font-family: var(--ui); font-size: 16px; }
-  .fact-tile.accent { border-top: 2px solid var(--accent); }
-  .fact-tile.accent .ft-val { color: var(--accent); }
-  @media (max-width: 1000px) {
-    .two-col { grid-template-columns: 1fr; }
-    .two-col .rail { position: static; }
-  }
-</style>
-{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/product_detail.css' %}">{% endblock %}
 
 {% block content %}
 <h1>

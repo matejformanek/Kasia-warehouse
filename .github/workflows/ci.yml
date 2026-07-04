@@ -49,5 +49,12 @@ jobs:
       - name: django check
         run: uv run python manage.py check
 
+      # Build the static manifest the same way the Docker image does
+      # (CompressedManifestStaticFilesStorage). Fails the PR if any CSS
+      # url()/@import can't be resolved/rewritten — catching that class of
+      # static regression at PR time instead of only at deploy-build time.
+      - name: collectstatic
+        run: uv run python manage.py collectstatic --noinput
+
       - name: pytest
         run: uv run pytest -q

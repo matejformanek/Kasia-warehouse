@@ -1,0 +1,42 @@
+/* Page CSS: home (decision 0069). */
+  /* Přehled — per-branch command center (mockup 02a). */
+  /* .kpi.err/.warn/.ordered hoisted to components/kpis.css (0070). */
+  .asof { color: var(--fg-soft); font-size: .9rem; margin: 0; }
+
+  .branch-card { background: var(--bg-card); border: 1px solid var(--line); padding: 1.1rem 1.25rem; margin-bottom: 0; }
+  .branch-top { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; margin-bottom: .7rem; padding-bottom: .7rem; border-bottom: 1px solid var(--line-soft); }
+  .branch-head { margin: 0; font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; }
+  .branch-head .b-code { font-family: var(--mono); color: var(--accent); }
+  .branch-sum { margin: .3rem 0 0; color: var(--fg-soft); font-size: .85rem; }
+  .inv-btn { white-space: nowrap; border-color: var(--warn); color: var(--warn); font-weight: 600; }
+  .inv-btn:hover { background: var(--warn-tint); border-color: var(--warn); }
+
+  .branch-card table.lines th, .branch-card table.lines td { padding: .55rem .6rem; }
+  .prod-name { font-weight: 600; }
+
+  /* Section-level colour: header + left border; rows stay neutral. */
+  .sub-head { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: .45rem .6rem; margin: 1.3rem 0 .55rem; display: flex; align-items: center; gap: .45rem; }
+  .sub-head:first-of-type { margin-top: .25rem; }
+  .sub-head .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+  .sub-head.empty { color: var(--error); border-left: 3px solid var(--error); background: var(--error-tint); }
+  .sub-head.empty .dot { background: var(--error); }
+  .sub-head.low { color: var(--warn); border-left: 3px solid var(--warn); background: var(--warn-tint); }
+  .sub-head.low .dot { background: var(--warn); }
+  .sub-head.ordered { color: var(--accent-deep); border-left: 3px solid var(--accent); background: var(--accent-tint); }
+  .sub-head.ordered .dot { background: var(--accent); }
+  .branch-ok { color: var(--fg-soft); font-size: .9rem; margin: .5rem 0 0; }
+
+  .feed-sub { margin: 1.8rem 0 .4rem; padding-top: 1rem; border-top: 1px solid var(--line-soft); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-faint); font-weight: 700; }
+  .feed-sub:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+
+  .task-list { list-style: none; margin: 0; padding: 0; }
+  .task-list li { display: flex; gap: .7rem; align-items: center; padding: .7rem 0; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap; }
+  .task-list li:last-child { border-bottom: 0; }
+  .task-list .t-badge { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: .2rem .5rem; white-space: nowrap; flex: 0 0 auto; }
+  .task-list .t-badge.mail { background: var(--error-tint); color: var(--error); border: 1px solid var(--error); }
+  .task-list .t-badge.edit { background: var(--warn-tint); color: var(--warn); border: 1px solid var(--warn); }
+  .task-list .t-badge.due { background: var(--accent-tint); color: var(--accent-deep); border: 1px solid var(--accent); }
+  .task-list .t-body { font-size: .9rem; line-height: 1.4; flex: 1 1 220px; }
+  .task-list .t-body .t-sub { color: var(--fg-soft); font-size: .82rem; }
+  .task-list .t-actions { flex: 0 0 auto; }
+  .task-list form { margin: 0; }

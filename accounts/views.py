@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.forms import PasswordResetForm
-from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
@@ -25,16 +24,14 @@ from .forms import (
     _count_other_active_vlastnik,
 )
 from .models import User
+from .permissions import require_vlastnik
 
 USER_BUDGET = 20  # per context/people-and-roles.md § Capacity
 
 
 def _require_vlastnik(request) -> None:
     """Only vlastník-level users may reach screen 13."""
-    if not request.user.is_vlastnik:
-        raise PermissionDenied(
-            "Nemáte oprávnění spravovat uživatele."
-        )
+    require_vlastnik(request, "Nemáte oprávnění spravovat uživatele.")
 
 
 @require_GET

@@ -1,5 +1,7 @@
 """Catalogue masters: branches, products, customers, suppliers, stock, recipe."""
 
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CheckConstraint, Q, UniqueConstraint
@@ -97,12 +99,14 @@ class Product(models.Model):
         "objednací bod (kg)",
         max_digits=10,
         decimal_places=3,
-        null=True,
+        null=False,
         blank=True,
+        default=Decimal("0.000"),
         help_text=(
             "Hranice, pod kterou se produkt objeví na panelu „Dochází zboží"
-            " a v denním e-mailu Petrovi (per 0043). Prázdné = bez upozornění;"
-            " 0 znamená alert při skutečně nulovém efektivním stavu."
+            " a v denním e-mailu Petrovi (per 0043/0072). Nové produkty mají"
+            " výchozí 0; produkt s nulovým efektivním stavem se vždy zobrazí"
+            " ve skupině „Prázdné“."
         ),
     )
 

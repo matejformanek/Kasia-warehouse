@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from django import forms
 
 from ..models import (
@@ -117,6 +119,13 @@ class ProductForm(forms.ModelForm):
             instance=self.instance,
             label="produkt",
         )
+
+    def clean_reorder_threshold_kg(self) -> Decimal:
+        # Field is optional (blank=True) but the column is now NOT NULL with a
+        # default of 0 (per 0072). Django's construct_instance does not apply
+        # the model default for a present-but-empty field, so a blank submit
+        # would IntegrityError — coerce empty → 0 here.
+        return self.cleaned_data.get("reorder_threshold_kg") or Decimal("0.000")
 
 
 class RecipeComponentForm(forms.ModelForm):

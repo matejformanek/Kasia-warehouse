@@ -109,6 +109,50 @@ def test_catalogue_state_ok_filter(user_vlastnik, tyn) -> None:
 
 
 @pytest.mark.django_db
+def test_new_product_defaults_threshold_zero(db) -> None:
+    """Per 0072: a new product's reorder_threshold_kg defaults to 0 (not NULL)."""
+    p = Product.objects.create(name_cs="Bez prahu", kind=Product.Kind.RAW_SPICE)
+    p.refresh_from_db()
+    assert p.reorder_threshold_kg == Decimal("0.000")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_zero_stock_product_groups_as_empty_without_threshold(
+    user_vlastnik, tyn
+) -> None:
+    """Per 0072: a product at 0 kg with the default (0) threshold groups as
+    "Prázdné" — the empty gate no longer requires a threshold to be set."""
+    empty = Product.objects.create(
+        name_cs="Prazdne bez prahu", kind=Product.Kind.RAW_SPICE
+    )
+    Stock.objects.create(product=empty, branch=tyn, quantity=Decimal("0.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/katalog/?state=empty").content.decode("utf-8")
+    assert empty.name_cs in body
+    # And it must NOT be considered "ok".
+    ok_body = client.get("/sklad/katalog/?state=ok").content.decode("utf-8")
+    assert empty.name_cs not in ok_body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_shows_zero_threshold_not_dash(
+    user_vlastnik, tyn, pepper
+) -> None:
+    """Per 0072: product detail shows the threshold value (0) rather than a
+    dash, since the field is always set now."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("2.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/katalog/{pepper.pk}/").content.decode("utf-8")
+    assert "Objednací bod" in body
+    # The default 0 renders as "0,0" (1 dp, Czech comma per 0061), not "—".
+    assert "0,0" in body
+
+
+@pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_catalogue_shows_total_kg_for_vlastnik(
     user_vlastnik, tyn, sez, pepper

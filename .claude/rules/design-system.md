@@ -260,6 +260,10 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   strip. The view groups its rows server-side and renders **only the non-empty
   groups**. Rows are **whole-row `row-link` with no per-row buttons** (editing is
   on the product detail page). It uses the grouped multi-tbody filter above.
+  Per [`0072`](../../context/decisions/0072-reorder-threshold-not-null.md) the
+  **"Prázdné" group keys on effective ≤ 0 alone** — the reorder threshold (now
+  always set, default 0) no longer gates it, so a genuinely-empty product always
+  lands in the red group.
 - **Inventura** (per
   [`0065`](../../context/decisions/0065-inventura-sidebar-nav.md)) has a
   **vlastník-only** sidebar + mobile nav item in the Provoz group, under Katalog.

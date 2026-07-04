@@ -1,0 +1,33 @@
+/* Component CSS: grouped stock-state sections (decision 0070).
+   Shared by the grouped Katalog (catalogue_index), the vlastník Přehled
+   (home) and the obsluha Přehled (branch_dashboard) — one source of truth
+   for the .sub-head state headers + the grouped-table look (per 0064).
+   Loads after chips.css, before dialogs.css; page CSS still wins. Page CSS
+   may override only the .sub-head margins (surface-specific spacing). */
+
+/* Grouped tables: neutral zebra (no green cast), bold Na skladě (2nd col). */
+.cat-group table.lines tbody tr:nth-child(even) td { background: #ebebeb; }
+.cat-group table.lines tbody tr:hover td { background: #e2e5e2; }
+.cat-group table.lines td:nth-child(2) { font-weight: 700; }
+
+.prod-sub { font-size: .8rem; color: var(--fg-soft); margin-top: 2px; }
+.prod-sub .rec { color: var(--accent); }
+.low-branch { display: inline-block; background: var(--warn); color: #fff; border: 1px solid var(--warn); font-size: .76rem; font-weight: 600; padding: .12rem .5rem; margin-right: 4px; font-family: var(--mono); letter-spacing: .02em; }
+.empty-branch { display: inline-block; background: var(--error); color: #fff; border: 1px solid var(--error); font-size: .76rem; font-weight: 600; padding: .12rem .5rem; margin-right: 4px; font-family: var(--mono); letter-spacing: .02em; }
+.eff-warn { color: var(--warn); }
+.eff-empty { color: var(--error); font-weight: 600; }
+
+/* Section headers — red / orange / neutral / green (empty / low / ok /
+   ordered). Margins are the canonical (Katalog) values; home overrides them. */
+.sub-head { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: .45rem .6rem; margin: 1.6rem 0 .6rem; display: flex; align-items: center; gap: .45rem; }
+.sub-head:first-of-type { margin-top: .4rem; }
+.sub-head.empty { color: var(--error); border-left: 3px solid var(--error); background: var(--error-tint); }
+.sub-head.low { color: var(--warn); border-left: 3px solid var(--warn); background: var(--warn-tint); }
+.sub-head.ok { color: var(--fg-soft); border-left: 3px solid var(--line); background: var(--line-soft); }
+.sub-head.ordered { color: var(--accent-deep); border-left: 3px solid var(--accent); background: var(--accent-tint); }
+.sub-head .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+.sub-head.empty .dot { background: var(--error); }
+.sub-head.low .dot { background: var(--warn); }
+.sub-head.ok .dot { background: var(--fg-faint); }
+.sub-head.ordered .dot { background: var(--accent); }
+.sub-head .count { margin-left: auto; font-weight: 600; color: var(--fg-faint); letter-spacing: 0; text-transform: none; }

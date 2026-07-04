@@ -24,8 +24,7 @@
   </ul>
 </div>
 
-{# Branch switcher + cross-branch Vše/Dochází roll-ups are vlastník-only:
-   obsluha is scoped to their own branch (0073) and would 403 on the others. #}
+{% comment %}Branch switcher + cross-branch Vše/Dochází roll-ups are vlastník-only: obsluha is scoped to their own branch (0073) and would 403 on the others.{% endcomment %}
 {% if user.is_vlastnik %}
 <div class="branch-row">
   <strong>Pobočka:</strong>

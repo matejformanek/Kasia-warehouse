@@ -1,5 +1,7 @@
 # 0043 — Reorder threshold per product, with per-branch override
 
+> **Superseded in part by [`0072-reorder-threshold-not-null.md`](./0072-reorder-threshold-not-null.md)** — the None-vs-0 semantics under § Choice are replaced by a non-null default of 0; the per-product + per-branch-override architecture stands.
+
 **Date:** 2026-06-14
 **Decider:** Matej (relaying Petr's 2026-06-14 ask)
 **Status:** Active

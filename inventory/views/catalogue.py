@@ -169,7 +169,9 @@ def catalogue_index(request):
     # Stock state per row (empty overrides low). Reused for the KPI strip,
     # the grouped tables and the ?state= filter.
     def _is_empty(r):
-        return r["effective"] <= 0 and r["threshold"] is not None
+        # Per 0072: a product at effective ≤ 0 always groups as "Prázdné" —
+        # the threshold no longer gates empty (it is now always set, default 0).
+        return r["effective"] <= 0
 
     def _is_low(r):
         return r["is_low"] and not _is_empty(r)

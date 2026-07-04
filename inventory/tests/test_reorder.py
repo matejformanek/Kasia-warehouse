@@ -39,12 +39,54 @@ def test_threshold_for_returns_override_when_present(tyn, sez, pepper) -> None:
     assert threshold_for(pepper, sez) == Decimal("5.000")
 
 
+@pytest.mark.django_db(transaction=True)
+def test_migration_0018_backfills_null_threshold() -> None:
+    """Per 0072: migration 0018 backfills existing NULL thresholds to 0 before
+    the column becomes NOT NULL. Roll inventory back to 0017 (nullable), insert a
+    NULL, migrate forward, assert it landed on 0."""
+    from django.db import connection
+    from django.db.migrations.executor import MigrationExecutor
+
+    app = "inventory"
+    before = "0017_migrate_open_planned_orders"
+    after = "0018_reorder_threshold_not_null"
+    try:
+        # Back to the nullable-column state.
+        executor = MigrationExecutor(connection)
+        executor.migrate([(app, before)])
+        OldProduct = executor.loader.project_state(
+            [(app, before)]
+        ).apps.get_model(app, "Product")
+        p = OldProduct.objects.create(
+            name_cs="Historicky bez prahu",
+            kind="raw_spice",
+            reorder_threshold_kg=None,
+        )
+        assert p.reorder_threshold_kg is None
+
+        # Forward through 0018 → backfill NULL → 0.
+        executor = MigrationExecutor(connection)
+        executor.migrate([(app, after)])
+        NewProduct = executor.loader.project_state(
+            [(app, after)]
+        ).apps.get_model(app, "Product")
+        assert NewProduct.objects.get(pk=p.pk).reorder_threshold_kg == Decimal(
+            "0.000"
+        )
+    finally:
+        # Leave the DB fully migrated for the rest of the suite.
+        executor = MigrationExecutor(connection)
+        executor.migrate([(app, after)])
+
+
 @pytest.mark.django_db
-def test_threshold_for_none_when_neither_set(tyn, pepper) -> None:
-    """threshold_for() returns None (no alert) when nothing is set."""
+def test_threshold_for_defaults_to_zero(tyn, pepper) -> None:
+    """Per 0072 the threshold is not-null, default 0 — with no override and no
+    per-product value set, threshold_for() returns 0 (not None)."""
     from inventory.services import threshold_for
 
-    assert threshold_for(pepper, tyn) is None
+    assert pepper.reorder_threshold_kg == Decimal("0.000")
+    assert threshold_for(pepper, tyn) == Decimal("0.000")
 
 
 @pytest.mark.django_db

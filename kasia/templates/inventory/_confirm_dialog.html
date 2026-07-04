@@ -68,4 +68,46 @@ Usage:
       if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
     });
   })();
+
+  // Reusable unsaved-changes guard (per 0061 — no native beforeunload/confirm).
+  // Opt in by putting `data-guard-unsaved` on a <form>; once the operator edits
+  // any field in a guarded form, an in-app dialog confirms before an in-page
+  // link (sidebar, "Zrušit", header) would navigate away and drop the work.
+  // Mirrors the bespoke guard inventura_edit.html already ships (left as-is).
+  (function () {
+    const guarded = document.querySelectorAll("form[data-guard-unsaved]");
+    if (!guarded.length) return;
+
+    let dirty = false;
+    const markDirty = () => { dirty = true; };
+    guarded.forEach((form) => {
+      form.addEventListener("input", markDirty);
+      form.addEventListener("change", markDirty);
+    });
+    // Any intentional form submit clears the guard — the main save, or an
+    // out-of-form action driven by form="…" (cancel / remove-row buttons).
+    document.querySelectorAll("form").forEach((f) => {
+      f.addEventListener("submit", () => { dirty = false; });
+    });
+
+    // Intercept in-page link navigation while there are unsaved edits. New-tab
+    // links (target set), pure #anchors and javascript: are left untouched.
+    document.addEventListener("click", async function (e) {
+      if (!dirty) return;
+      const a = e.target.closest("a[href]");
+      if (!a) return;
+      const href = a.getAttribute("href");
+      if (!href || href.charAt(0) === "#" || href.indexOf("javascript:") === 0) return;
+      if (a.target && a.target !== "_self") return;
+      e.preventDefault();
+      e.stopPropagation();
+      const ok = await window.kasiaConfirm({
+        title: "Neuložené změny",
+        body: "Máte na této stránce rozdělané změny, které se neuložily. Opravdu odejít bez uložení?",
+        cta: "Odejít bez uložení",
+        danger: true,
+      });
+      if (ok) { dirty = false; window.location = a.href; }
+    }, true);
+  })();
 </script>

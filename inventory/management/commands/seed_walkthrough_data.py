@@ -194,15 +194,20 @@ class Command(BaseCommand):
                     f"• (plan_mixing_job přeskočeno: {exc})"
                 )
 
+        # Per 0072 the threshold defaults to 0 (was NULL), so gate the demo
+        # values on None-or-0 rather than None only.
         oregano = spices.get("Oregano")
-        if oregano and oregano.reorder_threshold_kg is None:
+        if oregano and oregano.reorder_threshold_kg in (None, Decimal("0.000")):
             oregano.reorder_threshold_kg = Decimal("5.000")
             oregano.save(update_fields=["reorder_threshold_kg"])
             self.stdout.write(
                 "• Objednací bod 5,000 kg nastaven pro Oregano (demo)."
             )
         pepper_default = spices.get("Pepř černý mletý")
-        if pepper_default and pepper_default.reorder_threshold_kg is None:
+        if pepper_default and pepper_default.reorder_threshold_kg in (
+            None,
+            Decimal("0.000"),
+        ):
             pepper_default.reorder_threshold_kg = Decimal("8.000")
             pepper_default.save(update_fields=["reorder_threshold_kg"])
             self.stdout.write(

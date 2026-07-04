@@ -131,13 +131,16 @@ or restructure:
   same as míchání: `?products=<all selected ids>&next=<výdej path>`, the 0060
   contract, same-tab); the per-branch base URLs come from a
   `{{ branch_inventura|json_script:"vydej-inventura-urls" }}` blob emitted only
-  for vlastník (obsluha can't open inventura). A second výdej-only helper,
+  for vlastník (obsluha can't open inventura). A second helper,
   `refreshProductOptions()`, **disables an already-chosen product in every other
-  row's dropdown** so a product can't be issued on two lines (výdej never uses
-  Šarže, so it has no reason to repeat a product); it runs on the same
-  `input`/`change` + `htmx:afterSwap` (fresh added rows) + row-delete events.
-  **Příjem does not run any of this** (`show_stock_warn=False`) — it keeps
-  repeatable products for multiple batches. Missing (branch, product)
+  row's dropdown** so a product can't be picked on two lines; it runs on the
+  same `input`/`change` + `htmx:afterSwap` (fresh added rows) + row-delete
+  events. Per [`0071`](../../context/decisions/0071-prijem-dedup-products.md)
+  this dedup runs on **both** movement forms (an always-rendered IIFE in
+  `_movement_form_lines.html`, outside the `show_stock_warn` block) — příjem now
+  blocks duplicate products too (client-side only; a posted duplicate is
+  harmless — two additive received lines). `show_stock_warn` still gates **only**
+  the výdej over-stock check, not the dedup. Missing (branch, product)
   ⇒ `0` avail. The server aggregate-duplicates overdraw check (0042) stays as a
   harmless safety net. The
   old htmx machinery (`stock_warn_partial` view/route, `_stock_warn.html`,
@@ -200,6 +203,21 @@ non-destructive confirm ("Provést převod?", "Spustit dávku?") sets
 must never sit inside a `tr.row-link` (whole-row-nav hook) — same gotcha as the
 row-delete button.
 
+**Unsaved-changes guard — `data-guard-unsaved` on a `<form>`.** A reusable,
+opt-in guard also lives in `_confirm_dialog.html` (so it ships everywhere
+`kasiaConfirm` does). Put `data-guard-unsaved` on any data-entry `<form>`: once
+the operator edits a field in it, an in-page link click (sidebar, "Zrušit",
+header — any `a[href]`) is intercepted and confirmed via `kasiaConfirm` before
+navigating away, so half-filled work isn't dropped silently. New-tab links
+(`target` set), `#anchors` and `javascript:` are left alone; any intentional
+form submit (the save, or an out-of-form `.js-confirm` cancel/remove) clears the
+guard. Wired on **příjem / výdej / míchání / plánovaný převod+míchání / produkt
+/ číselníky (pobočka·dodavatel·odběratel) / nastavení / úprava stavu / potvrzení
+plánovaného příjmu**. **`inventura_edit.html` keeps its own bespoke guard** (its
+message is inventura-specific and it works) — do **not** also add
+`data-guard-unsaved` there or the dialog fires twice. Renaming
+`data-guard-unsaved` is a new decision.
+
 ## Quantities display at 1 dp, comma from the locale (per 0061)
 
 Quantity displays use **`floatformat:1`** (never `:3`, never raw
@@ -210,9 +228,22 @@ comes free from the active `cs` locale — **no custom filter**. This applies to
 `step="0.1"` on `type="number"` inputs (browser shows the comma, submits a dot —
 no server comma-parsing). JS-truth / native-input attributes (`data-current`,
 `value=` on `type=number`) keep the **dot** — via `|unlocalize` (JS-math /
-URL params) or **`|stringformat:'.1f'`** / a view-side `f"{x:.1f}"` string for
-prefills. **Never `floatformat` inside a `type=number` `value=`** — it emits a
-comma the browser rejects, blanking the field. The **recipe** is the only
+URL params) or a **`ROUND_HALF_UP` 1-dp** value for prefills. **Never
+`floatformat` inside a `type=number` `value=`** — it emits a comma the browser
+rejects, blanking the field.
+
+**Rounding for kg is ROUND_HALF_UP at 1 dp — everywhere, one value.** Display
+(`floatformat:1`), the input **prefill**, the **`data-current`** JS-truth, and
+the **server no-op compare** must all round the *same* current value with
+`quantize(Decimal("0.1"), ROUND_HALF_UP)` (a shared view helper is the pattern —
+e.g. inventura's `_kg1`). `data-current` is that clean 1-dp dot value
+(`{{ row.current_1dp|unlocalize }}`), **not** the raw 3-dp stock.
+**Ban `f"{x:.1f}"` / `|stringformat:'.1f'` for kg prefills** — Python's default
+`Decimal`/`format` rounding is banker's (HALF_EVEN: `45.45 → 45.4`), which
+disagrees with `floatformat:1`'s HALF_UP (`45.45 → 45,5`); the mismatch makes a
+`.x5` row load looking edited and re-submit as a phantom correction demanding a
+reason. Use `quantize(Decimal("0.1"), ROUND_HALF_UP)` instead. The **recipe** is
+the only
 exception to 1 dp: recipe-PDF **percentages** stay at `floatformat:"2"` and the
 component **ratios** (`rc.ratio`, proportions not kg) render raw — both may need
 more precision. Model `decimal_places` stays 3 — no migration; values round to
@@ -244,6 +275,10 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   strip. The view groups its rows server-side and renders **only the non-empty
   groups**. Rows are **whole-row `row-link` with no per-row buttons** (editing is
   on the product detail page). It uses the grouped multi-tbody filter above.
+  Per [`0072`](../../context/decisions/0072-reorder-threshold-not-null.md) the
+  **"Prázdné" group keys on effective ≤ 0 alone** — the reorder threshold (now
+  always set, default 0) no longer gates it, so a genuinely-empty product always
+  lands in the red group.
 - **Inventura** (per
   [`0065`](../../context/decisions/0065-inventura-sidebar-nav.md)) has a
   **vlastník-only** sidebar + mobile nav item in the Provoz group, under Katalog.

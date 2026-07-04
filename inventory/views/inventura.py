@@ -25,6 +25,15 @@ from ..services import (
 from ._shared import _require_vlastnik, _safe_next
 
 
+def _kg1(x: Decimal) -> Decimal:
+    """Round a kg quantity to 1 dp with ROUND_HALF_UP — the single source of
+    truth for display / prefill / data-current / server no-op compare, so they
+    never disagree at ``.x5`` values (per 0061; `floatformat:1` is HALF_UP,
+    while Decimal's default HALF_EVEN made 45.45 prefill as 45.4 → phantom edit).
+    """
+    return x.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+
+
 def stock_adjust_edit(request, pk: int):
     """Vlastník brings the current per-branch Stock of one product to new
     values — table editor: one row per active branch, one shared reason.
@@ -50,12 +59,13 @@ def stock_adjust_edit(request, pk: int):
         reserved = reserved_kg(product, branch) if stock else Decimal("0.000")
         carried = stock is not None
         if posted_value is None:
-            new_value = f"{current:.1f}"
+            new_value = str(_kg1(current))
         else:
             new_value = posted_value
         return {
             "branch": branch,
             "current": current,
+            "current_1dp": _kg1(current),
             "reserved": reserved,
             "carried": carried,
             "field_name": f"qty_{branch.pk}",
@@ -95,7 +105,7 @@ def stock_adjust_edit(request, pk: int):
                 row["error"] = "Stav nemůže být záporný."
                 continue
             new_qty = new_qty.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
-            if new_qty != row["current"].quantize(Decimal("0.1")):
+            if new_qty != _kg1(row["current"]):
                 any_change = True
                 parsed.append((branch, new_qty))
 
@@ -231,9 +241,10 @@ def inventura_edit(request, code: str):
                     "product": r.product,
                     "branch": r.branch,
                     "current": r.on_hand,
+                    "current_1dp": _kg1(r.on_hand),
                     "qty_field": f"qty_{r.product.pk}_{r.branch.pk}",
                     "eta_field": f"eta_{r.product.pk}_{r.branch.pk}",
-                    "qty_value": f"{r.on_hand:.1f}",  # prefill current stock
+                    "qty_value": str(_kg1(r.on_hand)),  # prefill current stock
                     "eta_value": "",
                     "orders": grouped.get((r.product.pk, r.branch.pk), []),
                     "below_threshold": False,
@@ -258,9 +269,10 @@ def inventura_edit(request, code: str):
                             "product": p,
                             "branch": b,
                             "current": cur,
+                            "current_1dp": _kg1(cur),
                             "qty_field": f"qty_{p.pk}_{b.pk}",
                             "eta_field": f"eta_{p.pk}_{b.pk}",
-                            "qty_value": f"{cur:.1f}",
+                            "qty_value": str(_kg1(cur)),
                             "eta_value": "",
                             "orders": grouped.get((p.pk, b.pk), []),
                             "below_threshold": False,
@@ -282,9 +294,10 @@ def inventura_edit(request, code: str):
                 "product": p,
                 "branch": branch,
                 "current": stocks_by_product.get(p.pk, Decimal("0.000")),
+                "current_1dp": _kg1(stocks_by_product.get(p.pk, Decimal("0.000"))),
                 "qty_field": f"qty_{p.pk}",
                 "eta_field": f"eta_{p.pk}",
-                "qty_value": f"{stocks_by_product.get(p.pk, Decimal('0.000')):.1f}",
+                "qty_value": str(_kg1(stocks_by_product.get(p.pk, Decimal("0.000")))),
                 "eta_value": "",
                 "orders": [],
                 "below_threshold": p.pk in low_pks,
@@ -351,7 +364,7 @@ def inventura_edit(request, code: str):
                     errors.append(f"{label}: stav nemůže být záporný.")
                     continue
                 new_qty = new_qty.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
-                if new_qty == row["current"].quantize(Decimal("0.1")):
+                if new_qty == _kg1(row["current"]):
                     continue
                 adjustments.append((p, b, new_qty))
 

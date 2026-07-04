@@ -24,12 +24,10 @@
   <div class="col-main">
     <div class="card">
       <h2 style="font-size:1.05rem;margin-top:0;">Stav skladu</h2>
-      {% if product.reorder_threshold_kg is not None %}
-        <p class="muted" style="margin-top:0;">
-          Objednací bod: <strong>{{ product.reorder_threshold_kg|floatformat:1 }} kg</strong>
-          (výchozí pro produkt).
-        </p>
-      {% endif %}
+      <p class="muted" style="margin-top:0;">
+        Objednací bod: <strong>{{ product.reorder_threshold_kg|floatformat:1 }} kg</strong>
+        (výchozí pro produkt).
+      </p>
 
       {% if branch_rows %}
         <section class="kpis" aria-label="Souhrn skladu produktu">
@@ -51,7 +49,7 @@
           <div class="kpi">
             <span class="lbl">Práh</span>
             <span class="k-val">
-              {% if product.reorder_threshold_kg is not None %}{{ product.reorder_threshold_kg|floatformat:1 }}{% else %}—{% endif %}
+              {{ product.reorder_threshold_kg|floatformat:1 }}
               <span class="k-unit">kg</span>
             </span>
             <span class="k-sub">objednací bod</span>

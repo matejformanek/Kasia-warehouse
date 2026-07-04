@@ -78,7 +78,7 @@
     </thead>
     <tbody>
       {% for row in rows %}
-        <tr class="inventura-row" data-current="{{ row.current|unlocalize }}" data-low="{{ row.below_threshold|yesno:'1,0' }}">
+        <tr class="inventura-row" data-current="{{ row.current_1dp|unlocalize }}" data-low="{{ row.below_threshold|yesno:'1,0' }}">
           <td><strong>{{ row.product.name_cs }}</strong></td>
           {% if cross_branch %}<td>{{ row.branch.code }}</td>{% endif %}
           <td style="color:var(--fg-soft);">{{ row.product.get_kind_display }}</td>

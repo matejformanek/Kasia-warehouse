@@ -43,6 +43,16 @@
     Tests: obsluha own-branch 200 + POST correction writes `[STAV]`; 403 on
     other-branch / vse / dochazi; Přehled button present. Petr opted obsluha into
     the objednávka (Příjezd) column.
+  - **P4 — agent guardrails (no decision; tooling/docs).** Recurring frontend
+    mistake (multi-line `{# #}` comments render as page text — shipped twice)
+    turned into a mechanical guard: `inventory/tests/test_template_hygiene.py`
+    fails CI/`make test` on any multi-line `{# #}` or inline `<style>`/`@import`
+    (0069) outside the PDF/e-mail/error allowlist (118 parametrized checks). New
+    rule `.claude/rules/frontend-and-templates.md` (post-0068 layout + the
+    silently-wrong gotchas, WHY-focused, routes to design-system.md); registered
+    in `CLAUDE.md`. First real skill `.claude/skills/kasia-sklad-frontend/`
+    (on-demand orientation when editing templates/CSS); skills README updated.
+    Fixed the two live multi-line comments (inventura_edit, stock_adjust_form).
 - **2026-07-04** — **Walkthrough feedback batch 1** on `ft_inv_walkthrough_fixes`
   (off post-restructure `main`). Three fixes from the live prod walkthrough:
   - **Part A — inventura phantom edit (no decision; aligns

@@ -12,7 +12,7 @@ from django.views.decorators.http import require_GET
 from ..models import (
     Branch,
     DodaciList,
-    DodaciListEmailLog,
+    EmailLog,
     Movement,
     Product,
     Stock,
@@ -116,14 +116,16 @@ def home(request):
         logs = list(dl.email_logs.all())
         if not _dl_failed_at_current_version(dl, logs):
             continue
-        logs_at_current = [log for log in logs if log.version == dl.current_version]
+        logs_at_current = [
+            log for log in logs if log.dodaci_version == dl.current_version
+        ]
         last_failed = max(
             (
                 log
                 for log in logs_at_current
-                if log.status == DodaciListEmailLog.Status.FAILED
+                if log.status == EmailLog.Status.FAILED
             ),
-            key=lambda log: log.sent_at,
+            key=lambda log: log.created_at,
         )
         failed_dodaky.append({"dodaci_list": dl, "last_failed": last_failed})
 

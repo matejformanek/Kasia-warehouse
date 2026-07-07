@@ -1,15 +1,15 @@
-"""Reorder thresholds, reservations, low-stock summary."""
+"""Reorder thresholds, reservations, event-driven low-stock alert."""
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
-from django.core.mail import EmailMessage
-
 from ..models import (
     Branch,
+    EmailLog,
     MixingJob,
     MixingJobLine,
     Movement,
@@ -20,13 +20,13 @@ from ..models import (
     Stock,
     StockThresholdOverride,
 )
-from .email import _active_low_stock_recipients, _smtp_connection_from_settings
+from .email import _active_low_stock_recipients, send_and_log
 
 
 @dataclass
 class LowStockRow:
     """One (product, branch) row below threshold for the dashboard panel
-    and the daily summary e-mail."""
+    and the low-stock alert e-mail."""
 
     product: Product
     branch: Branch
@@ -103,8 +103,8 @@ def low_stock_rows() -> list[LowStockRow]:
     """Every carried (product, branch) pair where a threshold is set and
     effective < threshold. Sorted by deficit DESC.
 
-    Used by the owner dashboard panel, branch dashboard, product
-    detail page, AND the daily summary e-mail. One source of truth.
+    Used by the owner dashboard panel, branch dashboard, and product
+    detail page. One source of truth for the per-pair low-stock report.
 
     Per 0053, a branch *carries* a product iff a Stock row exists for
     that pair — branches without a row do not enter this report.
@@ -218,8 +218,86 @@ def planned_prijem_lines_for(product: Product, branch: Branch):
 
 
 # ---------------------------------------------------------------------------
-# Daily low-stock summary e-mail (per 0045)
+# Event-driven low-stock alert e-mail (per 0074, supersedes 0045's daily cron)
 # ---------------------------------------------------------------------------
+#
+# The old daily summary (send_low_stock_summary, decision 0045) was never
+# scheduled. Instead we alert the moment a stock movement pushes a (product,
+# branch) pair into the Katalog "Dochází"/"Prázdné" state when it wasn't there
+# before. The two movement chokepoints (apply_movement / edit_movement) snapshot
+# `below_alert` per affected pair before mutating, then re-check on commit and
+# e-mail only the pairs that newly crossed. See 0074.
+
+
+def _below_alert(effective: Decimal, threshold: Decimal | None) -> bool:
+    """True iff a (product, branch) pair belongs in the alert set — the union
+    of the Katalog "Prázdné" + "Dochází" groups (i.e. NOT "V pořádku", per 0072).
+
+    Broader than `low_stock_rows`' bare `effective < threshold`: a pair at
+    exactly 0 with a 0 threshold (the Prázdné case) also alerts.
+    """
+    if effective <= 0:
+        return True
+    return threshold is not None and effective < threshold
+
+
+def capture_low_stock_state(
+    pairs: Iterable[tuple[Product, Branch]],
+) -> dict[tuple[int, int], bool]:
+    """Snapshot `_below_alert` per (product, branch) pair against current stock.
+
+    Call BEFORE mutating stock so the query sees the pre-mutation state; the
+    result is the `before` argument to `send_low_stock_alert_for_crossings`.
+    Keyed by (product_id, branch_id) so it survives the atomic block.
+    """
+    return {
+        (product.pk, branch.pk): _below_alert(
+            effective_kg(product, branch), threshold_for(product, branch)
+        )
+        for product, branch in pairs
+    }
+
+
+def send_low_stock_alert_for_crossings(
+    pairs: Iterable[tuple[Product, Branch]],
+    before: dict[tuple[int, int], bool],
+) -> None:
+    """Re-check each pair against current (post-commit) stock and e-mail the
+    pairs that just crossed into the alert set (were False before, True now).
+
+    Register this via `transaction.on_commit` so a rollback discards it and
+    the query reads the final committed state. A pair that was already low
+    does not re-alert (transition check = idempotency, per 0074).
+    """
+    rows: list[LowStockRow] = []
+    for product, branch in pairs:
+        key = (product.pk, branch.pk)
+        if before.get(key):  # already below before → not a new crossing
+            continue
+        threshold = threshold_for(product, branch)
+        reserved = reserved_kg(product, branch)
+        stock = Stock.objects.filter(product=product, branch=branch).first()
+        on_hand = stock.quantity if stock else Decimal("0.000")
+        effective = (on_hand - reserved).quantize(Decimal("0.001"))
+        if not _below_alert(effective, threshold):
+            continue
+        rows.append(
+            LowStockRow(
+                product=product,
+                branch=branch,
+                on_hand=on_hand,
+                reserved=reserved,
+                effective=effective,
+                threshold=threshold,
+                deficit=(
+                    (threshold - effective).quantize(Decimal("0.001"))
+                    if threshold is not None
+                    else effective
+                ),
+            )
+        )
+    if rows:
+        _send_low_stock_alert_email(rows)
 
 
 def _format_low_stock_list(rows: list[LowStockRow]) -> str:
@@ -233,25 +311,19 @@ def _format_low_stock_list(rows: list[LowStockRow]) -> str:
     return "\n".join(lines)
 
 
-def send_low_stock_summary() -> int | None:
-    """Build the low-stock list, render templates, send to subscribed
-    recipients per 0045 + 0052.
+def _send_low_stock_alert_email(rows: list[LowStockRow]) -> None:
+    """Send the "Dochází zboží" alert for the just-crossed rows, reusing the
+    existing `Settings.template_low_stock_subject/body` (placeholders `<datum>`
+    + `<seznam>`), then log it via `send_and_log` (per 0075).
 
-    Returns the number of rows on success; None if nothing to send.
-    Recipients are all active SettingsRecipient rows with
-    `is_low_stock_recipient=True`. If none match, no e-mail is sent and
-    None is returned (matches `_assert_recipients_set`'s no-raise posture
-    for the daily cron path).
+    Runs post-commit inside an `on_commit` callback; `send_and_log` swallows any
+    send error onto a FAILED `EmailLog` row and never re-raises. No
+    `is_low_stock_recipient` subscribers → skip silently (no log row).
     """
-    rows = low_stock_rows()
-    if not rows:
-        return None
-
-    s = Settings.load()
     recipients = _active_low_stock_recipients()
     if not recipients:
-        return None
-
+        return
+    s = Settings.load()
     today = date.today().strftime("%d. %m. %Y")
     seznam = _format_low_stock_list(rows)
     subject = (
@@ -264,23 +336,19 @@ def send_low_stock_summary() -> int | None:
         .replace("<datum>", today)
         .replace("<seznam>", seznam)
     )
-
     from_email = (
         f"{s.email_from_name} <{s.email_from_address}>"
         if s.email_from_name and s.email_from_address
         else (s.email_from_address or None)
     )
-
-    connection = _smtp_connection_from_settings(s)
-    msg = EmailMessage(
+    send_and_log(
+        category=EmailLog.Category.LOW_STOCK_ALERT,
+        trigger_reason="pokles zásoby pod práh (pohyb)",
         subject=subject,
         body=body,
+        recipients=recipients,
         from_email=from_email,
-        to=recipients,
-        connection=connection,
     )
-    msg.send(fail_silently=False)
-    return len(rows)
 
 
 # ---------------------------------------------------------------------------

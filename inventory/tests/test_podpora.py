@@ -5,7 +5,7 @@ import pytest
 from django.test import Client, override_settings
 
 from inventory.models import (
-    DodaciListEmailLog,
+    EmailLog,
     Feedback,
     Product,
     RecipeComponent,
@@ -559,15 +559,15 @@ def test_dodaci_list_detail_renders_failed_banner_when_unresolved(
     """When current_version has FAILED log and no SENT log, banner shows."""
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
     # Replace all logs at current_version with a single FAILED row.
-    DodaciListEmailLog.objects.filter(
-        dodaci_list=dl, version=dl.current_version
+    EmailLog.objects.filter(
+        dodaci_list=dl, dodaci_version=dl.current_version
     ).delete()
-    DodaciListEmailLog.objects.create(
+    EmailLog.objects.create(
         dodaci_list=dl,
-        version=dl.current_version,
+        dodaci_version=dl.current_version,
         recipients="petr@kasia.cz",
         trigger_reason="initial send",
-        status=DodaciListEmailLog.Status.FAILED,
+        status=EmailLog.Status.FAILED,
         error_message="SMTP timeout",
     )
     client = Client()

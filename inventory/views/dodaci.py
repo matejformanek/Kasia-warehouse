@@ -13,7 +13,7 @@ from django.views.decorators.http import require_GET, require_POST
 from ..models import (
     Branch,
     DodaciList,
-    DodaciListEmailLog,
+    EmailLog,
     Product,
 )
 from ..services import (
@@ -101,7 +101,7 @@ def dodaci_list_detail(request, cislo: str):
         return denied
     lines = list(dodaci_list.movement.lines.select_related("product").order_by("id"))
     email_logs = list(
-        dodaci_list.email_logs.order_by("sent_at", "id").all()
+        dodaci_list.email_logs.order_by("created_at", "id").all()
     )
     return render(
         request,
@@ -164,7 +164,7 @@ def dodaci_list_resend(request, cislo: str):
         trigger_reason="ruční opětovné odeslání",
         pdf_bytes=pdf_bytes,
     )
-    if log.status == DodaciListEmailLog.Status.SENT:
+    if log.status == EmailLog.Status.SENT:
         messages.success(
             request, f"E-mail odeslán ({log.recipients})."
         )

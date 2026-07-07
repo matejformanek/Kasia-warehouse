@@ -133,7 +133,7 @@
         <span class="t-body">
           <a href="{% url 'inventory:dodaci_list_detail' cislo=item.dodaci_list.cislo %}"><strong>{{ item.dodaci_list.cislo }}</strong></a> — {{ item.dodaci_list.odberatel.name }}<br>
           <span class="t-sub">
-            Odeslání selhalo {{ item.last_failed.sent_at|date:"d. m. Y H:i" }}
+            Odeslání selhalo {{ item.last_failed.created_at|date:"d. m. Y H:i" }}
             {% if item.last_failed.error_message %}({{ item.last_failed.error_message|truncatechars:60 }}){% endif %}
           </span>
         </span>

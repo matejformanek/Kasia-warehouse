@@ -18,7 +18,8 @@ from .catalogue import (
     Supplier,
 )
 from .config import Settings, SettingsRecipient
-from .dodaci import DodaciList, DodaciListEmailLog, DodaciListNumberSequence
+from .dodaci import DodaciList, DodaciListNumberSequence
+from .email_log import EmailLog
 from .feedback import Feedback
 from .mixing import MixingJob, MixingJobLine
 from .movement import Movement, MovementAudit, MovementLine
@@ -37,7 +38,7 @@ __all__ = [
     "MovementAudit",
     "DodaciListNumberSequence",
     "DodaciList",
-    "DodaciListEmailLog",
+    "EmailLog",
     "MixingJob",
     "MixingJobLine",
     "PlannedTransfer",

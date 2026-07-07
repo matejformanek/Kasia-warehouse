@@ -14,11 +14,10 @@
 #   make superuser  # create the default local superuser (admin@kasia.local / heslo1234)
 #   make seed       # seed walkthrough data (users, catalogue, sample movements)
 #   make test       # run pytest inside the web container
-#   make mail-low-stock  # send the daily „Dochází zboží e-mail (per 0045)
 
 COMPOSE ?= docker compose
 
-.PHONY: up down wipe build logs shell psql migrate superuser seed test ps mail-low-stock
+.PHONY: up down wipe build logs shell psql migrate superuser seed test ps
 
 build:
 	$(COMPOSE) build
@@ -75,11 +74,3 @@ test:
 
 ps:
 	$(COMPOSE) ps
-
-mail-low-stock:
-	# Per decision 0045 — daily summary of products below their
-	# reorder threshold (effective stock < threshold somewhere).
-	# Sends one e-mail to Settings.recipient_petr; exits 0 even
-	# if there's nothing to send. Cron entry lands when Hetzner
-	# does (per feedback_local_only_until_done).
-	$(COMPOSE) run --rm web python manage.py mail_low_stock_summary

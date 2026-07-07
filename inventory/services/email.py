@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from django.core.exceptions import ValidationError
-from django.core.mail import get_connection
+from django.core.mail import EmailMessage, get_connection
 
 from ..models import (
+    EmailLog,
     Settings,
     SettingsRecipient,
 )
@@ -59,6 +60,66 @@ def _active_low_stock_recipients() -> list[str]:
         )
         .order_by("sort_order", "id")
         .values_list("email", flat=True)
+    )
+
+
+def send_and_log(
+    *,
+    category: str,
+    trigger_reason: str,
+    subject: str,
+    body: str,
+    recipients: list[str],
+    from_email: str | None,
+    connection=None,
+    attachments: list[tuple[str, bytes, str]] | None = None,
+    dodaci_list=None,
+    dodaci_version: int | None = None,
+    sent_by=None,
+) -> EmailLog:
+    """Single interception point for every app e-mail (per 0075): send, then
+    write one ``EmailLog`` row (SENT, or FAILED + error) and return it.
+
+    Wrapped in try/except that never re-raises — the same swallow-and-log
+    posture ``send_dodaci_list_email`` already had (0019), so a send failure
+    inside an ``on_commit`` callback or a request never propagates. Builds the
+    SMTP connection from live ``Settings`` (per 0049) when one isn't passed.
+    ``recipients`` is stored comma-joined; ``attachments`` is a list of
+    ``(filename, content, mimetype)`` tuples.
+    """
+    recipients_joined = ", ".join(recipients)
+    if connection is None:
+        connection = _smtp_connection_from_settings(Settings.load())
+
+    status = EmailLog.Status.SENT
+    error_message = ""
+    try:
+        msg = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=from_email or None,
+            to=recipients,
+            connection=connection,
+        )
+        for filename, content, mimetype in attachments or []:
+            msg.attach(filename, content, mimetype)
+        msg.send(fail_silently=False)
+    except Exception as exc:  # noqa: BLE001 — logged on the row, never re-raised
+        status = EmailLog.Status.FAILED
+        error_message = str(exc)
+
+    return EmailLog.objects.create(
+        category=category,
+        trigger_reason=trigger_reason,
+        recipients=recipients_joined,
+        from_email=from_email or "",
+        subject=subject,
+        body=body,
+        status=status,
+        error_message=error_message,
+        dodaci_list=dodaci_list,
+        dodaci_version=dodaci_version,
+        sent_by=sent_by,
     )
 
 

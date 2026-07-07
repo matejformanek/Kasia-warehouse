@@ -4,7 +4,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 
 from accounts.permissions import require_vlastnik
 
-from ..models import DodaciList, DodaciListEmailLog
+from ..models import DodaciList, EmailLog
 
 
 def _dl_failed_at_current_version(dodaci_list: DodaciList, logs) -> bool:
@@ -12,13 +12,15 @@ def _dl_failed_at_current_version(dodaci_list: DodaciList, logs) -> bool:
     at current_version. Matches the dashboard's "K vyřešení" rule so the
     detail-screen banner drops out the moment a re-send succeeds.
     """
-    at_cv = [log for log in logs if log.version == dodaci_list.current_version]
+    at_cv = [
+        log for log in logs if log.dodaci_version == dodaci_list.current_version
+    ]
     if not at_cv:
         return False
-    any_sent = any(log.status == DodaciListEmailLog.Status.SENT for log in at_cv)
+    any_sent = any(log.status == EmailLog.Status.SENT for log in at_cv)
     if any_sent:
         return False
-    return any(log.status == DodaciListEmailLog.Status.FAILED for log in at_cv)
+    return any(log.status == EmailLog.Status.FAILED for log in at_cv)
 
 
 

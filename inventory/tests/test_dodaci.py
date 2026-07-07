@@ -9,8 +9,8 @@ from django.urls import reverse
 
 from inventory.models import (
     DodaciList,
-    DodaciListEmailLog,
     DodaciListNumberSequence,
+    EmailLog,
     Movement,
     MovementLine,
     Settings,
@@ -177,36 +177,6 @@ def test_dodaci_list_current_version_positive_check(tyn, ricany, user_tyn) -> No
             )
 
 
-@pytest.mark.django_db
-def test_email_log_version_positive_check(tyn, ricany, user_tyn) -> None:
-    mv = Movement.objects.create(
-        branch=tyn,
-        kind=Movement.Kind.VYDEJ,
-        date_issued=date(2026, 6, 11),
-        odberatel=ricany,
-        created_by=user_tyn,
-    )
-    dl = DodaciList.objects.create(
-        movement=mv,
-        branch=tyn,
-        odberatel=ricany,
-        date_issued=date(2026, 6, 11),
-        year_issued=2026,
-        counter=1,
-        cislo="TYN-2026-0001",
-        created_by=user_tyn,
-    )
-    with pytest.raises(IntegrityError):
-        with transaction.atomic():
-            DodaciListEmailLog.objects.create(
-                dodaci_list=dl,
-                version=0,
-                recipients="a@b.cz",
-                trigger_reason="test",
-                status=DodaciListEmailLog.Status.SENT,
-            )
-
-
 # Numbering ----------------------------------------------------------------
 
 
@@ -301,9 +271,9 @@ def test_apply_vydej_writes_sent_log(tyn, ricany, pepper, user_tyn) -> None:
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
         user=user_tyn,
     )
-    log = DodaciListEmailLog.objects.get(dodaci_list__movement=mv)
-    assert log.status == DodaciListEmailLog.Status.SENT
-    assert log.version == 1
+    log = EmailLog.objects.get(dodaci_list__movement=mv)
+    assert log.status == EmailLog.Status.SENT
+    assert log.dodaci_version == 1
     assert log.trigger_reason == "vystavení"
 
 
@@ -324,7 +294,7 @@ def test_apply_vydej_refuses_when_recipients_empty(
         )
     assert Movement.objects.count() == 0
     assert DodaciList.objects.count() == 0
-    assert DodaciListEmailLog.objects.count() == 0
+    assert EmailLog.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -335,7 +305,7 @@ def test_apply_prijem_creates_no_dodaci_list(tyn, supplier, pepper, user_tyn) ->
         user=user_tyn,
     )
     assert DodaciList.objects.count() == 0
-    assert DodaciListEmailLog.objects.count() == 0
+    assert EmailLog.objects.count() == 0
 
 
 @pytest.mark.django_db(transaction=True)
@@ -350,7 +320,7 @@ def test_apply_vydej_failed_send_writes_failed_log(
     def _raise(self, *args, **kwargs):
         raise RuntimeError("smtp down")
 
-    monkeypatch.setattr(services.dodaci_list.EmailMessage, "send", _raise)
+    monkeypatch.setattr(services.email.EmailMessage, "send", _raise)
 
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     mv = apply_movement(
@@ -360,8 +330,8 @@ def test_apply_vydej_failed_send_writes_failed_log(
     )
     # Výdej committed.
     assert Movement.objects.filter(pk=mv.pk).exists()
-    log = DodaciListEmailLog.objects.get(dodaci_list__movement=mv)
-    assert log.status == DodaciListEmailLog.Status.FAILED
+    log = EmailLog.objects.get(dodaci_list__movement=mv)
+    assert log.status == EmailLog.Status.FAILED
     assert "smtp down" in log.error_message
 
 
@@ -455,7 +425,7 @@ def test_send_dodaci_list_email_calls_helper(
         calls.append(settings_obj.smtp_host)
         return real_helper(settings_obj)
 
-    monkeypatch.setattr(services.dodaci_list, "_smtp_connection_from_settings", _spy)
+    monkeypatch.setattr(services.email, "_smtp_connection_from_settings", _spy)
 
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     apply_movement(
@@ -479,7 +449,7 @@ def test_send_dodaci_list_email_failure_still_logs_failed_row(
     def _raise(self, *args, **kwargs):
         raise RuntimeError("smtp boom")
 
-    monkeypatch.setattr(services.dodaci_list.EmailMessage, "send", _raise)
+    monkeypatch.setattr(services.email.EmailMessage, "send", _raise)
 
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     mv = apply_movement(
@@ -488,8 +458,8 @@ def test_send_dodaci_list_email_failure_still_logs_failed_row(
         user=user_tyn,
     )
     assert Movement.objects.filter(pk=mv.pk).exists()
-    log = DodaciListEmailLog.objects.get(dodaci_list__movement=mv)
-    assert log.status == DodaciListEmailLog.Status.FAILED
+    log = EmailLog.objects.get(dodaci_list__movement=mv)
+    assert log.status == EmailLog.Status.FAILED
     assert "smtp boom" in log.error_message
 
 
@@ -529,7 +499,7 @@ def test_edit_vydej_bumps_current_version_and_audits(
     assert dl.current_version == 2
     assert len(mail.outbox) == 2
     assert mail.outbox[-1].subject.startswith("[OPRAVA] Dodací list")
-    log = DodaciListEmailLog.objects.filter(dodaci_list=dl, version=2).get()
+    log = EmailLog.objects.filter(dodaci_list=dl, dodaci_version=2).get()
     assert log.trigger_reason == "oprava: oprava hmotnosti"
 
 
@@ -590,7 +560,7 @@ def test_edit_movement_rollback_does_not_send_oprava(
     assert dl.current_version == 1
     assert len(mail.outbox) == outbox_before
     assert (
-        DodaciListEmailLog.objects.filter(dodaci_list=dl).count() == 1
+        EmailLog.objects.filter(dodaci_list=dl).count() == 1
     )
 
 
@@ -668,12 +638,12 @@ def test_dodaci_list_admin_resend_action(
     assert response.status_code == 200
     assert len(mail.outbox) == outbox_before + 1
     log = (
-        DodaciListEmailLog.objects.filter(dodaci_list=dl)
-        .order_by("-sent_at", "-id")
+        EmailLog.objects.filter(dodaci_list=dl)
+        .order_by("-created_at", "-id")
         .first()
     )
     assert log is not None
-    assert log.version == dl.current_version
+    assert log.dodaci_version == dl.current_version
 
 
 @pytest.mark.django_db
@@ -681,7 +651,7 @@ def test_dodaci_list_admin_resend_action(
 def test_email_log_admin_is_readonly(admin_user) -> None:
     client = Client()
     client.force_login(admin_user)
-    response = client.get(reverse("admin:inventory_dodacilistemaillog_add"))
+    response = client.get(reverse("admin:inventory_emaillog_add"))
     assert response.status_code == 403
 
 

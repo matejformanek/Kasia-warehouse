@@ -5,6 +5,56 @@
 
 ## Done
 
+- **2026-07-07** — **Unified e-mail outbox log (`EmailLog`) + „E-maily" Správa page**
+  ([`0075`](./decisions/0075-email-outbox-log.md), supersedes 0019's dodák-scoped
+  log) on `ft_inv_event_low_stock_alert` (off `main`). One place to see every
+  e-mail the app sent, to whom and why, with a resend for failed ones.
+  - **Model:** new `inventory/models/email_log.py::EmailLog` (category /
+    trigger_reason / recipients / from_email / **subject+body** / status /
+    error_message / `dodaci_list` FK `SET_NULL` `related_name="email_logs"` /
+    `dodaci_version` / `sent_by`). Absorbs + **replaces** `DodaciListEmailLog`.
+    Migration `0019_email_log`: CreateModel → RunPython copies old rows (category
+    derived from `trigger_reason`; `version`→`dodaci_version`; subject/body empty;
+    `created_at` back-set) → DeleteModel `DodaciListEmailLog`.
+  - **Seam:** `services/email.py::send_and_log(...)` — send + write one row
+    (SENT / FAILED+error), never re-raises (0049 bypasses `EMAIL_BACKEND`, so a
+    logging backend wouldn't catch these). `send_dodaci_list_email`,
+    `_send_low_stock_alert_email` (0074), `settings_test_smtp` all delegate to it.
+  - **Page (vlastník-gated):** `email_log_index` / `_detail` / `_resend` at
+    `e-maily/…`. Status tabs + category filter + 50/page pager + 0063 client
+    text search. Resend = re-render for dodák rows / re-send stored subject+body
+    otherwise; both write a fresh row. Nav item under Správa. Retention: keep all.
+  - Rewired every `DodaciListEmailLog` reference (dodaci/_shared/dashboard views +
+    dodaci_list_detail/home templates + admin) — `version`→`dodaci_version`,
+    `sent_at`→`created_at`, `.Status`→`EmailLog.Status`.
+- **2026-07-05** — **Event-driven low-stock alert e-mail**
+  ([`0074`](./decisions/0074-event-driven-low-stock-alert.md), supersedes
+  0045's daily-cron model) on `ft_inv_event_low_stock_alert` (off `main`). The
+  0045 daily summary was **never scheduled** on the box (only cron is the nightly
+  DB backup), so the owner got zero low-stock e-mails in a week of prod uptime.
+  Replaced with an inline alert: the moment `apply_movement` / `edit_movement`
+  push a `(product, branch)` pair **into** the alert set (Katalog Prázdné+Dochází,
+  i.e. `effective ≤ 0 OR (threshold set AND effective < threshold)`) when it
+  wasn't before, an e-mail lists every product that just crossed.
+  - `reorder.py`: `_below_alert`, `capture_low_stock_state(pairs)` (snapshot
+    before mutating), `send_low_stock_alert_for_crossings(pairs, before)`
+    (recompute post-commit, e-mail newly-crossed), `_send_low_stock_alert_email`
+    (reuses `Settings.template_low_stock_subject/body`, recipients, SMTP,
+    `_format_low_stock_list` — **no new Settings field, no migration**;
+    try/except+log, never raises into the request). Removed
+    `send_low_stock_summary`.
+  - `movement.py`: both chokepoints snapshot `before` then register a
+    `transaction.on_commit` alert alongside the dodák one. Per-pair `effective_kg`
+    unit (ties to `low_stock_rows` + dashboard). Transition check = idempotency
+    (already-low → no re-alert); no cooldown model. Stock-raising transfer/receipt
+    legs (+1) send nothing → ≤ 1 content-bearing e-mail per operation. Mixing
+    consume alerts even though its dodák is skipped (internal). Reservation-only
+    plans out of scope.
+  - Removed cron surface: `mail_low_stock_summary.py` command, `make mail-low-stock`
+    target, the crontab step in `context/hetzner-provisioning-handoff.md`.
+  - Tests: new `test_low_stock_alert.py` (9 crossing cases —
+    `django_db(transaction=True)` + locmem); dropped the 4 cron-summary tests.
+    Full suite 546 green, ruff clean, `manage.py check` clean.
 - **2026-07-04** — **Obsluha parity fixes** on `ft_obsluha_parity` (off `main`).
   Two gaps found comparing SEZ obsluha vs vlastník on prod; no new decision.
   - **P1 — dodací-list branch scoping (bug fix; aligns
@@ -75,9 +125,11 @@
     backfills NULLs→0 before the `AlterField`. `ProductForm` coerces empty→0.
     Katalog `_is_empty` drops the threshold gate — effective ≤ 0 always groups as
     "Prázdné". product_detail drops dead `is not None` guards; seed gates demo
-    thresholds on None-or-0. Mailing (`send_low_stock_summary`) untouched (separate
-    session). New tests: default 0, empty grouping, product_detail 0, migration
-    backfill.
+    thresholds on None-or-0. (Mailing was deferred to a separate session — now
+    done event-driven per
+    [`0074`](./decisions/0074-event-driven-low-stock-alert.md), see the
+    2026-07-05 entry above.) New tests: default 0, empty grouping,
+    product_detail 0, migration backfill.
   - **Follow-up (same PR) — unsaved-changes guard on data-entry forms.** Leaving
     příjem/výdej with a half-filled form via an in-page link dropped the work
     silently (only inventura confirmed). Added a reusable opt-in guard
@@ -1429,8 +1481,10 @@
   - SMTP provider decision (deferred). Without it, dodák e-mails
     and the daily low-stock summary are silent no-ops.
   - Hetzner Storage Box BX11 + restic backups (deferred).
-  - Cron entry for `mail_low_stock_summary` (deferred — needs cron
-    decision and a few days of real data anyway).
+  - ~~Cron entry for `mail_low_stock_summary`~~ — **obsolete per
+    [`0074`](./decisions/0074-event-driven-low-stock-alert.md)**: the
+    low-stock e-mail is now event-driven (sent inline on a crossing
+    movement), no cron needed. See the 2026-07-05 Done entry.
 
 - **2026-06-16** — Podpora page landed (`/podpora/`). In-app docs
   (per-screen reference + 6 workflows + 11 tips in `<details>`

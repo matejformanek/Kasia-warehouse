@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}E-mail — {{ log.subject|default:log.get_category_display }} — Kasia vera{% endblock %}
+
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/email_log_detail.css' %}">{% endblock %}
+
+{% block content %}
+<h1>E-mail
+  {% if log.status == "sent" %}
+    <span class="mail mail-ok">odesláno</span>
+  {% else %}
+    <span class="mail mail-fail">selhalo</span>
+  {% endif %}
+</h1>
+<p class="muted" style="margin:0 0 1.1rem;">
+  <span class="cat-chip">{{ log.get_category_display }}</span>
+  · {{ log.created_at|date:"d. m. Y H:i" }}
+</p>
+
+{% if log.status == "failed" %}
+  <p class="fail-note">
+    <strong>Odeslání selhalo.</strong>
+    {% if log.error_message %}{{ log.error_message }}{% endif %}
+    Klikněte na <em>Odeslat znovu</em> pro nový pokus.
+  </p>
+{% endif %}
+
+<div class="card">
+  <dl class="meta-list">
+    <div class="m"><dt>Kategorie</dt><dd>{{ log.get_category_display }}</dd></div>
+    <div class="m"><dt>Čas</dt><dd class="mono">{{ log.created_at|date:"d. m. Y H:i" }}</dd></div>
+    <div class="m"><dt>Odesílatel</dt><dd class="mono">{{ log.from_email|default:"—" }}</dd></div>
+    <div class="m"><dt>Příjemci</dt><dd class="mono">{{ log.recipients }}</dd></div>
+    <div class="m"><dt>Důvod</dt><dd>{{ log.trigger_reason }}</dd></div>
+    {% if log.dodaci_list %}
+      <div class="m"><dt>Dodací list</dt><dd>
+        <a href="{% url 'inventory:dodaci_list_detail' cislo=log.dodaci_list.cislo %}">{{ log.dodaci_list.cislo }}</a>
+        {% if log.dodaci_version %} · v{{ log.dodaci_version }}{% endif %}
+      </dd></div>
+    {% endif %}
+    {% if log.sent_by %}
+      <div class="m"><dt>Odeslal</dt><dd>{{ log.sent_by.email }}</dd></div>
+    {% endif %}
+  </dl>
+</div>
+
+<div class="card">
+  <h2>Předmět</h2>
+  <p class="subject">{{ log.subject|default:"—" }}</p>
+  <h2>Tělo</h2>
+  {% if log.body %}
+    <pre class="body">{{ log.body }}</pre>
+  {% elif log.dodaci_list %}
+    <p class="muted">Tělo se u dodacích listů nearchivuje — při opětovném odeslání se vygeneruje z aktuálního dodacího listu.</p>
+  {% else %}
+    <p class="muted">—</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="actions">
+    <form method="post" action="{% url 'inventory:email_log_resend' pk=log.pk %}" style="display:inline;">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button class="primary js-confirm" type="submit"
+              data-confirm-danger="false"
+              data-confirm-title="Odeslat e-mail znovu?"
+              data-confirm-body="Znovu odeslat tento e-mail příjemcům ({{ log.recipients }})?"
+              data-confirm-cta="Odeslat znovu">Odeslat znovu</button>
+    </form>
+    <a class="secondary" href="{% url 'inventory:email_log_index' %}">Zpět na seznam</a>
+  </div>
+</div>
+{% endblock %}

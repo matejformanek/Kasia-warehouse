@@ -108,8 +108,8 @@
       <tbody>
         {% for log in email_logs %}
           <tr>
-            <td>{{ log.sent_at|date:"d. m. Y H:i" }}</td>
-            <td>v{{ log.version }}</td>
+            <td>{{ log.created_at|date:"d. m. Y H:i" }}</td>
+            <td>v{{ log.dodaci_version }}</td>
             <td>
               {% if log.status == "sent" %}
                 <span class="mail mail-ok">odesláno</span>

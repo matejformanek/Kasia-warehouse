@@ -104,6 +104,14 @@ urlpatterns = [
         views.dodaci_list_resend,
         name="dodaci_list_resend",
     ),
+    # E-mailová schránka (outbox log, per 0075) — vlastník-only.
+    path("e-maily/", views.email_log_index, name="email_log_index"),
+    path("e-maily/<int:pk>/", views.email_log_detail, name="email_log_detail"),
+    path(
+        "e-maily/<int:pk>/odeslat-znovu/",
+        views.email_log_resend,
+        name="email_log_resend",
+    ),
     path("nastaveni/", views.settings_edit, name="settings_edit"),
     path(
         "nastaveni/test-smtp/",

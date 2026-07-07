@@ -5,7 +5,7 @@ import pytest
 from django.test import Client, override_settings
 
 from inventory.models import (
-    DodaciListEmailLog,
+    EmailLog,
     Movement,
     MovementLine,
     Product,
@@ -109,10 +109,10 @@ def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch)
     def _fail(self, *args, **kwargs):
         raise RuntimeError("smtp down")
 
-    monkeypatch.setattr(services.dodaci_list.EmailMessage, "send", _fail)
+    monkeypatch.setattr(services.email.EmailMessage, "send", _fail)
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
-    assert DodaciListEmailLog.objects.filter(
-        dodaci_list=dl, status=DodaciListEmailLog.Status.FAILED
+    assert EmailLog.objects.filter(
+        dodaci_list=dl, status=EmailLog.Status.FAILED
     ).exists()
 
     client = Client()

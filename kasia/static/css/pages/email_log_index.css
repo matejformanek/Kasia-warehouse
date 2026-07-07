@@ -1,0 +1,16 @@
+/* Page CSS: email_log_index (outbox list, decision 0075). */
+
+  /* Status badge — same look as the dodák detail's mail-ok/mail-fail. */
+  .mail { display: inline-block; font-size: .82rem; font-weight: 600; padding: .1rem .5rem; }
+  .mail-ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
+  .mail-fail { background: var(--error-tint); color: var(--error); border: 1px solid var(--error); }
+
+  /* Category chip — neutral, small. */
+  .cat-chip { display: inline-block; font-size: .78rem; font-weight: 600; padding: .1rem .45rem; border: 1px solid var(--line); color: var(--fg-soft); background: var(--surface, transparent); }
+
+  td.mono, .mono { font-family: var(--mono); }
+
+  /* Pager (mirrors movement_history). */
+  .pager { display: flex; align-items: center; gap: 1rem; margin-top: 1.1rem; }
+  .pager-info { color: var(--fg-soft); font-size: .9rem; }
+  .pager-disabled { opacity: .45; pointer-events: none; }

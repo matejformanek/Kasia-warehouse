@@ -4,7 +4,7 @@ from django.contrib import admin, messages
 
 from ..models import (
     DodaciList,
-    DodaciListEmailLog,
+    EmailLog,
 )
 from ..services import (
     render_dodaci_list_pdf,
@@ -62,7 +62,7 @@ class DodaciListAdmin(admin.ModelAdmin):
                 trigger_reason="ruční opětovné odeslání",
                 pdf_bytes=pdf_bytes,
             )
-            if log.status == DodaciListEmailLog.Status.SENT:
+            if log.status == EmailLog.Status.SENT:
                 sent += 1
             else:
                 failed += 1
@@ -76,19 +76,23 @@ class DodaciListAdmin(admin.ModelAdmin):
             )
 
 
-@admin.register(DodaciListEmailLog)
-class DodaciListEmailLogAdmin(admin.ModelAdmin):
+@admin.register(EmailLog)
+class EmailLogAdmin(admin.ModelAdmin):
     list_display = (
-        "sent_at",
-        "dodaci_list",
-        "version",
+        "created_at",
+        "category",
         "status",
         "recipients",
+        "dodaci_list",
+    )
+    list_filter = ("category", "status")
+    search_fields = (
+        "recipients",
+        "subject",
         "trigger_reason",
         "error_message",
+        "dodaci_list__cislo",
     )
-    list_filter = ("status", "version")
-    search_fields = ("dodaci_list__cislo", "trigger_reason", "error_message")
 
     def has_add_permission(self, request) -> bool:
         return False

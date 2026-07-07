@@ -4,19 +4,18 @@ from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
 
-from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 
 from ..models import (
     DodaciList,
-    DodaciListEmailLog,
     DodaciListNumberSequence,
+    EmailLog,
     Movement,
     Product,
     RecipeComponent,
     Settings,
 )
-from .email import _active_dodak_recipients, _smtp_connection_from_settings
+from .email import _active_dodak_recipients, send_and_log
 
 
 def _reserve_dodak_number(*, branch, year: int) -> int:
@@ -195,16 +194,18 @@ def send_dodaci_list_email(
     dodaci_list: DodaciList,
     trigger_reason: str,
     pdf_bytes: bytes,
-) -> DodaciListEmailLog:
+    sent_by=None,
+) -> EmailLog:
     """Send one dodák e-mail to every active SettingsRecipient row per 0052.
 
-    Wrapped in try/except per 0019: a send failure writes a FAILED log
-    row and returns it; it does NOT re-raise. The výdej / oprava write
-    that triggered the send is already committed.
+    Renders subject/body/from + attaches the PDF, then delegates the send +
+    logging to `send_and_log` (per 0075) — which writes a SENT or FAILED
+    `EmailLog` row and never re-raises. The výdej / oprava write that triggered
+    the send is already committed. `sent_by` records the operator for a manual
+    resend (None for the automatic on-commit send).
     """
     s = Settings.load()
     recipients = _active_dodak_recipients()
-    recipients_joined = ", ".join(recipients)
     is_oprava = trigger_reason.startswith("oprava")
     subject_template = (
         s.template_oprava_subject if is_oprava else s.template_initial_subject
@@ -222,33 +223,25 @@ def send_dodaci_list_email(
         else (s.email_from_address or None)
     )
 
-    try:
-        connection = _smtp_connection_from_settings(s)
-        msg = EmailMessage(
-            subject=subject,
-            body=body,
-            from_email=from_email,
-            to=recipients,
-            connection=connection,
-        )
-        msg.attach(f"{dodaci_list.cislo}.pdf", pdf_bytes, "application/pdf")
-        msg.send(fail_silently=False)
-    except Exception as exc:
-        return DodaciListEmailLog.objects.create(
-            dodaci_list=dodaci_list,
-            version=dodaci_list.current_version,
-            recipients=recipients_joined,
-            trigger_reason=trigger_reason,
-            status=DodaciListEmailLog.Status.FAILED,
-            error_message=str(exc),
-        )
+    # Category mirrors the migration 0019 derivation (resend checked first).
+    if trigger_reason == "ruční opětovné odeslání":
+        category = EmailLog.Category.DODACI_RESEND
+    elif is_oprava:
+        category = EmailLog.Category.DODACI_OPRAVA
+    else:
+        category = EmailLog.Category.DODACI_VYSTAVENI
 
-    return DodaciListEmailLog.objects.create(
-        dodaci_list=dodaci_list,
-        version=dodaci_list.current_version,
-        recipients=recipients_joined,
+    return send_and_log(
+        category=category,
         trigger_reason=trigger_reason,
-        status=DodaciListEmailLog.Status.SENT,
+        subject=subject,
+        body=body,
+        recipients=recipients,
+        from_email=from_email,
+        attachments=[(f"{dodaci_list.cislo}.pdf", pdf_bytes, "application/pdf")],
+        dodaci_list=dodaci_list,
+        dodaci_version=dodaci_list.current_version,
+        sent_by=sent_by,
     )
 
 

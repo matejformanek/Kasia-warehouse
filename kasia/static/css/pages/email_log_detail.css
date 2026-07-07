@@ -1,0 +1,22 @@
+/* Page CSS: email_log_detail (outbox detail, decision 0075). */
+
+  .mail { display: inline-block; font-size: .82rem; font-weight: 600; padding: .1rem .5rem; vertical-align: middle; }
+  .mail-ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
+  .mail-fail { background: var(--error-tint); color: var(--error); border: 1px solid var(--error); }
+
+  .cat-chip { display: inline-block; font-size: .78rem; font-weight: 600; padding: .1rem .45rem; border: 1px solid var(--line); color: var(--fg-soft); }
+
+  .fail-note { background: var(--error-tint); border-left: 3px solid var(--error); padding: .65rem .85rem; font-size: .9rem; margin: 0 0 1.2rem; color: var(--fg); }
+  .fail-note strong { color: var(--error); }
+
+  /* Definition-list meta grid. */
+  .meta-list { display: grid; grid-template-columns: 1fr; gap: .8rem 2rem; margin: 0; }
+  .meta-list .m { display: flex; flex-direction: column; gap: 3px; }
+  .meta-list dt { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-faint); }
+  .meta-list dd { margin: 0; font-weight: 500; word-break: break-word; }
+  @media (min-width: 720px) { .meta-list { grid-template-columns: 1fr 1fr; } }
+
+  .subject { font-weight: 600; margin: .2rem 0 1rem; }
+  .body { font-family: var(--mono); font-size: .88rem; white-space: pre-wrap; word-break: break-word; background: var(--line-soft); padding: .9rem 1rem; margin: .2rem 0 0; border: 1px solid var(--line); }
+
+  .actions { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }

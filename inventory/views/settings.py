@@ -14,10 +14,11 @@ from ..forms import (
 from ..models import (
     Branch,
     DodaciListNumberSequence,
+    EmailLog,
     Settings,
 )
 from ..services import (
-    _smtp_connection_from_settings,
+    send_and_log,
 )
 from ._shared import _require_vlastnik
 
@@ -97,37 +98,28 @@ def settings_test_smtp(request):
     to_email = form.cleaned_data["to_email"]
     s = Settings.load()
 
-    # Same code path as the real dodák send — per decision 0049 the
-    # helper is the single SMTP-connection construction site.
-    from django.core.mail import EmailMessage
-
     from_address = s.email_from_address or None
     from_name = s.email_from_name or "Kasia vera"
-    sender = (
-        f"{from_name} <{from_address}>" if from_address else None
+    sender = f"{from_name} <{from_address}>" if from_address else None
+
+    # Same send seam as the real dodák / alert sends — logs an EmailLog row
+    # (per 0075). send_and_log builds the connection from Settings (0049).
+    log = send_and_log(
+        category=EmailLog.Category.SMTP_TEST,
+        trigger_reason="test SMTP",
+        subject="Test e-mailu — Kasia vera",
+        body=(
+            "Toto je testovací e-mail z aplikace Kasia vera — sklad. "
+            "Pokud čtete tento text, SMTP nastavení funguje."
+        ),
+        recipients=[to_email],
+        from_email=sender,
+        sent_by=request.user,
     )
-
-    try:
-        connection = _smtp_connection_from_settings(s)
-        msg = EmailMessage(
-            subject="Test e-mailu — Kasia vera",
-            body=(
-                "Toto je testovací e-mail z aplikace Kasia vera — sklad. "
-                "Pokud čtete tento text, SMTP nastavení funguje."
-            ),
-            from_email=sender,
-            to=[to_email],
-            connection=connection,
-        )
-        msg.send(fail_silently=False)
-    except Exception as exc:  # noqa: BLE001 — surface any SMTP error to operator
-        messages.error(
-            request,
-            f"Test e-mailu selhal: {exc}",
-        )
-        return redirect("inventory:settings_edit")
-
-    messages.success(request, f"Testovací e-mail odeslán na {to_email}.")
+    if log.status == EmailLog.Status.FAILED:
+        messages.error(request, f"Test e-mailu selhal: {log.error_message}")
+    else:
+        messages.success(request, f"Testovací e-mail odeslán na {to_email}.")
     return redirect("inventory:settings_edit")
 
 

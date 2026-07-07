@@ -9,7 +9,7 @@ from django.test import Client, override_settings
 
 from inventory.models import (
     Branch,
-    DodaciListEmailLog,
+    EmailLog,
     Movement,
     MovementLine,
     Settings,
@@ -265,8 +265,8 @@ def test_send_dodaci_list_iterates_all_active_recipients(
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
         user=user_tyn,
     )
-    log = DodaciListEmailLog.objects.get(dodaci_list__movement=mv)
-    assert log.status == DodaciListEmailLog.Status.SENT
+    log = EmailLog.objects.get(dodaci_list__movement=mv)
+    assert log.status == EmailLog.Status.SENT
     # 3 active rows in conftest + new one = should ship to 3 addresses.
     recips = [r.strip() for r in log.recipients.split(",")]
     assert set(recips) == {
@@ -295,7 +295,7 @@ def test_send_dodaci_list_skips_inactive_recipients(
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
         user=user_tyn,
     )
-    log = DodaciListEmailLog.objects.get(dodaci_list__movement=mv)
+    log = EmailLog.objects.get(dodaci_list__movement=mv)
     recips = [r.strip() for r in log.recipients.split(",")]
     assert recips == ["petr@example.cz"]
 
@@ -316,49 +316,6 @@ def test_send_dodaci_list_refuses_with_zero_active_recipients(
             user=user_tyn,
         )
     assert Movement.objects.count() == 0
-
-
-@pytest.mark.django_db
-@override_settings(**_VIEW_TEST_OVERRIDES)
-def test_send_low_stock_summary_targets_low_stock_recipients_only(
-    tyn, pepper
-) -> None:
-    """Karolína (is_low_stock_recipient=False) does NOT receive the summary."""
-    from django.core import mail
-
-    from inventory.services import send_low_stock_summary
-
-    pepper.reorder_threshold_kg = Decimal("5.000")
-    pepper.save()
-    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
-
-    result = send_low_stock_summary()
-    assert result is not None
-    assert len(mail.outbox) == 1
-    assert mail.outbox[0].to == ["petr@example.cz"]
-    # Karolína is in the recipient table but NOT subscribed → not in to=.
-    assert "karolina@example.cz" not in mail.outbox[0].to
-
-
-@pytest.mark.django_db
-@override_settings(**_VIEW_TEST_OVERRIDES)
-def test_send_low_stock_summary_returns_none_with_no_subscribers(
-    tyn, pepper
-) -> None:
-    """No is_low_stock_recipient=True rows → no e-mail, return None."""
-    from django.core import mail
-
-    from inventory.models import SettingsRecipient
-    from inventory.services import send_low_stock_summary
-
-    SettingsRecipient.objects.update(is_low_stock_recipient=False)
-    pepper.reorder_threshold_kg = Decimal("5.000")
-    pepper.save()
-    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
-
-    result = send_low_stock_summary()
-    assert result is None
-    assert len(mail.outbox) == 0
 
 
 @pytest.mark.django_db
@@ -452,23 +409,23 @@ def test_dodaci_list_detail_no_banner_after_successful_resend(
 ) -> None:
     """FAILED followed by SENT at current_version → no banner."""
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
-    DodaciListEmailLog.objects.filter(
-        dodaci_list=dl, version=dl.current_version
+    EmailLog.objects.filter(
+        dodaci_list=dl, dodaci_version=dl.current_version
     ).delete()
-    DodaciListEmailLog.objects.create(
+    EmailLog.objects.create(
         dodaci_list=dl,
-        version=dl.current_version,
+        dodaci_version=dl.current_version,
         recipients="petr@kasia.cz",
         trigger_reason="initial send",
-        status=DodaciListEmailLog.Status.FAILED,
+        status=EmailLog.Status.FAILED,
         error_message="SMTP timeout",
     )
-    DodaciListEmailLog.objects.create(
+    EmailLog.objects.create(
         dodaci_list=dl,
-        version=dl.current_version,
+        dodaci_version=dl.current_version,
         recipients="petr@kasia.cz",
         trigger_reason="ruční opětovné odeslání",
-        status=DodaciListEmailLog.Status.SENT,
+        status=EmailLog.Status.SENT,
     )
     client = Client()
     client.force_login(user_tyn)

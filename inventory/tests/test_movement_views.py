@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from inventory.models import (
     DodaciList,
-    DodaciListEmailLog,
+    EmailLog,
     Movement,
     MovementAudit,
     Stock,
@@ -418,7 +418,7 @@ def test_dodaci_list_resend_writes_log(user_tyn, tyn, ricany, pepper) -> None:
 
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
     outbox_before = len(mail.outbox)
-    logs_before = DodaciListEmailLog.objects.filter(dodaci_list=dl).count()
+    logs_before = EmailLog.objects.filter(dodaci_list=dl).count()
 
     client = Client()
     client.force_login(user_tyn)
@@ -428,14 +428,14 @@ def test_dodaci_list_resend_writes_log(user_tyn, tyn, ricany, pepper) -> None:
 
     assert len(mail.outbox) == outbox_before + 1
     log = (
-        DodaciListEmailLog.objects.filter(dodaci_list=dl)
-        .order_by("-sent_at", "-id")
+        EmailLog.objects.filter(dodaci_list=dl)
+        .order_by("-created_at", "-id")
         .first()
     )
     assert log is not None
     assert log.trigger_reason == "ruční opětovné odeslání"
     assert (
-        DodaciListEmailLog.objects.filter(dodaci_list=dl).count() == logs_before + 1
+        EmailLog.objects.filter(dodaci_list=dl).count() == logs_before + 1
     )
 
 
@@ -513,7 +513,7 @@ def test_movement_edit_post_bumps_version_and_audits(
     assert dl.current_version == 2
     # An OPRAVA send + log row landed via the edit hook.
     assert any("[OPRAVA]" in m.subject for m in mail.outbox)
-    log = DodaciListEmailLog.objects.filter(dodaci_list=dl, version=2).get()
+    log = EmailLog.objects.filter(dodaci_list=dl, dodaci_version=2).get()
     assert log.trigger_reason == "oprava: oprava hmotnosti"
     # And the audit row exists.
     assert MovementAudit.objects.filter(movement=mv).count() >= 1

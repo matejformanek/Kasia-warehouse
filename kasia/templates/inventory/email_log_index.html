@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}E-maily — Kasia vera{% endblock %}
+
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/email_log_index.css' %}">{% endblock %}
+
+{% block content %}
+<h1>E-maily</h1>
+<p class="muted" style="margin:0 0 1.1rem;">
+  Odeslané e-maily aplikace — dodací listy, upozornění „Dochází zboží" a testy SMTP.
+  Celkem {{ total }}{% if failed_count %} · <span style="color:var(--error);">selhalo {{ failed_count }}</span>{% endif %}.
+</p>
+
+<div class="tab-chips" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+  {% for value, label, n in status_tabs %}
+    {% if value == filter_status %}
+      <span class="tab-chip active">{{ label }} <small style="opacity:0.85;">({{ n }})</small></span>
+    {% else %}
+      <a class="tab-chip"
+         href="?status={{ value }}{% if filter_category %}&category={{ filter_category }}{% endif %}">
+        {{ label }} <small style="color:var(--fg-soft);">({{ n }})</small>
+      </a>
+    {% endif %}
+  {% endfor %}
+</div>
+
+<form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+  <input type="hidden" name="status" value="{{ filter_status }}">
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_category">Kategorie</label>
+    <select name="category" id="id_filter_category">
+      <option value="">— vše —</option>
+      {% for value, label in categories %}
+        <option value="{{ value }}" {% if filter_category == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field" style="margin-bottom:0;flex:1 1 240px;">
+    <label for="id_filter_q">Hledat</label>
+    <input type="search" id="id_filter_q"
+           placeholder="příjemce, předmět…"
+           data-filter-rows="#email-log-table tbody"
+           data-filter-count="#email-log-count"
+           data-filter-empty="#email-log-empty">
+  </div>
+  <div>
+    <button class="primary" type="submit">Filtrovat</button>
+    <a class="secondary" href="{% url 'inventory:email_log_index' %}">Vymazat filtry</a>
+  </div>
+</form>
+
+<p style="color:var(--fg-soft);">
+  Nalezeno: <span id="email-log-count">{{ page_obj.paginator.count }}</span> e-mailů{% if page_obj.paginator.num_pages > 1 %} · strana {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}{% endif %}.
+</p>
+
+{% if logs %}
+  <table class="lines" id="email-log-table">
+    <thead>
+      <tr>
+        <th>Čas</th>
+        <th>Kategorie</th>
+        <th>Příjemci</th>
+        <th>Předmět</th>
+        <th>Stav</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+        <tr class="row-link" data-href="{% url 'inventory:email_log_detail' pk=log.pk %}"
+            data-filter-text="{{ log.recipients }} {{ log.subject }}">
+          <td class="mono">{{ log.created_at|date:"d. m. Y H:i" }}</td>
+          <td><span class="cat-chip">{{ log.get_category_display }}</span></td>
+          <td class="mono muted">{{ log.recipients }}</td>
+          <td>{{ log.subject|default:"—" }}</td>
+          <td>
+            {% if log.status == "sent" %}
+              <span class="mail mail-ok">odesláno</span>
+            {% else %}
+              <span class="mail mail-fail">selhalo</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p id="email-log-empty" style="display:none;color:var(--fg-soft);">Žádné e-maily neodpovídají hledání.</p>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="pager" aria-label="Stránkování">
+      {% if page_obj.has_previous %}
+        <a class="secondary" href="?{{ page_querystring }}&page={{ page_obj.previous_page_number }}">← Novější</a>
+      {% else %}
+        <span class="secondary pager-disabled">← Novější</span>
+      {% endif %}
+      <span class="pager-info">strana {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a class="secondary" href="?{{ page_querystring }}&page={{ page_obj.next_page_number }}">Starší →</a>
+      {% else %}
+        <span class="secondary pager-disabled">Starší →</span>
+      {% endif %}
+    </nav>
+  {% endif %}
+{% elif filter_status or filter_category %}
+  <p>Žádné e-maily neodpovídají filtrům.
+    <a href="{% url 'inventory:email_log_index' %}">Vymazat filtry</a>
+  </p>
+{% else %}
+  <p style="color:var(--fg-soft);">Zatím žádné odeslané e-maily.</p>
+{% endif %}
+{% endblock %}

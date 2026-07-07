@@ -1,5 +1,10 @@
 # 0045 — Daily low-stock summary e-mail to Petr
 
+> **Superseded by 0074** — the daily-cron summary model here was never
+> scheduled on the box; [`0074`](./0074-event-driven-low-stock-alert.md)
+> replaces it with an event-driven alert that fires the moment a movement
+> pushes a (product, branch) pair below threshold.
+
 **Date:** 2026-06-14
 **Decider:** Matej (relaying Petr's 2026-06-14 ask)
 **Status:** Active

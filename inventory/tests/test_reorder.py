@@ -74,9 +74,13 @@ def test_migration_0018_backfills_null_threshold() -> None:
             "0.000"
         )
     finally:
-        # Leave the DB fully migrated for the rest of the suite.
+        # Leave the DB migrated to the CURRENT leaf migration for the rest of
+        # the suite — not the hardcoded `after`, which goes stale the moment a
+        # newer migration lands (e.g. 0019). A stale schema breaks the next
+        # transactional test's teardown flush (TRUNCATE can't drop a table the
+        # live model set no longer knows about).
         executor = MigrationExecutor(connection)
-        executor.migrate([(app, after)])
+        executor.migrate(executor.loader.graph.leaf_nodes(app))
 
 
 @pytest.mark.django_db
@@ -375,48 +379,6 @@ def test_overdraw_check_unchanged_by_planned_transfer(
     warnings = _compute_overdraw(tyn, [line])
     # 4.5 < 5 raw, so no warning. Reservations are informational only.
     assert warnings == []
-
-
-@pytest.mark.django_db
-@override_settings(**_VIEW_TEST_OVERRIDES)
-def test_mail_low_stock_summary_empty_sends_nothing(user_vlastnik) -> None:
-    """No rows below threshold → no e-mail."""
-    from django.core import mail
-
-    from inventory.services import send_low_stock_summary
-
-    result = send_low_stock_summary()
-    assert result is None
-    assert len(mail.outbox) == 0
-
-
-@pytest.mark.django_db
-@override_settings(**_VIEW_TEST_OVERRIDES)
-def test_mail_low_stock_summary_populated_sends_one_email(
-    tyn, pepper
-) -> None:
-    """One e-mail to every is_low_stock_recipient row per 0052."""
-    from django.core import mail
-
-    from inventory.models import SettingsRecipient
-    from inventory.services import send_low_stock_summary
-
-    pepper.reorder_threshold_kg = Decimal("5.000")
-    pepper.save()
-    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
-    # Conftest seeds Petr (is_low_stock_recipient=True) + Karolína (False).
-    # Swap Petr's address to a deterministic value for the assertion.
-    SettingsRecipient.objects.filter(label="Petr").update(
-        email="petr@test.local"
-    )
-
-    result = send_low_stock_summary()
-    assert result is not None and result >= 1
-    assert len(mail.outbox) == 1
-    msg = mail.outbox[0]
-    assert msg.to == ["petr@test.local"]
-    assert "Pepř" in msg.subject or "Dochází" in msg.subject
-    assert "Pepř" in msg.body or pepper.name_cs in msg.body
 
 
 @pytest.mark.django_db

@@ -23,6 +23,7 @@ from .email import (
     _active_low_stock_recipients,
     _assert_recipients_set,
     _smtp_connection_from_settings,
+    send_and_log,
 )
 from .mixing import (
     cancel_mixing_job,
@@ -41,12 +42,13 @@ from .recipe_import import (
 )
 from .reorder import (
     LowStockRow,
+    capture_low_stock_state,
     effective_kg,
     low_stock_rows,
     planned_prijem_lines_for,
     reserved_kg,
     seed_branch_carriage_for_product,
-    send_low_stock_summary,
+    send_low_stock_alert_for_crossings,
     threshold_for,
 )
 from .stock import _apply_line_to_stock
@@ -60,6 +62,7 @@ __all__ = [
     "_active_dodak_recipients",
     "_active_low_stock_recipients",
     "_assert_recipients_set",
+    "send_and_log",
     "_reserve_dodak_number",
     "_create_dodaci_list_for_movement",
     "_amounts_summing_to",
@@ -79,7 +82,8 @@ __all__ = [
     "low_stock_rows",
     "seed_branch_carriage_for_product",
     "planned_prijem_lines_for",
-    "send_low_stock_summary",
+    "capture_low_stock_state",
+    "send_low_stock_alert_for_crossings",
     "execute_planned_transfer",
     "cancel_planned_transfer",
     "confirm_planned_receipt",

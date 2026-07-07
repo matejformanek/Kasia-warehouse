@@ -19,6 +19,7 @@ from .dodaci_list import (
     send_dodaci_list_email,
 )
 from .email import _assert_recipients_set
+from .reorder import capture_low_stock_state, send_low_stock_alert_for_crossings
 from .stock import _apply_line_to_stock
 
 _MOVEMENT_AUDITABLE_FIELDS = ("kind", "branch", "date_issued", "odberatel", "dodavatel", "note")
@@ -145,6 +146,14 @@ def apply_movement(
     if movement.kind == Movement.Kind.VYDEJ and not is_internal_vydej:
         _assert_recipients_set()
 
+    # Per 0074: snapshot which (product, branch) pairs are already in the
+    # low-stock alert set BEFORE mutating, then e-mail on commit the pairs
+    # that newly cross into it. The stock-raising leg of a transfer/receipt
+    # (+1) produces an empty crossing set, so at most one content-bearing
+    # alert per user operation. Reads current stock now (pre-mutation).
+    low_stock_pairs = {(line.product, movement.branch) for line in lines}
+    low_stock_before = capture_low_stock_state(low_stock_pairs)
+
     with transaction.atomic():
         movement.created_by = user
         movement.full_clean()
@@ -158,6 +167,12 @@ def apply_movement(
         if movement.kind == Movement.Kind.VYDEJ and not is_internal_vydej:
             dodaci_list = _create_dodaci_list_for_movement(movement)
             _send_dodaci_on_commit(dodaci_list, "vystavení")
+
+        transaction.on_commit(
+            lambda: send_low_stock_alert_for_crossings(
+                low_stock_pairs, low_stock_before
+            )
+        )
 
         return movement
 
@@ -190,6 +205,22 @@ def edit_movement(
         raise ValidationError({"kind": "Druh pohybu nelze změnit úpravou; vytvořte nový pohyb."})
 
     direction = 1 if movement.kind == Movement.Kind.PRIJEM else -1
+
+    # Per 0074: collect every (product, branch) pair this edit touches BEFORE
+    # any mutation — the existing line's product for update/remove, plus the
+    # new product for add ops and update ops that change product. Snapshot the
+    # low-stock alert state now, e-mail newly-crossed pairs on commit.
+    low_stock_pairs: set = set()
+    for op in line_changes:
+        action = op.get("op")
+        if action in ("update", "remove"):
+            existing = MovementLine.objects.get(pk=op["line_id"], movement=movement)
+            low_stock_pairs.add((existing.product, movement.branch))
+        if action in ("update", "add"):
+            new_product = op.get("fields", {}).get("product")
+            if new_product is not None:
+                low_stock_pairs.add((new_product, movement.branch))
+    low_stock_before = capture_low_stock_state(low_stock_pairs)
 
     with transaction.atomic():
         audit_rows: list[MovementAudit] = []
@@ -333,6 +364,12 @@ def edit_movement(
             dodaci_list.current_version += 1
             dodaci_list.save(update_fields=["current_version"])
             _send_dodaci_on_commit(dodaci_list, f"oprava: {reason}")
+
+        transaction.on_commit(
+            lambda: send_low_stock_alert_for_crossings(
+                low_stock_pairs, low_stock_before
+            )
+        )
 
         return movement
 

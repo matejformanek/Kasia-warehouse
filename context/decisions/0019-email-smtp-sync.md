@@ -1,5 +1,10 @@
 # 0019 — E-mail backend: Django built-in SMTP, synchronous send
 
+> **Superseded in part by [0075](./0075-email-outbox-log.md)** — the
+> `dodaci_list_email_log` model defined here is folded into a unified `EmailLog`
+> (all business e-mails, rendered subject+body stored, resend from a Správa page).
+> The synchronous-SMTP + fail-silent + resend posture is unchanged.
+
 ## Context
 
 R6 (outbound SMTP with attachment + templated body) and R11 (failed

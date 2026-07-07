@@ -254,15 +254,12 @@ Then in the browser at `http://<server_ipv4>/uzivatele/`:
 - **Domain + HTTPS cutover**: `infra/RUNBOOK.md` § 5. Caddyfile +
   compose port unpub + `DJANGO_ALLOWED_HOSTS`. Decision: domain name
   open (`context/open-questions.md` § Decide later). No code change.
-- **Cron entry for daily low-stock e-mail**: per decision 0045 the
-  command is `python manage.py mail_low_stock_summary`. Add a
-  crontab entry on the box once a few days of real data exist:
-
-  ```bash
-  sudo crontab -e
-  0 7 * * *  cd /srv/kasia && /usr/bin/docker compose run --rm web python manage.py mail_low_stock_summary >> /var/log/kasia-low-stock.log 2>&1
-  ```
-
+- ~~**Cron entry for daily low-stock e-mail**~~ — **obsolete per
+  [`0074`](./decisions/0074-event-driven-low-stock-alert.md).** The
+  low-stock e-mail is now event-driven (sent inline when a movement
+  pushes a product below threshold), not a daily cron. There is no
+  `mail_low_stock_summary` command or crontab entry to add — the only
+  cron on the box remains the nightly DB backup.
 - **14-day shadow run** per decision 0034 — Petr + Karolína use the
   live system alongside the old method before branch staff cut over.
 

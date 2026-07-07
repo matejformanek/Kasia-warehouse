@@ -58,6 +58,7 @@
     {% if user.is_vlastnik %}
       <a href="{% url 'inventory:branch_index' %}"{% if un == 'branch_index' %} class="active"{% endif %}>Pobočky</a>
       <a href="{% url 'accounts:user_index' %}"{% if un == 'user_index' %} class="active"{% endif %}>Uživatelé</a>
+      <a href="{% url 'inventory:email_log_index' %}"{% if un == 'email_log_index' %} class="active"{% endif %}>E-maily</a>
       <a href="{% url 'inventory:settings_edit' %}"{% if un == 'settings_edit' %} class="active"{% endif %}>Nastavení</a>
     {% endif %}
   </nav>
@@ -130,6 +131,10 @@
         <a href="{% url 'accounts:user_index' %}"{% if un == 'user_index' %} class="active" aria-current="page"{% endif %}>
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M16 3.5a3 3 0 0 1 0 5.8"/></svg>
           Uživatelé
+        </a>
+        <a href="{% url 'inventory:email_log_index' %}"{% if un == 'email_log_index' %} class="active" aria-current="page"{% endif %}>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="m3 7 9 6 9-6"/></svg>
+          E-maily
         </a>
         <a href="{% url 'inventory:settings_edit' %}"{% if un == 'settings_edit' %} class="active" aria-current="page"{% endif %}>
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-2.88 1.2V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 7 19.6a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 2.6 14H2.5a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.4 9 1.7 1.7 0 0 0 4.06 7.1L4 7.05a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6h.09A1.7 1.7 0 0 0 10 2.6V2.5a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.4a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.6 9v.09A1.7 1.7 0 0 0 21.4 10h.1a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.6 1Z"/></svg>

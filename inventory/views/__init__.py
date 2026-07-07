@@ -44,6 +44,7 @@ from .dodaci import (
     dodaci_list_resend,
     recipe_pdf,
 )
+from .email_log import email_log_detail, email_log_index, email_log_resend
 from .inventura import inventura_edit, stock_adjust_edit
 from .mixing import (
     mixing_job_cancel,
@@ -103,6 +104,9 @@ __all__ = [
     "dodaci_list_pdf",
     "recipe_pdf",
     "dodaci_list_resend",
+    "email_log_index",
+    "email_log_detail",
+    "email_log_resend",
     "mixing_job_index",
     "mixing_job_create",
     "mixing_preview_partial",

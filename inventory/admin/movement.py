@@ -186,7 +186,7 @@ class MovementAuditAdmin(admin.ModelAdmin):
 
 
 # ---------------------------------------------------------------------------
-# DodaciList + DodaciListEmailLog + Settings (per 0007 / 0031 / 0036 / 0037)
+# DodaciList + EmailLog + Settings (per 0007 / 0031 / 0036 / 0037 / 0075)
 # ---------------------------------------------------------------------------
 
 

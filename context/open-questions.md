@@ -258,6 +258,26 @@ HTTP on IP only. **Needs:** Petr / Matej to register a domain.
 > file needed** — the cutover is a config edit, not a stack
 > change.
 
+### Public-site analytics
+
+Opened in effect alongside the public marketing site
+([`decisions/0050`](./decisions/0050-public-site-and-sklad-split.md) +
+[`0051`](./decisions/0051-public-site-ia-and-content.md)) but not logged
+here at the time: once `kasia.cz` takes unauthenticated traffic, is
+there any visibility into visitors — how many, from where, on which
+pages, with which referrer? Caddy logs are ephemeral stdout; the
+Hetzner console is box-level only. **Blocks:** nothing operational;
+blocks any informed iteration on the public site. **Needs:** Matej.
+
+> **Closed 2026-07-14 → [`decisions/0076-public-site-analytics.md`](./decisions/0076-public-site-analytics.md):**
+> self-hosted **Umami v2** on the existing CPX22 at
+> `analytics.kasia.cz` (own compose service pair + own Postgres,
+> `profiles: [prod]`), tracker tag on the public base template only,
+> with a request-path privacy gate so `/sklad/…` (incl. the login
+> page, which reuses the public chrome) never ships the tracker.
+> Cookie-less → no consent banner. Candidates compared in
+> [`tech-options.md`](./tech-options.md) § 7.
+
 ### Shrinkage / damage as first-class movement type
 
 Make **odpis** a first-class movement with reason codes, or

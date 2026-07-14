@@ -5,6 +5,28 @@
 
 ## Done
 
+- **2026-07-14** — **`/sklad/` usage tracking shipped — `ScreenVisit` +
+  „Aktivita" page** (code PR for [`0077`](./decisions/0077-sklad-usage-tracking.md),
+  stacked on the paperwork PR below).
+  - **Model:** `inventory/models/activity.py::ScreenVisit` (user FK PROTECT /
+    `url_name` / `namespace` / `path` / `created_at`; append-only, no admin
+    registration, indexes on `(user, created_at)` + `(url_name, created_at)`).
+    Migration `inventory/0020_screen_visit`.
+  - **Middleware (the project's first):** `inventory/middleware.py::
+    ScreenVisitMiddleware`, registered **last** in `MIDDLEWARE`. Records iff
+    GET ∧ `/sklad/` ∧ 200 ∧ authenticated (load-bearing — the login +
+    password-reset pages serve 200 anonymous under `/sklad/`) ∧ not htmx ∧
+    `url_name` not in `EXCLUDED_URL_NAMES` (`line_row_partial`,
+    `mixing_preview_partial` — **any new GET partial must be added there**,
+    bullet added to `frontend-and-templates.md`). PDFs + password-change
+    tracked on purpose; `create()` failure logged, never breaks a request.
+  - **Page:** `/sklad/aktivita/` (`activity_index`, vlastník-gated) — per-user
+    last-visit + 7/30-day counts, top screens (30 d), filterable + paginated
+    recent visits with Czech `SCREEN_LABELS`; Správa nav item between E-maily
+    and Nastavení; `pages/activity_index.css`.
+  - **Tests:** `inventory/tests/test_activity.py` — 15 new (tracking matrix,
+    excluded-partials pin, anonymous-login-page pin, failing-write safety,
+    403 for obsluha, summary counts, filters, pagination).
 - **2026-07-14** — **Decision [`0077`](./decisions/0077-sklad-usage-tracking.md)
   — per-user usage tracking for `/sklad/` (paperwork PR; code PR follows).**
   First-party, server-side `ScreenVisit` log: one row per authenticated

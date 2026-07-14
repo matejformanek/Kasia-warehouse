@@ -35,6 +35,10 @@ points there, it does not restate it.
   design-system.md § "Keep stable".
 - **No native `confirm()`/`alert()`/`prompt()` in sklad** (per 0061) — use
   `.js-confirm` / `window.kasiaConfirm()`. See design-system.md.
+- **A new GET htmx partial endpoint must also be added to `EXCLUDED_URL_NAMES`
+  in `inventory/middleware.py`** (per 0077), or every fragment swap writes a
+  `ScreenVisit` row and pollutes the Aktivita log. POST endpoints need no entry
+  (the middleware skips non-GET).
 
 ## Where things live (post-0068)
 

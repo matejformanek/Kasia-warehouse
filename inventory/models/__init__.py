@@ -8,6 +8,7 @@ unaffected — they key on ``app_label`` + model name, not module path. Nested
 ``TextChoices`` (e.g. ``Movement.Kind``) ride along with their model class.
 """
 
+from .activity import ScreenVisit
 from .catalogue import (
     Branch,
     Customer,
@@ -46,4 +47,5 @@ __all__ = [
     "Settings",
     "SettingsRecipient",
     "Feedback",
+    "ScreenVisit",
 ]

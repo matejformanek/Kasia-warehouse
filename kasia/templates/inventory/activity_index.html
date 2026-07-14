@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Aktivita — Kasia vera{% endblock %}
+
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/activity_index.css' %}">{% endblock %}
+
+{% block content %}
+<h1>Aktivita</h1>
+<p class="muted" style="margin:0 0 1.1rem;">
+  Kdo z týmu otevřel kterou obrazovku skladu a kdy. Zaznamenávají se pouze
+  zobrazení stránek — úpravy dat eviduje historie pohybů.
+</p>
+
+<div class="act-cards">
+  <div class="card">
+    <h2>Uživatelé</h2>
+    <table class="lines">
+      <thead>
+        <tr>
+          <th>Uživatel</th>
+          <th>Poslední návštěva</th>
+          <th class="num">7 dní</th>
+          <th class="num">30 dní</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td>{{ u.email }}</td>
+            <td class="mono">{% if u.last_visit %}{{ u.last_visit|date:"d. m. Y H:i" }}{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="num mono">{{ u.visits_7d }}</td>
+            <td class="num mono">{{ u.visits_30d }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Nejnavštěvovanější obrazovky <small class="muted">(30 dní)</small></h2>
+    {% if top_screens %}
+      <table class="lines">
+        <thead>
+          <tr>
+            <th>Obrazovka</th>
+            <th class="num">Návštěv</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in top_screens %}
+            <tr>
+              <td>{{ s.label }}</td>
+              <td class="num mono">{{ s.count }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted" style="margin:0;">Za posledních 30 dní zatím žádné návštěvy.</p>
+    {% endif %}
+  </div>
+</div>
+
+<h2 style="margin-top:1.4rem;">Poslední návštěvy</h2>
+
+<form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_user">Uživatel</label>
+    <select name="user" id="id_filter_user">
+      <option value="">— všichni —</option>
+      {% for u in users %}
+        <option value="{{ u.pk }}" {% if filter_user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.email }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field" style="margin-bottom:0;">
+    <label for="id_filter_screen">Obrazovka</label>
+    <select name="screen" id="id_filter_screen">
+      <option value="">— všechny —</option>
+      {% for value, label in screen_choices %}
+        <option value="{{ value }}" {% if filter_screen == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <button class="primary" type="submit">Filtrovat</button>
+    <a class="secondary" href="{% url 'inventory:activity_index' %}">Vymazat filtry</a>
+  </div>
+</form>
+
+<p style="color:var(--fg-soft);">
+  Nalezeno: {{ page_obj.paginator.count }} návštěv{% if page_obj.paginator.num_pages > 1 %} · strana {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}{% endif %}.
+</p>
+
+{% if visits %}
+  <table class="lines" id="activity-table">
+    <thead>
+      <tr>
+        <th>Čas</th>
+        <th>Uživatel</th>
+        <th>Obrazovka</th>
+        <th>Cesta</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in visits %}
+        <tr>
+          <td class="mono">{{ v.created_at|date:"d. m. Y H:i" }}</td>
+          <td>{{ v.user.email }}</td>
+          <td>{{ v.screen_label }}</td>
+          <td class="mono muted">{{ v.path }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="pager" aria-label="Stránkování">
+      {% if page_obj.has_previous %}
+        <a class="secondary" href="?{{ page_querystring }}&page={{ page_obj.previous_page_number }}">← Novější</a>
+      {% else %}
+        <span class="secondary pager-disabled">← Novější</span>
+      {% endif %}
+      <span class="pager-info">strana {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a class="secondary" href="?{{ page_querystring }}&page={{ page_obj.next_page_number }}">Starší →</a>
+      {% else %}
+        <span class="secondary pager-disabled">Starší →</span>
+      {% endif %}
+    </nav>
+  {% endif %}
+{% elif filter_user or filter_screen %}
+  <p>Žádné návštěvy neodpovídají filtrům.
+    <a href="{% url 'inventory:activity_index' %}">Vymazat filtry</a>
+  </p>
+{% else %}
+  <p style="color:var(--fg-soft);">Zatím žádné zaznamenané návštěvy.</p>
+{% endif %}
+{% endblock %}

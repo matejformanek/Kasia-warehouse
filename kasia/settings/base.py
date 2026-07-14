@@ -63,6 +63,10 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    # Last on purpose (per 0077): the response-phase ScreenVisit write needs
+    # request.user (AuthenticationMiddleware) and request.htmx (HtmxMiddleware),
+    # both set by the outer middlewares before the inner chain runs.
+    "inventory.middleware.ScreenVisitMiddleware",
 ]
 
 # --- Auth flow (per 0020; paths moved under /sklad/ per 0050) ---------------

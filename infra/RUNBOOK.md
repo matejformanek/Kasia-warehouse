@@ -231,6 +231,17 @@ Then, in order:
    `.github/workflows/deploy.yml` to the hostname — the IP still works
    since DNS just resolves to it.
 
+⚠️ **Caddyfile changes need a proxy recreate, not just a deploy.** The
+Caddyfile is a **single-file bind mount** (`./Caddyfile:/etc/caddy/...`),
+and `git reset --hard` replaces the file with a new inode — the running
+container keeps seeing the **old** file, so neither the deploy nor a
+`caddy reload` picks the change up. After any Caddyfile-touching merge,
+run `docker compose --profile prod up -d --force-recreate proxy` on the
+box (a few seconds of downtime; certs persist in the `caddy_data`
+volume). Deploys that change the `proxy` service itself (ports, image)
+recreate it automatically — that's why the Phase B cutover worked without
+this step.
+
 ⚠️ **`WEB_IMAGE` trap on manual recreates.** `deploy.yml` exports
 `WEB_IMAGE=ghcr.io/…:sha-*` only inside its own SSH session — it is not
 persisted anywhere on the box. A manual `docker compose up` without

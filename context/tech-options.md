@@ -496,3 +496,27 @@ The next step is: **Petr signs off the design (the
 (this file plus his judgement), then a decision file
 `decisions/0011-tech-stack.md` lands, and only then can code be
 written.
+
+---
+
+## 7. Public-site analytics
+
+Added 2026-07-14, after the HTTPS / `kasia.cz` cutover
+([`decisions/0056`](./decisions/0056-domain-cutover-https.md)) put the
+public marketing site on unauthenticated traffic with zero visibility
+into visitors. Analytics is a new layer not covered by 0014–0027, so
+per `.claude/rules/no-premature-tech-choices.md` the comparison lives
+here and the choice is recorded in
+[`decisions/0076-public-site-analytics.md`](./decisions/0076-public-site-analytics.md).
+
+Scope: the **public site only**. The warehouse app under `/sklad/` is
+deliberately out — operators are known users with `last_login` and an
+audit trail; tracking them adds GDPR surface for no insight.
+
+| Candidate | Shape | Trade-offs |
+|---|---|---|
+| **Umami v2, self-hosted** (chosen) | Node.js + own Postgres container on the existing CPX22; ~150 MB RAM; Apache-2.0 | Cookie-less, daily-rotating pseudonymised visitor hash → no consent banner. €0/mo. One more container pair to patch. Covers pages / referrers / countries / realtime, which is the whole ask. |
+| **Plausible CE v2, self-hosted** | Elixir + Postgres **+ ClickHouse** | Same privacy posture, but a second analytical DB engine (~1 GB+ RAM) for a handful of daily visitors — oversized for this box and this traffic. |
+| **Umami Cloud / Plausible Cloud** | SaaS, ~€9/mo | Zero ops, but recurring cost roughly doubles the entire hosting bill (~€11.50/mo per [`decisions/0027`](./decisions/0027-hosting-hetzner.md)) and moves visitor data off-box. Poor fit for a cost-sensitive ~6-user business. |
+| **GoAccess over persisted Caddy logs** | Log analyser, no JS tag | Requires making Caddy logs durable first; no visit sessions, no referrer parsing on bot-filtered hits, no country panel without extra GeoIP plumbing. The "cheapest" option that answers the fewest questions. |
+| **Do nothing** | Status quo | Caddy logs are ephemeral stdout; Hetzner console is box-level only. Acceptable pre-cutover; not once `kasia.cz` takes real traffic. |

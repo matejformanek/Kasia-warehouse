@@ -278,6 +278,24 @@ blocks any informed iteration on the public site. **Needs:** Matej.
 > Cookie-less → no consent banner. Candidates compared in
 > [`tech-options.md`](./tech-options.md) § 7.
 
+### Operator-usage tracking on `/sklad/`
+
+Opened in effect alongside the public-site analytics question but for
+the other surface: once real operators work in `/sklad/`, is there any
+visibility into *which operator uses which screen, and when*? Umami
+(0076) deliberately cannot see `/sklad/`; `last_login` covers logins
+only and `MovementAudit` covers writes only — nothing records reads.
+**Blocks:** nothing operational; blocks any informed iteration on the
+warehouse screens. **Needs:** Matej.
+
+> **Closed 2026-07-14 → [`decisions/0077-sklad-usage-tracking.md`](./decisions/0077-sklad-usage-tracking.md):**
+> first-party, server-side `ScreenVisit` log — one row per
+> authenticated full-page GET under `/sklad/` (who / which screen /
+> when; no IP, no User-Agent, no client JS), written by the project's
+> first custom middleware, append-only, kept forever, surfaced on a
+> vlastník-only „Aktivita" Správa page. Operators are informed
+> (employment-context transparency note in 0077).
+
 ### Shrinkage / damage as first-class movement type
 
 Make **odpis** a first-class movement with reason codes, or

@@ -367,3 +367,16 @@ Required on dodací list for the odběratel. Kasia vera's own IČO:
 for most domestic entities, but not always).
 Required on dodací list. Whether DIČ is mandatory on every line of
 the system or only on the printed PDF is an open detail.
+
+## App observability
+
+### aktivita
+
+**EN:** activity (operator screen-usage log).
+The vlastník-only Správa page at `/sklad/aktivita/` listing which
+operator visited which warehouse screen and when, backed by the
+append-only `inventory.ScreenVisit` model per
+[`decisions/0077-sklad-usage-tracking.md`](./decisions/0077-sklad-usage-tracking.md).
+First-party and server-side — no browser tracker; distinct from
+*hlášení* (user-submitted feedback) and from the `MovementAudit`
+write trail.

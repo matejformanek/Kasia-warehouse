@@ -81,8 +81,8 @@
           {{ company.street }}<br>
           {{ company.postal_code }} {{ company.city }}
         </address>
-        <p style="margin-top:12px"><a href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a></p>
-        <p><a href="mailto:{{ company.email }}">{{ company.email }}</a></p>
+        <p style="margin-top:12px"><a data-umami-event="klik-telefon" href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a></p>
+        <p><a data-umami-event="klik-email" href="mailto:{{ company.email }}">{{ company.email }}</a></p>
       </div>
       <div class="footer-col">
         <h4>Navigace</h4>

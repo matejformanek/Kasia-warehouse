@@ -20,11 +20,11 @@
         <ul class="k-rows">
           <li>
             <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h3l2 5-2 1.5a12 12 0 0 0 5 5L15 18l5 2v3a1 1 0 0 1-1 1A16 16 0 0 1 3 5a1 1 0 0 1 1-1z"/></svg></span>
-            <div><div class="kl">Telefon</div><div class="kv big"><a href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a> · <a href="tel:{{ company.phone_secondary|cut:' ' }}">{{ company.phone_secondary }}</a></div></div>
+            <div><div class="kl">Telefon</div><div class="kv big"><a data-umami-event="klik-telefon" href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a> · <a data-umami-event="klik-telefon" href="tel:{{ company.phone_secondary|cut:' ' }}">{{ company.phone_secondary }}</a></div></div>
           </li>
           <li>
             <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>
-            <div><div class="kl">E-mail</div><div class="kv big"><a href="mailto:{{ company.email }}">{{ company.email }}</a></div></div>
+            <div><div class="kl">E-mail</div><div class="kv big"><a data-umami-event="klik-email" href="mailto:{{ company.email }}">{{ company.email }}</a></div></div>
           </li>
           <li>
             <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.4 7-11a7 7 0 0 0-14 0c0 5.6 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>

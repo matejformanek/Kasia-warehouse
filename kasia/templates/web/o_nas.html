@@ -124,11 +124,11 @@
       <h2>Rádi vás provedeme naší nabídkou.</h2>
     </div>
     <div class="contact-card">
-      <a class="tel" href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a>
-      <p class="contact-meta"><a href="mailto:{{ company.email }}">{{ company.email }}</a> · Po–Pá 7:00–15:00</p>
+      <a class="tel" data-umami-event="klik-telefon" href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a>
+      <p class="contact-meta"><a data-umami-event="klik-email" href="mailto:{{ company.email }}">{{ company.email }}</a> · Po–Pá 7:00–15:00</p>
       <div class="closing-actions">
         <a class="btn btn-ghost" href="{% url 'web:provozovny' %}">Naše provozovny</a>
-        <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
+        <a class="btn btn-primary" data-umami-event="cta-kontakt" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
       </div>
     </div>
   </div>

@@ -196,3 +196,13 @@ def test_umami_script_absent_on_warehouse_login_even_with_env(monkeypatch) -> No
     response = Client().get("/sklad/prihlaseni/")
     assert response.status_code == 200
     assert "analytics.kasia.cz" not in response.content.decode("utf-8")
+
+
+def test_umami_event_attributes_on_public_pages() -> None:
+    """Custom events per 0076: tel / e-mail / CTA clicks feed the Umami goal
+    reports. Attributes are inert HTML without the tracker script."""
+    kontakt = Client().get(reverse("web:kontakt")).content.decode("utf-8")
+    assert 'data-umami-event="klik-telefon"' in kontakt
+    assert 'data-umami-event="klik-email"' in kontakt
+    home = Client().get("/").content.decode("utf-8")
+    assert 'data-umami-event="cta-kontakt"' in home

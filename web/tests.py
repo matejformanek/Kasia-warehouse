@@ -169,3 +169,30 @@ def test_sklad_login_redirects_authenticated_user() -> None:
     response = client.get("/sklad/prihlaseni/")
     assert response.status_code == 302
     assert response["Location"].startswith("/sklad/")
+
+
+# --- Umami tracker, public paths only (decision 0076) -----------------------
+
+
+def test_umami_script_absent_without_env(monkeypatch) -> None:
+    monkeypatch.delenv("UMAMI_WEBSITE_ID", raising=False)
+    response = Client().get("/")
+    assert "analytics.kasia.cz" not in response.content.decode("utf-8")
+
+
+def test_umami_script_present_on_public_with_env(monkeypatch) -> None:
+    monkeypatch.setenv("UMAMI_WEBSITE_ID", "test-uuid-1234")
+    body = Client().get("/").content.decode("utf-8")
+    assert 'data-website-id="test-uuid-1234"' in body
+    assert "analytics.kasia.cz/script.js" in body
+
+
+def test_umami_script_absent_on_warehouse_login_even_with_env(monkeypatch) -> None:
+    """Privacy boundary per decision 0076: the operator login page at
+    /sklad/prihlaseni/ uses the public base for chrome reasons, but must
+    NEVER ship the tracker. A future agent adding the tag to a wrong
+    template will see this test fail."""
+    monkeypatch.setenv("UMAMI_WEBSITE_ID", "test-uuid-1234")
+    response = Client().get("/sklad/prihlaseni/")
+    assert response.status_code == 200
+    assert "analytics.kasia.cz" not in response.content.decode("utf-8")

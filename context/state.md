@@ -5,6 +5,33 @@
 
 ## Done
 
+- **2026-07-14** — **Public-site analytics live — self-hosted Umami at
+  `https://analytics.kasia.cz/`** (decision
+  [`0076`](./decisions/0076-public-site-analytics.md); PRs #34 paperwork,
+  #35 infra, #36 tracker, + docs PR). Four-step landing per the plan:
+  - **Paperwork (#34):** 0076 + [`tech-options.md`](./tech-options.md) § 7
+    comparison + right-sized-rule carve-out + open-questions entry closed.
+    Matej ratified wording 2026-07-14.
+  - **Infra (#35):** `umami` (pinned `umamisoftware/umami:3.2.0` — **v3, not
+    the v2 in 0076's text**; v2 line ended 2025-12, Matej ratified the bump)
+    + `umami-db` (own PG18 cluster, `umami_pgdata` volume) in `compose.yaml`,
+    both `profiles: [prod]`; `analytics.kasia.cz` Caddy block (DNS was
+    already covered by a wildcard `*.kasia.cz` A record — no domain-manager
+    action needed); `umami_pgdata` added to the nightly restic backup.
+  - **Box bootstrap (server-side, secrets never in agent context):**
+    `UMAMI_DB_PASSWORD` + `UMAMI_APP_SECRET` seeded *before* the infra merge
+    (initdb bakes the password); post-deploy proxy force-recreate (§ 5b
+    bind-mount trap); Umami booted + migrated; `kasia.cz` website entry
+    created via API; `UMAMI_WEBSITE_ID` written to `/srv/kasia/.env`; default
+    `admin/umami` password rotated (one-time-fetch file `/home/app/umami-admin-pw.txt`).
+  - **Tracker (#36):** conditional `defer` tag in `web/base.html`; new
+    `web/context_processors.py::umami` (first custom context processor —
+    request-time `os.environ` read + the **`/sklad/`+`/admin/` path gate**,
+    the load-bearing privacy boundary since the login page extends the
+    public base); 3 tests pin present/absent/boundary. 565 tests green.
+  - Warehouse app deliberately untracked; no consent banner needed
+    (cookie-less). RUNBOOK gained § 6 Analytics (login, website-id
+    back-fill, upgrade/rollback, backup pointers).
 - **2026-07-14** — **`www.kasia.cz` DNS landed — cutover 100 % complete.** The
   domain manager repointed `A www.kasia.cz → 91.98.47.1` (confirmed via
   `dig @1.1.1.1`). Caddy was stuck in ACME retry backoff from the hours the

@@ -258,12 +258,50 @@ Verify: `curl -I http://kasia.cz` → 301/308 → `https://kasia.cz`;
 `curl -I https://www.kasia.cz` → 301 → `https://kasia.cz`;
 `docker compose logs proxy` → cert obtained, no ACME errors.
 
-## 6. Things that are not in this RUNBOOK on purpose
+## 6. Analytics (Umami)
+
+Self-hosted Umami v3 per
+[`../context/decisions/0076-public-site-analytics.md`](../context/decisions/0076-public-site-analytics.md).
+Two prod-profile services in [`../compose.yaml`](../compose.yaml): `umami`
+(app, pinned release tag) + `umami-db` (own Postgres cluster on the
+`umami_pgdata` volume — fully separate from the warehouse DB). Caddy serves
+it at **`https://analytics.kasia.cz/`** (wildcard `*.kasia.cz` A record;
+cert auto-provisioned like the apex).
+
+- **Log in:** `https://analytics.kasia.cz/`, user `admin`. A fresh install
+  boots with password `umami` — **rotate it immediately** (first boot
+  2026-07-14 did this; the rotated password was left one-time-fetchable at
+  `/home/app/umami-admin-pw.txt`, mode 600 — fetch and `rm`).
+- **Website entries:** Nastavení → Websites in the Umami UI. The `kasia.cz`
+  entry exists; its ID is wired as `UMAMI_WEBSITE_ID` in `/srv/kasia/.env`.
+  To add another site, create the entry, copy its ID — a second site needs
+  its own template wiring, so that's a code change, not just config.
+- **Back-fill / rotate `UMAMI_WEBSITE_ID`:** edit `/srv/kasia/.env`, then
+  `docker compose --profile prod up -d --force-recreate web` (a plain
+  `restart` does **not** re-read `env_file`). The tracker tag is
+  conditional on the var, so an empty value simply disables tracking.
+- **Caddyfile changes** (including the `analytics.kasia.cz` block) need the
+  **proxy force-recreate** after the merge deploys — see the single-file
+  bind-mount trap in § 5b.
+- **Backups:** `umami_pgdata` is mounted read-only into the `backup`
+  service; the nightly 03:00 restic run to the Storage Box covers it
+  alongside `pgdata`. Restore works the same as § 4, targeting
+  `umami_pgdata`.
+- **Upgrades:** bump the pinned `umamisoftware/umami:<version>` tag in
+  `compose.yaml` via PR (record the image digest in the PR description);
+  the container runs its own DB migrations on boot.
+- **Rollback / kill switch:** `docker compose rm -fs umami umami-db` on the
+  box stops analytics without touching the site — the tracker tag is
+  env-gated and the public pages render regardless of whether the script
+  loads. Full removal is a compose revert PR.
+
+## 7. Things that are not in this RUNBOOK on purpose
 
 - **Observability / log shipping / metrics / alerting.** ~6 users;
   per [`../.claude/rules/right-sized-for-small-business.md`](../.claude/rules/right-sized-for-small-business.md),
   add when there's operating pain to justify it. Caddy + gunicorn
-  logs to stdout; `journalctl -u docker` covers the rest.
+  logs to stdout; `journalctl -u docker` covers the rest. (Public-site
+  *visitor* analytics is the deliberate 0076 exception — § 6.)
 - **A staging environment.** Prod-only by
   [`../context/decisions/0026-ci-cd-github-actions.md`](../context/decisions/0026-ci-cd-github-actions.md).
 - **Auto-rollback.** Manual per § 3.

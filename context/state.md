@@ -5,6 +5,19 @@
 
 ## Done
 
+- **2026-07-14** — **`www.kasia.cz` DNS landed — cutover 100 % complete.** The
+  domain manager repointed `A www.kasia.cz → 91.98.47.1` (confirmed via
+  `dig @1.1.1.1`). Caddy was stuck in ACME retry backoff from the hours the
+  record pointed at the old hosting — one `--force-recreate proxy` reset it and
+  the LE cert (CN=www.kasia.cz, valid to 2026-10-12) landed seconds later.
+  Verified: `https://www.kasia.cz` → 301 → `https://kasia.cz`;
+  `http://www.kasia.cz` chain ends at `https://kasia.cz` 200. All entry points
+  (apex, www, IP bookmarks) now land on `https://kasia.cz` with valid certs.
+  Closes the "www DNS fix" Next item. SEO surface checked: `robots.txt`
+  (allows public, blocks `/sklad/`+`/admin/`, points at sitemap), sitemap 200
+  with https URLs, titles/OG/schema.org present. Optional follow-up queued
+  with Matej: Google Search Console verification (meta-tag token → we wire it
+  into `<head>`) to speed up recrawl of the old search snippet.
 - **2026-07-14** — **HTTPS cutover Phase B executed — prod is live at
   `https://kasia.cz`** (decision [`0056`](./decisions/0056-domain-cutover-https.md);
   PR #14 squash-merged as `96acfd8`). The domain manager repointed DNS; the
@@ -2555,13 +2568,6 @@ feeds back, hold position and respond to direct asks.
   - **→ next:** `/pr-harden` on PR #26, then merge to ship.
 
 ## Next
-
-0. **`www.kasia.cz` DNS fix** — still points at the old hosting
-   (`45.91.28.133`). Matej relays to the domain manager: add/repoint
-   `A www.kasia.cz → 91.98.47.1` (MX/mail untouched). Nothing to deploy —
-   Caddy already carries the `www` redirect block and will auto-provision
-   the cert once DNS lands; verify with
-   `curl -I https://www.kasia.cz` → 301 → `https://kasia.cz`.
 
 1. **Local walkthrough by Matej** against the running docker
    stack — public site at `make up` → http://localhost/ and the

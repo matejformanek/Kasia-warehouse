@@ -75,6 +75,48 @@ services:
     restart: unless-stopped
     networks: [internal]
 
+  umami:
+    # Public-site analytics per context/decisions/0076-public-site-analytics.md.
+    # Pinned to the exact release tag, never `latest`; immutable digest recorded
+    # in the PR that bumps this line. Prod-only, same as `backup` — the local
+    # `make up` loop never needs the analytics stack.
+    image: umamisoftware/umami:3.2.0
+    profiles: [prod]
+    depends_on:
+      umami-db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://umami:${UMAMI_DB_PASSWORD}@umami-db:5432/umami
+      DATABASE_TYPE: postgresql
+      APP_SECRET: ${UMAMI_APP_SECRET}
+      DISABLE_TELEMETRY: "1"
+    restart: unless-stopped
+    networks: [internal]
+
+  umami-db:
+    # Umami's own Postgres — the warehouse cluster stays untouched (0076).
+    image: postgres:18-trixie
+    profiles: [prod]
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD}
+      # Plain UTF-8; Umami doesn't need the ICU collations the warehouse
+      # db service carries per 0038.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    volumes:
+      # Same one-level-above-`data` mount as the db service (PG18+,
+      # docker-library/postgres#1259).
+      - umami_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umami -d umami"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks: [internal]
+
   backup:
     # Off-box restic backups to Hetzner Storage Box per
     # context/decisions/0027-hosting-hetzner.md. Excluded from the
@@ -94,12 +136,14 @@ services:
       # Mount matches the db service (see note there) so backups capture
       # the version-specific cluster subdirectory.
       - pgdata:/backup/pgdata:ro
+      - umami_pgdata:/backup/umami_pgdata:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
     networks: [internal]
 
 volumes:
   pgdata:
+  umami_pgdata:
   caddy_data:
   caddy_config:
 

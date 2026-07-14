@@ -16,7 +16,7 @@
     <p class="lead">Čtyři provozovny a síť obchodních zástupců po celé České republice — sídlo v Říčanech u Prahy a provozy v Sezimově Ústí, Toužimi a Týništi nad Orlicí.</p>
     <div class="hero-cta">
       <a class="btn btn-ghost" href="{% url 'web:o_nas' %}">O nás</a>
-      <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
+      <a class="btn btn-primary" data-umami-event="cta-kontakt" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
     </div>
   </div>
 </section>
@@ -43,7 +43,7 @@
             </li>
             <li>
               <span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L20 13l2 5v3a2 2 0 0 1-2 2A16 16 0 0 1 4 6a2 2 0 0 1 1-2z"/></svg></span>
-              <a href="tel:{{ p.phone|cut:' ' }}">{{ p.phone }}</a>
+              <a data-umami-event="klik-telefon" href="tel:{{ p.phone|cut:' ' }}">{{ p.phone }}</a>
             </li>
             <li>
               <span class="mi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
@@ -87,7 +87,7 @@
     </div>
     <div class="hero-cta">
       <a class="btn btn-ghost" href="{% url 'web:o_nas' %}">O nás</a>
-      <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
+      <a class="btn btn-primary" data-umami-event="cta-kontakt" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
     </div>
   </div>
 </section>

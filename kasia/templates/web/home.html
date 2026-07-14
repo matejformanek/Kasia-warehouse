@@ -14,7 +14,7 @@
     <p class="lead">Rodinná firma od roku 1993 pro velkoobchody a obchodní řetězce, gastro provozy, výrobce uzenin a výrobce potravin. Přímý dovoz, vlastní zpracování i mokrá výroba.</p>
     <div class="hero-cta">
       <a class="btn btn-ghost" href="{% url 'web:produkty' %}">Náš sortiment</a>
-      <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
+      <a class="btn btn-primary" data-umami-event="cta-kontakt" href="{% url 'web:kontakt' %}">Spojte se s námi</a>
     </div>
   </div>
 </section>
@@ -214,11 +214,11 @@
       <h2>Spojte se s námi.</h2>
     </div>
     <div class="contact-card">
-      <a class="tel" href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a>
-      <p class="contact-meta"><a href="mailto:{{ company.email }}">{{ company.email }}</a> · {{ company.hours }}</p>
+      <a class="tel" data-umami-event="klik-telefon" href="tel:{{ company.phone_primary|cut:' ' }}">{{ company.phone_primary }}</a>
+      <p class="contact-meta"><a data-umami-event="klik-email" href="mailto:{{ company.email }}">{{ company.email }}</a> · {{ company.hours }}</p>
       <div class="closing-actions">
         <a class="btn btn-ghost" href="{% url 'web:provozovny' %}">Naše provozovny</a>
-        <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Přejít na kontakt</a>
+        <a class="btn btn-primary" data-umami-event="cta-kontakt" href="{% url 'web:kontakt' %}">Přejít na kontakt</a>
       </div>
     </div>
     <div class="prov-grid">
@@ -227,7 +227,7 @@
         <div class="prov-top">
           <span class="city">{{ p.name }}</span>{% if p.is_hq %}<span class="hq-pill">Sídlo</span>{% endif %}
         </div>
-        <address>{{ p.street }}<br>{{ p.postal_code }}<br><a href="tel:{{ p.phone|cut:' ' }}">{{ p.phone }}</a></address>
+        <address>{{ p.street }}<br>{{ p.postal_code }}<br><a data-umami-event="klik-telefon" href="tel:{{ p.phone|cut:' ' }}">{{ p.phone }}</a></address>
       </div>
       {% endfor %}
     </div>

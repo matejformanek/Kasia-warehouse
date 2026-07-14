@@ -16,7 +16,7 @@
     <p class="lead">Přes {{ company.spice_count }} druhů koření a {{ company.product_count }} kulinářských produktů — od jednodruhového koření přes vlastní kořenicí směsi až po pasty a omáčky z vlastní výroby. Níže najdete přehled hlavních kategorií, ne kompletní katalog; konkrétní specifikace rádi zašleme na vyžádání.</p>
     <div class="hero-cta">
       <a class="btn btn-ghost" href="{% url 'web:o_nas' %}">O naší výrobě</a>
-      <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Poptat sortiment</a>
+      <a class="btn btn-primary" data-umami-event="cta-kontakt" href="{% url 'web:kontakt' %}">Poptat sortiment</a>
     </div>
   </div>
 </section>
@@ -126,7 +126,7 @@
     <p class="b2b-note">Dodáváme výhradně velkoobchodně — sortiment a specifikace rádi zašleme na vyžádání.</p>
     <div class="hero-cta">
       <a class="btn btn-ghost" href="{% url 'web:provozovny' %}">Naše provozovny</a>
-      <a class="btn btn-primary" href="{% url 'web:kontakt' %}">Poptat sortiment</a>
+      <a class="btn btn-primary" data-umami-event="cta-kontakt" href="{% url 'web:kontakt' %}">Poptat sortiment</a>
     </div>
   </div>
 </section>

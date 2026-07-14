@@ -5,6 +5,35 @@
 
 ## Done
 
+- **2026-07-14** — **HTTPS cutover Phase B executed — prod is live at
+  `https://kasia.cz`** (decision [`0056`](./decisions/0056-domain-cutover-https.md);
+  PR #14 squash-merged as `96acfd8`). The domain manager repointed DNS; the
+  apex `A kasia.cz → 91.98.47.1` was confirmed via `dig @1.1.1.1` and the held
+  Caddyfile + 443 PR was merged → auto-deploy → Caddy pulled the Let's Encrypt
+  cert (CN=kasia.cz, valid to 2026-10-12, auto-renews).
+  - Verified live: `http://kasia.cz` → 308 → `https://kasia.cz` (200, HTTP/2);
+    `/sklad/` → 302 login; `/healthz` ok; sitemap emits `https://kasia.cz/...`
+    (proves `SECURE_PROXY_SSL_HEADER`); cookies carry `Secure` after the flip.
+  - On-box `.env`: `DJANGO_SECURE_COOKIES=1` set (backup
+    `.env.bak.secure-cookies`), web force-recreated.
+  - ⚠️ **Incident during cutover (~10 min, self-inflicted, resolved):** the
+    manual `--force-recreate web` fell back to the stale `kasia-web:local`
+    image because `deploy.yml` only exports `WEB_IMAGE` inside its own SSH
+    session — prod briefly served the pre-0050 app (404 on `/sklad/`). Fixed
+    by pinning `WEB_IMAGE=ghcr.io/matejformanek/kasia-warehouse:sha-96acfd8571b4`
+    in the on-box `.env` + recreating; deploys still override the pin.
+    Documented in `infra/RUNBOOK.md` § 5b (the `WEB_IMAGE` trap).
+  - **"Not secure" triage (post-cutover):** `https://kasia.cz` itself is
+    valid (full LE chain). The browser warning came from (a) old
+    `http://91.98.47.1` bookmarks — Caddy's default 308 went to
+    `https://91.98.47.1`, which can never have a matching cert — fixed with
+    an explicit `http://91.98.47.1 → https://kasia.cz` redirect block in the
+    Caddyfile; and (b) `www.kasia.cz`, which still hits the old hosting whose
+    cert is **expired**.
+  - **Open item:** `www.kasia.cz` still points to the old hosting
+    (`45.91.28.133`) — asked the domain manager for the `A www → 91.98.47.1`
+    fix; Caddy will auto-provision the www cert + 301 once it lands. MX/mail
+    records confirmed untouched.
 - **2026-07-07** — **Unified e-mail outbox log (`EmailLog`) + „E-maily" Správa page**
   ([`0075`](./decisions/0075-email-outbox-log.md), supersedes 0019's dodák-scoped
   log) on `ft_inv_event_low_stock_alert` (off `main`). One place to see every
@@ -2527,6 +2556,13 @@ feeds back, hold position and respond to direct asks.
 
 ## Next
 
+0. **`www.kasia.cz` DNS fix** — still points at the old hosting
+   (`45.91.28.133`). Matej relays to the domain manager: add/repoint
+   `A www.kasia.cz → 91.98.47.1` (MX/mail untouched). Nothing to deploy —
+   Caddy already carries the `www` redirect block and will auto-provision
+   the cert once DNS lands; verify with
+   `curl -I https://www.kasia.cz` → 301 → `https://kasia.cz`.
+
 1. **Local walkthrough by Matej** against the running docker
    stack — public site at `make up` → http://localhost/ and the
    warehouse app at http://localhost/sklad/. All 14 screens +
@@ -2549,9 +2585,8 @@ feeds back, hold position and respond to direct asks.
    nothing currently queued. Reopen as walkthrough surfaces
    more.
 
-4. **(Deferred until Matej says go.)** Provision the Hetzner
-   box per
-   [`infra/RUNBOOK.md`](../infra/RUNBOOK.md) → 14-day shadow
-   run per
+4. **14-day shadow run** per
    [`0034`](./decisions/0034-shadow-run-before-go-live.md) →
-   branch-staff cutover.
+   branch-staff cutover. (The box is provisioned and, as of
+   2026-07-14, live at `https://kasia.cz` — the old "provision
+   the box" step here is done.)

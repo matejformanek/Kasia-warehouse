@@ -224,10 +224,23 @@ Then, in order:
    `91.98.47.1`.
 3. **Only then** merge the held PR to `main` → auto-deploy activates the
    Caddyfile + 443. Caddy provisions the cert on first hit.
-4. On the box, set `DJANGO_SECURE_COOKIES=1` in `.env` and restart web.
+4. On the box, set `DJANGO_SECURE_COOKIES=1` in `.env` and recreate web
+   (`docker compose --profile prod up -d --force-recreate web` — a plain
+   `restart` does **not** re-read `env_file`).
 5. (Optional, cosmetic) update the `host:` literal in
    `.github/workflows/deploy.yml` to the hostname — the IP still works
    since DNS just resolves to it.
+
+⚠️ **`WEB_IMAGE` trap on manual recreates.** `deploy.yml` exports
+`WEB_IMAGE=ghcr.io/…:sha-*` only inside its own SSH session — it is not
+persisted anywhere on the box. A manual `docker compose up` without
+`WEB_IMAGE` in the environment falls back to compose's default
+(`kasia-web:local`), silently swapping prod onto whatever stale local
+image the box still has (this caused a brief outage at the 2026-07-14
+cutover). The on-box `.env` therefore **pins `WEB_IMAGE` to the currently
+deployed `sha-*` tag**; each deploy still overrides it via the exported
+env var (shell env beats `.env` in compose precedence), but keep the pin
+roughly current when doing manual work, and never remove it.
 
 Verify: `curl -I http://kasia.cz` → 301/308 → `https://kasia.cz`;
 `curl -Iv https://kasia.cz` → valid LE cert + 200;

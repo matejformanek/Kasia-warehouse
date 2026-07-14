@@ -22,3 +22,12 @@ kasia.cz {
 www.kasia.cz {
     redir https://kasia.cz{uri} permanent
 }
+
+# Old bookmarks from the IP era. Without this, Caddy's default answer to
+# `Host: 91.98.47.1` on :80 is a 308 to https://91.98.47.1 — which can never
+# have a matching cert, so browsers scream "not secure". Send them to the
+# canonical host instead. (https://91.98.47.1 will still warn; that's
+# inherent to bare-IP TLS and not worth chasing.)
+http://91.98.47.1 {
+    redir https://kasia.cz{uri} permanent
+}

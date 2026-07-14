@@ -8,7 +8,7 @@
 - **No Kubernetes, no service mesh, no autoscaling, no multi-region.** A single VPS or simple PaaS deploy is enough. One box can serve this workload with room to spare.
 - **No real-time anything** (websockets, SSE, live cursors) unless a screen actually demands it. The owner's request in `context/owner-request.md` is well-served by plain request/response.
 - **No mobile app unless a workflow demands phone-in-hand use.** A responsive web view covers most cases.
-- **No analytics warehouse, no event pipeline, no data lake.** Reports run off the operational DB until that genuinely hurts. The one deliberate exception is a single-page visitor-session tracker on the **public site** (self-hosted Umami per [`0076`](../../context/decisions/0076-public-site-analytics.md)) — pageviews of anonymous visitors, not warehouse data, and never on `/sklad/`.
+- **No analytics warehouse, no event pipeline, no data lake.** Reports run off the operational DB until that genuinely hurts. The one deliberate exception is a single-page visitor-session tracker on the **public site** (self-hosted Umami per [`0076`](../../context/decisions/0076-public-site-analytics.md)) — pageviews of anonymous visitors, not warehouse data, and never a third-party/browser tracker on `/sklad/` (the first-party server-side visit log per [`0077`](../../context/decisions/0077-sklad-usage-tracking.md) is the in-app answer there).
 
 ## The first-instinct check
 

@@ -5,6 +5,22 @@
 
 ## Done
 
+- **2026-07-14** — **Decision [`0077`](./decisions/0077-sklad-usage-tracking.md)
+  — per-user usage tracking for `/sklad/` (paperwork PR; code PR follows).**
+  First-party, server-side `ScreenVisit` log: one row per authenticated
+  full-page GET under `/sklad/` (who / which screen / when + path; no IP, no
+  UA, no client JS), append-only + kept forever (0075 retention precedent),
+  vlastník-only „Aktivita" Správa page. **Distinction from the 0076 entry
+  below:** "warehouse app deliberately untracked" meant — and still means —
+  no *browser tracker* on `/sklad/`; 0077 narrows 0076's Forecloses item to
+  third-party/browser trackers only and adds a first-party server-side
+  mechanism instead. The Umami context-processor path gate
+  (`web/context_processors.py`) and its pinning test stay untouched.
+  Paperwork: 0077 + 0076 superseded-in-part banner + right-sized-rule
+  carve-out extended + glossary „aktivita" + open-questions entry
+  added-and-closed. GDPR posture: legitimate interest, minimal data,
+  operators informed via Petr. Unblocks the code PR (model + the project's
+  first custom middleware + page + tests).
 - **2026-07-14** — **Public-site analytics live — self-hosted Umami at
   `https://analytics.kasia.cz/`** (decision
   [`0076`](./decisions/0076-public-site-analytics.md); PRs #34 paperwork,

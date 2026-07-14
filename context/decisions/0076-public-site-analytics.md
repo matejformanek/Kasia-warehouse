@@ -1,5 +1,11 @@
 # 0076 — Public-site analytics: self-hosted Umami at `analytics.kasia.cz`
 
+> **Superseded in part by [`0077`](./0077-sklad-usage-tracking.md)** — the
+> Forecloses item "Analytics on any `/sklad/` surface" is narrowed to
+> third-party/browser trackers; a first-party server-side visit log is now in
+> scope per 0077. Everything else — including the Umami context-processor
+> path gate — stands.
+
 **Date:** 2026-07-14
 **Decider:** Matej
 **Status:** Active

@@ -65,8 +65,9 @@ services:
       - web
     ports:
       - "80:80"
-      # Uncomment when a domain lands and the Caddyfile is updated.
-      # - "443:443"
+      # Published for the HTTPS cutover (per 0056). Caddy serves the
+      # Let's Encrypt cert here once DNS resolves to the box.
+      - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

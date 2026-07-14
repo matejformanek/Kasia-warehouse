@@ -112,6 +112,8 @@ urlpatterns = [
         views.email_log_resend,
         name="email_log_resend",
     ),
+    # Aktivita (screen-visit log, per 0077) — vlastník-only.
+    path("aktivita/", views.activity_index, name="activity_index"),
     path("nastaveni/", views.settings_edit, name="settings_edit"),
     path(
         "nastaveni/test-smtp/",

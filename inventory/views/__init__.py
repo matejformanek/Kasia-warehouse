@@ -7,6 +7,7 @@ feature. Cross-feature helpers live in ``_shared`` (``_require_vlastnik``,
 keep working unchanged.
 """
 
+from .activity import activity_index
 from .catalogue import (
     catalogue_index,
     product_archive,
@@ -107,6 +108,7 @@ __all__ = [
     "email_log_index",
     "email_log_detail",
     "email_log_resend",
+    "activity_index",
     "mixing_job_index",
     "mixing_job_create",
     "mixing_preview_partial",

@@ -85,6 +85,8 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                # Umami tracker vars, public paths only (decision 0076).
+                "web.context_processors.umami",
             ],
         },
     },

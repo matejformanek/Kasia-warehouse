@@ -405,3 +405,46 @@ def test_product_detail_obsluha_sees_only_own_branch_stock(
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Single-branch catalogue drops the "Prázdný na / Dochází na" branch column
+# entirely (per 0079-adjacent sklad UX round: the column is pointless when only
+# one branch is in scope — obsluha, or a vlastník who picked a branch).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_branch_column_hidden_for_obsluha_single_branch(
+    user_obsluha_tyn, tyn
+) -> None:
+    low = Product.objects.create(
+        name_cs="Dochazi zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    Stock.objects.create(product=low, branch=tyn, quantity=Decimal("3.000"))
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    body = client.get("/sklad/katalog/").content.decode("utf-8")
+    # The low group renders (the product is below threshold)…
+    assert low.name_cs in body
+    # …but the per-branch chip column header is gone in single-branch scope.
+    assert "Dochází na" not in body
+    assert "Prázdný na" not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_branch_column_shown_for_vlastnik_all_branches(
+    user_vlastnik, tyn
+) -> None:
+    low = Product.objects.create(
+        name_cs="Dochazi zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    Stock.objects.create(product=low, branch=tyn, quantity=Decimal("3.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/katalog/").content.decode("utf-8")
+    assert low.name_cs in body
+    # All-branches vlastník view keeps the per-branch chip column.
+    assert "Dochází na" in body

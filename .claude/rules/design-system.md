@@ -87,7 +87,14 @@ or restructure:
   **`<link>` only — never inline `<style>`, never `@import`** (the manifest
   storage rewrites `url()`/`@import`; per [`0069`](../../context/decisions/0069-css-externalization.md)).
   Do not re-declare the `:root` tokens or shared classes there.
-- **Shared public classes (0058):** `.wrap`/`.narrow`, `.btn`/`.btn-primary`/
+- **Per-page contextual help (per [`0078`](../../context/decisions/0078-per-page-contextual-help.md)):**
+  `{% block page_help %}` (each screen overrides it with a focused help
+  excerpt; the fallback in `base.html` points at Podpora), the global help
+  `<dialog id="kasia-help" class="kasia-dialog help-dialog">` with its
+  `.help-body`, and the fixed `#help-fab` „?" button — all inside the
+  `{% if user.is_authenticated %}` block of `base.html`. Styling
+  (`.help-dialog` / `#help-fab` / `.help-body`) is in
+  `components/dialogs.css`. Renaming any of these hooks is a new decision. `.wrap`/`.narrow`, `.btn`/`.btn-primary`/
   `.btn-ghost` (+`.btn-outline` alias), `.site-header`/`.nav`/`.brand-logo`/
   `.nav-toggle`, `.hero`/`.kicker`/`.hero-cta`, `.photo-band`/`.photo-frame`,
   `.facts`/`.facts-grid`/`.fact`, `.sec-head`/`.sec-label`, `.band-tint`,
@@ -211,6 +218,10 @@ non-destructive confirm ("Provést převod?", "Spustit dávku?") sets
 `form=` (or closest `<form>`) via `requestSubmit()`, so a `.js-confirm` button
 must never sit inside a `tr.row-link` (whole-row-nav hook) — same gotcha as the
 row-delete button.
+
+The **per-page help panel (0078)** follows the same rule: `#kasia-help` is a
+`<dialog>` opened with `showModal()` and closed via a „Zavřít" button / `Esc` /
+backdrop — **no native `alert()`**. It reuses `.kasia-dialog` styling.
 
 **Unsaved-changes guard — `data-guard-unsaved` on a `<form>`.** A reusable,
 opt-in guard also lives in `_confirm_dialog.html` (so it ships everywhere

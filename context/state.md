@@ -5,6 +5,43 @@
 
 ## Done
 
+- **2026-07-21** — **sklad UX round: per-page help + Podpora upgrades +
+  catalog/icon/edit fixes** (decisions
+  [`0078`](./decisions/0078-per-page-contextual-help.md) +
+  [`0079`](./decisions/0079-podpora-enhancements.md); 0079 **amends**
+  [`0046`](./decisions/0046-support-page.md)).
+  - **Per-page contextual help (0078):** global help `<dialog id="kasia-help"
+    class="kasia-dialog help-dialog">` + fixed `#help-fab` „?" button + close
+    script in `base.html`, **inside the auth `{% if %}`** (no orphan „?" on the
+    anon login page — pinned by test). Body is `{% block page_help %}` (generic
+    fallback → Podpora); overridden on ~19 screens with a focused excerpt.
+    Reuses `showModal()` (no native alert, per 0061); styling
+    (`.help-dialog`/`#help-fab`/`.help-body`) in `components/dialogs.css` (no new
+    `<link>`). Hooks added to `design-system.md` + `frontend-and-templates.md`
+    „Keep stable" lists.
+  - **Podpora dropdown (0079):** `page_url` free-text → `ChoiceField` of Czech
+    screen names (**value == label**; no model `choices=`, **no migration**;
+    old rows valid). `<code>` slash-path wrappers dropped in the history table.
+  - **Feedback e-mail (0079):** `settings.FEEDBACK_NOTIFY_EMAIL`
+    (`matej.formanek@kasia.cz`, env-overridable); `EmailLog.Category.FEEDBACK` +
+    migration **`0021_alter_emaillog_category`** (AlterField only);
+    `services/email.py::send_feedback_notification` via the 0075 `send_and_log`
+    seam; `support_view` schedules it in `transaction.on_commit`; direct-contact
+    note (`mailto:`) under the form.
+  - **Catalog single-branch column:** `_catalogue_group.html` gates the whole
+    „Prázdný na / Dochází na" column (`<th>`+`<td>`) on `show_branch_chips`, so
+    obsluha / single-branch vlastník no longer see an empty column; all-branches
+    vlastník keeps the chips.
+  - **Výdej sidebar icon:** `base.html` line 96 SVG → barrier-at-top + arrow
+    hanging below pointing down (reads as „going out"; mirror of Příjem).
+  - **Movement edit add-line:** `movement_edit.html` gains the „Přidat řádek"
+    HTMX button + auto-append script (blank `line_id` → `_line_changes` „add"
+    op; backend already supported it). Covers DONE příjem + výdej.
+  - **Tests:** full suite **588 passed** · ruff clean · `manage.py check` clean ·
+    hygiene 124 · collectstatic clean. New: catalogue column present/absent,
+    feedback-notification service + view (on_commit, `transaction=True`), podpora
+    dropdown label, movement-edit add-line. `screens/16-podpora.md` updated
+    (Phase 3).
 - **2026-07-14** — **`/sklad/` usage tracking shipped — `ScreenVisit` +
   „Aktivita" page** (code PR for [`0077`](./decisions/0077-sklad-usage-tracking.md),
   stacked on the paperwork PR below).

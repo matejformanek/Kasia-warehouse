@@ -1,5 +1,7 @@
 # 0046 — Support page (in-app docs + feedback log)
 
+> **Amended by [0079](./0079-podpora-enhancements.md)** — the free-text `page_url` field became a dropdown of Czech screen names, and e-mail-on-new-report (deferred here) now ships.
+
 **Date:** 2026-06-16
 **Decider:** Matej (2026-06-16, conversation with Claude during prod
 swap session — request placed after favicon landed)

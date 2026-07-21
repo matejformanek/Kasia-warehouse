@@ -30,9 +30,10 @@ points there, it does not restate it.
   that `dataset` reads literally and the filter breaks.
 - **Don't rename the locked class names / JS-HTMX hooks** (`.card`, `table.lines`,
   `.sub-head`, `.row-link[data-href]`, `#lines-body`, `data-filter-rows`,
-  `data-guard-unsaved`, `.js-confirm`, …). Restyle freely; renaming a hook or
-  reordering the component CSS layer is a **new decision**. The full list is in
-  design-system.md § "Keep stable".
+  `data-guard-unsaved`, `.js-confirm`, `{% block page_help %}` / `#kasia-help` /
+  `#help-fab` / `.help-dialog` / `.help-body` (per-page help, 0078), …). Restyle
+  freely; renaming a hook or reordering the component CSS layer is a **new
+  decision**. The full list is in design-system.md § "Keep stable".
 - **No native `confirm()`/`alert()`/`prompt()` in sklad** (per 0061) — use
   `.js-confirm` / `window.kasiaConfirm()`. See design-system.md.
 - **A new GET htmx partial endpoint must also be added to `EXCLUDED_URL_NAMES`

@@ -36,8 +36,15 @@ Three sections in one template:
      (default Říčany odběratel, šarže optional, [OPRAVA] re-send,
      rezervace zmenšují „Efektivní", apod.).
 2. **Nahlásit chybu nebo požadavek** — Django form with two
-   inputs: `page_url` (optional CharField, free-form hint like
-   `/katalog/`) and `description` (required TextField).
+   inputs: `page_url` (optional **dropdown of Czech screen names**,
+   e.g. „Katalog", „Výdej", … + „Jiné / nevím"; per
+   [`0079`](../decisions/0079-podpora-enhancements.md), replaces the old
+   free-text slash-path hint) and `description` (required TextField).
+   On submit an **e-mail notification** goes to the fixed admin address
+   (`settings.FEEDBACK_NOTIFY_EMAIL`) via the 0075 `send_and_log` seam,
+   scheduled in `transaction.on_commit`. A direct-contact note under the
+   form points users at `matej.formanek@kasia.cz` for
+   unanswered/urgent reports.
 3. **Historie hlášení** — table of last 50 `Feedback` rows,
    newest first. Columns: Datum, Kdo, Stránka, Popis, Stav, plus
    Akce (vlastník-only).
@@ -64,16 +71,22 @@ Three sections in one template:
 
 - **Description is required** — Django's `TextField` rejects
   empty input via form validation, no save attempted.
-- **`page_url` is optional** — free-form `CharField(max_length=255,
-  blank=True)`. Not validated as a URL; treated as a hint.
+- **`page_url` is optional** — a `ChoiceField` (`required=False`)
+  whose choices are `value == label` Czech screen names, stored into the
+  unchanged `CharField(max_length=255, blank=True)` (no model `choices=`,
+  no migration; old free-text rows stay valid). Per
+  [`0079`](../decisions/0079-podpora-enhancements.md).
 - **Author is auto-filled** from `request.user` on submit; the form
   never exposes the field.
 - **Only vlastník can toggle resolved** — `request.user.is_vlastnik`
   check; obsluha gets a Czech error message + redirect to
   `/podpora/`, not a 403 (friendlier UX, matches the
   `supplier_archive` pattern in `inventory/views.py`).
-- **No e-mail notification** on submit (deferred — see decision
-  0046 § Future considerations).
+- **E-mail notification** on submit — one message to
+  `settings.FEEDBACK_NOTIFY_EMAIL` via `send_and_log` (0075), scheduled
+  in `on_commit` so SMTP latency stays off the request; logged FAILED,
+  never re-raised (per [`0079`](../decisions/0079-podpora-enhancements.md),
+  supersedes 0046's deferral).
 - **No reply field** — "Vyřešené" is the only acknowledgement.
 - **List slice `[:50]`** — newest first, no pagination. Likely
   enough for 6 users over the 14-day shadow run.
@@ -96,10 +109,10 @@ Three sections in one template:
 
 ## What this screen explicitly does NOT do
 
-- No e-mail notification to vlastník on new submit (deferred —
-  see decision 0046).
-- No per-page "report this page" deep-link / icon (Matej
-  explicitly chose the simpler version).
+- No *digest* / batched e-mail — a single immediate notification per
+  report ships instead (per 0079); no daily roll-up.
+- No per-page "report this page" deep-link is *required*; per-page help
+  (0078) may optionally link here with `?page=<label>` (0079).
 - No categories, priority, labels, or assignees.
 - No reply field, no resolution note.
 - No Markdown rendering of `description` — `linebreaksbr`
@@ -121,3 +134,15 @@ reply field, Markdown.
 Podpora restyled per mockup `17` with refreshed Czech návod (Inventura,
 planned příjem, immediate míchání, effective stock, 1 dp). Report form +
 feedback-toggle logic preserved.
+
+## Enhancements — Phase 3 (2026-07-21, per [`0079`](../decisions/0079-podpora-enhancements.md))
+
+- `page_url` free-text → **dropdown** of Czech screen names (value ==
+  label; no migration).
+- **E-mail notification** on every new report to
+  `settings.FEEDBACK_NOTIFY_EMAIL` (`send_and_log` seam, `on_commit`);
+  new `EmailLog.Category.FEEDBACK`.
+- **Direct-contact note** under the form (mailto the admin for
+  unanswered/urgent reports).
+- Per-page contextual help („?") now also reaches these docs from every
+  screen (per [`0078`](../decisions/0078-per-page-contextual-help.md)).

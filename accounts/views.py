@@ -64,14 +64,23 @@ def user_create(request):
             # password. The send never re-raises (send_and_log swallows), so a
             # mail outage can't block user creation. Lazy import avoids pulling
             # the inventory services at module import time.
+            from inventory.models import EmailLog
             from inventory.services import send_new_user_credentials
 
-            send_new_user_credentials(
+            log = send_new_user_credentials(
                 user, user._raw_password, sent_by=request.user
             )
             messages.success(
                 request, f"Uživatel {user.email} byl přidán."
             )
+            # Surface a swallowed mail failure (send_and_log never re-raises) so
+            # the vlastník knows the credentials didn't go out and can re-send.
+            if log.status == EmailLog.Status.FAILED:
+                messages.warning(
+                    request,
+                    "E-mail s přihlašovacími údaji se nepodařilo odeslat — "
+                    "zkontrolujte «E-maily» a použijte «Reset hesla».",
+                )
             return redirect("accounts:user_index")
     else:
         form = UserCreateForm()
@@ -155,10 +164,21 @@ def user_password_reset(request, pk: int):
             email_template_name="registration/password_reset_email.html",
             subject_template_name="registration/password_reset_subject.txt",
         )
-        messages.success(
-            request,
-            f"Odkaz pro reset hesla byl odeslán na {target.email}.",
-        )
+        # send_and_log swallows SMTP errors; surface a failed send instead of a
+        # misleading success (per PR #42 review).
+        from inventory.models import EmailLog
+
+        if form.email_log is not None and form.email_log.status == EmailLog.Status.FAILED:
+            messages.warning(
+                request,
+                f"E-mail pro reset hesla se nepodařilo odeslat na "
+                f"{target.email} — zkontrolujte «E-maily».",
+            )
+        else:
+            messages.success(
+                request,
+                f"Odkaz pro reset hesla byl odeslán na {target.email}.",
+            )
     else:
         messages.error(
             request,

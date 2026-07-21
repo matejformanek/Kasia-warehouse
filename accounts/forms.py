@@ -32,9 +32,12 @@ class LoggedPasswordResetForm(PasswordResetForm):
     overridden.
 
     Set ``form.sent_by`` to the vlastník triggering the reset before ``save()``.
+    After ``save()``, ``form.email_log`` holds the resulting ``EmailLog`` row so
+    the caller can surface a swallowed send failure.
     """
 
     sent_by = None
+    email_log = None
 
     def send_mail(
         self,
@@ -62,7 +65,7 @@ class LoggedPasswordResetForm(PasswordResetForm):
             if s.email_from_name and s.email_from_address
             else (s.email_from_address or from_email or None)
         )
-        send_and_log(
+        self.email_log = send_and_log(
             category=EmailLog.Category.PASSWORD_RESET,
             trigger_reason="Reset hesla (Správa uživatelů)",
             subject=subject,

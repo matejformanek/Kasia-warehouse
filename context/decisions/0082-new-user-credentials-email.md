@@ -63,7 +63,7 @@ is a security-relevant decision, not an implementation detail.
 - Links in outgoing e-mails must be **absolute** (scheme + host + path), not
   bare `reverse()` paths — a path isn't clickable in a mail client. Since the
   send path is off-request, a new per-deployment env knob `SITE_BASE_URL`
-  (settings reader defaulting to `http://localhost:8000`, documented in
+  (settings reader defaulting to `http://localhost`, documented in
   `.env.example`, set to `https://kasia.cz` on the box) is prepended via the
   `_absolute_url()` helper in `inventory/services/email.py`. Applies to the
   credentials mail **and** the Podpora notification (0081).

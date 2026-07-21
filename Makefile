@@ -20,8 +20,13 @@ COMPOSE ?= docker compose
 # Local dev serves the app on http(s)://localhost via Caddyfile.dev (per 0083),
 # so `make up` works out of the box on a fresh clone with no .env editing. The
 # committed prod ./Caddyfile (kasia.cz + Let's Encrypt) is used only when
-# CADDYFILE is set otherwise; the box deploys via deploy.yml, never `make`, so
-# this default never reaches prod. Override with `make up CADDYFILE=./Caddyfile`.
+# CADDYFILE is set otherwise. Override with `make up CADDYFILE=./Caddyfile`.
+#
+# ⚠️  DO NOT run `make` targets on the production box. Prod deploys via
+# .github/workflows/deploy.yml, which runs `docker compose` directly and never
+# uses `make`. Running `make up` on the box would recreate the proxy with this
+# dev Caddyfile (localhost-only, auto_https off) and break kasia.cz TLS. The
+# `up` target echoes which Caddyfile it uses so this can never be silent.
 CADDYFILE ?= ./Caddyfile.dev
 export CADDYFILE
 
@@ -31,6 +36,7 @@ build:
 	$(COMPOSE) build
 
 up:
+	@echo "→ Caddy config: $(CADDYFILE)  (dev = localhost; prod = ./Caddyfile — never run make on the box)"
 	$(COMPOSE) up -d db
 	@echo "Waiting for db to be healthy..."
 	@until [ "$$(docker inspect -f '{{.State.Health.Status}}' kasia-db-1 2>/dev/null)" = "healthy" ]; do sleep 2; done

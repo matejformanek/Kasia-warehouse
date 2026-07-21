@@ -183,6 +183,44 @@ def test_user_create_vlastnik(vlastnik) -> None:
 
 
 @pytest.mark.django_db
+def test_user_create_warns_when_credentials_mail_fails(vlastnik, monkeypatch) -> None:
+    """Per PR #42 review: a swallowed mail failure must surface a warning (not a
+    misleading success), and the user is still created + the FAILED row logged."""
+    from inventory import services
+    from inventory.models import EmailLog
+
+    def _raise(self, *args, **kwargs):
+        raise RuntimeError("smtp down")
+
+    monkeypatch.setattr(services.email.EmailMessage, "send", _raise)
+
+    client = Client()
+    client.force_login(vlastnik)
+    response = client.post(
+        reverse("accounts:user_create"),
+        {
+            "first_name": "Bez",
+            "last_name": "Mailu",
+            "email": "nomail@example.cz",
+            "role": "vlastnik",
+            "branch": "",
+        },
+        follow=True,
+    )
+    assert response.status_code == 200
+    # User still created despite the send failure.
+    assert User.objects.filter(email="nomail@example.cz").exists()
+    # FAILED row logged, and a warning message surfaced.
+    assert EmailLog.objects.filter(
+        category=EmailLog.Category.NEW_USER_CREDENTIALS,
+        recipients="nomail@example.cz",
+        status=EmailLog.Status.FAILED,
+    ).exists()
+    msgs = [m.message for m in response.context["messages"]]
+    assert any("nepodařilo odeslat" in m for m in msgs)
+
+
+@pytest.mark.django_db
 def test_user_create_obsluha(vlastnik) -> None:
     from inventory.models import EmailLog
 

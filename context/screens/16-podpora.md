@@ -148,6 +148,9 @@ feedback-toggle logic preserved.
   screen (per [`0078`](../decisions/0078-per-page-contextual-help.md)); the
   per-page panels are full friendly walkthroughs (what the screen is for,
   step-by-step, field/column meanings, tips).
-- **Video-návod placeholder** above the report form (`.video-tutorial` /
-  `.video-placeholder` in `pages/support.css`) — a styled 16:9 dashed frame
-  („Video návod připravujeme"); swap the inner block for a real embed later.
+- **Video-návod block** above the report form (`.video-tutorial` /
+  `.video-placeholder` in `pages/support.css`) — a 16:9 **poster + play
+  button** that reads as a ready-to-play video (poster =
+  `static/img/video-tutorial-thumb.png`; no „coming soon" text, intentional so
+  it can be filmed as if live). Swap the inner markup for a real
+  `<video>`/embed when the clip exists; reuse the image as its poster.

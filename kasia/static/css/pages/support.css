@@ -36,10 +36,14 @@
   .video-tutorial { max-width: 720px; margin: 0 0 1.5rem; }
   .video-placeholder {
     position: relative;
+    display: block;
+    width: 100%;
     aspect-ratio: 16 / 9;
     overflow: hidden;
+    padding: 0;
     border: 1px solid var(--line);
     background: var(--bg-card, #fff);
+    cursor: pointer;
   }
   .video-placeholder .video-thumb {
     position: absolute;
@@ -53,28 +57,25 @@
     position: absolute;
     inset: 0;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: .35rem;
-    text-align: center;
-    padding: 1rem;
-    color: #fff;
-    /* Darken the poster so the play button + caption stay legible. */
-    background: rgba(10, 40, 20, 0.55);
+    /* Very light scrim so the play button reads over any poster. */
+    background: rgba(10, 40, 20, 0.18);
+    transition: background .15s ease;
   }
+  .video-placeholder:hover .video-overlay { background: rgba(10, 40, 20, 0.30); }
   .video-placeholder .video-play {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
     border-radius: 999px;
     background: var(--accent);
     color: #fff;
-    font-size: 1.6rem;
-    padding-left: 4px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    font-size: 1.8rem;
+    padding-left: 5px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    transition: transform .15s ease;
   }
-  .video-placeholder .video-caption { margin: .4rem 0 0; font-weight: 600; }
-  .video-placeholder .video-sub { margin: 0; font-size: .9rem; opacity: .9; }
+  .video-placeholder:hover .video-play { transform: scale(1.06); }

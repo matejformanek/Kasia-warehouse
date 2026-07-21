@@ -23,9 +23,11 @@
     scrolls. FAB at **z-index 60** (above topbar/mob-nav + the inventura
     `.tallybar` z50); on inventura `pages/inventura_edit.css` lifts it clear of
     the fixed tallybar so it isn't occluded (was hidden behind it).
-  - **Podpora video-návod placeholder:** styled 16:9 dashed frame above the
-    report form (`.video-tutorial`/`.video-placeholder` in `pages/support.css`)
-    — „Video návod připravujeme"; swap the inner block for a real embed later.
+  - **Podpora video-návod block:** 16:9 **poster + play button** above the
+    report form (`.video-tutorial`/`.video-placeholder` in `pages/support.css`;
+    poster `static/img/video-tutorial-thumb.png`). Reads as a ready-to-play
+    video (no „coming soon" text — intentional, so it can be filmed as if live);
+    swap the inner markup for a real `<video>`/embed later, reusing the poster.
   - **Podpora dropdown (0079):** `page_url` free-text → `ChoiceField` of Czech
     screen names (**value == label**; no model `choices=`, **no migration**;
     old rows valid). `<code>` slash-path wrappers dropped in the history table.

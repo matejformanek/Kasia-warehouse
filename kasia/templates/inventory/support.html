@@ -8,8 +8,8 @@
 {% block page_help %}
 <h3>Podpora — všechna pomoc na jednom místě</h3>
 <p>Na téhle stránce najdete <strong>kompletní návod</strong> k&nbsp;celé aplikaci:
-rozbalovací sekce „Co kde najdu", „Postupy krok za krokem" a&nbsp;„Tipy a&nbsp;triky".
-Nahoře (až doplníme) bude i&nbsp;<strong>video návod</strong>.</p>
+rozbalovací sekce „Co kde najdu", „Postupy krok za krokem" a&nbsp;„Tipy a&nbsp;triky",
+a&nbsp;nahoře <strong>video návod</strong>.</p>
 <ul>
   <li>Dole je <strong>formulář pro hlášení</strong> chyby, dotazu nebo nápadu.
   Vyberte, které stránky se to týká, a&nbsp;popište to vlastními slovy.</li>
@@ -133,17 +133,15 @@ nápovědu právě k&nbsp;té obrazovce.</p>
 
 <h2>Video návod</h2>
 
-{# Placeholder — thumbnail + play overlay; sem přijde vložené video, až bude natočené. #}
+{# Ready-to-play look: poster + play button, no "coming soon" text. Swap inner markup for a real <video>/embed when the clip exists. #}
 <div class="video-tutorial">
-  <div class="video-placeholder">
+  <button type="button" class="video-placeholder" aria-label="Přehrát video návod">
     <img class="video-thumb" src="{% static 'img/video-tutorial-thumb.png' %}"
-         alt="Náhled video návodu">
-    <div class="video-overlay">
+         alt="Video návod">
+    <span class="video-overlay">
       <span class="video-play" aria-hidden="true">▶</span>
-      <p class="video-caption">Video návod připravujeme</p>
-      <p class="video-sub">Brzy tu najdete krátké provedení aplikací krok za krokem.</p>
-    </div>
-  </div>
+    </span>
+  </button>
 </div>
 
 <h2>Nahlásit chybu nebo požadavek</h2>

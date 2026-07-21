@@ -4,11 +4,32 @@
 
 {% block page_help %}
 <h3>Úprava pohybu</h3>
-<p><strong>Důvod úpravy je povinný.</strong> Můžete změnit hlavičku i&nbsp;položky,
-smazat řádek („× Smazat") nebo <strong>přidat nový řádek</strong>.</p>
-<p>Šlo-li o&nbsp;výdej, dodací list se přegeneruje a&nbsp;přepošle Petrovi
-a&nbsp;Karolíně s&nbsp;předponou <strong>[OPRAVA]</strong> v&nbsp;předmětu.</p>
-<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+<p>Tady opravíte dříve zaznamenaný pohyb, když se do něj vloudila chyba
+(špatné kg, produkt, datum, odběratel/dodavatel…). Systém opravu
+<strong>zaznamená</strong>, ať je vždy dohledatelné, co a&nbsp;proč se změnilo.</p>
+
+<h3>Krok za krokem</h3>
+<ol>
+  <li>Vyplňte <strong>Důvod úpravy</strong> — je <strong>povinný</strong>.</li>
+  <li>Upravte hlavičku (pobočka, datum, odběratel/dodavatel, poznámka) nebo
+  položky.</li>
+  <li>U&nbsp;položek můžete <strong>změnit hodnoty</strong>, <strong>smazat
+  řádek</strong> („× Smazat") nebo <strong>přidat nový</strong> tlačítkem
+  „Přidat řádek".</li>
+  <li>Klikněte na <strong>Uložit změny</strong>.</li>
+</ol>
+
+<h3>Dobré vědět</h3>
+<ul>
+  <li>Šlo-li o&nbsp;<strong>výdej</strong>, dodací list se přegeneruje (nová
+  verze) a&nbsp;přepošle Petrovi a&nbsp;Karolíně s&nbsp;předponou
+  <strong>[OPRAVA]</strong> v&nbsp;předmětu — počítejte s&nbsp;tím.</li>
+  <li>Zásoby se automaticky <strong>přepočítají</strong> podle rozdílu oproti
+  původnímu pohybu.</li>
+  <li>Dole je <strong>záznam všech úprav</strong> tohoto pohybu (kdo, kdy, co,
+  z&nbsp;čeho na&nbsp;co).</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
 
 {% block content %}

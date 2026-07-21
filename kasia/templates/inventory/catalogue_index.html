@@ -6,17 +6,41 @@
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/catalogue_index.css' %}">{% endblock %}
 
 {% block page_help %}
-<h3>Katalog</h3>
-<p>Seznam všech produktů a&nbsp;směsí, seskupený podle stavu (Prázdné / Dochází /
-V&nbsp;pořádku). Hledání a&nbsp;filtr podle typu, stavu a&nbsp;pobočky.</p>
+<h3>Katalog — seznam všeho zboží</h3>
+<p>Katalog je úplný seznam všech produktů a&nbsp;směsí a&nbsp;jejich aktuálního
+stavu. Řádky jsou <strong>seskupené podle stavu</strong> do tří tabulek —
+🔴 Prázdné, 🟠 Dochází, ⚪ V&nbsp;pořádku — takže hned vidíte, čemu se věnovat.
+Nahoře je proužek s&nbsp;počty (KPI).</p>
+
+<h3>Jak hledat a&nbsp;filtrovat</h3>
 <ul>
-  <li>Sloupce: <strong>Na skladě</strong>, <strong>Rezerv.</strong>,
-  <strong>Efektivně</strong> (na skladě − rezervováno) a&nbsp;<strong>Práh</strong>
-  (objednací bod).</li>
-  <li>Klik na řádek otevře <strong>detail produktu</strong> — úprava stavu,
-  receptura, práh, archivace.</li>
+  <li><strong>Vyhledávací pole</strong> — pište název, seznam se filtruje za
+  běhu. Zvládne diakritiku i&nbsp;drobný překlep, Enter není potřeba.</li>
+  <li><strong>Filtry</strong> nahoře — podle typu (surovina / směs), stavu
+  a&nbsp;pobočky. Jako vlastník můžete přepnout na jednu pobočku; obsluha vidí
+  jen svoji.</li>
 </ul>
-<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+
+<h3>Co znamenají sloupce</h3>
+<ul>
+  <li><strong>Na skladě</strong> — fyzicky napočítané kg.</li>
+  <li><strong>Rezerv.</strong> — kolik je už slíbeno (rezervováno) jinam.</li>
+  <li><strong>Efektivně</strong> = na skladě − rezervováno. <strong>Tímhle se
+  řiďte</strong> — je to to, s&nbsp;čím reálně můžete počítat.</li>
+  <li><strong>Práh</strong> — objednací bod. Klesne-li „Efektivně" pod něj,
+  produkt se obarví oranžově („dochází"). Práh nastavuje vlastník na detailu
+  produktu.</li>
+</ul>
+
+<h3>Co tu můžete udělat</h3>
+<ul>
+  <li><strong>Klik na řádek</strong> otevře <strong>detail produktu</strong> —
+  stav po pobočkách a&nbsp;šaržích, receptura (u&nbsp;směsí), ruční úprava stavu,
+  nastavení prahu a&nbsp;archivace.</li>
+  <li>Vlastník má nahoře i&nbsp;tlačítka <strong>Inventura</strong> a&nbsp;<strong>Import
+  z&nbsp;XLS</strong> (načtení receptury směsi z&nbsp;tabulky).</li>
+</ul>
+<p>Detailní postupy najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
 
 {% block content %}

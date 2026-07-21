@@ -7,10 +7,18 @@
 
 {% block page_help %}
 <h3>Aktivita</h3>
-<p>Kdo kdy které obrazovky otevřel: poslední návštěva a&nbsp;počty za 7&nbsp;a&nbsp;30&nbsp;dní,
-nejčastější obrazovky a&nbsp;filtrovaný seznam návštěv.</p>
-<p>Slouží vlastníkovi k&nbsp;přehledu o&nbsp;používání během zkušebního provozu.</p>
-<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+<p>Přehled o&nbsp;tom, <strong>jak se aplikace používá</strong> — kdo kdy které
+obrazovky otevřel. Slouží vlastníkovi hlavně během zkušebního provozu. Vidí ho
+jen <strong>vlastník</strong>.</p>
+<h3>Co tu najdete</h3>
+<ul>
+  <li><strong>Poslední návštěva</strong> každého uživatele a&nbsp;počty za
+  <strong>7&nbsp;a&nbsp;30&nbsp;dní</strong>.</li>
+  <li><strong>Nejčastější obrazovky</strong> za posledních 30&nbsp;dní.</li>
+  <li><strong>Filtrovaný a&nbsp;stránkovaný seznam</strong> jednotlivých návštěv.</li>
+</ul>
+<p>Eviduje se jen kdo/co/kdy — žádné IP ani sledování v&nbsp;prohlížeči.</p>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
 
 {% block content %}

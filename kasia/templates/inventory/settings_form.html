@@ -6,11 +6,18 @@
 
 {% block page_help %}
 <h3>Nastavení</h3>
-<p>Vlastník: adresa firmy, příjemci dodacích listů a&nbsp;upozornění, e-mailové
-šablony a&nbsp;SMTP.</p>
-<p>Musí existovat aspoň jeden <strong>aktivní příjemce dodáků</strong>, jinak
-výdej odmítne uložit.</p>
-<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+<p>Centrální nastavení aplikace. Vidí ho jen <strong>vlastník</strong>.</p>
+<h3>Co tu nastavíte</h3>
+<ul>
+  <li><strong>Adresa firmy</strong> — tiskne se na dodací listy.</li>
+  <li><strong>Příjemci dodacích listů</strong> — komu automaticky chodí dodák po
+  výdeji (typicky Petr + Karolína). <strong>Musí existovat aspoň jeden aktivní
+  příjemce</strong>, jinak výdej odmítne uložit.</li>
+  <li><strong>Příjemci upozornění „dochází zboží"</strong>.</li>
+  <li><strong>E-mailové šablony</strong> (předmět/text) a&nbsp;<strong>SMTP</strong>
+  (odesílací server). SMTP můžete otestovat tlačítkem.</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
 
 {% block content %}

@@ -7,9 +7,19 @@
 
 {% block page_help %}
 <h3>Odběratelé</h3>
-<p>Seznam odběratelů. Můžete přidat nového, upravit nebo archivovat.
-Archivovaný odběratel zůstává na starších výdejích, jen se nenabízí u&nbsp;nových.</p>
-<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+<p>Seznam zákazníků, kterým <strong>vydáváte</strong> zboží. Objeví se ve výběru
+při Výdeji a&nbsp;tisknou se na dodací list.</p>
+<h3>Co tu můžete udělat</h3>
+<ul>
+  <li><strong>Přidat</strong> nového odběratele (nebo ho lze přidat i&nbsp;rovnou
+  z&nbsp;formuláře Výdeje).</li>
+  <li><strong>Upravit</strong> údaje (jméno, adresa) — projeví se na budoucích
+  dodácích.</li>
+  <li><strong>Archivovat</strong> — schová z&nbsp;nabídky, ale zůstane na starších
+  výdejích.</li>
+  <li><strong>Hledat</strong> podle názvu (filtr za běhu).</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
 
 {% block content %}

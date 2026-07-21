@@ -7,9 +7,16 @@
 
 {% block page_help %}
 <h3>Pobočky</h3>
-<p>Vlastník: přidání a&nbsp;editace fyzických poboček. <strong>Kód pobočky</strong>
-(TYN / SEZ) se používá v&nbsp;číslech dodacích listů — neměňte ho zbytečně.</p>
-<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+<p>Správa fyzických poboček (skladů). Tuhle stránku vidí jen
+<strong>vlastník</strong>.</p>
+<h3>Co tu můžete udělat</h3>
+<ul>
+  <li><strong>Přidat</strong> nebo <strong>upravit</strong> pobočku.</li>
+  <li><strong>Kód pobočky</strong> (TYN / SEZ) se používá v&nbsp;číslech dodacích
+  listů — proto ho <strong>neměňte zbytečně</strong>, ať čísla zůstanou
+  konzistentní.</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
 
 {% block content %}

@@ -6,16 +6,24 @@
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/mixing_job_index.css' %}">{% endblock %}
 
 {% block page_help %}
-<h3>Míchání</h3>
-<p>Míchání je <strong>jeden krok</strong>: vyberte pobočku, směs a&nbsp;cílové
-množství → suroviny se odečtou a&nbsp;směs naskladní. Žádné plánování ani
-dokončování dávky.</p>
-<ul>
-  <li>„Skutečně vyrobeno" nechte prázdné, pokud sedí na cíl.</li>
-  <li>Chybí-li surovina, zelené „Upravit stav surovin" otevře inventuru jen pro
-  suroviny té směsi.</li>
-</ul>
-<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+<h3>Míchání — přehled a&nbsp;nová výroba</h3>
+<p>Tady vidíte <strong>historii namíchaných směsí</strong> a&nbsp;odsud spustíte
+<strong>nové míchání</strong>. Míchání je vždy <strong>jeden krok</strong> — žádné
+plánování, spouštění ani dokončování dávky.</p>
+
+<h3>Jak namíchat směs</h3>
+<ol>
+  <li>Klikněte na <strong>„Nové míchání"</strong>.</li>
+  <li>Vyberte <strong>pobočku</strong>, <strong>směs</strong> a&nbsp;<strong>cílové
+  množství</strong> (kolik kg chcete).</li>
+  <li>Volitelně <strong>„Skutečně vyrobeno"</strong> — necháte-li prázdné, počítá
+  se cíl.</li>
+  <li><strong>Namíchat</strong>: suroviny se podle receptury odečtou a&nbsp;směs
+  se naskladní.</li>
+</ol>
+<p>Chybí-li surovina, zelené <strong>„Upravit stav surovin"</strong> otevře
+inventuru jen pro suroviny té směsi — dosypte, uložte, vraťte se a&nbsp;namíchejte.</p>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
 
 {% block content %}

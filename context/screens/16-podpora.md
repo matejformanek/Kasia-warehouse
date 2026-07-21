@@ -145,4 +145,9 @@ feedback-toggle logic preserved.
 - **Direct-contact note** under the form (mailto the admin for
   unanswered/urgent reports).
 - Per-page contextual help („?") now also reaches these docs from every
-  screen (per [`0078`](../decisions/0078-per-page-contextual-help.md)).
+  screen (per [`0078`](../decisions/0078-per-page-contextual-help.md)); the
+  per-page panels are full friendly walkthroughs (what the screen is for,
+  step-by-step, field/column meanings, tips).
+- **Video-návod placeholder** above the report form (`.video-tutorial` /
+  `.video-placeholder` in `pages/support.css`) — a styled 16:9 dashed frame
+  („Video návod připravujeme"); swap the inner block for a real embed later.

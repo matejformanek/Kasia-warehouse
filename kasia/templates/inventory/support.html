@@ -6,13 +6,20 @@
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/support.css' %}">{% endblock %}
 
 {% block page_help %}
-<h3>Podpora</h3>
-<p>Tato stránka je <strong>kompletní návod</strong>: „co kde najdu", postupy krok
-za krokem, tipy a&nbsp;formulář pro hlášení chyb nebo požadavků.</p>
+<h3>Podpora — všechna pomoc na jednom místě</h3>
+<p>Na téhle stránce najdete <strong>kompletní návod</strong> k&nbsp;celé aplikaci:
+rozbalovací sekce „Co kde najdu", „Postupy krok za krokem" a&nbsp;„Tipy a&nbsp;triky".
+Nahoře (až doplníme) bude i&nbsp;<strong>video návod</strong>.</p>
 <ul>
-  <li>Hlášení vidí celý tým; vlastník je označí jako vyřešená.</li>
-  <li>Vážný nebo neřešený problém můžete napsat přímo správci (odkaz pod formulářem).</li>
+  <li>Dole je <strong>formulář pro hlášení</strong> chyby, dotazu nebo nápadu.
+  Vyberte, které stránky se to týká, a&nbsp;popište to vlastními slovy.</li>
+  <li>Hlášení <strong>vidí celý tým</strong>; vlastník je označí jako vyřešené,
+  jakmile je hotovo.</li>
+  <li>Vážný nebo dlouho neřešený problém můžete napsat <strong>přímo správci</strong>
+  (odkaz pod formulářem).</li>
 </ul>
+<p>Tip: tlačítko <strong>„?"</strong> vpravo dole je na každé stránce a&nbsp;ukáže
+nápovědu právě k&nbsp;té obrazovce.</p>
 {% endblock %}
 
 {% block content %}
@@ -123,6 +130,17 @@ za krokem, tipy a&nbsp;formulář pro hlášení chyb nebo požadavků.</p>
     </ul>
   </div>
 </details>
+
+<h2>Video návod</h2>
+
+{# Placeholder — sem přijde vložené video (embed), až bude natočené. #}
+<div class="video-tutorial">
+  <div class="video-placeholder" role="img" aria-label="Video návod – připravujeme">
+    <span class="video-play" aria-hidden="true">▶</span>
+    <p class="video-caption">Video návod připravujeme</p>
+    <p class="video-sub">Brzy tu najdete krátké provedení aplikací krok za krokem.</p>
+  </div>
+</div>
 
 <h2>Nahlásit chybu nebo požadavek</h2>
 

@@ -7,9 +7,18 @@
 
 {% block page_help %}
 <h3>Dodavatelé</h3>
-<p>Seznam dodavatelů. Můžete přidat nového, upravit nebo archivovat.
-Archivovaný dodavatel zůstává na starších příjmech, jen se nenabízí u&nbsp;nových.</p>
-<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+<p>Seznam firem, od kterých <strong>nakupujete</strong> zboží. Objeví se ve
+výběru při Příjmu.</p>
+<h3>Co tu můžete udělat</h3>
+<ul>
+  <li><strong>Přidat</strong> nového dodavatele (nebo ho lze přidat i&nbsp;rovnou
+  z&nbsp;formuláře Příjmu).</li>
+  <li><strong>Upravit</strong> údaje.</li>
+  <li><strong>Archivovat</strong> — schová dodavatele z&nbsp;nabídky, ale zůstane
+  na starších příjmech. Nic se neztratí.</li>
+  <li><strong>Hledat</strong> podle názvu (filtr za běhu).</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
 
 {% block content %}

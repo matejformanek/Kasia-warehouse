@@ -2,6 +2,8 @@
   /* Inventura — sticky tally + green edited rows (mockup 03). CSS-only restyle;
      all input names / data-current / delta+reason logic unchanged. */
   .content { padding-bottom: 92px; }
+  /* Lift the global help "?" FAB above the fixed .tallybar (per 0078). */
+  #help-fab { bottom: calc(92px + 1.25rem); }
   .stav-card { background: var(--warn-tint); border-left: 3px solid var(--warn); }
   .stav-card code { background: #fff; border: 1px solid var(--line); padding: 0 .3rem; font-family: var(--mono); font-size: .85em; }
   .branch-row { margin-bottom: 1rem; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }

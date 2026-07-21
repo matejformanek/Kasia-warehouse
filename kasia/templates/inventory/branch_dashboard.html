@@ -6,15 +6,36 @@
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/branch_dashboard.css' %}">{% endblock %}
 
 {% block page_help %}
-<h3>Přehled pobočky</h3>
-<p>Stav zásob vaší pobočky, seskupený podle stavu: prázdné (červená) / dochází
-(oranžová) / v&nbsp;pořádku. Vpravo nahoře je tlačítko „Inventura".</p>
+<h3>Přehled vaší pobočky 👋</h3>
+<p>Tady vidíte stav zásob <strong>své pobočky</strong> — vše na jednom místě.
+Je to výchozí stránka po přihlášení. Nemusíte nic nastavovat, jen se podívat,
+co máte a&nbsp;co dochází, a&nbsp;odsud rovnou spustit příjem, výdej nebo míchání.</p>
+
+<h3>Co na stránce najdete</h3>
 <ul>
-  <li>Řiďte se sloupcem <strong>Efektivně</strong> (= na skladě − rezervováno).</li>
-  <li>Hledání nahoře filtruje řádky podle názvu.</li>
-  <li>Odsud vede příjem, výdej i&nbsp;míchání.</li>
+  <li><strong>Stav skladu</strong> — produkty rozdělené do tří skupin podle
+  barvy (viz níže). Každý produkt má množství v&nbsp;kg.</li>
+  <li><strong>Vyhledávací pole</strong> nahoře — jak píšete, seznam se rovnou
+  filtruje podle názvu (nemusíte mačkat Enter, zvládne i&nbsp;překlep).</li>
+  <li>Vpravo nahoře oranžové tlačítko <strong>„Inventura"</strong> — přejdete na
+  hromadné přepočítání skladu vaší pobočky.</li>
 </ul>
-<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+
+<h3>Jak rozumět barvám a&nbsp;číslům</h3>
+<ul>
+  <li>🔴 <strong>Prázdné</strong> = efektivně 0&nbsp;kg — reálně není co vydat.</li>
+  <li>🟠 <strong>Dochází</strong> = kleslo pod objednací bod, ale kg ještě jsou.</li>
+  <li>⚪ <strong>V&nbsp;pořádku</strong> = zásoba je nad prahem.</li>
+  <li><strong>Řiďte se sloupcem „Efektivně"</strong> (= na skladě − rezervováno).
+  To je to, s&nbsp;čím reálně můžete počítat; rezervované kg jsou tu, ale už
+  slíbené jinam.</li>
+</ul>
+
+<h3>Kam odsud dál</h3>
+<p>Z&nbsp;levého menu: <strong>Příjem</strong> (naskladnění dodávky),
+<strong>Výdej</strong> (expedice + dodací list), <strong>Míchání</strong> (výroba
+směsi). Nevíte-li si radou, otevřete <strong>Podporu</strong> — je tam celý návod
+i&nbsp;formulář, kde nám napíšete.</p>
 {% endblock %}
 
 {% block content %}

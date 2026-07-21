@@ -6,10 +6,21 @@
 
 {% block page_help %}
 <h3>Uživatelé</h3>
-<p>Vlastník: správa účtů, rolí (<strong>vlastník</strong> / <strong>obsluha</strong>)
-a&nbsp;pobočkové příslušnosti.</p>
-<p>Obsluha vidí a&nbsp;upravuje jen svoji pobočku; vlastník vidí obě.</p>
-<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+<p>Správa přístupů do aplikace. Tuhle stránku vidí jen <strong>vlastník</strong>.</p>
+<h3>Role</h3>
+<ul>
+  <li><strong>Vlastník</strong> — vidí obě pobočky, spravuje uživatele, pobočky,
+  nastavení, e-maily a&nbsp;aktivitu.</li>
+  <li><strong>Obsluha</strong> — pracuje jen se <strong>svojí</strong> pobočkou
+  (příjem, výdej, míchání, inventura, historie své pobočky).</li>
+</ul>
+<h3>Co tu můžete udělat</h3>
+<ul>
+  <li><strong>Přidat</strong> uživatele, nastavit mu <strong>roli</strong>
+  a&nbsp;<strong>pobočku</strong>.</li>
+  <li><strong>Upravit</strong> existující účet.</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
 
 {% block content %}

@@ -6,16 +6,41 @@
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/home.css' %}">{% endblock %}
 
 {% block page_help %}
-<h3>Přehled (domovská stránka)</h3>
-<p>Vlastník vidí obě pobočky, panel „Dochází / Prázdné" a&nbsp;poslední pohyby.
-Vpravo nahoře je tlačítko „Inventura {pobočka}".</p>
+<h3>Vítejte na Přehledu 👋</h3>
+<p>Tohle je vaše domovská stránka — první, co uvidíte po přihlášení. Jako
+vlastník tu máte <strong>obě pobočky pohromadě</strong>: rychlý přehled o&nbsp;tom,
+co dochází nebo chybí, a&nbsp;co se ve skladu naposledy dělo. Nemusíte nic
+nastavovat, jen se dívat a&nbsp;klikat dál.</p>
+
+<h3>Co na stránce uvidíte</h3>
 <ul>
-  <li><strong>Dochází</strong> (oranžová) = pod objednacím bodem, kg ještě jsou.
-  <strong>Prázdné</strong> (červená) = efektivně 0&nbsp;kg.</li>
-  <li>Řiďte se sloupcem <strong>Efektivně</strong> (= na skladě − rezervováno).</li>
-  <li>Odsud vede příjem, výdej i&nbsp;míchání.</li>
+  <li><strong>Panel „Dochází / Prázdné"</strong> — nahoře. Ukazuje, kterých
+  produktů je málo nebo úplně došly. Sem se dívejte, když plánujete objednávky.</li>
+  <li><strong>Stav skladu po pobočkách</strong> — produkty rozdělené do tří
+  skupin podle barvy (viz níže).</li>
+  <li><strong>Poslední pohyby</strong> — co se naposledy přijalo, vydalo nebo
+  namíchalo. Klik na řádek otevře detail toho pohybu.</li>
+  <li>Vpravo nahoře tlačítko <strong>„Inventura {pobočka}"</strong> — přejdete
+  rovnou na přepočítání skladu té pobočky.</li>
 </ul>
-<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+
+<h3>Jak rozumět barvám a&nbsp;číslům</h3>
+<ul>
+  <li>🔴 <strong>Prázdné</strong> = efektivně 0&nbsp;kg — reálně nemáte co vydat.</li>
+  <li>🟠 <strong>Dochází</strong> = kleslo pod „objednací bod" (práh), ale nějaké
+  kg ještě jsou — čas objednat.</li>
+  <li>⚪ <strong>V&nbsp;pořádku</strong> = zásoba nad prahem.</li>
+  <li><strong>Vždy se řiďte sloupcem „Efektivně"</strong>, ne „Na skladě".
+  Efektivně = na skladě − rezervováno. Rezervované kg tu fyzicky jsou, ale jsou
+  už někomu slíbené, takže s&nbsp;nimi nepočítejte.</li>
+</ul>
+
+<h3>Kam odsud dál</h3>
+<p>Z&nbsp;levého menu spustíte <strong>Příjem</strong> (naskladnění),
+<strong>Výdej</strong> (expedice + dodací list), <strong>Míchání</strong> (výroba
+směsi) nebo <strong>Inventuru</strong> (hromadné přepočítání). Nevíte-li si
+radou, klikněte na <strong>Podporu</strong> v&nbsp;menu — je tam kompletní návod
+i&nbsp;formulář, kde nám můžete napsat.</p>
 {% endblock %}
 
 {% block content %}

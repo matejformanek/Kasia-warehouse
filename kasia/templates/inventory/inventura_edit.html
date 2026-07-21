@@ -7,17 +7,49 @@
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/inventura_edit.css' %}">{% endblock %}
 
 {% block page_help %}
-<h3>Inventura</h3>
-<p>Hromadné přepočítání skladu pro jednu pobočku. Do sloupce „skutečnost"
-zapište skutečně napočítané kg — upravený řádek se&nbsp;<strong>zvýrazní zeleně</strong>.</p>
+<h3>Inventura — hromadné přepočítání skladu</h3>
+<p>Inventura slouží k&nbsp;tomu, abyste sklad <strong>fyzicky přepočítali</strong>
+a&nbsp;srovnali čísla v&nbsp;systému se skutečností. Vždy je pro
+<strong>jednu pobočku</strong>. Nemusíte řešit jednotlivé pohyby — projdete řádky,
+zapíšete, co reálně máte, a&nbsp;uložíte jedním tlačítkem. Rozdíly se samy zapíšou
+jako korekce stavu.</p>
+
+<h3>Krok za krokem</h3>
+<ol>
+  <li>Ujistěte se, že jste na správné <strong>pobočce</strong> (název je nahoře;
+  vlastník ji může přepnout).</li>
+  <li>Projděte řádky a&nbsp;do sloupce <strong>„skutečnost" (nový stav)</strong>
+  zapište skutečně napočítané kg. Pole je předvyplněné aktuálním stavem — měňte
+  jen to, co nesedí.</li>
+  <li>Upravený řádek se&nbsp;<strong>zvýrazní zeleně</strong>, ať máte přehled, co
+  jste změnili.</li>
+  <li>Dole v&nbsp;<strong>liště se součtem</strong> průběžně vidíte, kolik řádků
+  jste změnili a&nbsp;jaká je čistá změna v&nbsp;kg.</li>
+  <li>Klikněte na <strong>Uložit</strong>. Rozdíly se zapíšou jako korekce;
+  nezměněné řádky zůstanou beze změny.</li>
+</ol>
+
+<h3>Pomůcky, které tu máte</h3>
 <ul>
-  <li>Dole je průběžný <strong>součet</strong>: kolik řádků jste změnili
-  a&nbsp;jaká je čistá změna v&nbsp;kg.</li>
-  <li>Uložíte <strong>jedním tlačítkem</strong>; rozdíly se zapíšou jako korekce
-  stavu, nezměněné řádky zůstanou beze změny.</li>
-  <li>Zaškrtávátko <strong>„Dochází"</strong> zúží řádky na produkty pod prahem.</li>
+  <li><strong>Vyhledávání</strong> — filtruje řádky podle názvu za běhu.</li>
+  <li>Zaškrtávátko <strong>„Dochází"</strong> (u&nbsp;jedné pobočky) — schová vše
+  kromě produktů, kterých je pod prahem. Hodí se, když chcete rychle projít jen
+  to, co dochází.</li>
+  <li>Přišli-li jste sem z&nbsp;Míchání kvůli chybějící surovině, uvidíte jen
+  <strong>suroviny té směsi</strong> — dosypte / opravte a&nbsp;vraťte se
+  namíchat.</li>
 </ul>
-<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+
+<h3>Dobré vědět</h3>
+<ul>
+  <li>Čísla jsou na <strong>1&nbsp;desetinné místo</strong>, v&nbsp;kg. Můžete psát
+  čárku i&nbsp;tečku — systém si poradí.</li>
+  <li>Máte-li rozdělanou inventuru a&nbsp;chtěli byste odejít, systém se
+  <strong>zeptá</strong>, ať o&nbsp;práci nepřijdete.</li>
+  <li>Jako obsluha můžete inventuru dělat jen pro <strong>svoji</strong> pobočku;
+  přehled „Vše" a&nbsp;„Dochází zboží" napříč pobočkami je pro vlastníka.</li>
+</ul>
+<p>Podrobný postup je i&nbsp;na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
 
 {% block content %}

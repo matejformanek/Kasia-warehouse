@@ -221,8 +221,9 @@ def test_product_detail_renders_for_raw_spice(
     assert "8,0" in body
     assert "3,5" in body
     assert "11,5" in body
-    # Recipe section absent for raw spice.
-    assert "Receptura" not in body
+    # Recipe section absent for raw spice. Match the section heading
+    # specifically — the per-page help panel (0078) mentions "Receptura" too.
+    assert "Receptura</h2>" not in body
 
 
 @pytest.mark.django_db

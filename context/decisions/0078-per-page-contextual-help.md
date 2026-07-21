@@ -63,13 +63,19 @@ slot), so it is recorded before it lands, per
 - Styling lives in `kasia/static/css/components/dialogs.css` (already
   `<link>`ed) as `.help-dialog` / `#help-fab` / `.help-body` — a wider,
   scrollable variant of the confirm dialog for prose. No new `<link>`,
-  never inline `<style>`/`@import`.
+  never inline `<style>`/`@import`. The FAB sits at `z-index: 60` (above
+  the topbar/mob-nav **and** the inventura `.tallybar` at z50); on
+  inventura `pages/inventura_edit.css` lifts it clear of the fixed
+  tallybar (`bottom: calc(92px + 1.25rem)`) so it is never occluded.
 
 ### Per-screen content
 
-Each main screen overrides `{% block page_help %}` with a concise,
-page-focused excerpt sliced from the existing Podpora guide („Co kde
-najdu" + „Postupy" + „Tipy"). Covered screens: Přehled (home +
+Each main screen overrides `{% block page_help %}` with a friendly,
+page-focused **walkthrough** (what the screen is for, step-by-step how
+to do the main task, what each field/column means, tips) — sliced and
+expanded from the existing Podpora guide („Co kde najdu" + „Postupy" +
+„Tipy"). The panel body scrolls (`.help-body` `overflow-y:auto`) so it
+can be as long as the screen needs. Covered screens: Přehled (home +
 branch_dashboard), Katalog, Inventura, Příjem, Výdej, Míchání (create +
 index), Historie, Dodací listy, Detail produktu, Úprava pohybu, Podpora
 (short — the page itself is the full guide), Dodavatelé, Odběratelé,

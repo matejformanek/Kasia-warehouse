@@ -5,6 +5,16 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/support.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Podpora</h3>
+<p>Tato stránka je <strong>kompletní návod</strong>: „co kde najdu", postupy krok
+za krokem, tipy a&nbsp;formulář pro hlášení chyb nebo požadavků.</p>
+<ul>
+  <li>Hlášení vidí celý tým; vlastník je označí jako vyřešená.</li>
+  <li>Vážný nebo neřešený problém můžete napsat přímo správci (odkaz pod formulářem).</li>
+</ul>
+{% endblock %}
+
 {% block content %}
 <h1>Podpora</h1>
 
@@ -139,6 +149,11 @@
     </div>
     <button class="primary" type="submit">Odeslat hlášení</button>
   </form>
+  <p class="muted" style="margin-bottom:0;">
+    Pokud na vaše hlášení nikdo neodpoví delší dobu nebo jde o&nbsp;vážný problém,
+    napište přímo správci:
+    <a href="mailto:matej.formanek@kasia.cz">matej.formanek@kasia.cz</a>.
+  </p>
 </div>
 
 <h2>Historie hlášení</h2>
@@ -160,7 +175,7 @@
         <tr>
           <td style="white-space:nowrap;">{{ f.created_at|date:"d. m. Y H:i" }}</td>
           <td>{{ f.created_by.email }}</td>
-          <td>{% if f.page_url %}<code>{{ f.page_url }}</code>{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if f.page_url %}{{ f.page_url }}{% else %}<span class="muted">—</span>{% endif %}</td>
           <td>{{ f.description|linebreaksbr }}</td>
           <td><span class="stav-open">● Otevřené</span></td>
           {% if user.is_vlastnik %}
@@ -198,7 +213,7 @@
           <tr>
             <td style="white-space:nowrap;">{{ f.created_at|date:"d. m. Y H:i" }}</td>
             <td>{{ f.created_by.email }}</td>
-            <td>{% if f.page_url %}<code>{{ f.page_url }}</code>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td>{% if f.page_url %}{{ f.page_url }}{% else %}<span class="muted">—</span>{% endif %}</td>
             <td style="opacity:.7;">{{ f.description|linebreaksbr }}</td>
             <td style="white-space:nowrap;">
               <span class="stav-done">✓ Vyřešené</span>

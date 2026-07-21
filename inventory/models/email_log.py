@@ -24,6 +24,7 @@ class EmailLog(models.Model):
         DODACI_OPRAVA = "dodaci_oprava", "dodací list — oprava"
         DODACI_RESEND = "dodaci_resend", "dodací list — opětovné odeslání"
         LOW_STOCK_ALERT = "low_stock_alert", "upozornění — dochází zboží"
+        FEEDBACK = "feedback", "hlášení z podpory"
         SMTP_TEST = "smtp_test", "test SMTP"
 
     class Status(models.TextChoices):

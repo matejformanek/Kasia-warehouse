@@ -45,25 +45,50 @@ def test_support_get_renders_form_and_list_for_logged_in_user(
     assert "Žádná otevřená hlášení" in body
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_support_post_creates_feedback_and_redirects(
     user_vlastnik,
 ) -> None:
+    """Per 0079: page_url is now a dropdown whose value == the Czech screen
+    name; the friendly label is stored verbatim. (transaction=True so the
+    on_commit feedback-notification send fires.)"""
     client = Client()
     client.force_login(user_vlastnik)
     response = client.post(
         "/sklad/podpora/",
-        {"page_url": "/sklad/katalog/", "description": "Chybí mi sloupec X."},
+        {"page_url": "Katalog", "description": "Chybí mi sloupec X."},
     )
     assert response.status_code == 302
     assert response.headers["Location"] == "/sklad/podpora/"
     f = Feedback.objects.get()
     assert f.description == "Chybí mi sloupec X."
-    assert f.page_url == "/sklad/katalog/"
+    assert f.page_url == "Katalog"
     assert f.created_by_id == user_vlastnik.pk
     assert f.resolved_at is None
     assert f.is_open
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_support_post_sends_feedback_notification_email(user_vlastnik) -> None:
+    """Per 0079: submitting a report schedules an admin notification e-mail
+    (on_commit → needs transaction=True to fire) and logs a FEEDBACK row."""
+    from django.core import mail
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/sklad/podpora/",
+        {"page_url": "Výdej", "description": "Něco nefunguje."},
+    )
+    assert response.status_code == 302
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].subject == "Nové hlášení z Podpory"
+    log = EmailLog.objects.filter(
+        category=EmailLog.Category.FEEDBACK
+    ).get()
+    assert log.status == EmailLog.Status.SENT
 
 
 @pytest.mark.django_db

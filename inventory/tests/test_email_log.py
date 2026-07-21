@@ -278,3 +278,29 @@ def test_resend_obsluha_403(user_obsluha_tyn):
     client.force_login(user_obsluha_tyn)
     resp = client.post(reverse("inventory:email_log_resend", args=[row.pk]))
     assert resp.status_code == 403
+
+
+# --- feedback notification (per 0079) --------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_send_feedback_notification_sends_and_logs(user_vlastnik):
+    from django.conf import settings as dj_settings
+
+    from inventory.models import Feedback
+    from inventory.services import send_feedback_notification
+
+    f = Feedback.objects.create(
+        created_by=user_vlastnik, page_url="Katalog", description="Chybí sloupec."
+    )
+    log = send_feedback_notification(f)
+
+    assert log.status == EmailLog.Status.SENT
+    assert log.category == EmailLog.Category.FEEDBACK
+    assert dj_settings.FEEDBACK_NOTIFY_EMAIL in log.recipients
+    assert len(mail.outbox) == 1
+    body = mail.outbox[0].body
+    assert "Katalog" in body
+    assert user_vlastnik.email in body
+    assert mail.outbox[0].subject == "Nové hlášení z Podpory"

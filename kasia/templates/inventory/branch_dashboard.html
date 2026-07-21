@@ -81,20 +81,25 @@ i&nbsp;formulář, kde nám napíšete.</p>
 
 <div class="card">
   <h2 style="font-size:1.05rem;margin-top:0;">Stav skladu</h2>
-  {# No form/submit — 0063 live filter applies as you type; "Vymazat" (JS) shows only once there is text. #}
-  <div style="margin-bottom:0.75rem;">
+  {# Kept as a <form> so the shared `form input` styling applies; submit is #}
+  {# prevented in JS (the 0063 live filter applies as you type, no reload). #}
+  {# "Vymazat" (JS) shows only once there is text. #}
+  <form id="branch-stock-filter" method="get" style="margin-bottom:0.75rem;">
     <input type="search" id="branch-stock-search" value="{{ search }}"
            placeholder="Hledat produkt…"
            style="max-width:280px;"
            data-filter-rows=".cat-body"
            data-filter-empty="#branch-stock-empty">
     <button type="button" id="branch-stock-clear" class="secondary" hidden>Vymazat</button>
-  </div>
+  </form>
   <script>
     (function () {
+      var form = document.getElementById("branch-stock-filter");
       var input = document.getElementById("branch-stock-search");
       var clear = document.getElementById("branch-stock-clear");
       if (!input || !clear) return;
+      // No server round-trip — the live filter handles it. Stop Enter reloading.
+      if (form) form.addEventListener("submit", function (e) { e.preventDefault(); });
       function sync() { clear.hidden = !input.value; }
       input.addEventListener("input", sync);
       clear.addEventListener("click", function () {

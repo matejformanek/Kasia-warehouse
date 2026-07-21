@@ -357,8 +357,11 @@ jako korekce stavu.</p>
     const filter = document.getElementById("inventura-filter");
     const fc = document.getElementById("inventura-filter-count");
     const lowOnly = document.getElementById("inventura-low-only");
-    const rf = window.kasiaRowFilter;
     function applyFilter() {
+      // Read the shared matcher lazily: base.html's filter <script> (which
+      // defines window.kasiaRowFilter) sits AFTER this block in the body, so it
+      // isn't defined yet at parse time — only by the time an event fires.
+      const rf = window.kasiaRowFilter;
       const raw = filter ? filter.value : "";
       const tokens = rf ? rf.tokenize(raw) : raw.trim().toLowerCase().split(/\s+/).filter(Boolean);
       const onlyLow = !!(lowOnly && lowOnly.checked);

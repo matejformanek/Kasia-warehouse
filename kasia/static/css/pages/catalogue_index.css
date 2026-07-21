@@ -5,7 +5,10 @@
      look (.sub-head*, .cat-group, .prod-sub, .eff-*, .low-branch,
      .empty-branch) is hoisted to components/groups.css (0070). .field.grow
      stays here. */
-  .filterbar .field.grow { flex: 1 1 220px; }
+  /* Search field: fixed-ish width, does NOT grow — so the filterbar slack
+     falls after "Vymazat" (the action group's margin-left:auto pushes
+     "+ Nový produkt" etc. to the right), not right after the search box. */
+  .filterbar .field.grow { flex: 0 1 260px; }
   .scope-note { color: var(--fg-soft); font-size: 0.9rem; margin: 0 0 0.6rem; }
 
   /* Attention CTA — orange (the single warning/attention standard). */

@@ -24,6 +24,7 @@ from .email import (
     _assert_recipients_set,
     _smtp_connection_from_settings,
     send_and_log,
+    send_feedback_notification,
 )
 from .mixing import (
     cancel_mixing_job,
@@ -63,6 +64,7 @@ __all__ = [
     "_active_low_stock_recipients",
     "_assert_recipients_set",
     "send_and_log",
+    "send_feedback_notification",
     "_reserve_dodak_number",
     "_create_dodaci_list_for_movement",
     "_amounts_summing_to",

@@ -5,6 +5,31 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/mixing_job_create.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Míchání — výroba směsi</h3>
+<p>Tady <strong>namícháte směs</strong>. Je to <strong>jeden krok</strong>: podle
+receptury se suroviny odečtou ze skladu a&nbsp;hotová směs se naskladní. Žádné
+plánování ani „spouštění / dokončování" dávky — vyplníte a&nbsp;kliknete.</p>
+
+<h3>Krok za krokem</h3>
+<ol>
+  <li>Vyberte <strong>pobočku</strong>.</li>
+  <li>Vyberte <strong>směs</strong> (musí mít recepturu).</li>
+  <li>Zadejte <strong>cílové množství</strong> — kolik kg směsi chcete vyrobit.
+  Systém rovnou ukáže, kolik které suroviny to spotřebuje.</li>
+  <li>Volitelně vyplňte <strong>„Skutečně vyrobeno"</strong>, pokud se výsledek
+  liší od cíle. Necháte-li prázdné, počítá se cíl.</li>
+  <li>Klikněte na <strong>Namíchat</strong>. Suroviny se odečtou, směs se
+  naskladní — hotovo.</li>
+</ol>
+
+<h3>Když chybí surovina</h3>
+<p>Nemáte-li dost některé suroviny, objeví se zelené tlačítko <strong>„Upravit
+stav surovin"</strong>. Otevře inventuru <em>jen</em> pro suroviny této směsi —
+dosypte / opravte stavy, uložte, vraťte se sem a&nbsp;namíchejte.</p>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Nová výrobní dávka <span class="muted" style="font-weight:500;font-size:1rem;">· míchání</span></h1>
 

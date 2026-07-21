@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.contrib import messages
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -13,6 +14,7 @@ from ..forms import (
 from ..models import (
     Feedback,
 )
+from ..services import send_feedback_notification
 
 
 def support_view(request):
@@ -27,6 +29,10 @@ def support_view(request):
             f = form.save(commit=False)
             f.created_by = request.user
             f.save()
+            # Notify the admin (per 0079). Scheduled on_commit so SMTP latency
+            # (up to the 10s timeout) stays off the request; send_and_log logs
+            # FAILED and never re-raises, so a mail outage can't block the save.
+            transaction.on_commit(lambda: send_feedback_notification(f))
             messages.success(
                 request, "Děkujeme — vaše hlášení bylo uloženo."
             )

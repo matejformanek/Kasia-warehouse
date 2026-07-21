@@ -40,3 +40,62 @@
     background: var(--error);
     border-color: var(--error);
   }
+
+/* ===== Per-page contextual help (decision 0078): FAB + wide help modal ===== */
+  /* Fixed "?" button — bottom-right, clears the left sidebar, sits above the
+     mobile topbar (z40) / mob-nav (z39). */
+  #help-fab {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    /* Above the topbar (z40) / mob-nav (z39) AND the inventura tallybar (z50)
+       so the "?" is never occluded. On inventura it is also lifted clear of
+       the fixed tallybar — see pages/inventura_edit.css. */
+    z-index: 60;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--accent-deep);
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  }
+  #help-fab:hover {
+    background: var(--accent-deep);
+  }
+  #help-fab:focus-visible {
+    outline: 2px solid var(--accent-deep);
+    outline-offset: 2px;
+  }
+  /* Wider, scrollable variant of .kasia-dialog for help prose. */
+  .help-dialog {
+    max-width: 640px;
+  }
+  .help-body {
+    max-height: min(70vh, 40rem);
+    overflow-y: auto;
+    line-height: 1.5;
+  }
+  .help-body h3 {
+    font-size: 1rem;
+    margin: 1rem 0 0.35rem;
+    color: var(--accent-deep);
+  }
+  .help-body h3:first-child {
+    margin-top: 0;
+  }
+  .help-body p {
+    margin: 0 0 0.6rem;
+  }
+  .help-body ul,
+  .help-body ol {
+    margin: 0 0 0.6rem;
+    padding-left: 1.25rem;
+  }
+  .help-body li {
+    margin-bottom: 0.3rem;
+  }

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from django.conf import settings as django_settings
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMessage, get_connection
+from django.urls import reverse
 
 from ..models import (
     EmailLog,
@@ -120,6 +122,43 @@ def send_and_log(
         dodaci_list=dodaci_list,
         dodaci_version=dodaci_version,
         sent_by=sent_by,
+    )
+
+
+def send_feedback_notification(feedback) -> EmailLog:
+    """Notify the fixed admin address of one new Podpora report (per 0079).
+
+    Routes through the single ``send_and_log`` interception point (0075), so the
+    send is logged (SENT / FAILED) and never re-raises — a mail outage can't
+    block the operator's save. Called from ``support_view`` inside an
+    ``on_commit`` callback. Recipient is ``settings.FEEDBACK_NOTIFY_EMAIL`` (a
+    fixed admin address, not a ``SettingsRecipient``).
+    """
+    s = Settings.load()
+    who = getattr(feedback.created_by, "email", "") or "neznámý uživatel"
+    page = feedback.page_url or "—"
+    path = reverse("inventory:support")
+    subject = "Nové hlášení z Podpory"
+    body = (
+        f"Nové hlášení z Podpory od: {who}\n"
+        f"Stránka: {page}\n\n"
+        f"Popis:\n{feedback.description}\n\n"
+        f"Otevřít Podporu: {path}"
+    )
+    # Mirror the from_email snippet used by the dodák / low-stock paths: pass
+    # None when unset so Django applies DEFAULT_FROM_EMAIL implicitly.
+    from_email = (
+        f"{s.email_from_name} <{s.email_from_address}>"
+        if s.email_from_name and s.email_from_address
+        else (s.email_from_address or None)
+    )
+    return send_and_log(
+        category=EmailLog.Category.FEEDBACK,
+        trigger_reason="Nové hlášení z Podpory",
+        subject=subject,
+        body=body,
+        recipients=[django_settings.FEEDBACK_NOTIFY_EMAIL],
+        from_email=from_email,
     )
 
 

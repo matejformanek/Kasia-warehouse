@@ -159,5 +159,10 @@ EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", default=True)
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@example.cz")
+# Fixed admin address notified on every new Podpora report (per 0079). Not a
+# SettingsRecipient — this is the app operator, not the dodák-list recipients.
+FEEDBACK_NOTIFY_EMAIL = os.environ.get(
+    "FEEDBACK_NOTIFY_EMAIL", "matej.formanek@kasia.cz"
+)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

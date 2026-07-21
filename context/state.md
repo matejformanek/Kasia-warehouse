@@ -5,6 +5,73 @@
 
 ## Done
 
+- **2026-07-21** — **Inventura fixes: „Dochází / prázdné" critical toggle +
+  fuzzy name filter** (decision
+  [`0080`](./decisions/0080-inventura-critical-toggle-and-fuzzy-filter.md);
+  amends 0065, relates to 0063 + 0072). Found while reviewing.
+  - **Toggle now shows CRITICAL = empty + low** (same set the Katalog puts in
+    Prázdné + Dochází), sourced from `catalogue_stock_groups([branch])` in
+    `inventory/views/inventura.py` — not `low_stock_rows()` alone, whose bare
+    `effective < threshold` hid genuinely-empty products whose threshold is the
+    0072 default 0. Relabelled **„Dochází / prázdné"** + tooltip; `data-low`
+    attr name unchanged (meaning widened).
+  - **Name filter is now the smart one:** `base.html` exposes the 0063 matcher
+    as **`window.kasiaRowFilter`** (`fold`/`tokenize`/`matches`); inventura's
+    bespoke `applyFilter` reuses it, so „perp" finds „Pepř" (diacritic-/
+    typo-tolerant) like the Katalog, then ANDs with the toggle.
+  - Docs: 0080 + `design-system.md` (0063 export note + 0065 toggle semantics) +
+    inventura page-help. Test `test_inventura_low_toggle_flags_empty_threshold_zero_product`
+    pins the empty-threshold-0 → `data-low="1"` fix. Suite **589 passed**.
+- **2026-07-21** — **sklad UX round: per-page help + Podpora upgrades +
+  catalog/icon/edit fixes** (decisions
+  [`0078`](./decisions/0078-per-page-contextual-help.md) +
+  [`0079`](./decisions/0079-podpora-enhancements.md); 0079 **amends**
+  [`0046`](./decisions/0046-support-page.md)).
+  - **Per-page contextual help (0078):** global help `<dialog id="kasia-help"
+    class="kasia-dialog help-dialog">` + fixed `#help-fab` „?" button + close
+    script in `base.html`, **inside the auth `{% if %}`** (no orphan „?" on the
+    anon login page — pinned by test). Body is `{% block page_help %}` (generic
+    fallback → Podpora); overridden on ~19 screens with a focused excerpt.
+    Reuses `showModal()` (no native alert, per 0061); styling
+    (`.help-dialog`/`#help-fab`/`.help-body`) in `components/dialogs.css` (no new
+    `<link>`). Hooks added to `design-system.md` + `frontend-and-templates.md`
+    „Keep stable" lists. **Content is full friendly walkthroughs** (what the
+    screen is for, step-by-step, field/column meanings, tips) — `.help-body`
+    scrolls. FAB at **z-index 60** (above topbar/mob-nav + the inventura
+    `.tallybar` z50); on inventura `pages/inventura_edit.css` lifts it clear of
+    the fixed tallybar so it isn't occluded (was hidden behind it).
+  - **Podpora video-návod block:** 16:9 **poster + play button** above the
+    report form (`.video-tutorial`/`.video-placeholder` in `pages/support.css`;
+    poster `static/img/video-tutorial-thumb.png`). Reads as a ready-to-play
+    video (no „coming soon" text — intentional, so it can be filmed as if live);
+    swap the inner markup for a real `<video>`/embed later, reusing the poster.
+  - **Podpora dropdown (0079):** `page_url` free-text → `ChoiceField` of Czech
+    screen names (**value == label**; no model `choices=`, **no migration**;
+    old rows valid). `<code>` slash-path wrappers dropped in the history table.
+  - **Feedback e-mail (0079):** `settings.FEEDBACK_NOTIFY_EMAIL`
+    (`matej.formanek@kasia.cz`, env-overridable); `EmailLog.Category.FEEDBACK` +
+    migration **`0021_alter_emaillog_category`** (AlterField only);
+    `services/email.py::send_feedback_notification` via the 0075 `send_and_log`
+    seam; `support_view` schedules it in `transaction.on_commit`; direct-contact
+    note (`mailto:`) under the form.
+  - **Catalog single-branch column:** `_catalogue_group.html` gates the whole
+    „Prázdný na / Dochází na" column (`<th>`+`<td>`) on `show_branch_chips`, so
+    obsluha / single-branch vlastník no longer see an empty column; all-branches
+    vlastník keeps the chips.
+  - **Katalog filters auto-apply:** dropped the „Filtrovat" submit button
+    (kept „Vymazat"); a small script on `catalogue_index.html` submits the GET
+    filterbar on any select change (kind/status/state/branch). The `q` name
+    search stays client-side (0063) and rides along in the query string.
+  - **Výdej sidebar icon:** `base.html` line 96 SVG → barrier-at-top + arrow
+    hanging below pointing down (reads as „going out"; mirror of Příjem).
+  - **Movement edit add-line:** `movement_edit.html` gains the „Přidat řádek"
+    HTMX button + auto-append script (blank `line_id` → `_line_changes` „add"
+    op; backend already supported it). Covers DONE příjem + výdej.
+  - **Tests:** full suite **588 passed** · ruff clean · `manage.py check` clean ·
+    hygiene 124 · collectstatic clean. New: catalogue column present/absent,
+    feedback-notification service + view (on_commit, `transaction=True`), podpora
+    dropdown label, movement-edit add-line. `screens/16-podpora.md` updated
+    (Phase 3).
 - **2026-07-14** — **`/sklad/` usage tracking shipped — `ScreenVisit` +
   „Aktivita" page** (code PR for [`0077`](./decisions/0077-sklad-usage-tracking.md),
   stacked on the paperwork PR below).

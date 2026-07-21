@@ -5,6 +5,39 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/branch_dashboard.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Přehled vaší pobočky 👋</h3>
+<p>Tady vidíte stav zásob <strong>své pobočky</strong> — vše na jednom místě.
+Je to výchozí stránka po přihlášení. Nemusíte nic nastavovat, jen se podívat,
+co máte a&nbsp;co dochází, a&nbsp;odsud rovnou spustit příjem, výdej nebo míchání.</p>
+
+<h3>Co na stránce najdete</h3>
+<ul>
+  <li><strong>Stav skladu</strong> — produkty rozdělené do tří skupin podle
+  barvy (viz níže). Každý produkt má množství v&nbsp;kg.</li>
+  <li><strong>Vyhledávací pole</strong> nahoře — jak píšete, seznam se rovnou
+  filtruje podle názvu (nemusíte mačkat Enter, zvládne i&nbsp;překlep).</li>
+  <li>Vpravo nahoře oranžové tlačítko <strong>„Inventura"</strong> — přejdete na
+  hromadné přepočítání skladu vaší pobočky.</li>
+</ul>
+
+<h3>Jak rozumět barvám a&nbsp;číslům</h3>
+<ul>
+  <li>🔴 <strong>Prázdné</strong> = efektivně 0&nbsp;kg — reálně není co vydat.</li>
+  <li>🟠 <strong>Dochází</strong> = kleslo pod objednací bod, ale kg ještě jsou.</li>
+  <li>⚪ <strong>V&nbsp;pořádku</strong> = zásoba je nad prahem.</li>
+  <li><strong>Řiďte se sloupcem „Efektivně"</strong> (= na skladě − rezervováno).
+  To je to, s&nbsp;čím reálně můžete počítat; rezervované kg jsou tu, ale už
+  slíbené jinam.</li>
+</ul>
+
+<h3>Kam odsud dál</h3>
+<p>Z&nbsp;levého menu: <strong>Příjem</strong> (naskladnění dodávky),
+<strong>Výdej</strong> (expedice + dodací list), <strong>Míchání</strong> (výroba
+směsi). Nevíte-li si radou, otevřete <strong>Podporu</strong> — je tam celý návod
+i&nbsp;formulář, kde nám napíšete.</p>
+{% endblock %}
+
 {% block content %}
 <h1>{{ branch.code }} — {{ branch.name }}</h1>
 {% if branch.address %}
@@ -48,18 +81,13 @@
 
 <div class="card">
   <h2 style="font-size:1.05rem;margin-top:0;">Stav skladu</h2>
-  <form method="get" style="margin-bottom:0.75rem;">
-    <input type="search" name="q" value="{{ search }}"
+  {# Just the search field — the 0063 live filter applies as you type. Kept in a <form> so the shared `form input` styling applies; onsubmit guard stops Enter reloading. #}
+  <form method="get" style="margin-bottom:0.75rem;" onsubmit="return false">
+    <input type="search" value="{{ search }}"
            placeholder="Hledat produkt…"
            style="max-width:280px;"
            data-filter-rows=".cat-body"
            data-filter-empty="#branch-stock-empty">
-    <button class="secondary" type="submit">Hledat</button>
-    {% if search %}
-      <a class="secondary" href="{% url 'inventory:branch_dashboard' code=branch.code %}">
-        Vymazat
-      </a>
-    {% endif %}
   </form>
 
   {% if empty_rows or low_rows or ok_rows %}

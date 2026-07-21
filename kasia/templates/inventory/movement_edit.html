@@ -2,6 +2,36 @@
 
 {% block title %}Úprava pohybu č. {{ movement.pk }} — Kasia vera{% endblock %}
 
+{% block page_help %}
+<h3>Úprava pohybu</h3>
+<p>Tady opravíte dříve zaznamenaný pohyb, když se do něj vloudila chyba
+(špatné kg, produkt, datum, odběratel/dodavatel…). Systém opravu
+<strong>zaznamená</strong>, ať je vždy dohledatelné, co a&nbsp;proč se změnilo.</p>
+
+<h3>Krok za krokem</h3>
+<ol>
+  <li>Vyplňte <strong>Důvod úpravy</strong> — je <strong>povinný</strong>.</li>
+  <li>Upravte hlavičku (pobočka, datum, odběratel/dodavatel, poznámka) nebo
+  položky.</li>
+  <li>U&nbsp;položek můžete <strong>změnit hodnoty</strong>, <strong>smazat
+  řádek</strong> („× Smazat") nebo <strong>přidat nový</strong> tlačítkem
+  „Přidat řádek".</li>
+  <li>Klikněte na <strong>Uložit změny</strong>.</li>
+</ol>
+
+<h3>Dobré vědět</h3>
+<ul>
+  <li>Šlo-li o&nbsp;<strong>výdej</strong>, dodací list se přegeneruje (nová
+  verze) a&nbsp;přepošle Petrovi a&nbsp;Karolíně s&nbsp;předponou
+  <strong>[OPRAVA]</strong> v&nbsp;předmětu — počítejte s&nbsp;tím.</li>
+  <li>Zásoby se automaticky <strong>přepočítají</strong> podle rozdílu oproti
+  původnímu pohybu.</li>
+  <li>Dole je <strong>záznam všech úprav</strong> tohoto pohybu (kdo, kdy, co,
+  z&nbsp;čeho na&nbsp;co).</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>
   Úprava {{ movement.get_kind_display }} — {{ movement.date_issued|date:"d. m. Y" }} — pobočka {{ movement.branch.code }}
@@ -105,6 +135,19 @@
         {% endfor %}
       </tbody>
     </table>
+    <p>
+      {% comment %} Add a line to a DONE movement — a blank line_id posts as an
+      "add" op in _line_changes. No ?warn=1 (edit isn't a live over-stock výdej
+      form). Mirrors _movement_form_lines.html's add-line button. {% endcomment %}
+      <button type="button" id="add-line-btn" class="secondary"
+              hx-get="{% url 'inventory:line_row_partial' %}"
+              hx-target="#lines-body"
+              hx-swap="beforeend"
+              hx-vals='js:{index: document.querySelectorAll("#lines-body tr").length}'
+              hx-on::after-request="document.querySelector('[name=lines-TOTAL_FORMS]').value = document.querySelectorAll('#lines-body tr').length">
+        Přidat řádek
+      </button>
+    </p>
   </div>
 
   <p>
@@ -150,4 +193,33 @@
     <p style="color:var(--fg-soft);">Pohyb dosud nebyl upraven.</p>
   {% endif %}
 </div>
+
+<script>
+  // Auto-append a fresh line when the operator types in the trailing row —
+  // matches the create forms (from _movement_form_lines.html). Only the
+  // add-line behaviour is needed on edit; the dedup / summary / over-stock
+  // scripts are create-form-only.
+  (function () {
+    const body = document.getElementById("lines-body");
+    if (!body) return;
+    const addBtn = document.getElementById("add-line-btn");
+    if (!addBtn) return;
+
+    body.addEventListener("input", (e) => {
+      const row = e.target.closest("tr");
+      if (!row || row.classList.contains("marked-deleted")) return;
+      const visibleRows = body.querySelectorAll("tr:not(.marked-deleted)");
+      const lastRow = visibleRows[visibleRows.length - 1];
+      if (row !== lastRow) return;
+      if (row.dataset.autopopulated === "1") return;
+      const product = row.querySelector('select[name$="-product"]');
+      const qty = row.querySelector('input[name$="-quantity_kg"]');
+      const productFilled = product && product.value;
+      const qtyFilled = qty && qty.value && parseFloat(qty.value.replace(",", ".")) > 0;
+      if (!productFilled && !qtyFilled) return;
+      row.dataset.autopopulated = "1";
+      addBtn.click();
+    });
+  })();
+</script>
 {% endblock %}

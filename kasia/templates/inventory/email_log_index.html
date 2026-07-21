@@ -5,6 +5,24 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/email_log_index.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>E-maily</h3>
+<p>Výpis <strong>všech e-mailů</strong>, které aplikace odeslala — abyste měli
+jistotu, co se komu odeslalo a&nbsp;jestli to prošlo. Vidí ho jen
+<strong>vlastník</strong>.</p>
+<h3>Co tu najdete</h3>
+<ul>
+  <li>Kategorie: dodací listy (vystavení / oprava / opětovné odeslání),
+  upozornění „dochází zboží", <strong>hlášení z&nbsp;podpory</strong>, testy SMTP.</li>
+  <li><strong>Stav</strong> každého e-mailu: <strong>odesláno</strong>, nebo
+  <strong>selhalo</strong> (s&nbsp;chybovou zprávou).</li>
+  <li><strong>Filtr</strong> podle kategorie a&nbsp;stavu.</li>
+  <li><strong>Znovu odeslat</strong> — u&nbsp;každého řádku, když se něco
+  nedoručilo.</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>E-maily</h1>
 <p class="muted" style="margin:0 0 1.1rem;">

@@ -5,6 +5,20 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/branch_index.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Pobočky</h3>
+<p>Správa fyzických poboček (skladů). Tuhle stránku vidí jen
+<strong>vlastník</strong>.</p>
+<h3>Co tu můžete udělat</h3>
+<ul>
+  <li><strong>Přidat</strong> nebo <strong>upravit</strong> pobočku.</li>
+  <li><strong>Kód pobočky</strong> (TYN / SEZ) se používá v&nbsp;číslech dodacích
+  listů — proto ho <strong>neměňte zbytečně</strong>, ať čísla zůstanou
+  konzistentní.</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Pobočky</h1>
 

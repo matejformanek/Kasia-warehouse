@@ -5,6 +5,28 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/dodaci_list_index.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Dodací listy</h3>
+<p>Přehled všech vystavených <strong>dodacích listů (dodáků)</strong>. Dodák
+vzniká <strong>automaticky při výdeji</strong> — tady je najdete, otevřete
+a&nbsp;v&nbsp;případě potřeby znovu odešlete.</p>
+
+<h3>Co tu můžete udělat</h3>
+<ul>
+  <li><strong>Filtrovat</strong> podle období (a&nbsp;jako vlastník i&nbsp;podle
+  pobočky; obsluha vidí jen svoji).</li>
+  <li><strong>Otevřít detail</strong> — verze dokumentu a&nbsp;historie odeslání.</li>
+  <li><strong>Stáhnout / zobrazit PDF</strong>.</li>
+  <li><strong>Znovu odeslat</strong> PDF e-mailem, když se něco nedoručilo.</li>
+</ul>
+
+<h3>Dobré vědět</h3>
+<p>Dodák chodí <strong>Petrovi a&nbsp;Karolíně</strong>, ne zákazníkovi. Opravíte-li
+výdej v&nbsp;Historii, dodák se přegeneruje (nová verze) a&nbsp;přepošle
+s&nbsp;předponou <strong>[OPRAVA]</strong>.</p>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Dodací listy</h1>
 <p class="scope-note">Vystavené dodací listy k výdejům, od nejnovějšího. Klikněte na řádek pro detail a PDF.{% if branch_locked %} Pobočka {{ branch_locked.code }}.{% endif %}</p>

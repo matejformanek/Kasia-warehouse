@@ -6,6 +6,33 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/product_detail.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Detail produktu</h3>
+<p>Vše o&nbsp;jednom produktu na jednom místě: kolik ho je na které pobočce
+(včetně šarží), u&nbsp;směsí i&nbsp;receptura, a&nbsp;poslední pohyby.</p>
+
+<h3>Co tu vidíte</h3>
+<ul>
+  <li><strong>Stav po pobočkách</strong> — na skladě, rezervováno
+  a&nbsp;<strong>Efektivně</strong> (= na skladě − rezervováno; tímhle se řiďte),
+  po šaržích.</li>
+  <li><strong>Receptura</strong> (u&nbsp;směsí) — z&nbsp;jakých surovin
+  a&nbsp;v&nbsp;jakém poměru se míchá.</li>
+  <li><strong>Poslední pohyby</strong> tohoto produktu.</li>
+</ul>
+
+<h3>Co tu můžete udělat</h3>
+<ul>
+  <li><strong>Ruční úprava stavu</strong> — opravit množství (vyžaduje důvod).</li>
+  <li><strong>Objednací bod (práh)</strong> — pod ním se produkt hlásí jako
+  „dochází". Nastavuje vlastník.</li>
+  <li><strong>Archivace</strong> — schová produkt z&nbsp;výchozího seznamu
+  v&nbsp;Katalogu. <strong>Nesmaže</strong> ho z&nbsp;historie; pohyby zůstanou
+  dohledatelné a&nbsp;produkt lze zase obnovit.</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>
   {{ product.name_cs }}

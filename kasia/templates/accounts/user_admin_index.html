@@ -4,6 +4,25 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/user_admin_index.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Uživatelé</h3>
+<p>Správa přístupů do aplikace. Tuhle stránku vidí jen <strong>vlastník</strong>.</p>
+<h3>Role</h3>
+<ul>
+  <li><strong>Vlastník</strong> — vidí obě pobočky, spravuje uživatele, pobočky,
+  nastavení, e-maily a&nbsp;aktivitu.</li>
+  <li><strong>Obsluha</strong> — pracuje jen se <strong>svojí</strong> pobočkou
+  (příjem, výdej, míchání, inventura, historie své pobočky).</li>
+</ul>
+<h3>Co tu můžete udělat</h3>
+<ul>
+  <li><strong>Přidat</strong> uživatele, nastavit mu <strong>roli</strong>
+  a&nbsp;<strong>pobočku</strong>.</li>
+  <li><strong>Upravit</strong> existující účet.</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Uživatelé</h1>
 

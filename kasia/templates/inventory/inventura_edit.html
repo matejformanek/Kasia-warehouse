@@ -6,6 +6,71 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/inventura_edit.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Inventura — hromadné přepočítání skladu</h3>
+<p>Inventura slouží k&nbsp;tomu, abyste sklad <strong>fyzicky přepočítali</strong>
+a&nbsp;srovnali čísla v&nbsp;systému se skutečností. Vždy je pro
+<strong>jednu pobočku</strong>. Nemusíte řešit jednotlivé pohyby — projdete řádky,
+zapíšete, co reálně máte, a&nbsp;uložíte jedním tlačítkem. Rozdíly se samy zapíšou
+jako korekce stavu.</p>
+
+<h3>Krok za krokem</h3>
+<ol>
+  <li>Ujistěte se, že jste na správné <strong>pobočce</strong> (název je nahoře;
+  vlastník ji může přepnout).</li>
+  <li>Projděte řádky a&nbsp;do sloupce <strong>„skutečnost" (nový stav)</strong>
+  zapište skutečně napočítané kg. Pole je předvyplněné aktuálním stavem — měňte
+  jen to, co nesedí.</li>
+  <li>Upravený řádek se&nbsp;<strong>zvýrazní zeleně</strong>, ať máte přehled, co
+  jste změnili.</li>
+  <li>Dole v&nbsp;<strong>liště se součtem</strong> průběžně vidíte, kolik řádků
+  jste změnili a&nbsp;jaká je čistá změna v&nbsp;kg.</li>
+  <li>Klikněte na <strong>Uložit</strong>. Rozdíly se zapíšou jako korekce;
+  nezměněné řádky zůstanou beze změny.</li>
+</ol>
+
+<h3>Sloupec „Příjezd" — kdy zapisuji stav a&nbsp;kdy objednávám</h3>
+<p>Každý řádek umí <strong>dvě věci</strong> podle toho, zda vyplníte datum ve
+sloupci <strong>„Příjezd (= objednávka)"</strong>:</p>
+<ul>
+  <li><strong>Příjezd prázdný = korekce stavu.</strong> Číslo v&nbsp;„Nový stav /
+  objednat" je <strong>skutečně napočítané množství</strong> na skladě. Uložením
+  se stav opraví na tuto hodnotu (běžná inventura).</li>
+  <li><strong>Příjezd vyplněný = objednávka.</strong> Číslo v&nbsp;„Nový stav /
+  objednat" se bere jako <strong>objednané množství, které dorazí k&nbsp;tomu
+  datu</strong> — vytvoří se <strong>plánovaný příjem</strong>. Stav skladu se
+  <em>hned nemění</em>; zásoby naskladníte až tlačítkem „Přijmout" v&nbsp;Historii
+  → „Plánované", jakmile zboží dorazí.</li>
+</ul>
+<p>Takže když při počítání zjistíte, že něčeho je málo, můžete to rovnou
+<strong>objednat</strong> — stačí u&nbsp;řádku vyplnit množství a&nbsp;datum
+příjezdu. U&nbsp;řádku s&nbsp;už existující objednávkou vidíte poznámku
+„objednáno … · příjezd …" s&nbsp;odkazy upravit / zrušit.</p>
+
+<h3>Pomůcky, které tu máte</h3>
+<ul>
+  <li><strong>Vyhledávání</strong> — filtruje řádky podle názvu za běhu; zvládne
+  diakritiku i&nbsp;překlep (např. „perp" najde „Pepř").</li>
+  <li>Zaškrtávátko <strong>„Dochází / prázdné"</strong> (u&nbsp;jedné pobočky) —
+  schová vše kromě <strong>kritických</strong> položek: prázdných i&nbsp;těch pod
+  objednacím bodem (stejná sada jako Prázdné + Dochází v&nbsp;Katalogu).</li>
+  <li>Přišli-li jste sem z&nbsp;Míchání kvůli chybějící surovině, uvidíte jen
+  <strong>suroviny té směsi</strong> — dosypte / opravte a&nbsp;vraťte se
+  namíchat.</li>
+</ul>
+
+<h3>Dobré vědět</h3>
+<ul>
+  <li>Čísla jsou na <strong>1&nbsp;desetinné místo</strong>, v&nbsp;kg. Můžete psát
+  čárku i&nbsp;tečku — systém si poradí.</li>
+  <li>Máte-li rozdělanou inventuru a&nbsp;chtěli byste odejít, systém se
+  <strong>zeptá</strong>, ať o&nbsp;práci nepřijdete.</li>
+  <li>Jako obsluha můžete inventuru dělat jen pro <strong>svoji</strong> pobočku;
+  přehled „Vše" a&nbsp;„Dochází zboží" napříč pobočkami je pro vlastníka.</li>
+</ul>
+<p>Podrobný postup je i&nbsp;na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 {% if is_low %}
   <h1>Dochází zboží — upravit</h1>
@@ -58,10 +123,10 @@
   <div class="toolbar">
     <input type="search" id="inventura-filter" placeholder="Filtrovat produkt v seznamu…">
     {% if show_low_toggle %}
-      <label class="low-toggle" title="Zobrazit jen položky pod objednacím bodem">
+      <label class="low-toggle" title="Zobrazit jen kritické položky — prázdné i pod objednacím bodem">
         <input type="checkbox" id="inventura-low-only">
         <span class="switch" aria-hidden="true"></span>
-        Dochází
+        Dochází / prázdné
       </label>
     {% endif %}
     <span class="muted" id="inventura-filter-count"></span>
@@ -300,24 +365,41 @@
     }, true);
 
     // Type-to-filter over the product name, ANDed with the single-branch
-    // "Dochází" checkbox (its own filter, not the 0063 hook). A row shows when
-    // its name matches the query and — if the checkbox is on — it's below its
-    // reorder threshold (data-low="1", set server-side from low_stock_rows()).
+    // "Dochází / prázdné" checkbox (its own filter, not the 0063 hook — it
+    // AND-combines the name query with the toggle). A row shows when its name
+    // matches the query and — if the checkbox is on — it is CRITICAL
+    // (data-low="1"; empty OR below threshold, set server-side via
+    // catalogue_stock_groups, per 0080). The name match reuses the SAME
+    // diacritic-insensitive, typo-tolerant matcher as the Katalog
+    // (window.kasiaRowFilter, per 0063/0080), so e.g. "perp" finds "Pepř".
     const filter = document.getElementById("inventura-filter");
     const fc = document.getElementById("inventura-filter-count");
     const lowOnly = document.getElementById("inventura-low-only");
     function applyFilter() {
-      const q = filter ? filter.value.trim().toLowerCase() : "";
+      // Read the shared matcher lazily: base.html's filter <script> (which
+      // defines window.kasiaRowFilter) sits AFTER this block in the body, so it
+      // isn't defined yet at parse time — only by the time an event fires.
+      const rf = window.kasiaRowFilter;
+      const raw = filter ? filter.value : "";
+      const tokens = rf ? rf.tokenize(raw) : raw.trim().toLowerCase().split(/\s+/).filter(Boolean);
       const onlyLow = !!(lowOnly && lowOnly.checked);
       let shown = 0;
       rows.forEach(function (row) {
-        const name = row.querySelector("td strong").textContent.toLowerCase();
-        const nameMatch = !q || name.includes(q);
+        const name = row.querySelector("td strong").textContent;
+        let nameMatch;
+        if (tokens.length === 0) {
+          nameMatch = true;
+        } else if (rf) {
+          const folded = rf.fold(name);
+          nameMatch = rf.matches(tokens, folded, folded.split(" ").filter(Boolean));
+        } else {
+          nameMatch = name.toLowerCase().indexOf(tokens.join(" ")) !== -1;
+        }
         const match = nameMatch && (!onlyLow || row.dataset.low === "1");
         row.style.display = match ? "" : "none";
         if (match) shown++;
       });
-      fc.textContent = (q || onlyLow) ? (shown + " z " + rows.length + " odpovídá") : "";
+      fc.textContent = (tokens.length || onlyLow) ? (shown + " z " + rows.length + " odpovídá") : "";
     }
     if (filter) filter.addEventListener("input", applyFilter);
     if (lowOnly) lowOnly.addEventListener("change", applyFilter);

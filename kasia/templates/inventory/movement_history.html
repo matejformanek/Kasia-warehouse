@@ -5,6 +5,33 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/movement_history.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Historie — všechny pohyby skladu</h3>
+<p>Kompletní záznam všeho, co se ve skladu dělo — příjmy, výdeje, míchání
+i&nbsp;ruční korekce. Slouží k&nbsp;dohledání a&nbsp;k&nbsp;opravám.</p>
+
+<h3>Jak se v&nbsp;ní zorientovat</h3>
+<ul>
+  <li><strong>Filtry</strong> nahoře — podle druhu pohybu, pobočky a&nbsp;období.
+  Obsluha vidí jen svoji pobočku.</li>
+  <li>Záložka <strong>„Vše"</strong> = hotové pohyby. Záložka
+  <strong>„Plánované"</strong> = objednané příjmy, které teprve dorazí.</li>
+  <li>Delší seznamy jsou <strong>stránkované</strong> — listujte dole.</li>
+</ul>
+
+<h3>Co tu můžete udělat</h3>
+<ul>
+  <li><strong>Klik na hotový pohyb</strong> otevře jeho detail.</li>
+  <li><strong>Upravit</strong> — opravíte hodnoty. <strong>Důvod opravy je
+  povinný.</strong> Šlo-li o&nbsp;výdej, dodací list se přegeneruje a&nbsp;přepošle
+  s&nbsp;předponou <strong>[OPRAVA]</strong>.</li>
+  <li>Na záložce „Plánované" u&nbsp;objednávky <strong>„Přijmout"</strong> —
+  potvrdíte příjezd a&nbsp;teprve tím se zásoby navýší. (Plánovaný řádek se
+  neopravuje přes „Upravit".)</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Historie pohybů
   {% if branch_locked %} — pobočka {{ branch_locked.code }}{% endif %}

@@ -5,6 +5,44 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/vydej_form.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Výdej — expedice zboží</h3>
+<p>Tímto formulářem <strong>vyskladníte zboží odběrateli</strong> (rozvoz nebo
+prodej). Po uložení systém automaticky sníží zásoby a&nbsp;vystaví
+<strong>dodací list</strong>.</p>
+
+<h3>Krok za krokem</h3>
+<ol>
+  <li>Vyberte <strong>pobočku</strong> a&nbsp;<strong>odběratele</strong> (nového
+  lze přidat rovnou z&nbsp;formuláře).</li>
+  <li>Pro každý řádek zadejte <strong>produkt</strong> a&nbsp;<strong>množství
+  v&nbsp;kg</strong>. Nový řádek se přidá sám, jakmile začnete psát do posledního.</li>
+  <li>Sledujte sloupec <strong>„Sklad"</strong> — ukazuje, kolik daného produktu
+  na pobočce je. Zadáte-li víc, řádek <strong>zčervená</strong> a&nbsp;tlačítko
+  Uložit se zamkne: nad dostupný stav vydat nelze.</li>
+  <li>Klikněte na <strong>Vystavit výdej</strong>.</li>
+</ol>
+
+<h3>Co se stane po uložení</h3>
+<ul>
+  <li>Zásoby se <strong>sníží</strong>.</li>
+  <li>Vygeneruje se <strong>dodací list (PDF)</strong> a&nbsp;<strong>automaticky
+  odejde e-mailem</strong> Petrovi a&nbsp;Karolíně. <strong>Zákazník PDF
+  nedostává</strong> — nemusíte ho zvlášť řešit.</li>
+</ul>
+
+<h3>Když něco chybí</h3>
+<ul>
+  <li>Je-li zboží málo, jako vlastník máte u&nbsp;zablokovaného výdeje odkaz
+  <strong>na inventuru</strong> předvyplněnou dotčenými produkty — opravte stav
+  a&nbsp;vraťte se.</li>
+  <li>Tentýž produkt nejde zadat na dvou řádcích — sečtěte do jednoho.</li>
+  <li>Potřebujete-li výdej později opravit, jděte do <strong>Historie</strong> →
+  otevřít → Upravit (dodák se přegeneruje a&nbsp;přepošle s&nbsp;„[OPRAVA]").</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Nový výdej zboží</h1>
 

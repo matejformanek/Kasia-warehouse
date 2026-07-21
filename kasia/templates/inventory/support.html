@@ -5,6 +5,23 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/support.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Podpora — všechna pomoc na jednom místě</h3>
+<p>Na téhle stránce najdete <strong>kompletní návod</strong> k&nbsp;celé aplikaci:
+rozbalovací sekce „Co kde najdu", „Postupy krok za krokem" a&nbsp;„Tipy a&nbsp;triky",
+a&nbsp;nahoře <strong>video návod</strong>.</p>
+<ul>
+  <li>Dole je <strong>formulář pro hlášení</strong> chyby, dotazu nebo nápadu.
+  Vyberte, které stránky se to týká, a&nbsp;popište to vlastními slovy.</li>
+  <li>Hlášení <strong>vidí celý tým</strong>; vlastník je označí jako vyřešené,
+  jakmile je hotovo.</li>
+  <li>Vážný nebo dlouho neřešený problém můžete napsat <strong>přímo správci</strong>
+  (odkaz pod formulářem).</li>
+</ul>
+<p>Tip: tlačítko <strong>„?"</strong> vpravo dole je na každé stránce a&nbsp;ukáže
+nápovědu právě k&nbsp;té obrazovce.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Podpora</h1>
 
@@ -114,6 +131,19 @@
   </div>
 </details>
 
+<h2>Video návod</h2>
+
+{# Ready-to-play look: poster + play button, no "coming soon" text. Swap inner markup for a real <video>/embed when the clip exists. #}
+<div class="video-tutorial">
+  <button type="button" class="video-placeholder" aria-label="Přehrát video návod">
+    <img class="video-thumb" src="{% static 'img/video-tutorial-thumb.png' %}"
+         alt="Video návod">
+    <span class="video-overlay">
+      <span class="video-play" aria-hidden="true">▶</span>
+    </span>
+  </button>
+</div>
+
 <h2>Nahlásit chybu nebo požadavek</h2>
 
 <div class="card">
@@ -139,6 +169,11 @@
     </div>
     <button class="primary" type="submit">Odeslat hlášení</button>
   </form>
+  <p class="muted" style="margin-bottom:0;">
+    Pokud na vaše hlášení nikdo neodpoví delší dobu nebo jde o&nbsp;vážný problém,
+    napište přímo správci:
+    <a href="mailto:matej.formanek@kasia.cz">matej.formanek@kasia.cz</a>.
+  </p>
 </div>
 
 <h2>Historie hlášení</h2>
@@ -160,7 +195,7 @@
         <tr>
           <td style="white-space:nowrap;">{{ f.created_at|date:"d. m. Y H:i" }}</td>
           <td>{{ f.created_by.email }}</td>
-          <td>{% if f.page_url %}<code>{{ f.page_url }}</code>{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if f.page_url %}{{ f.page_url }}{% else %}<span class="muted">—</span>{% endif %}</td>
           <td>{{ f.description|linebreaksbr }}</td>
           <td><span class="stav-open">● Otevřené</span></td>
           {% if user.is_vlastnik %}
@@ -198,7 +233,7 @@
           <tr>
             <td style="white-space:nowrap;">{{ f.created_at|date:"d. m. Y H:i" }}</td>
             <td>{{ f.created_by.email }}</td>
-            <td>{% if f.page_url %}<code>{{ f.page_url }}</code>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td>{% if f.page_url %}{{ f.page_url }}{% else %}<span class="muted">—</span>{% endif %}</td>
             <td style="opacity:.7;">{{ f.description|linebreaksbr }}</td>
             <td style="white-space:nowrap;">
               <span class="stav-done">✓ Vyřešené</span>

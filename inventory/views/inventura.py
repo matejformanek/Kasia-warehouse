@@ -23,6 +23,7 @@ from ..services import (
     reserved_kg,
 )
 from ._shared import _require_vlastnik, _safe_next
+from .catalogue import catalogue_stock_groups
 
 
 def _kg1(x: Decimal) -> Decimal:
@@ -316,15 +317,21 @@ def inventura_edit(request, code: str):
             for p in products
         ]
 
-    # Single-branch "Dochází" toggle (client-side filter): mark each row below
-    # its reorder threshold at this branch. Reuse low_stock_rows() — the same
-    # source of truth the cross-branch "Dochází zboží" chip uses — so the
-    # membership rule (effective < threshold, respecting overrides / reserved /
-    # carried) stays in one place. Guarded to single-branch mode (branch set).
+    # Single-branch "Dochází" toggle (client-side filter): mark each CRITICAL
+    # row at this branch — i.e. everything the Katalog would put in Prázdné OR
+    # Dochází (per 0080). We reuse `catalogue_stock_groups` (the ONE source of
+    # truth for the empty/low grouping, per 0072) rather than `low_stock_rows()`
+    # alone: the latter is bare `effective < threshold`, which would MISS a
+    # genuinely-empty product whose threshold is 0 (now the default per 0072).
+    # Guarded to single-branch mode (branch set).
     low_pks: set[int] = set()
     if not cross_branch:
+        _groups = catalogue_stock_groups(
+            list(Product.objects.filter(is_active=True)), [branch]
+        )
         low_pks = {
-            r.product.pk for r in low_stock_rows() if r.branch.pk == branch.pk
+            r["product"].pk
+            for r in (_groups["empty_rows"] + _groups["low_rows"])
         }
 
     rows = _build_rows()

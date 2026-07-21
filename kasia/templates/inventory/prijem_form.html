@@ -2,6 +2,46 @@
 
 {% block title %}Nový příjem — Kasia vera{% endblock %}
 
+{% block page_help %}
+<h3>Příjem — naskladnění dodávky</h3>
+<p>Tímto formulářem <strong>naskladníte zboží od dodavatele</strong>. Zároveň
+umí evidovat i&nbsp;<strong>objednávku</strong>, která teprve dorazí — o&nbsp;tom
+rozhoduje jediné pole („Očekávaný příjezd"), viz níže.</p>
+
+<h3>Krok za krokem</h3>
+<ol>
+  <li>Vyberte <strong>pobočku</strong> a&nbsp;<strong>dodavatele</strong>. Nového
+  dodavatele lze přidat rovnou z&nbsp;formuláře, nemusíte nikam odbíhat.</li>
+  <li>Pro každý řádek zadejte <strong>produkt</strong>, <strong>hmotnost
+  v&nbsp;kg</strong> a&nbsp;<strong>šarži</strong> (je-li na obalu — doporučeno).
+  Nový řádek se přidá sám, jakmile začnete psát do posledního; nebo klikněte na
+  „Přidat řádek".</li>
+  <li>Rozhodněte o&nbsp;poli <strong>„Očekávaný příjezd"</strong> (klíčové!):
+    <ul>
+      <li><strong>Necháte prázdné</strong> = zboží je fyzicky tady. Po uložení se
+      zásoby <strong>hned naskladní</strong>.</li>
+      <li><strong>Vyplníte datum</strong> = jde o&nbsp;<strong>objednávku
+      (plánovaný příjem)</strong>. Zásoby se zatím <em>nepřipočtou</em>; řádek
+      počká v&nbsp;Historii → záložce „Plánované".</li>
+    </ul>
+  </li>
+  <li>Klikněte na <strong>Uložit příjem</strong>.</li>
+  <li>Až objednávka dorazí: Historie → „Plánované" → u&nbsp;řádku
+  <strong>„Přijmout"</strong>, zkontrolujte kg a&nbsp;šarže, potvrďte. Teprve teď
+  se zásoby navýší.</li>
+</ol>
+
+<h3>Dobré vědět</h3>
+<ul>
+  <li>Systém <strong>nedovolí dvakrát tentýž produkt</strong> na dvou řádcích —
+  sečtěte množství do jednoho.</li>
+  <li>Šarže není povinná, ale bez ní nedohledáte původ při reklamaci.</li>
+  <li>Máte-li rozděláno a&nbsp;chcete odejít, systém se zeptá, ať o&nbsp;práci
+  nepřijdete.</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Nový příjem zboží</h1>
 

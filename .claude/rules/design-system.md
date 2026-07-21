@@ -87,7 +87,14 @@ or restructure:
   **`<link>` only — never inline `<style>`, never `@import`** (the manifest
   storage rewrites `url()`/`@import`; per [`0069`](../../context/decisions/0069-css-externalization.md)).
   Do not re-declare the `:root` tokens or shared classes there.
-- **Shared public classes (0058):** `.wrap`/`.narrow`, `.btn`/`.btn-primary`/
+- **Per-page contextual help (per [`0078`](../../context/decisions/0078-per-page-contextual-help.md)):**
+  `{% block page_help %}` (each screen overrides it with a focused help
+  excerpt; the fallback in `base.html` points at Podpora), the global help
+  `<dialog id="kasia-help" class="kasia-dialog help-dialog">` with its
+  `.help-body`, and the fixed `#help-fab` „?" button — all inside the
+  `{% if user.is_authenticated %}` block of `base.html`. Styling
+  (`.help-dialog` / `#help-fab` / `.help-body`) is in
+  `components/dialogs.css`. Renaming any of these hooks is a new decision. `.wrap`/`.narrow`, `.btn`/`.btn-primary`/
   `.btn-ghost` (+`.btn-outline` alias), `.site-header`/`.nav`/`.brand-logo`/
   `.nav-toggle`, `.hero`/`.kicker`/`.hero-cta`, `.photo-band`/`.photo-frame`,
   `.facts`/`.facts-grid`/`.fact`, `.sec-head`/`.sec-label`, `.band-tint`,
@@ -165,6 +172,12 @@ or restructure:
   `-count` / `-empty` / `-text`, or the `foldText` / `levenshtein` /
   `matchesQuery` helpers, is a new decision. Used on `#history-table` /
   `#stock-table` and the grouped Katalog (+ matching `-count` / `-empty`).
+  **The matcher is also exposed as `window.kasiaRowFilter`** (`fold` /
+  `tokenize` / `matches`) so bespoke filters that can't use the `data-filter-*`
+  hook reuse the SAME fold/fuzzy logic (per
+  [`0080`](../../context/decisions/0080-inventura-critical-toggle-and-fuzzy-filter.md)
+  — the inventura name filter uses it). Renaming `window.kasiaRowFilter` is a
+  new decision.
   The číselníky (Dodavatelé / Odběratelé / Pobočky) carry **no** name search
   (the locked mockups 12–14 show only the Stav filter) — the 0063 standalone
   input added there was removed in the Phase-2 swap. Do **not** reuse the
@@ -211,6 +224,10 @@ non-destructive confirm ("Provést převod?", "Spustit dávku?") sets
 `form=` (or closest `<form>`) via `requestSubmit()`, so a `.js-confirm` button
 must never sit inside a `tr.row-link` (whole-row-nav hook) — same gotcha as the
 row-delete button.
+
+The **per-page help panel (0078)** follows the same rule: `#kasia-help` is a
+`<dialog>` opened with `showModal()` and closed via a „Zavřít" button / `Esc` /
+backdrop — **no native `alert()`**. It reuses `.kasia-dialog` styling.
 
 **Unsaved-changes guard — `data-guard-unsaved` on a `<form>`.** A reusable,
 opt-in guard also lives in `_confirm_dialog.html` (so it ships everywhere
@@ -308,11 +325,17 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   **`is_vlastnik or is_obsluha`**. Its href is conditional in `base.html`: the
   user's own branch (`inventura_edit code=<user.branch.code>`) if they have one,
   else the all-branch **"Vše"** (`code='vse'`). No new view/chooser. A
-  **single-branch** inventura carries a **"Dochází"** checkbox next to the name
-  filter that scopes the visible rows to products below their reorder threshold
-  at that branch (`data-low` row attr from `low_stock_rows()`, ANDed with the
-  name query in the screen's own custom filter — not the 0063 `data-filter-*`
-  hook). Hidden on the cross-branch "Vše" / "Dochází zboží" views.
+  **single-branch** inventura carries a **"Dochází / prázdné"** checkbox next to
+  the name filter that scopes the visible rows to the **critical** products at
+  that branch — everything the Katalog puts in **Prázdné OR Dochází** (per
+  [`0080`](../../context/decisions/0080-inventura-critical-toggle-and-fuzzy-filter.md);
+  `data-low` row attr, membership from `catalogue_stock_groups([branch])` — NOT
+  `low_stock_rows()` alone, which would miss an empty product whose threshold is
+  0). It is ANDed with the name query in the screen's own custom filter (not the
+  0063 `data-filter-*` hook), and that name filter reuses the shared
+  `window.kasiaRowFilter` matcher so it is diacritic-/typo-tolerant like the
+  Katalog. Hidden on the cross-branch "Vše" / "Dochází zboží" views (the
+  `dochazi` roll-up still uses `low_stock_rows()`, its own 0057 contract).
   - **Obsluha access (0073) — hard constraint.** `inventura_edit` lets an
     **obsluha run inventura only for their OWN branch** (the full editor —
     `[STAV]` corrections **and** dated objednávky); the cross-branch **"Vše"**

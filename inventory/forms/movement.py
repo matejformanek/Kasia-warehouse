@@ -39,8 +39,14 @@ class PrijemForm(_MovementBaseForm):
     )
     dodavatel = forms.ModelChoiceField(
         label="Dodavatel",
-        queryset=Supplier.objects.filter(is_active=True),
-        required=False,  # optional on a planned příjem; enforced in clean()
+        # Per 0085: only real suppliers in the picker (internal placeholders
+        # like Míchárna/Inventura/Objednávka/Neuveden are hidden), with
+        # "— Neuveden —" as the pre-selected blank option. A blank submit is
+        # resolved to the seeded "Neuveden" row in the view — do NOT make this
+        # required again; blank == Neuveden is intentional.
+        queryset=Supplier.objects.filter(is_active=True, is_internal=False),
+        required=False,
+        empty_label="— Neuveden —",
     )
     # Per 0059: an optional arrival date. Empty / today / past = receive
     # straight away (DONE). A future date = a planned príjem (objednávka) —
@@ -64,18 +70,9 @@ class PrijemForm(_MovementBaseForm):
             self.fields["branch"].initial = user.branch_id
             self.fields["branch"].disabled = True
 
-    def clean(self):
-        cleaned = super().clean()
-        exp = cleaned.get("expected_on")
-        is_planned = exp is not None and exp > date.today()
-        if is_planned:
-            # Planned príjem: supplier optional, arrival date required (it is,
-            # since exp is set). Nothing else to enforce.
-            pass
-        elif not cleaned.get("dodavatel"):
-            # Immediate (DONE) príjem still requires a supplier.
-            self.add_error("dodavatel", "Příjem musí mít dodavatele.")
-        return cleaned
+    # Per 0085: no supplier-required check. A blank dodavatel is legal on both
+    # DONE and planned příjem — the view resolves blank to the seeded "Neuveden"
+    # placeholder, which satisfies Movement.clean() + the DB constraint.
 
 
 class VydejForm(_MovementBaseForm):
@@ -92,6 +89,9 @@ class VydejForm(_MovementBaseForm):
     def __init__(self, *args, user=None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
+        # Per 0086: výdej is always dated today — drop the inherited
+        # date_issued field (the view sets date.today()). Príjem keeps it.
+        self.fields.pop("date_issued", None)
         self.fields["branch"].queryset = Branch.objects.filter(is_active=True)
         if user is not None and getattr(user, "branch_id", None):
             self.fields["branch"].initial = user.branch_id
@@ -171,7 +171,11 @@ class PrijemEditForm(_MovementEditBaseForm):
     branch = forms.ModelChoiceField(label="Pobočka", queryset=None, empty_label=None)
     dodavatel = forms.ModelChoiceField(
         label="Dodavatel",
-        queryset=Supplier.objects.filter(is_active=True),
+        # Per 0085: consistent with the create form — real suppliers only,
+        # blank == Neuveden (the view re-fills it on save).
+        queryset=Supplier.objects.filter(is_active=True, is_internal=False),
+        required=False,
+        empty_label="— Neuveden —",
     )
 
     def __init__(self, *args, **kwargs) -> None:
@@ -190,6 +194,9 @@ class VydejEditForm(_MovementEditBaseForm):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
+        # Per 0086: výdej is dateless — edit keeps it dateless too for
+        # consistency ("always today"). Príjem edit still shows the date.
+        self.fields.pop("date_issued", None)
         self.fields["branch"].queryset = Branch.objects.filter(is_active=True)
 
 

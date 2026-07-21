@@ -1,8 +1,8 @@
-from datetime import date
 from decimal import Decimal
 
 import pytest
 from django.test import Client, override_settings
+from django.urls import reverse
 
 from inventory.models import (
     Customer,
@@ -710,7 +710,6 @@ def test_overdraw_warning_card_shows_with_correction_button_for_vlastnik(
             "odberatel": str(
                 Customer.objects.get(is_default_recipient=True).pk
             ),
-            "date_issued": date.today().isoformat(),
             "note": "",
             "lines-TOTAL_FORMS": "1",
             "lines-INITIAL_FORMS": "0",
@@ -738,11 +737,13 @@ def test_overdraw_warning_card_shows_with_correction_button_for_vlastnik(
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
-def test_overdraw_warning_card_hides_button_for_obsluha(
+def test_overdraw_warning_card_obsluha_links_own_inventura(
     user_obsluha_tyn, tyn, pepper
 ) -> None:
-    """Obsluha sees the structured warning but no correction button
-    (stock direct edit is vlastník-only per 0040)."""
+    """Per 0073: obsluha may run inventura for their own branch, so the
+    overdraw card now offers a correction link — to their OWN-branch
+    inventura pre-filtered to the product, NOT the vlastník-only
+    stock_adjust_edit (which would 403)."""
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     client = Client()
     client.force_login(user_obsluha_tyn)
@@ -753,7 +754,6 @@ def test_overdraw_warning_card_hides_button_for_obsluha(
             "odberatel": str(
                 Customer.objects.get(is_default_recipient=True).pk
             ),
-            "date_issued": date.today().isoformat(),
             "note": "",
             "lines-TOTAL_FORMS": "1",
             "lines-INITIAL_FORMS": "0",
@@ -767,9 +767,14 @@ def test_overdraw_warning_card_hides_button_for_obsluha(
         },
     )
     assert response.status_code == 200
-    body = response.content
-    assert b"jen vlastn\xc3\xadk" in body  # "jen vlastník"
-    assert b"Upravit stav skladu" not in body
+    body = response.content.decode("utf-8")
+    assert "Upravit stav skladu" in body
+    assert "jen vlastník" not in body
+    # Links to their own-branch inventura, pre-filtered to the product.
+    inv = reverse("inventory:inventura_edit", args=[tyn.code])
+    assert f'{inv}?products={pepper.pk}' in body
+    # Never the vlastník-only stock_adjust_edit.
+    assert reverse("inventory:stock_adjust_edit", args=[pepper.pk]) not in body
 
 
 @pytest.mark.django_db(transaction=True)
@@ -789,7 +794,6 @@ def test_overdraw_warning_lists_all_insufficient_lines(
             "odberatel": str(
                 Customer.objects.get(is_default_recipient=True).pk
             ),
-            "date_issued": date.today().isoformat(),
             "note": "",
             "lines-TOTAL_FORMS": "2",
             "lines-INITIAL_FORMS": "0",
@@ -833,7 +837,6 @@ def test_overdraw_aggregates_multiple_lines_of_same_product(
             "odberatel": str(
                 Customer.objects.get(is_default_recipient=True).pk
             ),
-            "date_issued": date.today().isoformat(),
             "note": "",
             "lines-TOTAL_FORMS": "2",
             "lines-INITIAL_FORMS": "0",
@@ -871,7 +874,6 @@ def test_overdraw_clears_after_stock_correction(
     payload = {
         "branch": str(tyn.pk),
         "odberatel": str(ricany_pk),
-        "date_issued": date.today().isoformat(),
         "note": "",
         "lines-TOTAL_FORMS": "1",
         "lines-INITIAL_FORMS": "0",

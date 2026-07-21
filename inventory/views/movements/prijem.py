@@ -22,6 +22,7 @@ from ...models import (
 from ...services import (
     apply_movement,
     confirm_planned_receipt,
+    counterparties,
 )
 from .._shared import _safe_next
 from ._shared import (
@@ -66,11 +67,17 @@ def prijem_create(request):
                             note=form.cleaned_data.get("note", ""),
                         )
                     else:
+                        # Per 0085: blank supplier → the seeded "Neuveden"
+                        # placeholder, so a DONE PRIJEM always has a
+                        # counterparty (Movement.clean() + DB constraint).
                         movement = Movement(
                             branch=form.cleaned_data["branch"],
                             kind=Movement.Kind.PRIJEM,
                             date_issued=form.cleaned_data["date_issued"],
-                            dodavatel=form.cleaned_data["dodavatel"],
+                            dodavatel=(
+                                form.cleaned_data.get("dodavatel")
+                                or counterparties.supplier("unknown_supplier")
+                            ),
                             note=form.cleaned_data.get("note", ""),
                         )
                     try:

@@ -27,15 +27,16 @@ prodej). Po uložení systém automaticky sníží zásoby a&nbsp;vystaví
 <ul>
   <li>Zásoby se <strong>sníží</strong>.</li>
   <li>Vygeneruje se <strong>dodací list (PDF)</strong> a&nbsp;<strong>automaticky
-  odejde e-mailem</strong> Petrovi a&nbsp;Karolíně. <strong>Zákazník PDF
-  nedostává</strong> — nemusíte ho zvlášť řešit.</li>
+  odejde e-mailem</strong> příjemcům dodacího listu (nastaveným v&nbsp;Nastavení)
+  a&nbsp;vždy také vystaviteli výdeje. <strong>Zákazník PDF nedostává</strong> —
+  nemusíte ho zvlášť řešit.</li>
 </ul>
 
 <h3>Když něco chybí</h3>
 <ul>
-  <li>Je-li zboží málo, jako vlastník máte u&nbsp;zablokovaného výdeje odkaz
-  <strong>na inventuru</strong> předvyplněnou dotčenými produkty — opravte stav
-  a&nbsp;vraťte se.</li>
+  <li>Je-li zboží málo, máte u&nbsp;zablokovaného výdeje odkaz <strong>na
+  inventuru</strong> předvyplněnou dotčenými produkty (vlastník na kteroukoli
+  pobočku, obsluha na svou) — opravte stav a&nbsp;vraťte se.</li>
   <li>Tentýž produkt nejde zadat na dvou řádcích — sečtěte do jednoho.</li>
   <li>Potřebujete-li výdej později opravit, jděte do <strong>Historie</strong> →
   otevřít → Upravit (dodák se přegeneruje a&nbsp;přepošle s&nbsp;„[OPRAVA]").</li>
@@ -47,8 +48,8 @@ prodej). Po uložení systém automaticky sníží zásoby a&nbsp;vystaví
 <h1>Nový výdej zboží</h1>
 
 <div class="recipients">
-  E-mail dodacího listu jde vždy na fixní dvojici příjemců z Nastavení
-  (Petr + Karolína). Výdej se neuloží, dokud obě adresy nebudou vyplněny.
+  E-mail dodacího listu jde příjemcům dodacího listu (nastaveným v Nastavení)
+  a vždy také vystaviteli výdeje.
 </div>
 
 {% if overdraw_warnings %}
@@ -57,7 +58,7 @@ prodej). Po uložení systém automaticky sníží zásoby a&nbsp;vystaví
     <p>
       Vypadá to, že systémový stav neodpovídá realitě. Před uložením
       výdeje opravte skladové množství u následujících položek
-      {% if user.is_vlastnik %}(tlačítko otevře úpravu stavu v novém okně){% else %}— stav skladu upraví jen vlastník, kontaktujte Karolínu/Petra{% endif %}:
+      (tlačítko otevře úpravu stavu v novém okně):
     </p>
     <table class="lines">
       <thead>
@@ -82,8 +83,12 @@ prodej). Po uložení systém automaticky sníží zásoby a&nbsp;vystaví
                    href="{% url 'inventory:stock_adjust_edit' pk=w.product.pk %}">
                   Upravit stav skladu ↗
                 </a>
-              {% else %}
-                <span style="color:var(--fg-soft);font-size:0.85rem;">jen vlastník</span>
+              {% elif inventura_fix_url %}
+                {# Per 0073: obsluha fixes stock via own-branch inventura (stock_adjust_edit is vlastník-only, would 403). #}
+                <a class="secondary" target="_blank"
+                   href="{{ inventura_fix_url }}?products={{ w.product.pk }}&next={{ request.path|urlencode }}">
+                  Upravit stav skladu ↗
+                </a>
               {% endif %}
             </td>
           </tr>
@@ -121,11 +126,7 @@ prodej). Po uložení systém automaticky sníží zásoby a&nbsp;vystaví
         </a>
         {{ form.odberatel.errors }}
       </div>
-      <div class="field">
-        <label class="field-required" for="id_date_issued">Datum vystavení</label>
-        {{ form.date_issued }}
-        {{ form.date_issued.errors }}
-      </div>
+      {# Per 0086: výdej is always dated today — no date field. #}
       <div class="field">
         <label for="id_note">Poznámka</label>
         {{ form.note }}
@@ -137,13 +138,14 @@ prodej). Po uložení systém automaticky sníží zásoby a&nbsp;vystaví
   <div class="card">
     <div class="step-head"><span class="step-no">2</span><h2>Položky</h2></div>
     {{ stock_map|json_script:"vydej-stock-map" }}
-    {% if user.is_vlastnik %}{{ branch_inventura|json_script:"vydej-inventura-urls" }}{% endif %}
+    {# Per 0073: emitted for a vlastník (all branches) or an obsluha on own branch — both may fix stock via inventura. #}
+    {% if branch_inventura %}{{ branch_inventura|json_script:"vydej-inventura-urls" }}{% endif %}
     {% include "inventory/_movement_form_lines.html" with show_stock_warn=True %}
     <p class="line-summary" id="summary-mid"></p>
 
     <div id="stock-block-banner" class="card" style="margin-top:1.2rem;" hidden>
       Některé položky překračují stav skladu — opravte množství před uložením.
-      {% if user.is_vlastnik %}
+      {% if branch_inventura %}
         <a id="stock-block-inventura" class="secondary" href="#" hidden>
           Upravit stav skladu pro tyto suroviny
         </a>
@@ -155,8 +157,8 @@ prodej). Po uložení systém automaticky sníží zásoby a&nbsp;vystaví
   <div class="card">
     <div class="step-head"><span class="step-no">3</span><h2>Odeslání</h2></div>
     <p class="muted" style="font-size:.95rem;margin-top:0;">
-      Dodací list odejde e-mailem na fixní dvojici příjemců z Nastavení
-      (Petr + Karolína).
+      Dodací list odejde e-mailem příjemcům dodacího listu (nastaveným
+      v Nastavení) a vždy také vystaviteli výdeje.
     </p>
     <p class="line-summary final" id="summary"></p>
     <p class="submit-bar">

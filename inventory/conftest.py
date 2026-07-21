@@ -178,6 +178,14 @@ def _ensure_micharna_seed(db) -> None:
         is_internal=True,
         defaults={"address": "interní přijatá objednávka"},
     )
+    # Per 0085 — re-seed the internal "Neuveden" supplier (migration 0024) so a
+    # default příjem save (blank dodavatel → Neuveden) can resolve it after a
+    # transactional flush. Supplier-only (příjem is inbound).
+    Supplier.objects.get_or_create(
+        name="Neuveden",
+        is_internal=True,
+        defaults={"address": "dodavatel neuveden"},
+    )
 
 
 @pytest.fixture(autouse=True)

@@ -42,7 +42,7 @@ nápovědu právě k&nbsp;té obrazovce.</p>
       <li><strong>Katalog</strong> — seznam všech produktů a&nbsp;směsí, seskupený podle stavu. Hledání, filtr podle typu / stavu / pobočky. Sloupce „Na skladě“, „Rezerv.“, „Efektivně“ (= na skladě − rezervováno) a&nbsp;„Práh“.</li>
       <li><strong>Detail produktu</strong> — stav po pobočkách včetně šarží, receptura u&nbsp;směsí, ruční úprava stavu, nastavení objednacího bodu (prahu), archivace.</li>
       <li><strong>Příjem</strong> — příjemka od dodavatele. Položky (kg + šarže) a&nbsp;pole <strong>Očekávaný příjezd</strong>: necháte-li ho prázdné, zásoby naskladní hned; vyplníte-li ho, jde o&nbsp;<strong>plánovaný příjem (objednávku)</strong> — naskladní se až po potvrzení.</li>
-      <li><strong>Výdej</strong> — výdejka odběrateli. Po uložení se zásoby sníží, vystaví se <strong>dodací list (PDF)</strong> a&nbsp;automaticky odejde e-mailem Petrovi a&nbsp;Karolíně (ne zákazníkovi).</li>
+      <li><strong>Výdej</strong> — výdejka odběrateli. Po uložení se zásoby sníží, vystaví se <strong>dodací list (PDF)</strong> a&nbsp;automaticky odejde e-mailem příjemcům dodacího listu i&nbsp;vystaviteli výdeje (ne zákazníkovi).</li>
       <li><strong>Míchání</strong> — namíchání směsi jedním krokem. Vyberete pobočku, směs a&nbsp;cílové množství → suroviny se odečtou a&nbsp;směs naskladní. Žádné plánování / dokončování dávky.</li>
       <li><strong>Inventura</strong> — hromadné přepočítání skladu pro jednu pobočku. Projdete řádky, zapíšete skutečné hodnoty, změněné řádky zezelenají, dole je součet (kolik řádků a&nbsp;čistá změna v&nbsp;kg); uložíte jedním tlačítkem.</li>
       <li><strong>Dodací listy</strong> — přehled vystavených dodáků, filtr podle pobočky a&nbsp;období, znovuodeslání PDF e-mailem.</li>
@@ -79,7 +79,7 @@ nápovědu právě k&nbsp;té obrazovce.</p>
       <li>Klikněte „Výdej“.</li>
       <li>Vyberte pobočku a&nbsp;odběratele (nového lze přidat z&nbsp;formuláře).</li>
       <li>Vyplňte položky (produkt, kg, případně šarže).</li>
-      <li>Klikněte „Vystavit výdej“. Zásoby se sníží, vygeneruje se <strong>dodací list (PDF)</strong> a&nbsp;<strong>automaticky odejde e-mailem</strong> Petrovi a&nbsp;Karolíně. Zákazník PDF nedostává.</li>
+      <li>Klikněte „Vystavit výdej“. Zásoby se sníží, vygeneruje se <strong>dodací list (PDF)</strong> a&nbsp;<strong>automaticky odejde e-mailem</strong> příjemcům dodacího listu i&nbsp;vystaviteli výdeje. Zákazník PDF nedostává.</li>
     </ol>
 
     <h3>3. Míchání směsi (jeden krok)</h3>
@@ -106,7 +106,7 @@ nápovědu právě k&nbsp;té obrazovce.</p>
       <li>Najděte chybný pohyb a&nbsp;otevřete ho.
         (Pozn.: řádek v&nbsp;záložce „Plánované“ není hotový pohyb — ten se neopravuje tady, ale tlačítkem „Přijmout“.)</li>
       <li>Klikněte „Upravit“ a&nbsp;změňte hodnoty. <strong>Důvod opravy je povinný.</strong></li>
-      <li>Uložte. Šlo-li o&nbsp;výdej, dodací list se přegeneruje a&nbsp;přepošle Petrovi a&nbsp;Karolíně s&nbsp;předponou <strong>[OPRAVA]</strong> v&nbsp;předmětu.</li>
+      <li>Uložte. Šlo-li o&nbsp;výdej, dodací list se přegeneruje a&nbsp;přepošle příjemcům dodacího listu i&nbsp;vystaviteli výdeje s&nbsp;předponou <strong>[OPRAVA]</strong> v&nbsp;předmětu.</li>
     </ol>
   </div>
 </details>
@@ -117,12 +117,12 @@ nápovědu právě k&nbsp;té obrazovce.</p>
     <ul>
       <li><strong>„Dochází“ ≠ „prázdné“.</strong> Dochází (oranžová) = pod objednacím bodem, kg ještě jsou. Prázdné (červená) = efektivně 0&nbsp;kg. Práh nastavuje vlastník v&nbsp;detailu produktu.</li>
       <li><strong>Řiďte se sloupcem „Efektivně“, ne „Na skladě“.</strong> Efektivně = na skladě − rezervováno. To je to, s&nbsp;čím reálně můžete počítat; rezervované kg jsou fyzicky tady, ale už slíbené.</li>
-      <li><strong>Dodací list jde Petrovi a&nbsp;Karolíně, ne zákazníkovi.</strong> Po výdeji odchází automaticky — zvlášť ho neřešíte.</li>
+      <li><strong>Dodací list jde příjemcům dodacího listu i&nbsp;vystaviteli výdeje, ne zákazníkovi.</strong> Po výdeji odchází automaticky — zvlášť ho neřešíte.</li>
       <li><strong>Plánovaný příjem se přičte až po „Přijmout“.</strong> Dokud objednávka nedorazí a&nbsp;nepotvrdíte ji v&nbsp;Historii → „Plánované“, zásoby zůstávají beze změny.</li>
       <li><strong>Chce-li Míchání dosypat surovinu</strong>, použijte zelené „Upravit stav surovin“ přímo z&nbsp;chybové hlášky — otevře inventuru jen pro suroviny té směsi. Pak se vraťte a&nbsp;namíchejte.</li>
       <li><strong>Míchání je jeden krok.</strong> Není žádné plánování, spouštění ani dokončování dávky — kliknete „Namíchat“ a&nbsp;je hotovo. „Skutečně vyrobeno“ nechte prázdné, pokud sedí na cíl.</li>
       <li><strong>Šarže není povinná, ale doporučená</strong> — bez ní nelze dohledat původ při reklamaci.</li>
-      <li><strong>Oprava pohybu vyžaduje důvod</strong> a&nbsp;u&nbsp;výdeje znovu odešle dodák Petrovi&nbsp;+&nbsp;Karolíně s&nbsp;předponou <strong>[OPRAVA]</strong> — počítejte s&nbsp;tím, ať se nediví.</li>
+      <li><strong>Oprava pohybu vyžaduje důvod</strong> a&nbsp;u&nbsp;výdeje znovu odešle dodák příjemcům dodacího listu i&nbsp;vystaviteli výdeje s&nbsp;předponou <strong>[OPRAVA]</strong> — počítejte s&nbsp;tím, ať se nediví.</li>
       <li><strong>Inventura je pro celou pobočku najednou.</strong> Změněné řádky zezelenají, dole je součet (kolik řádků, čistá změna kg); uložíte jedním tlačítkem. Ideální na pravidelný přepočet skladu.</li>
       <li><strong>Čísla jsou na 1&nbsp;desetinné místo, s&nbsp;čárkou, váhy v&nbsp;kg.</strong> Při zadávání můžete psát čárku i&nbsp;tečku — systém si poradí.</li>
       <li><strong>Archivace produktu ho nesmaže z&nbsp;historie.</strong> Jen ho skryje z&nbsp;výchozího seznamu v&nbsp;Katalogu; pohyby zůstanou dohledatelné.</li>

@@ -116,6 +116,50 @@ def test_prijem_post_creates_movement_and_redirects(
     assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("3.250")
 
 
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_prijem_post_blank_supplier_defaults_to_neuveden(
+    user_obsluha_tyn, tyn, pepper
+) -> None:
+    """Per 0085: a příjem with NO supplier saves out of the box; the saved
+    movement's dodavatel is the seeded 'Neuveden' placeholder."""
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(
+        "/sklad/prijem/novy/",
+        {
+            "branch": tyn.pk,
+            # no "dodavatel" key at all — the blank "— Neuveden —" default
+            "date_issued": "2026-06-12",
+            "note": "",
+            "lines-TOTAL_FORMS": "1",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-product": pepper.pk,
+            "lines-0-quantity_kg": "2.000",
+        },
+    )
+    assert response.status_code == 302, response.content[:500]
+    mv = Movement.objects.get()
+    assert mv.kind == Movement.Kind.PRIJEM
+    assert mv.dodavatel.name == "Neuveden"
+    assert mv.dodavatel.is_internal is True
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_prijem_form_picker_excludes_internal_suppliers(user_tyn) -> None:
+    """Per 0085: the picker lists only real suppliers — the Neuveden (and other
+    internal) placeholders are the blank default, never a selectable option."""
+    from inventory.forms import PrijemForm
+
+    names = [s.name for s in PrijemForm(user=user_tyn).fields["dodavatel"].queryset]
+    assert "Neuveden" not in names
+    assert "Objednávka" not in names
+    assert "Míchárna" not in names
+
+
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_prijem_post_empty_lines_shows_error(user_tyn, tyn, supplier) -> None:
@@ -150,7 +194,6 @@ def test_vydej_post_creates_dodaci_list_and_redirects(
         {
             "branch": tyn.pk,
             "odberatel": ricany.pk,
-            "date_issued": "2026-06-12",
             "lines-TOTAL_FORMS": "1",
             "lines-INITIAL_FORMS": "0",
             "lines-MIN_NUM_FORMS": "1",
@@ -180,7 +223,6 @@ def test_vydej_post_overdraw_keeps_form(user_tyn, tyn, ricany, pepper) -> None:
         {
             "branch": tyn.pk,
             "odberatel": ricany.pk,
-            "date_issued": "2026-06-12",
             "lines-TOTAL_FORMS": "1",
             "lines-INITIAL_FORMS": "0",
             "lines-MIN_NUM_FORMS": "1",
@@ -234,7 +276,6 @@ def test_vydej_post_accepts_round_number(user_tyn, tyn, ricany, pepper) -> None:
         {
             "branch": tyn.pk,
             "odberatel": ricany.pk,
-            "date_issued": "2026-06-12",
             "lines-TOTAL_FORMS": "1",
             "lines-INITIAL_FORMS": "0",
             "lines-MIN_NUM_FORMS": "1",
@@ -296,13 +337,25 @@ def test_vydej_form_inventura_jump_for_vlastnik(user_tyn, tyn) -> None:
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
-def test_vydej_form_inventura_jump_absent_for_obsluha(user_obsluha_tyn) -> None:
-    # Obsluha may not open inventura — no jump blob, no link.
+def test_vydej_form_inventura_jump_for_obsluha_own_branch(user_obsluha_tyn) -> None:
+    # Per 0073: an obsluha may run inventura for their OWN branch, so the výdej
+    # over-stock block now offers the same jump — keyed only to their branch.
+    branch = user_obsluha_tyn.branch
     client = Client()
     client.force_login(user_obsluha_tyn)
     body = client.get("/sklad/vydej/novy/").content.decode("utf-8")
-    assert 'id="vydej-inventura-urls"' not in body
-    assert 'id="stock-block-inventura"' not in body
+    match = re.search(
+        r'<script id="vydej-inventura-urls" type="application/json">(.*?)</script>',
+        body,
+        re.DOTALL,
+    )
+    assert match, "vydej-inventura-urls json_script block not found"
+    urls = json.loads(match.group(1))
+    # Only their own branch is present, pointing at their own inventura.
+    assert urls == {
+        str(branch.pk): reverse("inventory:inventura_edit", args=[branch.code])
+    }
+    assert 'id="stock-block-inventura"' in body
 
 
 @pytest.mark.django_db
@@ -493,7 +546,6 @@ def test_movement_edit_post_bumps_version_and_audits(
             "reason": "oprava hmotnosti",
             "branch": tyn.pk,
             "odberatel": ricany.pk,
-            "date_issued": "2026-06-11",
             "note": "",
             "lines-TOTAL_FORMS": "1",
             "lines-INITIAL_FORMS": "1",
@@ -532,7 +584,6 @@ def test_movement_edit_no_changes_is_noop(user_tyn, tyn, ricany, pepper) -> None
             "reason": "kontrola",
             "branch": tyn.pk,
             "odberatel": ricany.pk,
-            "date_issued": "2026-06-11",
             "note": "",
             "lines-TOTAL_FORMS": "1",
             "lines-INITIAL_FORMS": "1",
@@ -565,7 +616,6 @@ def test_movement_edit_overdraw_keeps_form(user_tyn, tyn, ricany, pepper) -> Non
             "reason": "pokus o předčerpání",
             "branch": tyn.pk,
             "odberatel": ricany.pk,
-            "date_issued": "2026-06-11",
             "note": "",
             "lines-TOTAL_FORMS": "1",
             "lines-INITIAL_FORMS": "1",
@@ -607,7 +657,6 @@ def test_vydej_post_now_redirects_to_dodaci_list_detail(
         {
             "branch": tyn.pk,
             "odberatel": ricany.pk,
-            "date_issued": "2026-06-12",
             "lines-TOTAL_FORMS": "1",
             "lines-INITIAL_FORMS": "0",
             "lines-MIN_NUM_FORMS": "1",

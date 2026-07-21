@@ -22,8 +22,9 @@
 <h3>Dobré vědět</h3>
 <ul>
   <li>Šlo-li o&nbsp;<strong>výdej</strong>, dodací list se přegeneruje (nová
-  verze) a&nbsp;přepošle Petrovi a&nbsp;Karolíně s&nbsp;předponou
-  <strong>[OPRAVA]</strong> v&nbsp;předmětu — počítejte s&nbsp;tím.</li>
+  verze) a&nbsp;přepošle příjemcům dodacího listu i&nbsp;vystaviteli výdeje
+  s&nbsp;předponou <strong>[OPRAVA]</strong> v&nbsp;předmětu — počítejte
+  s&nbsp;tím.</li>
   <li>Zásoby se automaticky <strong>přepočítají</strong> podle rozdílu oproti
   původnímu pohybu.</li>
   <li>Dole je <strong>záznam všech úprav</strong> tohoto pohybu (kdo, kdy, co,
@@ -42,7 +43,7 @@
     Tento výdej je svázán s dodacím listem <strong>{{ dodaci_list.cislo }}</strong>
     (aktuální verze v{{ dodaci_list.current_version }}). Uložení úpravy automaticky
     vygeneruje novou verzi PDF a odešle ji s předmětem
-    <code>[OPRAVA] …</code> na fixní dvojici příjemců (Petr + Karolína).
+    <code>[OPRAVA] …</code> příjemcům dodacího listu i vystaviteli výdeje.
     Důvod úpravy se připojí k textu e-mailu.
     <br>
     <a href="{% url 'inventory:dodaci_list_detail' cislo=dodaci_list.cislo %}">Otevřít dodací list</a>
@@ -77,11 +78,14 @@
         {{ form.dodavatel.errors }}
       </div>
     {% endif %}
-    <div class="field">
-      <label class="field-required" for="id_date_issued">Datum vystavení</label>
-      {{ form.date_issued }}
-      {{ form.date_issued.errors }}
-    </div>
+    {% if not is_vydej %}
+      {# Per 0086: výdej is dateless (always today) — no date field on edit. #}
+      <div class="field">
+        <label class="field-required" for="id_date_issued">Datum vystavení</label>
+        {{ form.date_issued }}
+        {{ form.date_issued.errors }}
+      </div>
+    {% endif %}
     <div class="field">
       <label for="id_note">Poznámka</label>
       {{ form.note }}

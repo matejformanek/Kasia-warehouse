@@ -5,6 +5,35 @@
 
 ## Done
 
+- **2026-07-21** — **Movement-form fixes: příjem default supplier, obsluha
+  stock-fix on výdej over-stock, výdej date removed, de-personalized copy**
+  (decisions [`0085`](./decisions/0085-prijem-default-neuveden-supplier.md) +
+  [`0086`](./decisions/0086-vydej-issue-date-fixed-to-today.md); bug-fix
+  completing [`0073`](./decisions/0073-obsluha-own-branch-inventura.md)).
+  - **0085:** seeded internal **„Neuveden"** supplier (migration `0024`,
+    `counterparties.unknown_supplier`). Příjem picker shows real suppliers only
+    (`is_internal=False`) with „— Neuveden —" as the blank default; blank submit
+    → Neuveden server-side (satisfies `Movement.clean()` + DB constraint, no
+    schema change). Removed the supplier-required `clean()` branch. Obsluha can
+    now save a příjem out of the box. Applies to create + edit.
+  - **0086:** výdej is always dated **today** — `date_issued` field popped from
+    `VydejForm`/`VydejEditForm`, removed from both templates, view sets
+    `date.today()`, `assert_no_future_date` dropped from výdej paths (kept for
+    příjem). Príjem date + planned-order path unchanged.
+  - **0073 bug-fix:** the výdej over-stock block now offers an **obsluha** the
+    „Upravit stav skladu" jump to **their own-branch** inventura (live blob +
+    static 0042 overdraw table + `inventura_fix_url`), never the vlastník-only
+    `stock_adjust_edit`. `branch_inventura` emitted for vlastník (all branches)
+    or obsluha (own branch). `design-system.md` note updated.
+  - **De-personalized copy:** ~15 „Petr + Karolína" strings across výdej /
+    support / movement-edit / dodák-index / planned-transfer / product /
+    settings / xls-import templates + `catalogue.py` help_text (migration `0025`
+    AlterField) → „příjemcům dodacího listu … a vždy také vystaviteli výdeje"
+    (per 0081); dropped the false „výdej se neuloží, dokud …" guard copy.
+  - Migrations `0024_seed_neuveden_supplier` + `0025_alter_product_...`;
+    `conftest.py` reseeds Neuveden. Tests rewritten (obsluha now gets the jump;
+    výdej POSTs drop `date_issued`; new Neuveden default-save + picker-exclude
+    tests). Full suite green (596), ruff clean.
 - **2026-07-21** — **Per-recipient e-mail preferences + branch scope + new-user
   credentials mail** (decisions
   [`0081`](./decisions/0081-per-recipient-notification-preferences.md) — amends

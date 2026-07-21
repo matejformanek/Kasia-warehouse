@@ -133,12 +133,16 @@ nápovědu právě k&nbsp;té obrazovce.</p>
 
 <h2>Video návod</h2>
 
-{# Placeholder — sem přijde vložené video (embed), až bude natočené. #}
+{# Placeholder — thumbnail + play overlay; sem přijde vložené video, až bude natočené. #}
 <div class="video-tutorial">
-  <div class="video-placeholder" role="img" aria-label="Video návod – připravujeme">
-    <span class="video-play" aria-hidden="true">▶</span>
-    <p class="video-caption">Video návod připravujeme</p>
-    <p class="video-sub">Brzy tu najdete krátké provedení aplikací krok za krokem.</p>
+  <div class="video-placeholder">
+    <img class="video-thumb" src="{% static 'img/video-tutorial-thumb.png' %}"
+         alt="Náhled video návodu">
+    <div class="video-overlay">
+      <span class="video-play" aria-hidden="true">▶</span>
+      <p class="video-caption">Video návod připravujeme</p>
+      <p class="video-sub">Brzy tu najdete krátké provedení aplikací krok za krokem.</p>
+    </div>
   </div>
 </div>
 

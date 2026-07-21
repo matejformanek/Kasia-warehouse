@@ -4,6 +4,15 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/settings_form.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Nastavení</h3>
+<p>Vlastník: adresa firmy, příjemci dodacích listů a&nbsp;upozornění, e-mailové
+šablony a&nbsp;SMTP.</p>
+<p>Musí existovat aspoň jeden <strong>aktivní příjemce dodáků</strong>, jinak
+výdej odmítne uložit.</p>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Nastavení</h1>
 <p class="page-intro">Firemní hlavička dokumentů, odesílání dodacích listů e-mailem a šablony zpráv. Změny se ukládají tlačítkem <strong>Uložit nastavení</strong> dole.</p>

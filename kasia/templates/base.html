@@ -93,7 +93,7 @@
         Příjem
       </a>
       <a href="{% url 'inventory:vydej_create' %}"{% if un == 'vydej_create' %} class="active" aria-current="page"{% endif %}>
-        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 9v12m0 0 4-4m-4 4-4-4"/><path d="M4 7V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/></svg>
         Výdej
       </a>
       <a href="{% url 'inventory:mixing_job_index' %}"{% if un == 'mixing_job_index' %} class="active" aria-current="page"{% endif %}>
@@ -151,6 +151,39 @@
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="logout">Odhlásit</button></form>
     </div>
   </aside>
+
+  {# ---- per-page contextual help (per 0078): fixed "?" FAB + in-app modal ---- #}
+  <button type="button" id="help-fab" aria-label="Nápověda k této stránce">?</button>
+  <dialog id="kasia-help" class="kasia-dialog help-dialog" aria-labelledby="kasia-help-title">
+    <h2 id="kasia-help-title" class="kasia-dialog-title">Nápověda k této stránce</h2>
+    <div class="kasia-dialog-body help-body">
+      {% block page_help %}
+        <p>Nevíte si rady? Kompletní návod „co kde najdu", postupy krok za krokem
+        a&nbsp;formulář pro hlášení najdete na stránce
+        <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+      {% endblock %}
+    </div>
+    <div class="kasia-dialog-actions">
+      <button type="button" class="secondary" data-help-close>Zavřít</button>
+    </div>
+  </dialog>
+  <script>
+    // Per-page help modal (per 0078). Reuses the <dialog>.showModal() pattern
+    // from _confirm_dialog.html — no native alert(). Opens on the "?" FAB,
+    // closes on the "Zavřít" button, on Esc (native cancel), and on a backdrop
+    // click (target === the dialog element itself).
+    (function () {
+      const dialog = document.getElementById("kasia-help");
+      const fab = document.getElementById("help-fab");
+      if (!dialog || !fab) return;
+      fab.addEventListener("click", () => dialog.showModal());
+      dialog.addEventListener("click", (e) => {
+        if (e.target === dialog || e.target.closest("[data-help-close]")) {
+          dialog.close();
+        }
+      });
+    })();
+  </script>
 {% endif %}
 
 <main class="content" id="main">

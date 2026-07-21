@@ -5,6 +5,14 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/dodaci_list_index.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Dodací listy</h3>
+<p>Přehled vystavených dodáků. Filtr podle pobočky a&nbsp;období; PDF lze
+<strong>znovu odeslat</strong> e-mailem.</p>
+<p>Dodák jde Petrovi a&nbsp;Karolíně, ne zákazníkovi. Vzniká automaticky při výdeji.</p>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Dodací listy</h1>
 <p class="scope-note">Vystavené dodací listy k výdejům, od nejnovějšího. Klikněte na řádek pro detail a PDF.{% if branch_locked %} Pobočka {{ branch_locked.code }}.{% endif %}</p>

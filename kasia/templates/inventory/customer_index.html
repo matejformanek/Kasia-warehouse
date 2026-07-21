@@ -5,6 +5,13 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/customer_index.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Odběratelé</h3>
+<p>Seznam odběratelů. Můžete přidat nového, upravit nebo archivovat.
+Archivovaný odběratel zůstává na starších výdejích, jen se nenabízí u&nbsp;nových.</p>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Odběratelé</h1>
 

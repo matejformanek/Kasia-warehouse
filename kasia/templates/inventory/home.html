@@ -5,6 +5,19 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/home.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Přehled (domovská stránka)</h3>
+<p>Vlastník vidí obě pobočky, panel „Dochází / Prázdné" a&nbsp;poslední pohyby.
+Vpravo nahoře je tlačítko „Inventura {pobočka}".</p>
+<ul>
+  <li><strong>Dochází</strong> (oranžová) = pod objednacím bodem, kg ještě jsou.
+  <strong>Prázdné</strong> (červená) = efektivně 0&nbsp;kg.</li>
+  <li>Řiďte se sloupcem <strong>Efektivně</strong> (= na skladě − rezervováno).</li>
+  <li>Odsud vede příjem, výdej i&nbsp;míchání.</li>
+</ul>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <div class="row between" style="margin-bottom:1rem;">
   <div>

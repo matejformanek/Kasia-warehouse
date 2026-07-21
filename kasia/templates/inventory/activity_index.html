@@ -5,6 +5,14 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/activity_index.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Aktivita</h3>
+<p>Kdo kdy které obrazovky otevřel: poslední návštěva a&nbsp;počty za 7&nbsp;a&nbsp;30&nbsp;dní,
+nejčastější obrazovky a&nbsp;filtrovaný seznam návštěv.</p>
+<p>Slouží vlastníkovi k&nbsp;přehledu o&nbsp;používání během zkušebního provozu.</p>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Aktivita</h1>
 <p class="muted" style="margin:0 0 1.1rem;">

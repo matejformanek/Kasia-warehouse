@@ -2,6 +2,19 @@
 
 {% block title %}Nový příjem — Kasia vera{% endblock %}
 
+{% block page_help %}
+<h3>Příjem</h3>
+<p>Příjemka od dodavatele. Vyberte pobočku a&nbsp;dodavatele (nového lze přidat
+z&nbsp;formuláře); pro každý řádek produkt, kg a&nbsp;šarži (doporučeno).</p>
+<ul>
+  <li><strong>Očekávaný příjezd prázdný</strong> = zboží je fyzicky tady,
+  po uložení se naskladní <strong>hned</strong>.</li>
+  <li><strong>Vyplněné datum</strong> = <strong>plánovaný příjem (objednávka)</strong>
+  — zásoby se přičtou až po „Přijmout" v&nbsp;Historii → „Plánované".</li>
+</ul>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Nový příjem zboží</h1>
 

@@ -5,6 +5,13 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/supplier_index.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Dodavatelé</h3>
+<p>Seznam dodavatelů. Můžete přidat nového, upravit nebo archivovat.
+Archivovaný dodavatel zůstává na starších příjmech, jen se nenabízí u&nbsp;nových.</p>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Dodavatelé</h1>
 

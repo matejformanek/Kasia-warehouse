@@ -6,6 +6,18 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/product_detail.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Detail produktu</h3>
+<p>Stav po pobočkách včetně šarží, u&nbsp;směsí receptura, ruční úprava stavu,
+nastavení objednacího bodu (prahu) a&nbsp;archivace.</p>
+<ul>
+  <li>Řiďte se sloupcem <strong>Efektivně</strong> (= na skladě − rezervováno).</li>
+  <li><strong>Archivace</strong> produkt nesmaže z&nbsp;historie — jen ho skryje
+  z&nbsp;výchozího seznamu v&nbsp;Katalogu.</li>
+</ul>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>
   {{ product.name_cs }}

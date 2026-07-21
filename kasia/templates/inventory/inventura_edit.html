@@ -6,6 +6,20 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/inventura_edit.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Inventura</h3>
+<p>Hromadné přepočítání skladu pro jednu pobočku. Do sloupce „skutečnost"
+zapište skutečně napočítané kg — upravený řádek se&nbsp;<strong>zvýrazní zeleně</strong>.</p>
+<ul>
+  <li>Dole je průběžný <strong>součet</strong>: kolik řádků jste změnili
+  a&nbsp;jaká je čistá změna v&nbsp;kg.</li>
+  <li>Uložíte <strong>jedním tlačítkem</strong>; rozdíly se zapíšou jako korekce
+  stavu, nezměněné řádky zůstanou beze změny.</li>
+  <li>Zaškrtávátko <strong>„Dochází"</strong> zúží řádky na produkty pod prahem.</li>
+</ul>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 {% if is_low %}
   <h1>Dochází zboží — upravit</h1>

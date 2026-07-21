@@ -5,6 +5,18 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/vydej_form.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Výdej</h3>
+<p>Výdejka odběrateli. Vyberte pobočku a&nbsp;odběratele (nového lze přidat
+z&nbsp;formuláře), vyplňte položky (produkt, kg).</p>
+<ul>
+  <li>Po uložení se zásoby sníží, vygeneruje se <strong>dodací list (PDF)</strong>
+  a&nbsp;automaticky odejde e-mailem Petrovi a&nbsp;Karolíně (ne zákazníkovi).</li>
+  <li>Sloupec „Sklad" ukazuje dostupné kg; nad stav nelze vydat.</li>
+</ul>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Nový výdej zboží</h1>
 

@@ -5,6 +5,18 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/branch_dashboard.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Přehled pobočky</h3>
+<p>Stav zásob vaší pobočky, seskupený podle stavu: prázdné (červená) / dochází
+(oranžová) / v&nbsp;pořádku. Vpravo nahoře je tlačítko „Inventura".</p>
+<ul>
+  <li>Řiďte se sloupcem <strong>Efektivně</strong> (= na skladě − rezervováno).</li>
+  <li>Hledání nahoře filtruje řádky podle názvu.</li>
+  <li>Odsud vede příjem, výdej i&nbsp;míchání.</li>
+</ul>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>{{ branch.code }} — {{ branch.name }}</h1>
 {% if branch.address %}

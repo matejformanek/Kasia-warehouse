@@ -5,6 +5,18 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/movement_history.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Historie</h3>
+<p>Kompletní log všech pohybů. Filtry podle druhu, pobočky a&nbsp;období.</p>
+<ul>
+  <li>Záložka <strong>„Plánované"</strong> obsahuje objednané příjmy čekající na
+  přijetí — tlačítko „Přijmout".</li>
+  <li>Klik na hotový pohyb otevře detail; „Upravit" vyžaduje
+  <strong>důvod opravy</strong>.</li>
+</ul>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Historie pohybů
   {% if branch_locked %} — pobočka {{ branch_locked.code }}{% endif %}

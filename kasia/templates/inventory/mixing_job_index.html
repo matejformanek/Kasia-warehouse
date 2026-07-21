@@ -5,6 +5,19 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/mixing_job_index.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Míchání</h3>
+<p>Míchání je <strong>jeden krok</strong>: vyberte pobočku, směs a&nbsp;cílové
+množství → suroviny se odečtou a&nbsp;směs naskladní. Žádné plánování ani
+dokončování dávky.</p>
+<ul>
+  <li>„Skutečně vyrobeno" nechte prázdné, pokud sedí na cíl.</li>
+  <li>Chybí-li surovina, zelené „Upravit stav surovin" otevře inventuru jen pro
+  suroviny té směsi.</li>
+</ul>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Míchání — historie dávek</h1>
 <p class="intro">

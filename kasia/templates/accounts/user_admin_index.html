@@ -4,6 +4,14 @@
 
 {% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/user_admin_index.css' %}">{% endblock %}
 
+{% block page_help %}
+<h3>Uživatelé</h3>
+<p>Vlastník: správa účtů, rolí (<strong>vlastník</strong> / <strong>obsluha</strong>)
+a&nbsp;pobočkové příslušnosti.</p>
+<p>Obsluha vidí a&nbsp;upravuje jen svoji pobočku; vlastník vidí obě.</p>
+<p>Kompletní návod najdete na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
 {% block content %}
 <h1>Uživatelé</h1>
 

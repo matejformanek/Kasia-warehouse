@@ -5,6 +5,11 @@
 
 ## Done
 
+- **2026-07-21** — Podpora **video návod** wired: self-hosted 720p MP4
+  (`kasia/static/video/video-tutorial.mp4`) with a real `<video>` (poster =
+  existing thumbnail, `preload="none"`) replacing the placeholder in
+  `support.html`; dead `.video-placeholder`/overlay CSS dropped. No decision —
+  content the 0069-era placeholder already anticipated.
 - **2026-07-21** — **Movement-form fixes: příjem default supplier, obsluha
   stock-fix on výdej over-stock, výdej date removed, de-personalized copy**
   (decisions [`0085`](./decisions/0085-prijem-default-neuveden-supplier.md) +

@@ -621,3 +621,67 @@ def test_vydej_post_now_redirects_to_dodaci_list_detail(
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Editing a DONE movement can add a new product line (template gap fix): the
+# formset already accepts a POSTed row with a blank line_id as an "add" op.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_movement_edit_can_add_new_line(
+    user_tyn, tyn, supplier, pepper, paprika
+) -> None:
+    from datetime import date
+
+    from inventory.models import MovementLine
+    from inventory.services import apply_movement
+
+    mv = apply_movement(
+        movement=Movement(
+            branch=tyn,
+            kind=Movement.Kind.PRIJEM,
+            date_issued=date(2026, 6, 11),
+            dodavatel=supplier,
+        ),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("4.000"))],
+        user=user_tyn,
+    )
+    existing = mv.lines.get()
+    client = Client()
+    client.force_login(user_tyn)
+    resp = client.post(
+        f"/sklad/pohyby/{mv.pk}/upravit/",
+        {
+            "reason": "přidání položky",
+            "branch": tyn.pk,
+            "dodavatel": supplier.pk,
+            "date_issued": "2026-06-11",
+            "note": "",
+            "lines-TOTAL_FORMS": "2",
+            "lines-INITIAL_FORMS": "1",
+            "lines-MIN_NUM_FORMS": "0",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-line_id": str(existing.pk),
+            "lines-0-product": str(pepper.pk),
+            "lines-0-quantity_kg": "4.000",
+            "lines-0-sarze": "",
+            "lines-0-expiry": "",
+            "lines-0-note": "",
+            # New line — blank line_id → _line_changes emits an "add" op.
+            "lines-1-line_id": "",
+            "lines-1-product": str(paprika.pk),
+            "lines-1-quantity_kg": "2.000",
+            "lines-1-sarze": "",
+            "lines-1-expiry": "",
+            "lines-1-note": "",
+        },
+    )
+    assert resp.status_code == 302, resp.content[:500]
+    assert mv.lines.count() == 2
+    assert mv.lines.filter(
+        product=paprika, quantity_kg=Decimal("2.000")
+    ).exists()
+    assert MovementAudit.objects.filter(
+        movement=mv, event=MovementAudit.Event.LINE_ADDED
+    ).exists()

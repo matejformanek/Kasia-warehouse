@@ -58,6 +58,10 @@
     „Prázdný na / Dochází na" column (`<th>`+`<td>`) on `show_branch_chips`, so
     obsluha / single-branch vlastník no longer see an empty column; all-branches
     vlastník keeps the chips.
+  - **Katalog filters auto-apply:** dropped the „Filtrovat" submit button
+    (kept „Vymazat"); a small script on `catalogue_index.html` submits the GET
+    filterbar on any select change (kind/status/state/branch). The `q` name
+    search stays client-side (0063) and rides along in the query string.
   - **Výdej sidebar icon:** `base.html` line 96 SVG → barrier-at-top + arrow
     hanging below pointing down (reads as „going out"; mirror of Příjem).
   - **Movement edit add-line:** `movement_edit.html` gains the „Přidat řádek"

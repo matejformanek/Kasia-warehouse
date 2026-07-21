@@ -118,7 +118,7 @@ Nahoře je proužek s&nbsp;počty (KPI).</p>
     </div>
   {% endif %}
   <div>
-    <button class="primary" type="submit">Filtrovat</button>
+    {# Filters auto-apply on change (JS below) — no submit button; keep Vymazat. #}
     <a class="secondary" href="{% url 'inventory:catalogue_index' %}">Vymazat</a>
   </div>
   <div style="margin-left:auto;display:flex;gap:.5rem;">
@@ -178,4 +178,21 @@ Nahoře je proužek s&nbsp;počty (KPI).</p>
 {% else %}
   <p>Katalog je zatím prázdný. Nové produkty se přidávají v administraci.</p>
 {% endif %}
+
+<script>
+  // Auto-apply the server-side filters on any change (no "Filtrovat" button).
+  // Only the selects submit; the name search (q) stays client-side (0063) and
+  // rides along in the query string so it re-applies after the reload.
+  (function () {
+    var form = document.querySelector("form.filterbar");
+    if (!form) return;
+    ["kind", "status", "state", "branch"].forEach(function (name) {
+      var el = form.querySelector('select[name="' + name + '"]');
+      if (!el) return;
+      el.addEventListener("change", function () {
+        if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+      });
+    });
+  })();
+</script>
 {% endblock %}

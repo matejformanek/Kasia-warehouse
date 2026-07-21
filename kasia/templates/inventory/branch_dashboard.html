@@ -81,19 +81,32 @@ i&nbsp;formulář, kde nám napíšete.</p>
 
 <div class="card">
   <h2 style="font-size:1.05rem;margin-top:0;">Stav skladu</h2>
-  <form method="get" style="margin-bottom:0.75rem;">
-    <input type="search" name="q" value="{{ search }}"
+  {# No form/submit — 0063 live filter applies as you type; "Vymazat" (JS) shows only once there is text. #}
+  <div style="margin-bottom:0.75rem;">
+    <input type="search" id="branch-stock-search" value="{{ search }}"
            placeholder="Hledat produkt…"
            style="max-width:280px;"
            data-filter-rows=".cat-body"
            data-filter-empty="#branch-stock-empty">
-    <button class="secondary" type="submit">Hledat</button>
-    {% if search %}
-      <a class="secondary" href="{% url 'inventory:branch_dashboard' code=branch.code %}">
-        Vymazat
-      </a>
-    {% endif %}
-  </form>
+    <button type="button" id="branch-stock-clear" class="secondary" hidden>Vymazat</button>
+  </div>
+  <script>
+    (function () {
+      var input = document.getElementById("branch-stock-search");
+      var clear = document.getElementById("branch-stock-clear");
+      if (!input || !clear) return;
+      function sync() { clear.hidden = !input.value; }
+      input.addEventListener("input", sync);
+      clear.addEventListener("click", function () {
+        input.value = "";
+        // Re-run the 0063 live filter (it listens for "input") and hide myself.
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.focus();
+        sync();
+      });
+      sync();
+    })();
+  </script>
 
   {% if empty_rows or low_rows or ok_rows %}
     {% if empty_rows %}{% include "inventory/_catalogue_group.html" with group_rows=empty_rows group_id="cat-group-empty" head_class="empty" head_label="Prázdné" head_count=empty_rows|length branch_kind="empty" eff_class="eff-empty" show_branch_chips=False %}{% endif %}

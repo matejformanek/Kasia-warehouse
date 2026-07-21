@@ -90,10 +90,15 @@ def _recipient_formset_keepall() -> dict:
         payload[f"recipient-{i}-email"] = r.email
         payload[f"recipient-{i}-label"] = r.label
         payload[f"recipient-{i}-sort_order"] = str(r.sort_order)
+        payload[f"recipient-{i}-dodaci_branch"] = str(r.dodaci_branch_id or "")
         if r.is_active:
             payload[f"recipient-{i}-is_active"] = "on"
+        if r.is_dodaci_recipient:
+            payload[f"recipient-{i}-is_dodaci_recipient"] = "on"
         if r.is_low_stock_recipient:
             payload[f"recipient-{i}-is_low_stock_recipient"] = "on"
+        if r.is_feedback_recipient:
+            payload[f"recipient-{i}-is_feedback_recipient"] = "on"
     return payload
 
 

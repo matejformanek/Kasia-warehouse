@@ -1,0 +1,34 @@
+# Local-development Caddyfile — per decision 0083.
+#
+# Selected only when the on-box/dev .env sets CADDYFILE=./Caddyfile.dev (the
+# compose proxy volume mount); production keeps the committed ./Caddyfile
+# (kasia.cz + Let's Encrypt) untouched.
+#
+# Serves the app on localhost over BOTH http and https:
+#   • http://localhost  — plain HTTP, no redirect (explicit http:// block, so
+#     Caddy does NOT auto-upgrade :80 → :443 for this host).
+#   • https://localhost — Caddy's internal (self-signed) CA, never Let's
+#     Encrypt (localhost is an internal name; `tls internal` is explicit).
+# Both are offered because a browser that previously hit the prod Caddyfile on
+# localhost cached its permanent 308 → https redirect; without an https answer
+# the site looks "down". The https cert is self-signed, so the browser shows a
+# one-time "not secure" warning to click through — expected for local dev.
+
+http://localhost, http://127.0.0.1 {
+	reverse_proxy web:8000
+	encode zstd gzip
+	log {
+		output stdout
+		format console
+	}
+}
+
+https://localhost {
+	tls internal
+	reverse_proxy web:8000
+	encode zstd gzip
+	log {
+		output stdout
+		format console
+	}
+}

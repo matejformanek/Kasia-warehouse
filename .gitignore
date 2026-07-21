@@ -233,3 +233,6 @@ backups/
 # Claude Code worktrees — local, throwaway git worktrees under .claude/.
 # Each is its own checkout (registered via `git worktree`); never commit them.
 .claude/worktrees/
+
+# Local dev: extracted Caddy internal CA (per 0083) — machine-specific, never commit
+caddy-local-ca.crt

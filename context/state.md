@@ -5,6 +5,48 @@
 
 ## Done
 
+- **2026-07-21** — **Per-recipient e-mail preferences + branch scope + new-user
+  credentials mail** (decisions
+  [`0081`](./decisions/0081-per-recipient-notification-preferences.md) — amends
+  0052 + 0079; [`0082`](./decisions/0082-new-user-credentials-email.md) — amends
+  0075).
+  - **0081:** `SettingsRecipient` gains `is_dodaci_recipient` /
+    `is_feedback_recipient` / `dodaci_branch` (nullable FK). `is_active` is now
+    the master switch. Dodáky route per-flag + branch-scoped and **always copy
+    the issuer** (`movement.created_by`); Podpora routes to
+    `is_feedback_recipient` rows (fallback `FEEDBACK_NOTIFY_EMAIL`). The
+    `_assert_recipients_set` výdej guard is **removed**. Nastavení table + admin
+    grow the three columns; `design-system.md` documents them.
+  - **0082:** creating a user generates a ~12-char password and e-mails the new
+    user their login + password (new `EmailLog.Category.NEW_USER_CREDENTIALS`);
+    always sent, never blocks creation. Create form drops its password fields.
+  - Migration `inventory/0022_recipient_prefs_and_credentials_category` (defaults
+    backfill, no `RunPython`).
+  - E-mail links are now **absolute** (new `SITE_BASE_URL` env knob →
+    `_absolute_url()` in `services/email.py`; credentials + Podpora mails). Set
+    `SITE_BASE_URL=https://kasia.cz` in the box `.env` (documented in
+    `.env.example`); reader defaults to `http://localhost:8000`.
+- **2026-07-21** — **Local-dev Caddy + e-mail overrides** (decision
+  [`0083`](./decisions/0083-local-dev-caddy-and-email.md); relates 0024/0056/0049).
+  - `make up` → **http://localhost** now works: `compose.yaml` proxy mounts
+    `${CADDYFILE:-./Caddyfile}`, new `Caddyfile.dev` (`auto_https off`, `:80`)
+    selected via dev `.env` `CADDYFILE=./Caddyfile.dev`. Prod unset → committed
+    `Caddyfile` unchanged.
+  - Dev sends e-mail via the **real `mail.kasia.cz`** (Matej wants real inbox
+    delivery while testing) from `aplikace@kasia.cz` — a real `@kasia.cz` sender
+    is required or Gmail drops it. `EMAIL_BACKEND` is env-overridable (default
+    SMTP) and the console backend stays as an offline alternative.
+  - Dev knobs documented in `.env.example` as unset-on-prod. **Prod one-time:**
+    set `SITE_BASE_URL=https://kasia.cz` on the box `.env`.
+  - **Reproducible out of the box:** `make up` defaults
+    `CADDYFILE=./Caddyfile.dev`; `SITE_BASE_URL` reader defaults to
+    `http://localhost`; `seed_walkthrough_data` sets a real `@kasia.cz` sender
+    (was `no-reply@kasia.local`). A fresh clone/session works without shell/.env
+    surgery (real delivery still needs `EMAIL_HOST_PASSWORD` in the local `.env`).
+  - **Password reset now logged:** routed through `send_and_log`
+    (`LoggedPasswordResetForm`, new `EmailLog.Category.PASSWORD_RESET`,
+    migration `0023`) using the Settings sender → appears in „E-maily" + delivers
+    independent of `DEFAULT_FROM_EMAIL`.
 - **2026-07-21** — **Inventura fixes: „Dochází / prázdné" critical toggle +
   fuzzy name filter** (decision
   [`0080`](./decisions/0080-inventura-critical-toggle-and-fuzzy-filter.md);

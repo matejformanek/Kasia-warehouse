@@ -3,7 +3,6 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import Client, override_settings
 
@@ -22,7 +21,6 @@ from inventory.tests._support import (
     _VIEW_TEST_OVERRIDES,
     _recipient_formset_keepall,
     _seed_vydej,
-    _vydej,
 )
 
 # Batch B — Catalogue per-branch low-stock chips (Podpora feedback #4,
@@ -267,12 +265,13 @@ def test_send_dodaci_list_iterates_all_active_recipients(
     )
     log = EmailLog.objects.get(dodaci_list__movement=mv)
     assert log.status == EmailLog.Status.SENT
-    # 3 active rows in conftest + new one = should ship to 3 addresses.
+    # 2 seeded active rows + new one, plus the issuer (0081) always copied.
     recips = [r.strip() for r in log.recipients.split(",")]
     assert set(recips) == {
         "petr@example.cz",
         "karolina@example.cz",
         "uctarna@kasia.cz",
+        "user-tyn@example.cz",
     }
 
 
@@ -297,25 +296,74 @@ def test_send_dodaci_list_skips_inactive_recipients(
     )
     log = EmailLog.objects.get(dodaci_list__movement=mv)
     recips = [r.strip() for r in log.recipients.split(",")]
-    assert recips == ["petr@example.cz"]
+    # Karolína inactive → Petr + the issuer (0081) always copied.
+    assert set(recips) == {"petr@example.cz", "user-tyn@example.cz"}
 
 
-@pytest.mark.django_db
-def test_send_dodaci_list_refuses_with_zero_active_recipients(
-    tyn, ricany, pepper, user_tyn
+@pytest.mark.django_db(transaction=True)
+def test_send_dodaci_list_branch_scoped_recipient_skipped(
+    tyn, sez, ricany, pepper, user_tyn
 ) -> None:
-    """No active recipients → ValidationError before any DB write."""
+    """Per 0081: a SEZ-scoped recipient does not receive a TYN dodák; the
+    Všechny recipients + the issuer do."""
     from inventory.models import SettingsRecipient
 
-    SettingsRecipient.objects.update(is_active=False)
+    SettingsRecipient.objects.create(
+        email="sez-only@kasia.cz",
+        label="SEZ only",
+        is_active=True,
+        is_dodaci_recipient=True,
+        dodaci_branch=sez,
+        sort_order=2,
+    )
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
-    with pytest.raises(ValidationError):
-        apply_movement(
-            movement=_vydej(tyn, ricany, user_tyn),
-            lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
-            user=user_tyn,
-        )
-    assert Movement.objects.count() == 0
+    mv = apply_movement(
+        movement=Movement(
+            branch=tyn,
+            kind=Movement.Kind.VYDEJ,
+            date_issued=date(2026, 6, 28),
+            odberatel=ricany,
+        ),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
+        user=user_tyn,
+    )
+    log = EmailLog.objects.get(dodaci_list__movement=mv)
+    recips = {r.strip() for r in log.recipients.split(",")}
+    # Both seeded rows are unscoped (all branches) → they get it; the issuer
+    # too. The SEZ-scoped row is excluded from this TYN dodák.
+    assert recips == {
+        "petr@example.cz",
+        "karolina@example.cz",
+        "user-tyn@example.cz",
+    }
+    assert "sez-only@kasia.cz" not in recips
+
+
+@pytest.mark.django_db(transaction=True)
+def test_send_dodaci_list_excludes_non_dodaci_recipient(
+    tyn, ricany, pepper, user_tyn
+) -> None:
+    """Per 0081: a row opted out of dodáky (is_dodaci_recipient=False) is
+    skipped even while active."""
+    from inventory.models import SettingsRecipient
+
+    SettingsRecipient.objects.filter(label="Karolína").update(
+        is_dodaci_recipient=False
+    )
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mv = apply_movement(
+        movement=Movement(
+            branch=tyn,
+            kind=Movement.Kind.VYDEJ,
+            date_issued=date(2026, 6, 28),
+            odberatel=ricany,
+        ),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
+        user=user_tyn,
+    )
+    log = EmailLog.objects.get(dodaci_list__movement=mv)
+    recips = {r.strip() for r in log.recipients.split(",")}
+    assert recips == {"petr@example.cz", "user-tyn@example.cz"}
 
 
 @pytest.mark.django_db
@@ -334,6 +382,12 @@ def test_recipient_formset_renders_existing_rows(user_vlastnik) -> None:
     # Formset management form is present.
     assert "recipient-TOTAL_FORMS" in body
     assert "recipient-INITIAL_FORMS" in body
+    # Per 0081: the per-flag columns + branch dropdown render, and the hidden
+    # empty-row template offers „Všechny" as the first (null) branch option.
+    assert "is_dodaci_recipient" in body
+    assert "is_feedback_recipient" in body
+    assert "dodaci_branch" in body
+    assert ">Všechny<" in body
 
 
 @pytest.mark.django_db

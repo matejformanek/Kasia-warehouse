@@ -13,15 +13,83 @@ group present ↔ obsluha) and `User.branch_id`.
 from __future__ import annotations
 
 from django import forms
+from django.contrib.auth.forms import PasswordResetForm
 from django.contrib.auth.models import Group
-from django.contrib.auth.password_validation import validate_password
+from django.template import loader
+from django.utils.crypto import get_random_string
 
 from inventory.models import Branch
 
 from .models import User
 
+
+class LoggedPasswordResetForm(PasswordResetForm):
+    """Password-reset form that routes the e-mail through the app's
+    ``send_and_log`` interception point (per 0075/0083) so the send appears in
+    the „E-maily" outbox as a ``PASSWORD_RESET`` row, like every other app
+    e-mail. Django's built-in ``PasswordResetForm`` sends via its own mailer and
+    never logs. Token/uid/context generation is unchanged — only the delivery is
+    overridden.
+
+    Set ``form.sent_by`` to the vlastník triggering the reset before ``save()``.
+    After ``save()``, ``form.email_log`` holds the resulting ``EmailLog`` row so
+    the caller can surface a swallowed send failure.
+    """
+
+    sent_by = None
+    email_log = None
+
+    def send_mail(
+        self,
+        subject_template_name,
+        email_template_name,
+        context,
+        from_email,
+        to_email,
+        html_email_template_name=None,
+    ) -> None:
+        # Lazy import: accounts must not import inventory.services at module load.
+        from inventory.models import EmailLog, Settings
+        from inventory.services import send_and_log
+
+        subject = "".join(
+            loader.render_to_string(subject_template_name, context).splitlines()
+        )
+        body = loader.render_to_string(email_template_name, context)
+
+        # Prefer the configured Settings sender (same as credentials/Podpora) so
+        # delivery doesn't depend on DEFAULT_FROM_EMAIL being a real address.
+        s = Settings.load()
+        resolved_from = (
+            f"{s.email_from_name} <{s.email_from_address}>"
+            if s.email_from_name and s.email_from_address
+            else (s.email_from_address or from_email or None)
+        )
+        self.email_log = send_and_log(
+            category=EmailLog.Category.PASSWORD_RESET,
+            trigger_reason="Reset hesla (Správa uživatelů)",
+            subject=subject,
+            body=body,
+            recipients=[to_email],
+            from_email=resolved_from,
+            sent_by=self.sent_by,
+        )
+
 ROLE_VLASTNIK = "vlastnik"
 ROLE_OBSLUHA = "obsluha"
+
+# Unambiguous alphabet — excludes O/0/I/l/1 so a mailed password can be typed
+# back reliably. ~12 chars over this set easily passes the default validators.
+_PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
+
+
+def generate_initial_password(length: int = 12) -> str:
+    """Generate a random initial password for a new user (per 0082).
+
+    Django 5.2: ``make_random_password`` was removed in 5.1, so we use
+    ``get_random_string`` over an unambiguous alphabet.
+    """
+    return get_random_string(length, _PASSWORD_ALPHABET)
 
 ROLE_CHOICES = [
     (ROLE_VLASTNIK, "Vlastník / správce"),
@@ -57,16 +125,6 @@ class _UserBaseForm(forms.Form):
 
 
 class UserCreateForm(_UserBaseForm):
-    password1 = forms.CharField(
-        label="Heslo",
-        widget=forms.PasswordInput,
-        min_length=8,
-    )
-    password2 = forms.CharField(
-        label="Heslo (potvrzení)",
-        widget=forms.PasswordInput,
-    )
-
     def clean_email(self) -> str:
         email = self.cleaned_data["email"].strip().lower()
         if User.objects.filter(email__iexact=email).exists():
@@ -75,28 +133,22 @@ class UserCreateForm(_UserBaseForm):
             )
         return email
 
-    def clean(self) -> dict:
-        cleaned = super().clean()
-        p1 = cleaned.get("password1")
-        p2 = cleaned.get("password2")
-        if p1 and p2 and p1 != p2:
-            self.add_error("password2", "Hesla se neshodují.")
-        if p1:
-            try:
-                validate_password(p1)
-            except forms.ValidationError as exc:
-                self.add_error("password1", exc)
-        return cleaned
-
     def save(self) -> User:
+        """Create the user with a system-generated password (per 0082).
+
+        The raw password is stashed on ``user._raw_password`` so the view can
+        e-mail it to the new user via ``send_new_user_credentials``.
+        """
         cleaned = self.cleaned_data
+        raw_password = generate_initial_password()
         user = User.objects.create_user(
             email=cleaned["email"],
-            password=cleaned["password1"],
+            password=raw_password,
             first_name=cleaned["first_name"],
             last_name=cleaned.get("last_name", ""),
             branch=cleaned.get("branch"),
         )
+        user._raw_password = raw_password
         _sync_role(user, cleaned["role"])
         return user
 

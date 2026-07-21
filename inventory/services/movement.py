@@ -18,7 +18,6 @@ from .dodaci_list import (
     render_dodaci_list_pdf,
     send_dodaci_list_email,
 )
-from .email import _assert_recipients_set
 from .reorder import capture_low_stock_state, send_low_stock_alert_for_crossings
 from .stock import _apply_line_to_stock
 
@@ -142,9 +141,6 @@ def apply_movement(
         and movement.odberatel is not None
         and movement.odberatel.is_internal
     )
-
-    if movement.kind == Movement.Kind.VYDEJ and not is_internal_vydej:
-        _assert_recipients_set()
 
     # Per 0074: snapshot which (product, branch) pairs are already in the
     # low-stock alert set BEFORE mutating, then e-mail on commit the pairs
@@ -360,7 +356,6 @@ def edit_movement(
         # block (e.g. a stock overdraw later) skips the e-mail entirely.
         dodaci_list = DodaciList.objects.filter(movement=movement).first()
         if dodaci_list is not None:
-            _assert_recipients_set()
             dodaci_list.current_version += 1
             dodaci_list.save(update_fields=["current_version"])
             _send_dodaci_on_commit(dodaci_list, f"oprava: {reason}")

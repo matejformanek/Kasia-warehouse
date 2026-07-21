@@ -196,16 +196,32 @@ def send_dodaci_list_email(
     pdf_bytes: bytes,
     sent_by=None,
 ) -> EmailLog:
-    """Send one dodák e-mail to every active SettingsRecipient row per 0052.
+    """Send one dodák e-mail to the branch-scoped recipients + its issuer.
 
-    Renders subject/body/from + attaches the PDF, then delegates the send +
-    logging to `send_and_log` (per 0075) — which writes a SENT or FAILED
+    Per 0081: recipients are the active, dodák-opted-in `SettingsRecipient` rows
+    whose branch scope matches this dodák (`_active_dodak_recipients(branch)`),
+    **unioned with the issuer** (`movement.created_by`) so a dodák can never
+    reach nobody — this replaces the removed `_assert_recipients_set` výdej
+    guard. Renders subject/body/from + attaches the PDF, then delegates the send
+    + logging to `send_and_log` (per 0075) — which writes a SENT or FAILED
     `EmailLog` row and never re-raises. The výdej / oprava write that triggered
     the send is already committed. `sent_by` records the operator for a manual
     resend (None for the automatic on-commit send).
     """
     s = Settings.load()
-    recipients = _active_dodak_recipients()
+    recipients = _active_dodak_recipients(dodaci_list.branch)
+    # Always copy the issuer (Movement.created_by is non-nullable). Union +
+    # case-insensitive dedup so the issuer isn't duplicated when they're also a
+    # configured recipient; drop any empty-string addresses defensively.
+    issuer_email = (dodaci_list.movement.created_by.email or "").strip()
+    if issuer_email:
+        recipients = [*recipients, issuer_email]
+    seen: set[str] = set()
+    recipients = [
+        r
+        for r in recipients
+        if (r or "").strip() and (r.lower() not in seen and not seen.add(r.lower()))
+    ]
     is_oprava = trigger_reason.startswith("oprava")
     subject_template = (
         s.template_oprava_subject if is_oprava else s.template_initial_subject

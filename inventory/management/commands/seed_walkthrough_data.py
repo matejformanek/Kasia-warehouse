@@ -54,9 +54,16 @@ class Command(BaseCommand):
         self.stdout.write("=== Seeding walkthrough data ===")
 
         # --- Settings + users + catalogue (idempotent) ---------------
+        # Sender must be a REAL @kasia.cz address, not a fake .local one, or
+        # every outgoing mail (credentials, password reset, dodák) is accepted
+        # by the relay but dropped by the recipient (SPF/DKIM). Default to the
+        # authenticated SMTP account (EMAIL_HOST_USER) so a freshly-seeded dev DB
+        # actually delivers; fall back to the app address. Per 0083.
         s = Settings.load()
-        s.email_from_address = "no-reply@kasia.local"
-        s.email_from_name = "Kasia vera — sklad (dev)"
+        s.email_from_address = (
+            django_settings.EMAIL_HOST_USER or "aplikace@kasia.cz"
+        )
+        s.email_from_name = "Kasia vera"
         s.save()
 
         # Seed SettingsRecipient pair per 0052 (idempotent — uses

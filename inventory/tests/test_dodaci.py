@@ -253,7 +253,12 @@ def test_apply_vydej_renders_pdf_and_queues_send(
     assert len(mail.outbox) == 1
     msg = mail.outbox[0]
     assert "Dodací list TYN-2026-0001" in msg.subject
-    assert set(msg.to) == {"petr@example.cz", "karolina@example.cz"}
+    # Per 0081: the two seeded recipients + the issuer (user_tyn) always copied.
+    assert set(msg.to) == {
+        "petr@example.cz",
+        "karolina@example.cz",
+        "user-tyn@example.cz",
+    }
     assert len(msg.attachments) == 1
     filename, content, mimetype = msg.attachments[0]
     assert filename == "TYN-2026-0001.pdf"
@@ -277,24 +282,28 @@ def test_apply_vydej_writes_sent_log(tyn, ricany, pepper, user_tyn) -> None:
     assert log.trigger_reason == "vystavení"
 
 
-@pytest.mark.django_db
-def test_apply_vydej_refuses_when_recipients_empty(
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_LOCMEM_EMAIL)
+def test_apply_vydej_succeeds_with_no_active_recipients_reaches_issuer(
     tyn, ricany, pepper, user_tyn
 ) -> None:
     from inventory.models import SettingsRecipient
 
-    # Per 0052: refuse when no active SettingsRecipient row exists.
+    # Per 0081: the _assert_recipients_set guard is gone. With no active
+    # configured recipient the výdej still succeeds and the dodák still reaches
+    # its issuer (movement.created_by), so it can never reach nobody.
     SettingsRecipient.objects.update(is_active=False)
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
-    with pytest.raises(ValidationError):
-        apply_movement(
-            movement=_vydej(tyn, ricany, user_tyn),
-            lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
-            user=user_tyn,
-        )
-    assert Movement.objects.count() == 0
-    assert DodaciList.objects.count() == 0
-    assert EmailLog.objects.count() == 0
+    mv = apply_movement(
+        movement=_vydej(tyn, ricany, user_tyn),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
+        user=user_tyn,
+    )
+    assert Movement.objects.count() == 1
+    assert DodaciList.objects.count() == 1
+    log = EmailLog.objects.get(dodaci_list__movement=mv)
+    assert log.status == EmailLog.Status.SENT
+    assert user_tyn.email in log.recipients
 
 
 @pytest.mark.django_db

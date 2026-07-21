@@ -5,6 +5,7 @@ from __future__ import annotations
 from django import forms
 
 from ..models import (
+    Branch,
     Settings,
     SettingsRecipient,
 )
@@ -44,20 +45,34 @@ class SettingsForm(forms.ModelForm):
 
 
 class SettingsRecipientForm(forms.ModelForm):
+    # Explicit declaration overrides the auto ModelChoiceField so the empty
+    # option reads „Všechny" (all branches) rather than the default "---------".
+    dodaci_branch = forms.ModelChoiceField(
+        queryset=Branch.objects.filter(is_active=True),
+        required=False,
+        empty_label="Všechny",
+    )
+
     class Meta:
         model = SettingsRecipient
         fields = (
             "email",
             "label",
             "is_active",
+            "is_dodaci_recipient",
             "is_low_stock_recipient",
+            "is_feedback_recipient",
+            "dodaci_branch",
             "sort_order",
         )
         labels = {
             "email": "E-mail",
             "label": "Popisek",
             "is_active": "Aktivní",
+            "is_dodaci_recipient": "Dodací listy",
             "is_low_stock_recipient": "Souhrn dochází zboží",
+            "is_feedback_recipient": "Podpora",
+            "dodaci_branch": "Pobočka",
             "sort_order": "Pořadí",
         }
         widgets = {

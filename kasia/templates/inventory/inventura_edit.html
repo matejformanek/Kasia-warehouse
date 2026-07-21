@@ -29,6 +29,24 @@ jako korekce stavu.</p>
   nezměněné řádky zůstanou beze změny.</li>
 </ol>
 
+<h3>Sloupec „Příjezd" — kdy zapisuji stav a&nbsp;kdy objednávám</h3>
+<p>Každý řádek umí <strong>dvě věci</strong> podle toho, zda vyplníte datum ve
+sloupci <strong>„Příjezd (= objednávka)"</strong>:</p>
+<ul>
+  <li><strong>Příjezd prázdný = korekce stavu.</strong> Číslo v&nbsp;„Nový stav /
+  objednat" je <strong>skutečně napočítané množství</strong> na skladě. Uložením
+  se stav opraví na tuto hodnotu (běžná inventura).</li>
+  <li><strong>Příjezd vyplněný = objednávka.</strong> Číslo v&nbsp;„Nový stav /
+  objednat" se bere jako <strong>objednané množství, které dorazí k&nbsp;tomu
+  datu</strong> — vytvoří se <strong>plánovaný příjem</strong>. Stav skladu se
+  <em>hned nemění</em>; zásoby naskladníte až tlačítkem „Přijmout" v&nbsp;Historii
+  → „Plánované", jakmile zboží dorazí.</li>
+</ul>
+<p>Takže když při počítání zjistíte, že něčeho je málo, můžete to rovnou
+<strong>objednat</strong> — stačí u&nbsp;řádku vyplnit množství a&nbsp;datum
+příjezdu. U&nbsp;řádku s&nbsp;už existující objednávkou vidíte poznámku
+„objednáno … · příjezd …" s&nbsp;odkazy upravit / zrušit.</p>
+
 <h3>Pomůcky, které tu máte</h3>
 <ul>
   <li><strong>Vyhledávání</strong> — filtruje řádky podle názvu za běhu; zvládne

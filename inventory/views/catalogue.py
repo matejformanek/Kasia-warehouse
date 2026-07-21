@@ -189,15 +189,10 @@ def catalogue_index(request):
         else list(Branch.objects.filter(is_active=True))
     )
 
-    # Rows / groups / KPIs come from the shared helper (same source as the
-    # obsluha Přehled). KPIs are over the whole current scope, before the
-    # ?state= filter narrows the display.
+    # Rows / groups come from the shared helper (same source as the obsluha
+    # Přehled).
     groups = catalogue_stock_groups(products, reserved_branches)
     rows = groups["rows"]
-    kpi_products = groups["kpi_products"]
-    kpi_empty = groups["kpi_empty"]
-    kpi_low = groups["kpi_low"]
-    kpi_total_kg = groups["kpi_total_kg"]
     empty_rows = groups["empty_rows"]
     low_rows = groups["low_rows"]
     ok_rows = groups["ok_rows"]
@@ -210,6 +205,18 @@ def catalogue_index(request):
         rows, low_rows, ok_rows = empty_rows, [], []
     elif state_filter == "ok":
         rows, empty_rows, low_rows = ok_rows, [], []
+
+    # KPIs reflect the *displayed* selection — every server filter (kind /
+    # status / branch / state) combined — so the top numbers always match
+    # what's on screen (a Typ + Stav-skladu combo narrows them together, not
+    # just Typ). Computed after the state narrowing from the final row set;
+    # per 0084 the client (base.html apply()) then live-recomputes them from
+    # the visible rows as the name filter is typed, restoring these values
+    # when the box is cleared.
+    kpi_products = len(rows)
+    kpi_empty = len(empty_rows)
+    kpi_low = len(low_rows)
+    kpi_total_kg = sum((r["total"] for r in rows), Decimal("0.000"))
 
     return render(
         request,

@@ -47,6 +47,18 @@
     (`LoggedPasswordResetForm`, new `EmailLog.Category.PASSWORD_RESET`,
     migration `0023`) using the Settings sender → appears in „E-maily" + delivers
     independent of `DEFAULT_FROM_EMAIL`.
+- **2026-07-21** — **Katalog / Stav-skladu: live KPI + group-count recompute on
+  the name filter + greener „V pořádku" header** (decision
+  [`0084`](./decisions/0084-live-kpi-recompute-on-name-filter.md); amends
+  0063 + 0064). The shared `apply()` (`base.html`) now recomputes the KPI strip
+  (Prázdné / Dochází / Produktů / Celková zásoba) and each group's `.sub-head`
+  count from the visible rows as you type, restoring the server-original values
+  when the box is cleared (cache-and-restore). New locked hooks:
+  `data-filter-bucket` (group `<tbody>`), `data-filter-kg` (`|unlocalize`d row
+  kg), `data-kpi-live` (KPI spans). `.sub-head.ok` swapped from neutral grey to
+  green (`--ok` / `--ok-soft`) in `components/groups.css`. Views' KPI comments +
+  design-system.md / frontend-and-templates.md updated; test assertions fixed +
+  new-hook pins added.
 - **2026-07-21** — **Inventura fixes: „Dochází / prázdné" critical toggle +
   fuzzy name filter** (decision
   [`0080`](./decisions/0080-inventura-critical-toggle-and-fuzzy-filter.md);

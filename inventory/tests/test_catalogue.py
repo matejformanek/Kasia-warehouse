@@ -109,6 +109,72 @@ def test_catalogue_state_ok_filter(user_vlastnik, tyn) -> None:
 
 
 @pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_kpis_reflect_state_filter(user_vlastnik, tyn) -> None:
+    """The server KPI strip reflects the ?state= narrowing (combined with the
+    other server filters), so the top numbers match the displayed rows — not
+    the whole scope before state. Per 0084."""
+    ok = Product.objects.create(
+        name_cs="OK zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    low = Product.objects.create(
+        name_cs="Dochazi zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    empty = Product.objects.create(
+        name_cs="Prazdne zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    Stock.objects.create(product=ok, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=low, branch=tyn, quantity=Decimal("3.000"))
+    Stock.objects.create(product=empty, branch=tyn, quantity=Decimal("0.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    # Whole scope: 3 products, 1 low, 1 empty.
+    body = client.get("/sklad/katalog/").content.decode("utf-8")
+    assert 'data-kpi-live="products">3</span>' in body
+    # ?state=low → KPIs reflect only the low group (1 product, 1 low, 0 empty).
+    low_body = client.get("/sklad/katalog/?state=low").content.decode("utf-8")
+    assert 'data-kpi-live="products">1</span>' in low_body
+    assert 'data-kpi-live="low">1</span>' in low_body
+    assert 'data-kpi-live="empty">0</span>' in low_body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_renders_live_kpi_hooks(user_vlastnik, tyn) -> None:
+    """Per 0084: the group tbodies carry data-filter-bucket, rows carry a
+    dot-decimal data-filter-kg, and the KPI spans carry data-kpi-live — the
+    server contract the live-recompute JS depends on."""
+    ok = Product.objects.create(
+        name_cs="OK zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    low = Product.objects.create(
+        name_cs="Dochazi zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    empty = Product.objects.create(
+        name_cs="Prazdne zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    Stock.objects.create(product=ok, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=low, branch=tyn, quantity=Decimal("3.000"))
+    Stock.objects.create(product=empty, branch=tyn, quantity=Decimal("0.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/katalog/").content.decode("utf-8")
+    assert 'data-filter-bucket="empty"' in body
+    assert 'data-filter-bucket="low"' in body
+    assert 'data-filter-bucket="ok"' in body
+    # kg is dot-decimal (|unlocalize) so JS parseFloat works.
+    assert 'data-filter-kg="10.000"' in body
+    assert 'data-kpi-live="products"' in body
+    assert 'data-kpi-live="total-kg"' in body
+
+
+@pytest.mark.django_db
 def test_new_product_defaults_threshold_zero(db) -> None:
     """Per 0072: a new product's reorder_threshold_kg defaults to 0 (not NULL)."""
     p = Product.objects.create(name_cs="Bez prahu", kind=Product.Kind.RAW_SPICE)

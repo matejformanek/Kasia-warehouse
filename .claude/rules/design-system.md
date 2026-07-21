@@ -77,8 +77,9 @@ or restructure:
 - **Shared sklad classes:** `.card`, `.primary`/`.secondary`, `table.lines`,
   `.field`, `.messages`/`.msg.*`, `.tab-chip`, `details`, `.row-link`,
   `.recipients`, `.stock-warn`, `.non-form-errors`, `.warnings-banner`,
-  `.row-delete-btn`, `.kpis`/`.kpi`, `.js-confirm`, and **`.sub-head`** (the
-  grouped-section header: dot + label + count, coloured red/orange/neutral —
+  `.row-delete-btn`, `.kpis`/`.kpi`, **`data-kpi-live`** (the live-recompute KPI
+  value hook, per 0084), `.js-confirm`, and **`.sub-head`** (the
+  grouped-section header: dot + label + count, coloured red/orange/green —
   used by the grouped Katalog and the per-branch Přehled). Keep the `:root`
   vars child templates use: `--fg-soft`, `--warn`, `--ok`, `--ok-soft`,
   `--error`, `--accent`. Per-screen CSS is a linked stylesheet
@@ -177,7 +178,19 @@ or restructure:
   hook reuse the SAME fold/fuzzy logic (per
   [`0080`](../../context/decisions/0080-inventura-critical-toggle-and-fuzzy-filter.md)
   — the inventura name filter uses it). Renaming `window.kasiaRowFilter` is a
-  new decision.
+  new decision. **Live KPI / group-count recompute (per
+  [`0084`](../../context/decisions/0084-live-kpi-recompute-on-name-filter.md)):**
+  on the grouped stock screens the same `apply()` also **recomputes the KPI
+  strip + each group's `.sub-head .count` from the visible rows as you type**,
+  and **restores** the server-original values when the box is cleared
+  (cache-and-restore — each target caches its server text on first run). KPI
+  value spans carry **`data-kpi-live`** (`empty`/`low`/`products`/
+  `products-stocked`/`total-kg`); it is a **separate** hook from the
+  reserved-but-unwired `data-filter-count` (the KPI strip is several per-state
+  buckets + a kg sum, not one visible-row total). Gated on any matched tbody
+  carrying `data-filter-bucket`, so history / email-log single lists and the
+  filter-less home Přehled are untouched. Renaming `data-kpi-live` is a new
+  decision.
   The číselníky (Dodavatelé / Odběratelé / Pobočky) carry **no** name search
   (the locked mockups 12–14 show only the Stav filter) — the 0063 standalone
   input added there was removed in the Phase-2 swap. Do **not** reuse the
@@ -193,6 +206,12 @@ or restructure:
   `data-filter-group` is a plain single list and behaves exactly as under 0063
   — so every existing single-tbody filter is untouched. Renaming
   `data-filter-group` or the multi-selector behaviour is a new decision.
+  Per [`0084`](../../context/decisions/0084-live-kpi-recompute-on-name-filter.md)
+  the group `<tbody>` also carries **`data-filter-bucket`** (`empty`/`low`/`ok`)
+  and each row a **`data-filter-kg`** (raw on-hand sum, `|unlocalize`d
+  dot-decimal — never `floatformat`, whose comma breaks the JS sum) so `apply()`
+  can tally per-state buckets + a kg total for the live KPI recompute above.
+  Renaming `data-filter-bucket` / `data-filter-kg` is a new decision.
 
 ## Movement.status (planned príjem) — per 0059
 
@@ -297,7 +316,7 @@ blocks and in `0054` — point there rather than copying hex into this rule.
 - **Katalog** (`catalogue_index`, per
   [`0064`](../../context/decisions/0064-grouped-catalogue-client-filter.md)) is
   **grouped by stock state** into three separate `<table>`s — Prázdné (red) /
-  Dochází (orange) / V pořádku (neutral) — under `.sub-head` headers, with a KPI
+  Dochází (orange) / V pořádku (green) — under `.sub-head` headers, with a KPI
   strip. The view groups its rows server-side and renders **only the non-empty
   groups**. Rows are **whole-row `row-link` with no per-row buttons** (editing is
   on the product detail page). It uses the grouped multi-tbody filter above.

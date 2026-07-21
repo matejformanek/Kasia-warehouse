@@ -295,9 +295,14 @@
       const tbodies = document.querySelectorAll(input.dataset.filterRows);
       if (!tbodies.length) return;
       const tokens = foldText(input.value).split(" ").filter(Boolean);
-      let visible = 0, total = 0;
+      const active = tokens.length > 0;
+      let visible = 0, total = 0, stocked = 0, sumKg = 0;
+      let hasBuckets = false;
+      const buckets = { empty: 0, low: 0, ok: 0 };
       tbodies.forEach(function (tbody) {
         const rows = tbody.querySelectorAll("tr[data-filter-text]");
+        const bucket = tbody.dataset.filterBucket;
+        if (bucket !== undefined) hasBuckets = true;
         let groupVisible = 0;
         rows.forEach(function (row) {
           if (row.dataset.filterFolded === undefined) {
@@ -307,13 +312,26 @@
           const match = tokens.length === 0 ||
             matchesQuery(tokens, folded, folded.split(" ").filter(Boolean));
           row.style.display = match ? "" : "none";
-          if (match) { visible++; groupVisible++; }
+          if (match) {
+            visible++; groupVisible++;
+            if (bucket !== undefined && buckets[bucket] !== undefined) buckets[bucket]++;
+            const kg = parseFloat(row.dataset.filterKg || "0");
+            sumKg += kg;
+            if (kg > 0) stocked++;
+          }
           total++;
         });
         if (tbody.dataset.filterGroup) {
           const section = document.querySelector(tbody.dataset.filterGroup);
           if (section) {
             section.style.display = (rows.length && groupVisible === 0) ? "none" : "";
+            // Per-group .sub-head count: cache the server-original once, then
+            // show the visible count while typing / restore it when cleared.
+            const countEl = section.querySelector(".sub-head .count");
+            if (countEl) {
+              if (countEl.dataset.origText === undefined) countEl.dataset.origText = countEl.textContent;
+              countEl.textContent = active ? String(groupVisible) : countEl.dataset.origText;
+            }
           }
         }
       });
@@ -324,6 +342,24 @@
       if (input.dataset.filterEmpty) {
         const el = document.querySelector(input.dataset.filterEmpty);
         if (el) el.style.display = (total && visible === 0) ? "" : "none";
+      }
+      // Live KPI strip (per 0084) — only when the filtered list carries the
+      // grouped stock buckets (Katalog / branch Přehled). Cache the server
+      // original per span first, then recompute from visible rows (typing) or
+      // restore (box cleared). Skips history / email-log single lists.
+      if (hasBuckets) {
+        const kgText = sumKg.toFixed(1).replace(".", ",");
+        document.querySelectorAll("[data-kpi-live]").forEach(function (el) {
+          if (el.dataset.kpiOrig === undefined) el.dataset.kpiOrig = el.textContent;
+          if (!active) { el.textContent = el.dataset.kpiOrig; return; }
+          switch (el.dataset.kpiLive) {
+            case "empty":            el.textContent = String(buckets.empty); break;
+            case "low":              el.textContent = String(buckets.low); break;
+            case "products":         el.textContent = String(visible); break;
+            case "products-stocked": el.textContent = String(stocked); break;
+            case "total-kg":         el.textContent = kgText; break;
+          }
+        });
       }
     }
 

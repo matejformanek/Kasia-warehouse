@@ -27,9 +27,12 @@ points there, it does not restate it.
   design-system.md § "Quantities display at 1 dp".)
 - **Don't `escapejs` a `data-filter-text` value** (the 0063 live-filter hook). The
   row text is built from Django's default auto-escaping; `escapejs` emits `\"`
-  that `dataset` reads literally and the filter breaks.
+  that `dataset` reads literally and the filter breaks. Likewise **`data-filter-kg`
+  (the 0084 live-KPI sum) must be `|unlocalize`d (dot), never `floatformat`
+  (comma)** — a comma makes JS `parseFloat` truncate the kg total silently.
 - **Don't rename the locked class names / JS-HTMX hooks** (`.card`, `table.lines`,
   `.sub-head`, `.row-link[data-href]`, `#lines-body`, `data-filter-rows`,
+  `data-filter-bucket` / `data-filter-kg` / `data-kpi-live` (live KPI recompute, 0084),
   `data-guard-unsaved`, `.js-confirm`, `{% block page_help %}` / `#kasia-help` /
   `#help-fab` / `.help-dialog` / `.help-body` (per-page help, 0078), …). Restyle
   freely; renaming a hook or reordering the component CSS layer is a **new

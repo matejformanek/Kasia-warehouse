@@ -50,22 +50,22 @@ Nahoře je proužek s&nbsp;počty (KPI).</p>
   <section class="kpis" aria-label="Souhrn katalogu">
     <div class="kpi">
       <span class="lbl">Produktů</span>
-      <span class="k-val">{{ kpi_products }}</span>
+      <span class="k-val" data-kpi-live="products">{{ kpi_products }}</span>
       <span class="k-sub">v tomto výběru</span>
     </div>
     <div class="kpi warn">
       <span class="lbl">Dochází</span>
-      <span class="k-val">{{ kpi_low }}</span>
+      <span class="k-val" data-kpi-live="low">{{ kpi_low }}</span>
       <span class="k-sub">pod objednacím bodem</span>
     </div>
     <div class="kpi err">
       <span class="lbl">Prázdné</span>
-      <span class="k-val">{{ kpi_empty }}</span>
+      <span class="k-val" data-kpi-live="empty">{{ kpi_empty }}</span>
       <span class="k-sub">efektivně 0 kg</span>
     </div>
     <div class="kpi">
       <span class="lbl">Celková zásoba</span>
-      <span class="k-val">{{ kpi_total_kg|floatformat:1 }} <span class="k-unit">kg</span></span>
+      <span class="k-val"><span data-kpi-live="total-kg">{{ kpi_total_kg|floatformat:1 }}</span> <span class="k-unit">kg</span></span>
       <span class="k-sub">součet zásob ve výběru</span>
     </div>
   </section>

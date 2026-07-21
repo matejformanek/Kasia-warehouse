@@ -1,5 +1,10 @@
 # 0052 — N-list recipients for dodáky + low-stock summary (supersedes 0031 in part)
 
+> **Amended by [0081](./0081-per-recipient-notification-preferences.md)** — the
+> flat active-list is decoupled into per-flag opt-ins (`is_dodaci_recipient` /
+> `is_feedback_recipient`) + a per-recipient branch scope, and the
+> `_assert_recipients_set` guard is removed (dodáky always copy their issuer).
+
 ## Context
 
 Karolína surfaced via `/podpora/` feedback #2 (2026-06-26): the current

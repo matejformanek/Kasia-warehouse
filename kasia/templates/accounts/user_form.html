@@ -52,16 +52,7 @@
   </div>
 
   {% if mode == "create" %}
-    <div class="field">
-      <label class="field-required" for="{{ form.password1.id_for_label }}">{{ form.password1.label }}</label>
-      {{ form.password1 }}
-      {{ form.password1.errors }}
-    </div>
-    <div class="field">
-      <label class="field-required" for="{{ form.password2.id_for_label }}">{{ form.password2.label }}</label>
-      {{ form.password2 }}
-      {{ form.password2.errors }}
-    </div>
+    <p class="note">Heslo se vygeneruje a odešle uživateli e-mailem.</p>
   {% endif %}
 
   <button type="submit" class="primary">

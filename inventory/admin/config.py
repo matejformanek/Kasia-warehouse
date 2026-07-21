@@ -93,11 +93,20 @@ class SettingsRecipientAdmin(admin.ModelAdmin):
         "email",
         "label",
         "is_active",
+        "is_dodaci_recipient",
         "is_low_stock_recipient",
+        "is_feedback_recipient",
+        "dodaci_branch",
         "sort_order",
         "created_at",
     )
-    list_filter = ("is_active", "is_low_stock_recipient")
+    list_filter = (
+        "is_active",
+        "is_dodaci_recipient",
+        "is_low_stock_recipient",
+        "is_feedback_recipient",
+        "dodaci_branch",
+    )
     search_fields = ("email", "label")
     ordering = ("-is_active", "sort_order", "id")
 

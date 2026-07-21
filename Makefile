@@ -17,6 +17,14 @@
 
 COMPOSE ?= docker compose
 
+# Local dev serves the app on http(s)://localhost via Caddyfile.dev (per 0083),
+# so `make up` works out of the box on a fresh clone with no .env editing. The
+# committed prod ./Caddyfile (kasia.cz + Let's Encrypt) is used only when
+# CADDYFILE is set otherwise; the box deploys via deploy.yml, never `make`, so
+# this default never reaches prod. Override with `make up CADDYFILE=./Caddyfile`.
+CADDYFILE ?= ./Caddyfile.dev
+export CADDYFILE
+
 .PHONY: up down wipe build logs shell psql migrate superuser seed test ps
 
 build:

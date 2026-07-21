@@ -91,6 +91,63 @@ def test_support_post_sends_feedback_notification_email(user_vlastnik) -> None:
     assert log.status == EmailLog.Status.SENT
 
 
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_feedback_routes_to_feedback_recipients(user_vlastnik) -> None:
+    """Per 0081: with a is_feedback_recipient row configured, the Podpora mail
+    goes there — not to the fixed FEEDBACK_NOTIFY_EMAIL fallback."""
+    from django.core import mail
+
+    from inventory.models import SettingsRecipient
+
+    SettingsRecipient.objects.create(
+        email="matej@kasia.cz",
+        label="Matej",
+        is_active=True,
+        is_dodaci_recipient=False,
+        is_feedback_recipient=True,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/sklad/podpora/",
+        {"page_url": "Katalog", "description": "Test."},
+    )
+    assert response.status_code == 302
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == ["matej@kasia.cz"]
+    # Per 0082: the Podpora link is an absolute, clickable URL.
+    assert "http://localhost/sklad/podpora/" in mail.outbox[0].body
+    log = EmailLog.objects.get(category=EmailLog.Category.FEEDBACK)
+    assert log.recipients == "matej@kasia.cz"
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(
+    FEEDBACK_NOTIFY_EMAIL="fallback@kasia.cz", **_VIEW_TEST_OVERRIDES
+)
+def test_feedback_falls_back_to_notify_email_when_none_configured(
+    user_vlastnik,
+) -> None:
+    """Per 0081: no is_feedback_recipient row → fall back to the fixed address."""
+    from django.core import mail
+
+    from inventory.models import SettingsRecipient
+
+    # Ensure no feedback recipient exists (conftest doesn't seed inventory
+    # fixtures here, but be explicit).
+    SettingsRecipient.objects.update(is_feedback_recipient=False)
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        "/sklad/podpora/",
+        {"page_url": "Katalog", "description": "Test."},
+    )
+    assert response.status_code == 302
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == ["fallback@kasia.cz"]
+
+
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_support_post_without_description_fails_validation(

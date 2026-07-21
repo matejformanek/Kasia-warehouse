@@ -360,6 +360,25 @@ locked contract per decision 0040 — don't drop the filter or expose the
 dropdown to obsluha. (`recipe_pdf` is a product document, not branch-scoped, and
 is deliberately exempt.)
 
+## Nastavení recipients — per-flag opt-ins + branch scope (per 0081)
+
+The `/sklad/nastaveni/` „Příjemci dodacího listu" table
+(`settings_form.html`) now carries, per row, **two extra checkboxes** —
+**„Dodací listy"** (`is_dodaci_recipient`) and **„Podpora"**
+(`is_feedback_recipient`) — plus a **„Pobočka" dropdown** (`dodaci_branch`,
+first option **„Všechny"** = null). `is_active` is the master switch. Routing is
+now per-flag: dodáky go to `is_active AND is_dodaci_recipient AND (dodaci_branch
+null OR == dodák.branch)`; Podpora to `is_active AND is_feedback_recipient` (with
+`FEEDBACK_NOTIFY_EMAIL` fallback); the „dochází" souhrn unchanged
+(`is_low_stock_recipient`). Every dodák is **also** mailed to its issuer
+(`movement.created_by`), so the old `_assert_recipients_set` výdej guard is gone.
+The JS-clone hooks (`#recipient-body` / `#recipient-empty-row` /
+`#recipient-add-row` / `recipient-TOTAL_FORMS`) are unchanged — the hidden empty
+row hand-writes the two new checkboxes (dodák pre-checked) + a `<select>` whose
+first `<option value="">` is „Všechny". These are **no new GET partial
+endpoint**, so `frontend-and-templates.md`'s `EXCLUDED_URL_NAMES` rule needs no
+entry.
+
 ## Out of scope for web chrome
 
 `inventory/dodaci_list.html` is a **WeasyPrint PDF** and e-mail templates are

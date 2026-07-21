@@ -107,9 +107,12 @@
     <h2>Příjemci dodacího listu</h2>
     <p class="sub">Seznam interních adres, na které míří každý dodací list a souhrn „dochází zboží".</p>
     <p class="note">
-      Každý dodací list se odesílá na všechny aktivní adresy v seznamu níže.
-      Adresy odběratelů nejsou nikdy v cestě e-mailu. Souhrn „dochází zboží"
-      chodí jen příjemcům s odpovídajícím zaškrtnutím.
+      „Aktivní" je hlavní vypínač řádku. U každé adresy zvlášť určíte, co jí
+      chodí: <strong>Dodací listy</strong> (volitelně omezené na jednu Pobočku,
+      výchozí „Všechny"), <strong>Souhrn dochází zboží</strong> a
+      <strong>Podpora</strong> (nová hlášení). Adresy odběratelů nejsou nikdy
+      v cestě e-mailu. Každý dodací list navíc vždy dostane i ten, kdo výdej
+      vystavil.
     </p>
 
     {{ recipient_formset.management_form }}
@@ -123,7 +126,10 @@
           <th class="field-required">E-mail</th>
           <th>Popisek</th>
           <th style="text-align:center;">Aktivní</th>
+          <th style="text-align:center;">Dodací listy</th>
           <th style="text-align:center;">Souhrn dochází zboží</th>
+          <th style="text-align:center;">Podpora</th>
+          <th>Pobočka</th>
           <th style="text-align:right;">Pořadí</th>
           <th></th>
         </tr>
@@ -138,7 +144,10 @@
             </td>
             <td>{{ r_form.label }}{{ r_form.label.errors }}</td>
             <td style="text-align:center;">{{ r_form.is_active }}</td>
+            <td style="text-align:center;">{{ r_form.is_dodaci_recipient }}</td>
             <td style="text-align:center;">{{ r_form.is_low_stock_recipient }}</td>
+            <td style="text-align:center;">{{ r_form.is_feedback_recipient }}</td>
+            <td>{{ r_form.dodaci_branch }}{{ r_form.dodaci_branch.errors }}</td>
             <td style="text-align:right;">{{ r_form.sort_order }}</td>
             <td>
               <input type="checkbox" name="{{ r_form.DELETE.html_name }}"
@@ -170,8 +179,25 @@
                    id="id_{{ prefix }}-__INDEX__-is_active" checked>
           </td>
           <td style="text-align:center;">
+            <input type="checkbox" name="{{ prefix }}-__INDEX__-is_dodaci_recipient"
+                   id="id_{{ prefix }}-__INDEX__-is_dodaci_recipient" checked>
+          </td>
+          <td style="text-align:center;">
             <input type="checkbox" name="{{ prefix }}-__INDEX__-is_low_stock_recipient"
                    id="id_{{ prefix }}-__INDEX__-is_low_stock_recipient">
+          </td>
+          <td style="text-align:center;">
+            <input type="checkbox" name="{{ prefix }}-__INDEX__-is_feedback_recipient"
+                   id="id_{{ prefix }}-__INDEX__-is_feedback_recipient">
+          </td>
+          <td>
+            <select name="{{ prefix }}-__INDEX__-dodaci_branch"
+                    id="id_{{ prefix }}-__INDEX__-dodaci_branch">
+              <option value="">Všechny</option>
+              {% for b in branches %}
+                <option value="{{ b.pk }}">{{ b.code }}</option>
+              {% endfor %}
+            </select>
           </td>
           <td style="text-align:right;">
             <input type="number" name="{{ prefix }}-__INDEX__-sort_order"

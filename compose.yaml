@@ -69,7 +69,11 @@ services:
       # Let's Encrypt cert here once DNS resolves to the box.
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Prod serves the committed ./Caddyfile (kasia.cz + Let's Encrypt). Local
+      # dev sets CADDYFILE=./Caddyfile.dev in .env to serve http://localhost
+      # with auto_https off — no ACME attempts, no cert failures. Default keeps
+      # prod behaviour unchanged. Per 0083.
+      - ${CADDYFILE:-./Caddyfile}:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     restart: unless-stopped

@@ -1,5 +1,11 @@
 # 0075 — Unified e-mail outbox log (`EmailLog`) + admins-only „E-maily" page
 
+> **Amended by [0082](./0082-new-user-credentials-email.md)** — adds the
+> `EmailLog.Category.NEW_USER_CREDENTIALS` category (new-user login e-mail).
+> **Amended by [0083](./0083-local-dev-caddy-and-email.md)** — adds the
+> `EmailLog.Category.PASSWORD_RESET` category and routes the Správa-uživatelů
+> password-reset send through `send_and_log` so it appears in the outbox.
+
 **Date:** 2026-07-07
 **Decider:** Matej (relaying Petr's ask)
 **Status:** Active

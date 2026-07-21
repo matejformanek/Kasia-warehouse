@@ -4,6 +4,8 @@ from django.db import models
 from django.db.models import UniqueConstraint
 from django.db.models.functions import Lower
 
+from .catalogue import Branch
+
 
 class Settings(models.Model):
     """Single-row configuration object. Loaded via Settings.load(); enforced
@@ -115,9 +117,27 @@ class SettingsRecipient(models.Model):
 
     email = models.EmailField("e-mail")
     label = models.CharField("popisek", max_length=64, blank=True)
+    # is_active is the master switch (per 0081): an inactive row receives
+    # nothing, regardless of the per-flow flags below.
     is_active = models.BooleanField("aktivní", default=True)
+    is_dodaci_recipient = models.BooleanField(
+        "dostává dodací listy", default=True
+    )
     is_low_stock_recipient = models.BooleanField(
         "dostává souhrn dochází zboží", default=False
+    )
+    is_feedback_recipient = models.BooleanField(
+        "dostává hlášení z Podpory", default=False
+    )
+    # Per 0081: when set, this row only receives dodáky from that branch;
+    # NULL = all branches.
+    dodaci_branch = models.ForeignKey(
+        Branch,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="dodaci_recipients",
+        verbose_name="pobočka (dodáky)",
     )
     sort_order = models.PositiveSmallIntegerField("pořadí", default=0)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -32,6 +32,14 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("DJANGO_CSRF_TRUSTED_O
 SESSION_COOKIE_SECURE = _env_bool("DJANGO_SECURE_COOKIES", default=False)
 CSRF_COOKIE_SECURE = _env_bool("DJANGO_SECURE_COOKIES", default=False)
 
+# Absolute base URL (scheme + host, no trailing slash) for links in outgoing
+# e-mails. The send path runs off-request (on_commit / management commands), so
+# there is no request to derive the host from — a link built from reverse()
+# alone would be a bare path a user can't click. Per-deployment via env
+# (documented in .env.example); defaults to local dev. On the box set
+# SITE_BASE_URL=https://kasia.cz.
+SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://localhost").rstrip("/")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -152,7 +160,16 @@ MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # --- E-mail (per 0019) ------------------------------------------------------
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# Env-overridable so local dev can catch mail without a real SMTP server
+# (e.g. django.core.mail.backends.console.EmailBackend prints to the web log).
+# Default is the real SMTP backend, so prod is unchanged when the var is unset.
+# The app builds its own SMTP connection from Settings (0049) via
+# get_connection(), which honours this backend class — a console/filebased
+# backend simply ignores the host/port/TLS kwargs, so overriding here catches
+# every send path (app e-mails AND Django's password-reset mail).
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
+)
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", default=True)

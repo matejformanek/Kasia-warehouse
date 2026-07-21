@@ -1,5 +1,10 @@
 # 0079 — Podpora enhancements (page dropdown + e-mail on new report)
 
+> **Amended by [0081](./0081-per-recipient-notification-preferences.md)** — the
+> Podpora e-mail no longer hardcodes `FEEDBACK_NOTIFY_EMAIL`; it routes to
+> `SettingsRecipient` rows flagged `is_feedback_recipient`, falling back to
+> `FEEDBACK_NOTIFY_EMAIL` only when none are configured.
+
 **Date:** 2026-07-21
 **Decider:** Matej (2026-07-21, sklad UX round after using the app)
 **Status:** Accepted

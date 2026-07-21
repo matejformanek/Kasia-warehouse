@@ -141,8 +141,11 @@ def test_user_index_renders_for_vlastnik(vlastnik) -> None:
 
 @pytest.mark.django_db
 def test_user_create_vlastnik(vlastnik) -> None:
+    from inventory.models import EmailLog
+
     client = Client()
     client.force_login(vlastnik)
+    outbox_before = len(mail.outbox)
     response = client.post(
         reverse("accounts:user_create"),
         {
@@ -151,8 +154,6 @@ def test_user_create_vlastnik(vlastnik) -> None:
             "email": "novy@example.cz",
             "role": "vlastnik",
             "branch": "",
-            "password1": "tajneheslo123",
-            "password2": "tajneheslo123",
         },
     )
     assert response.status_code == 302
@@ -160,13 +161,35 @@ def test_user_create_vlastnik(vlastnik) -> None:
     assert u.is_vlastnik
     assert u.branch is None
     assert u.first_name == "Nový"
+    # Per 0082: a credentials e-mail is always sent + logged, and the mailed
+    # password actually authenticates.
+    assert len(mail.outbox) == outbox_before + 1
+    msg = mail.outbox[-1]
+    assert msg.to == ["novy@example.cz"]
+    # Per 0082: the login link is an absolute, clickable URL (not a bare path).
+    assert "http://localhost/sklad/prihlaseni/" in msg.body
+    assert "http://localhost/sklad/zmena-hesla/" in msg.body
+    log = EmailLog.objects.get(
+        category=EmailLog.Category.NEW_USER_CREDENTIALS,
+        recipients="novy@example.cz",
+    )
+    assert log.status == EmailLog.Status.SENT
+    # The raw password appears in the mail body and logs the user in.
+    line = next(
+        ln for ln in msg.body.splitlines() if ln.startswith("Heslo: ")
+    )
+    raw = line[len("Heslo: ") :]
+    assert u.check_password(raw)
 
 
 @pytest.mark.django_db
 def test_user_create_obsluha(vlastnik) -> None:
+    from inventory.models import EmailLog
+
     tyn = Branch.objects.get(code="TYN")
     client = Client()
     client.force_login(vlastnik)
+    outbox_before = len(mail.outbox)
     response = client.post(
         reverse("accounts:user_create"),
         {
@@ -175,14 +198,18 @@ def test_user_create_obsluha(vlastnik) -> None:
             "email": "jan@example.cz",
             "role": "obsluha",
             "branch": str(tyn.pk),
-            "password1": "tajneheslo123",
-            "password2": "tajneheslo123",
         },
     )
     assert response.status_code == 302
     u = User.objects.get(email="jan@example.cz")
     assert u.is_obsluha
     assert u.branch_id == tyn.pk
+    assert len(mail.outbox) == outbox_before + 1
+    assert EmailLog.objects.filter(
+        category=EmailLog.Category.NEW_USER_CREDENTIALS,
+        recipients="jan@example.cz",
+        status=EmailLog.Status.SENT,
+    ).exists()
 
 
 @pytest.mark.django_db
@@ -196,8 +223,6 @@ def test_user_create_obsluha_without_branch_rejected(vlastnik) -> None:
             "email": "eva@example.cz",
             "role": "obsluha",
             "branch": "",
-            "password1": "tajneheslo123",
-            "password2": "tajneheslo123",
         },
     )
     assert response.status_code == 200
@@ -216,31 +241,10 @@ def test_user_create_duplicate_email_rejected(vlastnik) -> None:
             "email": "vlastnik@example.cz",  # same as the existing one
             "role": "vlastnik",
             "branch": "",
-            "password1": "tajneheslo123",
-            "password2": "tajneheslo123",
         },
     )
     assert response.status_code == 200
     assert User.objects.filter(email="vlastnik@example.cz").count() == 1
-
-
-@pytest.mark.django_db
-def test_user_create_password_mismatch_rejected(vlastnik) -> None:
-    client = Client()
-    client.force_login(vlastnik)
-    response = client.post(
-        reverse("accounts:user_create"),
-        {
-            "first_name": "Mismatch",
-            "email": "mis@example.cz",
-            "role": "vlastnik",
-            "branch": "",
-            "password1": "tajneheslo123",
-            "password2": "tajneheslo456",
-        },
-    )
-    assert response.status_code == 200
-    assert not User.objects.filter(email="mis@example.cz").exists()
 
 
 @pytest.mark.django_db
@@ -349,6 +353,16 @@ def test_user_password_reset_sends_email(vlastnik) -> None:
     msg = mail.outbox[-1]
     assert "reset@example.cz" in msg.to
     assert "Reset hesla" in msg.subject
+    # Per 0083: the reset now routes through send_and_log, so it appears in the
+    # „E-maily" outbox as a PASSWORD_RESET row (SENT), attributed to the vlastník.
+    from inventory.models import EmailLog
+
+    log = EmailLog.objects.get(
+        category=EmailLog.Category.PASSWORD_RESET,
+        recipients="reset@example.cz",
+    )
+    assert log.status == EmailLog.Status.SENT
+    assert log.sent_by_id == vlastnik.pk
 
 
 @pytest.mark.django_db

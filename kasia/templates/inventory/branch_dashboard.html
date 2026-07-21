@@ -81,37 +81,14 @@ i&nbsp;formulář, kde nám napíšete.</p>
 
 <div class="card">
   <h2 style="font-size:1.05rem;margin-top:0;">Stav skladu</h2>
-  {# Kept as a <form> so the shared `form input` styling applies; submit is #}
-  {# prevented in JS (the 0063 live filter applies as you type, no reload). #}
-  {# "Vymazat" (JS) shows only once there is text. #}
-  <form id="branch-stock-filter" method="get" style="margin-bottom:0.75rem;">
-    <input type="search" id="branch-stock-search" value="{{ search }}"
+  {# Just the search field — the 0063 live filter applies as you type. Kept in a <form> so the shared `form input` styling applies; onsubmit guard stops Enter reloading. #}
+  <form method="get" style="margin-bottom:0.75rem;" onsubmit="return false">
+    <input type="search" value="{{ search }}"
            placeholder="Hledat produkt…"
            style="max-width:280px;"
            data-filter-rows=".cat-body"
            data-filter-empty="#branch-stock-empty">
-    <button type="button" id="branch-stock-clear" class="secondary" hidden>Vymazat</button>
   </form>
-  <script>
-    (function () {
-      var form = document.getElementById("branch-stock-filter");
-      var input = document.getElementById("branch-stock-search");
-      var clear = document.getElementById("branch-stock-clear");
-      if (!input || !clear) return;
-      // No server round-trip — the live filter handles it. Stop Enter reloading.
-      if (form) form.addEventListener("submit", function (e) { e.preventDefault(); });
-      function sync() { clear.hidden = !input.value; }
-      input.addEventListener("input", sync);
-      clear.addEventListener("click", function () {
-        input.value = "";
-        // Re-run the 0063 live filter (it listens for "input") and hide myself.
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-        input.focus();
-        sync();
-      });
-      sync();
-    })();
-  </script>
 
   {% if empty_rows or low_rows or ok_rows %}
     {% if empty_rows %}{% include "inventory/_catalogue_group.html" with group_rows=empty_rows group_id="cat-group-empty" head_class="empty" head_label="Prázdné" head_count=empty_rows|length branch_kind="empty" eff_class="eff-empty" show_branch_chips=False %}{% endif %}

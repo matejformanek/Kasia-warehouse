@@ -1,5 +1,7 @@
 # 0063 — Diacritic-insensitive, typo-tolerant, live-as-you-type filtering
 
+> **Amended by 0084** — the "counts/KPIs stay server-side, not search-scoped" trade-off is reversed; the KPI strip + per-group .sub-head counts now live-recompute client-side as you type.
+
 **Date:** 2026-07-02
 **Decider:** Matej (relaying Petr/Karolína's ask, live-app review)
 **Status:** Active

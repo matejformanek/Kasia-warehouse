@@ -282,8 +282,15 @@ def test_branch_dashboard_groups_by_stock_state(user_obsluha_tyn, tyn) -> None:
     assert low.name_cs in _group_html(body, "cat-group-low")
     assert empty.name_cs in _group_html(body, "cat-group-empty")
     # Header KPI counts match the group sub-heads exactly (1 low, 1 empty).
-    assert '<span class="k-val">1</span>' in _kpi_block(body, "Dochází")
-    assert '<span class="k-val">1</span>' in _kpi_block(body, "Prázdné")
+    assert 'data-kpi-live="low">1</span>' in _kpi_block(body, "Dochází")
+    assert 'data-kpi-live="empty">1</span>' in _kpi_block(body, "Prázdné")
+    # Per 0084: the live-recompute hooks the JS depends on render server-side.
+    assert 'data-filter-bucket="empty"' in body
+    assert 'data-filter-bucket="low"' in body
+    assert 'data-filter-bucket="ok"' in body
+    assert 'data-filter-kg="10.000"' in body
+    assert 'data-kpi-live="products-stocked"' in body
+    assert 'data-kpi-live="total-kg"' in body
 
 
 @pytest.mark.django_db

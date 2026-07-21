@@ -1,3 +1,4 @@
+{% load l10n %}
 {% comment %}
 Katalog group section (per 0064). One state group = a .sub-head header + one
 table wrapped in a #{{ group_id }} section so the client filter can hide the
@@ -21,10 +22,10 @@ show_branch_chips (bool).
         {% if show_branch_chips %}{% if branch_kind == "empty" %}<th>Prázdný na</th>{% elif branch_kind == "low" %}<th>Dochází na</th>{% endif %}{% endif %}
       </tr>
     </thead>
-    <tbody class="cat-body" data-filter-group="#{{ group_id }}">
+    <tbody class="cat-body" data-filter-group="#{{ group_id }}" data-filter-bucket="{{ head_class }}">
       {% for row in group_rows %}
         <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=row.product.pk %}"
-            data-filter-text="{{ row.product.name_cs }}"{% if not row.product.is_active %} style="opacity:.6;"{% endif %}>
+            data-filter-text="{{ row.product.name_cs }}" data-filter-kg="{{ row.total|unlocalize }}"{% if not row.product.is_active %} style="opacity:.6;"{% endif %}>
           <td>
             <strong>{{ row.product.name_cs }}</strong>
             {% if not row.product.is_active %}

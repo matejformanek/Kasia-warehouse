@@ -201,8 +201,10 @@ def branch_dashboard(request, code: str):
 
     # Per 0063: the product search (`q`) is filtered client-side in the browser
     # over the rendered stock rows. The server only echoes the term back into
-    # the input. KPIs are branch-wide (not search-scoped), so they are
-    # unaffected.
+    # the input. KPIs are computed branch-wide here as the initial render; per
+    # 0084 the client (base.html apply()) live-recomputes the KPI strip + group
+    # counts from the visible rows while typing, and restores these values when
+    # the search box is emptied.
     search = (request.GET.get("q") or "").strip()
 
     # Stock section — the same grouped design (Prázdné / Dochází / V pořádku)
@@ -222,8 +224,9 @@ def branch_dashboard(request, code: str):
         .order_by("-date_issued", "-id")[:15]
     )
 
-    # Per-branch KPI header (decision 0054). Computed branch-wide, not over
-    # the search-filtered list, so the numbers stay stable while searching.
+    # Per-branch KPI header (decision 0054). Computed branch-wide as the initial
+    # render; per 0084 the client recomputes the KPI strip live from the visible
+    # rows while the name filter is typed (restored when cleared).
     # Dochází / Prázdné come from `groups` so the header counts match the
     # group sub-heads exactly (0064) — not from low_stock_rows().
     from django.db.models import Sum

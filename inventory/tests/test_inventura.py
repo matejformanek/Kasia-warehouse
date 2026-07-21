@@ -403,6 +403,46 @@ def test_inventura_edit_low_toggle_single_branch(
     assert 'data-low="0"' in body
 
 
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_low_toggle_flags_empty_threshold_zero_product(
+    user_vlastnik, tyn
+) -> None:
+    """Per 0080: the single-branch "Dochází / prázdné" toggle marks CRITICAL
+    rows = Prázdné OR Dochází (same set as the Katalog), not bare
+    `effective < threshold`. A genuinely-empty product whose threshold is the
+    default 0 (no stock at all) must be flagged data-low="1" — the pre-0080
+    `low_stock_rows()` rule (0 < 0 = False) wrongly hid it."""
+    import re
+
+    from inventory.models import Product
+
+    Product.objects.create(
+        name_cs="Prazdna surovina", kind=Product.Kind.RAW_SPICE
+    )  # no Stock row → effective 0; reorder_threshold_kg default 0
+    stocked = Product.objects.create(
+        name_cs="Plna surovina", kind=Product.Kind.RAW_SPICE
+    )
+    Stock.objects.create(product=stocked, branch=tyn, quantity=Decimal("8.000"))
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/katalog/inventura/TYN/").content.decode("utf-8")
+
+    def data_low_for(name: str) -> str:
+        # Isolate the single row fragment that contains the product name, then
+        # read its data-low (avoids a cross-row regex match).
+        for frag in body.split("<tr")[1:]:
+            if f"<strong>{name}</strong>" in frag:
+                m = re.search(r'data-low="(\d)"', frag)
+                assert m, f"no data-low in row for {name}"
+                return m.group(1)
+        raise AssertionError(f"row for {name} not found")
+
+    assert data_low_for("Prazdna surovina") == "1"  # empty → critical
+    assert data_low_for("Plna surovina") == "0"  # stocked, threshold 0 → ok
+
+
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_inventura_edit_low_toggle_hidden_cross_branch(

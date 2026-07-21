@@ -172,6 +172,12 @@ or restructure:
   `-count` / `-empty` / `-text`, or the `foldText` / `levenshtein` /
   `matchesQuery` helpers, is a new decision. Used on `#history-table` /
   `#stock-table` and the grouped Katalog (+ matching `-count` / `-empty`).
+  **The matcher is also exposed as `window.kasiaRowFilter`** (`fold` /
+  `tokenize` / `matches`) so bespoke filters that can't use the `data-filter-*`
+  hook reuse the SAME fold/fuzzy logic (per
+  [`0080`](../../context/decisions/0080-inventura-critical-toggle-and-fuzzy-filter.md)
+  — the inventura name filter uses it). Renaming `window.kasiaRowFilter` is a
+  new decision.
   The číselníky (Dodavatelé / Odběratelé / Pobočky) carry **no** name search
   (the locked mockups 12–14 show only the Stav filter) — the 0063 standalone
   input added there was removed in the Phase-2 swap. Do **not** reuse the
@@ -319,11 +325,17 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   **`is_vlastnik or is_obsluha`**. Its href is conditional in `base.html`: the
   user's own branch (`inventura_edit code=<user.branch.code>`) if they have one,
   else the all-branch **"Vše"** (`code='vse'`). No new view/chooser. A
-  **single-branch** inventura carries a **"Dochází"** checkbox next to the name
-  filter that scopes the visible rows to products below their reorder threshold
-  at that branch (`data-low` row attr from `low_stock_rows()`, ANDed with the
-  name query in the screen's own custom filter — not the 0063 `data-filter-*`
-  hook). Hidden on the cross-branch "Vše" / "Dochází zboží" views.
+  **single-branch** inventura carries a **"Dochází / prázdné"** checkbox next to
+  the name filter that scopes the visible rows to the **critical** products at
+  that branch — everything the Katalog puts in **Prázdné OR Dochází** (per
+  [`0080`](../../context/decisions/0080-inventura-critical-toggle-and-fuzzy-filter.md);
+  `data-low` row attr, membership from `catalogue_stock_groups([branch])` — NOT
+  `low_stock_rows()` alone, which would miss an empty product whose threshold is
+  0). It is ANDed with the name query in the screen's own custom filter (not the
+  0063 `data-filter-*` hook), and that name filter reuses the shared
+  `window.kasiaRowFilter` matcher so it is diacritic-/typo-tolerant like the
+  Katalog. Hidden on the cross-branch "Vše" / "Dochází zboží" views (the
+  `dochazi` roll-up still uses `low_stock_rows()`, its own 0057 contract).
   - **Obsluha access (0073) — hard constraint.** `inventura_edit` lets an
     **obsluha run inventura only for their OWN branch** (the full editor —
     `[STAV]` corrections **and** dated objednávky); the cross-branch **"Vše"**

@@ -5,6 +5,23 @@
 
 ## Done
 
+- **2026-07-21** — **Inventura fixes: „Dochází / prázdné" critical toggle +
+  fuzzy name filter** (decision
+  [`0080`](./decisions/0080-inventura-critical-toggle-and-fuzzy-filter.md);
+  amends 0065, relates to 0063 + 0072). Found while reviewing.
+  - **Toggle now shows CRITICAL = empty + low** (same set the Katalog puts in
+    Prázdné + Dochází), sourced from `catalogue_stock_groups([branch])` in
+    `inventory/views/inventura.py` — not `low_stock_rows()` alone, whose bare
+    `effective < threshold` hid genuinely-empty products whose threshold is the
+    0072 default 0. Relabelled **„Dochází / prázdné"** + tooltip; `data-low`
+    attr name unchanged (meaning widened).
+  - **Name filter is now the smart one:** `base.html` exposes the 0063 matcher
+    as **`window.kasiaRowFilter`** (`fold`/`tokenize`/`matches`); inventura's
+    bespoke `applyFilter` reuses it, so „perp" finds „Pepř" (diacritic-/
+    typo-tolerant) like the Katalog, then ANDs with the toggle.
+  - Docs: 0080 + `design-system.md` (0063 export note + 0065 toggle semantics) +
+    inventura page-help. Test `test_inventura_low_toggle_flags_empty_threshold_zero_product`
+    pins the empty-threshold-0 → `data-low="1"` fix. Suite **589 passed**.
 - **2026-07-21** — **sklad UX round: per-page help + Podpora upgrades +
   catalog/icon/edit fixes** (decisions
   [`0078`](./decisions/0078-per-page-contextual-help.md) +

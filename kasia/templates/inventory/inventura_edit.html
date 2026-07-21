@@ -31,10 +31,11 @@ jako korekce stavu.</p>
 
 <h3>Pomůcky, které tu máte</h3>
 <ul>
-  <li><strong>Vyhledávání</strong> — filtruje řádky podle názvu za běhu.</li>
-  <li>Zaškrtávátko <strong>„Dochází"</strong> (u&nbsp;jedné pobočky) — schová vše
-  kromě produktů, kterých je pod prahem. Hodí se, když chcete rychle projít jen
-  to, co dochází.</li>
+  <li><strong>Vyhledávání</strong> — filtruje řádky podle názvu za běhu; zvládne
+  diakritiku i&nbsp;překlep (např. „perp" najde „Pepř").</li>
+  <li>Zaškrtávátko <strong>„Dochází / prázdné"</strong> (u&nbsp;jedné pobočky) —
+  schová vše kromě <strong>kritických</strong> položek: prázdných i&nbsp;těch pod
+  objednacím bodem (stejná sada jako Prázdné + Dochází v&nbsp;Katalogu).</li>
   <li>Přišli-li jste sem z&nbsp;Míchání kvůli chybějící surovině, uvidíte jen
   <strong>suroviny té směsi</strong> — dosypte / opravte a&nbsp;vraťte se
   namíchat.</li>
@@ -104,10 +105,10 @@ jako korekce stavu.</p>
   <div class="toolbar">
     <input type="search" id="inventura-filter" placeholder="Filtrovat produkt v seznamu…">
     {% if show_low_toggle %}
-      <label class="low-toggle" title="Zobrazit jen položky pod objednacím bodem">
+      <label class="low-toggle" title="Zobrazit jen kritické položky — prázdné i pod objednacím bodem">
         <input type="checkbox" id="inventura-low-only">
         <span class="switch" aria-hidden="true"></span>
-        Dochází
+        Dochází / prázdné
       </label>
     {% endif %}
     <span class="muted" id="inventura-filter-count"></span>
@@ -346,24 +347,38 @@ jako korekce stavu.</p>
     }, true);
 
     // Type-to-filter over the product name, ANDed with the single-branch
-    // "Dochází" checkbox (its own filter, not the 0063 hook). A row shows when
-    // its name matches the query and — if the checkbox is on — it's below its
-    // reorder threshold (data-low="1", set server-side from low_stock_rows()).
+    // "Dochází / prázdné" checkbox (its own filter, not the 0063 hook — it
+    // AND-combines the name query with the toggle). A row shows when its name
+    // matches the query and — if the checkbox is on — it is CRITICAL
+    // (data-low="1"; empty OR below threshold, set server-side via
+    // catalogue_stock_groups, per 0080). The name match reuses the SAME
+    // diacritic-insensitive, typo-tolerant matcher as the Katalog
+    // (window.kasiaRowFilter, per 0063/0080), so e.g. "perp" finds "Pepř".
     const filter = document.getElementById("inventura-filter");
     const fc = document.getElementById("inventura-filter-count");
     const lowOnly = document.getElementById("inventura-low-only");
+    const rf = window.kasiaRowFilter;
     function applyFilter() {
-      const q = filter ? filter.value.trim().toLowerCase() : "";
+      const raw = filter ? filter.value : "";
+      const tokens = rf ? rf.tokenize(raw) : raw.trim().toLowerCase().split(/\s+/).filter(Boolean);
       const onlyLow = !!(lowOnly && lowOnly.checked);
       let shown = 0;
       rows.forEach(function (row) {
-        const name = row.querySelector("td strong").textContent.toLowerCase();
-        const nameMatch = !q || name.includes(q);
+        const name = row.querySelector("td strong").textContent;
+        let nameMatch;
+        if (tokens.length === 0) {
+          nameMatch = true;
+        } else if (rf) {
+          const folded = rf.fold(name);
+          nameMatch = rf.matches(tokens, folded, folded.split(" ").filter(Boolean));
+        } else {
+          nameMatch = name.toLowerCase().indexOf(tokens.join(" ")) !== -1;
+        }
         const match = nameMatch && (!onlyLow || row.dataset.low === "1");
         row.style.display = match ? "" : "none";
         if (match) shown++;
       });
-      fc.textContent = (q || onlyLow) ? (shown + " z " + rows.length + " odpovídá") : "";
+      fc.textContent = (tokens.length || onlyLow) ? (shown + " z " + rows.length + " odpovídá") : "";
     }
     if (filter) filter.addEventListener("input", applyFilter);
     if (lowOnly) lowOnly.addEventListener("change", applyFilter);

@@ -336,6 +336,17 @@
       apply(input); // apply once on load so an echoed ?q= filters immediately
     }
 
+    // Expose the diacritic-insensitive, typo-tolerant matcher so bespoke
+    // filters that can't use the data-filter-rows hook (e.g. inventura, which
+    // AND-combines the name query with its "Dochází" toggle) reuse the SAME
+    // fold/fuzzy logic (per 0063 + 0080). foldText → normalise a string;
+    // matches(tokens, folded, words) → does the row match all tokens.
+    window.kasiaRowFilter = {
+      fold: foldText,
+      tokenize: function (s) { return foldText(s).split(" ").filter(Boolean); },
+      matches: matchesQuery,
+    };
+
     document.addEventListener("DOMContentLoaded", function () {
       document.querySelectorAll("input[data-filter-rows]").forEach(wire);
     });

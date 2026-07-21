@@ -104,7 +104,8 @@ class Product(models.Model):
         default=Decimal("0.000"),
         help_text=(
             "Hranice, pod kterou se produkt objeví na panelu „Dochází zboží"
-            " a v denním e-mailu Petrovi (per 0043/0072). Nové produkty mají"
+            " a v denním e-mailu příjemcům upozornění „dochází zboží"
+            " (per 0043/0072). Nové produkty mají"
             " výchozí 0; produkt s nulovým efektivním stavem se vždy zobrazí"
             " ve skupině „Prázdné“."
         ),

@@ -623,14 +623,15 @@ def test_prijem_create_view_prefills_today_iso(user_obsluha_tyn) -> None:
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
-def test_vydej_create_view_prefills_today_iso(user_obsluha_tyn) -> None:
-    """GET /sklad/vydej/novy/ renders date_issued pre-filled with today (ISO)."""
+def test_vydej_create_view_has_no_date_field(user_obsluha_tyn) -> None:
+    """Per 0086: výdej is always dated today — the form renders no date field."""
     client = Client()
     client.force_login(user_obsluha_tyn)
     response = client.get("/sklad/vydej/novy/")
     assert response.status_code == 200
     body = response.content.decode("utf-8")
-    assert f'value="{date.today().isoformat()}"' in body
+    assert "Datum vystavení" not in body
+    assert 'id="id_date_issued"' not in body
 
 
 @pytest.mark.django_db(transaction=True)

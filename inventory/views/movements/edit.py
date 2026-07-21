@@ -19,7 +19,7 @@ from ...models import (
     MovementAudit,
     MovementLine,
 )
-from ...services import edit_movement
+from ...services import counterparties, edit_movement
 from ._shared import _push_validation_error_to_formset
 
 _MOVEMENT_EDITABLE_FIELDS = ("branch", "date_issued", "dodavatel", "odberatel", "note")
@@ -41,15 +41,22 @@ def movement_edit(request, pk: int):
     )
 
     form_cls, line_field_for_kind = _form_for_kind(movement.kind)
+    is_vydej = movement.kind == Movement.Kind.VYDEJ
 
     if request.method == "POST":
         form = form_cls(request.POST)
         formset = MovementEditLineFormSet(request.POST, prefix="lines")
         if form.is_valid() and formset.is_valid():
-            try:
-                assert_no_future_date(form.cleaned_data["date_issued"])
-            except ValidationError as exc:
-                form.add_error("date_issued", exc)
+            # Per 0086: výdej is dateless (field popped from VydejEditForm) — no
+            # date to validate. Príjem edit still guards against a future date.
+            date_error = None
+            if not is_vydej:
+                try:
+                    assert_no_future_date(form.cleaned_data["date_issued"])
+                except ValidationError as exc:
+                    date_error = exc
+            if date_error is not None:
+                form.add_error("date_issued", date_error)
             else:
                 changes = _movement_field_changes(movement, form, line_field_for_kind)
                 line_changes = _line_changes(existing_lines, formset)
@@ -110,7 +117,7 @@ def movement_edit(request, pk: int):
             "existing_lines": existing_lines,
             "audit_rows": audit_rows,
             "dodaci_list": DodaciList.objects.filter(movement=movement).first(),
-            "is_vydej": movement.kind == Movement.Kind.VYDEJ,
+            "is_vydej": is_vydej,
         },
     )
 
@@ -127,11 +134,17 @@ def _movement_field_changes(movement: Movement, form, counterparty_field: str) -
     changes: dict = {}
     if form.cleaned_data["branch"] != movement.branch:
         changes["branch"] = form.cleaned_data["branch"]
-    if form.cleaned_data["date_issued"] != movement.date_issued:
-        changes["date_issued"] = form.cleaned_data["date_issued"]
+    # Per 0086: výdej edit has no date_issued field (popped) — skip it.
+    if "date_issued" in form.cleaned_data:
+        if form.cleaned_data["date_issued"] != movement.date_issued:
+            changes["date_issued"] = form.cleaned_data["date_issued"]
     if form.cleaned_data.get("note", "") != (movement.note or ""):
         changes["note"] = form.cleaned_data.get("note", "")
     new_cp = form.cleaned_data[counterparty_field]
+    # Per 0085: a blank dodavatel on příjem edit means "Neuveden", never NULL
+    # (the DB constraint requires a supplier on PRIJEM).
+    if counterparty_field == "dodavatel" and new_cp is None:
+        new_cp = counterparties.supplier("unknown_supplier")
     old_cp = getattr(movement, counterparty_field)
     if new_cp != old_cp:
         changes[counterparty_field] = new_cp

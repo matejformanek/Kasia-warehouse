@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
 from django.contrib import messages
@@ -13,7 +14,6 @@ from django.views.decorators.http import require_http_methods
 from ...forms import (
     MovementLineFormSet,
     VydejForm,
-    assert_no_future_date,
 )
 from ...models import (
     Branch,
@@ -38,49 +38,45 @@ def vydej_create(request):
         form = VydejForm(request.POST, user=request.user)
         formset = MovementLineFormSet(request.POST, prefix="lines")
         if form.is_valid() and formset.is_valid():
-            try:
-                assert_no_future_date(form.cleaned_data["date_issued"])
-            except ValidationError as exc:
-                form.add_error("date_issued", exc)
+            lines = _build_lines(formset)
+            if not lines:
+                formset._non_form_errors = formset.error_class(
+                    ["Pohyb musí mít alespoň jednu položku."]
+                )
             else:
-                lines = _build_lines(formset)
-                if not lines:
-                    formset._non_form_errors = formset.error_class(
-                        ["Pohyb musí mít alespoň jednu položku."]
-                    )
+                branch = form.cleaned_data["branch"]
+                overdraw_warnings = _compute_overdraw(branch, lines)
+                if overdraw_warnings:
+                    # Pre-check refusal: re-render with structured
+                    # warning card per decision 0042. No service call.
+                    pass
                 else:
-                    branch = form.cleaned_data["branch"]
-                    overdraw_warnings = _compute_overdraw(branch, lines)
-                    if overdraw_warnings:
-                        # Pre-check refusal: re-render with structured
-                        # warning card per decision 0042. No service call.
-                        pass
-                    else:
-                        movement = Movement(
-                            branch=branch,
-                            kind=Movement.Kind.VYDEJ,
-                            date_issued=form.cleaned_data["date_issued"],
-                            odberatel=form.cleaned_data["odberatel"],
-                            note=form.cleaned_data.get("note", ""),
+                    # Per 0086: výdej is always dated today (no date field).
+                    movement = Movement(
+                        branch=branch,
+                        kind=Movement.Kind.VYDEJ,
+                        date_issued=date.today(),
+                        odberatel=form.cleaned_data["odberatel"],
+                        note=form.cleaned_data.get("note", ""),
+                    )
+                    try:
+                        mv = apply_movement(
+                            movement=movement, lines=lines, user=request.user
                         )
-                        try:
-                            mv = apply_movement(
-                                movement=movement, lines=lines, user=request.user
+                    except ValidationError as exc:
+                        _push_validation_error_to_formset(exc, formset)
+                    else:
+                        dl = DodaciList.objects.filter(movement=mv).first()
+                        messages.success(
+                            request,
+                            f"Výdej byl uložen ({mv.lines.count()} pol.) — "
+                            f"dodací list {dl.cislo if dl else ''}.",
+                        )
+                        if dl is not None:
+                            return redirect(
+                                "inventory:dodaci_list_detail", cislo=dl.cislo
                             )
-                        except ValidationError as exc:
-                            _push_validation_error_to_formset(exc, formset)
-                        else:
-                            dl = DodaciList.objects.filter(movement=mv).first()
-                            messages.success(
-                                request,
-                                f"Výdej byl uložen ({mv.lines.count()} pol.) — "
-                                f"dodací list {dl.cislo if dl else ''}.",
-                            )
-                            if dl is not None:
-                                return redirect(
-                                    "inventory:dodaci_list_detail", cislo=dl.cislo
-                                )
-                            return redirect("inventory:movement_saved", pk=mv.pk)
+                        return redirect("inventory:movement_saved", pk=mv.pk)
     else:
         form = VydejForm(user=request.user)
         formset = MovementLineFormSet(prefix="lines")
@@ -98,15 +94,22 @@ def vydej_create(request):
         )
 
     # Per-branch inventura base URL, so the live over-stock block can offer a
-    # vlastník a "fix the stock" jump for the flagged products (per 0060's
-    # ?products=&next= contract, same as míchání). Only vlastník may open
-    # inventura, so the blob is only emitted for them.
+    # "fix the stock" jump for the flagged products (per 0060's ?products=&next=
+    # contract, same as míchání). Emitted for a vlastník (all active branches)
+    # and — per 0073 — for an obsluha on their OWN branch only (they may run
+    # inventura there). Obsluha's link therefore always targets their own branch.
+    user = request.user
     branch_inventura: dict[str, str] = {}
-    if getattr(request.user, "is_vlastnik", False):
+    inventura_fix_url: str | None = None
+    if getattr(user, "is_vlastnik", False):
         branch_inventura = {
             str(b.pk): reverse("inventory:inventura_edit", args=[b.code])
             for b in Branch.objects.filter(is_active=True)
         }
+    elif getattr(user, "is_obsluha", False) and user.branch_id:
+        own = reverse("inventory:inventura_edit", args=[user.branch.code])
+        branch_inventura = {str(user.branch_id): own}
+        inventura_fix_url = own
 
     return render(
         request,
@@ -117,6 +120,7 @@ def vydej_create(request):
             "overdraw_warnings": overdraw_warnings,
             "stock_map": stock_map,
             "branch_inventura": branch_inventura,
+            "inventura_fix_url": inventura_fix_url,
             "recent_movements": _recent_movements_for_form(
                 request.user, Movement.Kind.VYDEJ
             ),

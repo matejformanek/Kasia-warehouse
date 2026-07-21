@@ -142,13 +142,18 @@ or restructure:
   The JS finds it by `row.querySelector(".stock-warn-cell")` / the
   `#stock-warn-cell-{idx}` id regardless of which `<td>` holds it. While any line
   is over it disables `#vydej-submit` + un-hides
-  the red `#stock-block-banner` in `vydej_form.html`. For a **vlastník** that
-  banner also carries a `#stock-block-inventura` link the JS points at inventura
-  pre-filtered to **all products on the výdej** (not just the flagged ones —
-  same as míchání: `?products=<all selected ids>&next=<výdej path>`, the 0060
-  contract, same-tab); the per-branch base URLs come from a
-  `{{ branch_inventura|json_script:"vydej-inventura-urls" }}` blob emitted only
-  for vlastník (obsluha can't open inventura). A second helper,
+  the red `#stock-block-banner` in `vydej_form.html`. When the operator can fix
+  stock the banner also carries a `#stock-block-inventura` link the JS points at
+  inventura pre-filtered to **all products on the výdej** (not just the flagged
+  ones — same as míchání: `?products=<all selected ids>&next=<výdej path>`, the
+  0060 contract, same-tab); the per-branch base URLs come from a
+  `{{ branch_inventura|json_script:"vydej-inventura-urls" }}` blob emitted for a
+  **vlastník** (all active branches) **and — per 0073 — for an obsluha on their
+  own branch** (`{str(user.branch_id): inventura_edit(user.branch.code)}`), so
+  obsluha's live jump *and* the static 0042 overdraw-table link
+  (`inventura_fix_url`) always target their **own-branch** inventura, never the
+  vlastník-only `stock_adjust_edit` (which 403s for obsluha). The blob/link are
+  hidden only when neither role applies. A second helper,
   `refreshProductOptions()`, **disables an already-chosen product in every other
   row's dropdown** so a product can't be picked on two lines; it runs on the
   same `input`/`change` + `htmx:afterSwap` (fresh added rows) + row-delete

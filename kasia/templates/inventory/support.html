@@ -133,15 +133,13 @@ nápovědu právě k&nbsp;té obrazovce.</p>
 
 <h2>Video návod</h2>
 
-{# Ready-to-play look: poster + play button, no "coming soon" text. Swap inner markup for a real <video>/embed when the clip exists. #}
+{# Self-hosted 720p návod; poster = the existing thumbnail, nothing downloads until play. #}
 <div class="video-tutorial">
-  <button type="button" class="video-placeholder" aria-label="Přehrát video návod">
-    <img class="video-thumb" src="{% static 'img/video-tutorial-thumb.png' %}"
-         alt="Video návod">
-    <span class="video-overlay">
-      <span class="video-play" aria-hidden="true">▶</span>
-    </span>
-  </button>
+  <video controls preload="none"
+         poster="{% static 'img/video-tutorial-thumb.png' %}">
+    <source src="{% static 'video/video-tutorial.mp4' %}" type="video/mp4">
+    Váš prohlížeč nepodporuje přehrávání videa.
+  </video>
 </div>
 
 <h2>Nahlásit chybu nebo požadavek</h2>

@@ -218,7 +218,7 @@ def mixing_preview_partial(request):
     recipe = list(
         RecipeComponent.objects.filter(mixture_product=mixture)
         .select_related("component_product")
-        .order_by("component_product__name_cs")
+        .order_by("position", "id")
     )
     stock_by_product = {
         s.product_id: s.quantity
@@ -305,9 +305,8 @@ def mixing_job_detail(request, pk: int):
             status=403,
         )
     lines = list(
-        job.lines.select_related("component_product").order_by(
-            "component_product__name_cs"
-        )
+        # id order = creation order = recipe position order at plan time (0092)
+        job.lines.select_related("component_product").order_by("id")
     )
     return render(
         request,

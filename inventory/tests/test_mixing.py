@@ -921,3 +921,54 @@ def test_nav_nastaveni_link_hidden_for_obsluha(user_obsluha_tyn) -> None:
 
 
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Recipe component mixing order (per 0092)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_preview_follows_position_order(
+    user_vlastnik, tyn, pepper, paprika
+) -> None:
+    """Per 0092: preview rows come in recipe position order, not
+    alphabetically ('Paprika sladká' < 'Pepř černý', but pepper is first)."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("10.000"))
+    # _mk_mixture_with_recipe assigns position from tuple order (0092).
+    mixture = _mk_mixture_with_recipe(
+        "Směs pořadí", [(pepper, "0.6"), (paprika, "0.4")]
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(
+        f"/sklad/_partials/mixing-preview/?branch={tyn.pk}"
+        f"&mixture={mixture.pk}&target_qty=5.000"
+    ).content.decode("utf-8")
+    assert body.index(pepper.name_cs) < body.index(paprika.name_cs)
+
+
+@pytest.mark.django_db
+def test_mixing_job_lines_follow_position_order(tyn, user_vlastnik, pepper, paprika) -> None:
+    """Per 0092: MixingJobLine rows are created in recipe position order, so
+    their id order (the display order everywhere) matches the recipe."""
+    from inventory.services.mixing import plan_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("10.000"))
+    mixture = _mk_mixture_with_recipe(
+        "Směs pořadí dávky", [(pepper, "0.6"), (paprika, "0.4")]
+    )
+    job = plan_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("5.000"),
+        user=user_vlastnik,
+    )
+    names = [
+        line.component_product.name_cs
+        for line in job.lines.select_related("component_product").order_by("id")
+    ]
+    assert names == [pepper.name_cs, paprika.name_cs]

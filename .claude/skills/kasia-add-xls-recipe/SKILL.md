@@ -97,8 +97,10 @@ Follow `scratchpad/import_garlic_recipes.py` exactly:
 - Ratios via `inventory.services.recipe_import._normalize_ratios([kg, …])`,
   then `assert sum(ratios) == Decimal("1.000000")` (drift is absorbed by the
   largest line inside the helper).
-- Upsert each `RecipeComponent` (filter → update or create), set `note`, call
-  `full_clean()` before `save()` (mirrors `create_mixture_from_review`).
+- Upsert each `RecipeComponent` (filter → update or create), set `note` **and
+  `position` = the XLS row index (0-based; update it on upsert too — mixing
+  order is part of the recipe, per decision 0092)**, call `full_clean()`
+  before `save()` (mirrors `create_mixture_from_review`).
 - Seed **0-kg `Stock` rows on the TARGET branch only** for the mixture + all
   its tracked raws (`get_or_create`, skip untracked) — put the branch in one
   variable at the top (`TYN` for the garlic recipes, `SEZ` for the knedlíkárna

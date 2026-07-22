@@ -143,7 +143,7 @@ def render_recipe_pdf(product: Product, target_qty: Decimal | None = None) -> by
     components = list(
         RecipeComponent.objects.filter(mixture_product=product)
         .select_related("component_product")
-        .order_by("component_product__name_cs")
+        .order_by("position", "id")
     )
     if not components:
         raise ValueError("Tato směs nemá vyplněnou recepturu.")

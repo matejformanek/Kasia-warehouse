@@ -128,12 +128,13 @@ def _mk_mixture_with_recipe(name="Gulášové koření", components=None):
 
     ``components`` is a list of ``(component, ratio)`` or
     ``(component, ratio, note)`` — the optional 3rd element sets the
-    per-component ``RecipeComponent.note`` (per 0088).
+    per-component ``RecipeComponent.note`` (per 0088). ``position`` is
+    assigned from the tuple order (per 0092) — callers need no change.
     """
 
     mixture = Product.objects.create(name_cs=name, kind=Product.Kind.MIXTURE)
     components = components or []
-    for spec in components:
+    for idx, spec in enumerate(components):
         component, ratio = spec[0], spec[1]
         note = spec[2] if len(spec) > 2 else ""
         RecipeComponent.objects.create(
@@ -141,6 +142,7 @@ def _mk_mixture_with_recipe(name="Gulášové koření", components=None):
             component_product=component,
             ratio=Decimal(str(ratio)),
             note=note,
+            position=idx,
         )
     return mixture
 

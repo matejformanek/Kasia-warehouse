@@ -1,7 +1,12 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}
   {% if mode == "create" %}Nový produkt{% else %}Úprava produktu — {{ target.name_cs }}{% endif %} — Kasia vera
+{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'css/pages/product_form.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -147,6 +152,7 @@
           <th class="field-required">Surovina</th>
           <th class="field-required" style="text-align:right;">Podíl</th>
           <th>Poznámka</th>
+          <th class="move-col">Pořadí</th>
           <th></th>
         </tr>
       </thead>
@@ -155,6 +161,7 @@
           <tr class="line-row" data-index="{{ forloop.counter0 }}">
             <td>
               {{ rc_form.id }}
+              {{ rc_form.position }}
               {{ rc_form.component_product }}
               {{ rc_form.component_product.errors }}
             </td>
@@ -165,6 +172,12 @@
             <td>
               {{ rc_form.note }}
               {{ rc_form.note.errors }}
+            </td>
+            <td class="move-col">
+              <button type="button" class="row-move-btn" data-dir="up"
+                      title="Posunout výš (dřívější přidání)">↑</button>
+              <button type="button" class="row-move-btn" data-dir="down"
+                      title="Posunout níž (pozdější přidání)">↓</button>
             </td>
             <td>
               <input type="checkbox" name="{{ rc_form.DELETE.html_name }}"
@@ -178,11 +191,17 @@
         {% endfor %}
       </tbody>
     </table>
+    <p style="color:var(--fg-soft); font-size:0.85rem;">
+      Pořadí řádků = pořadí přidávání surovin při míchání (šipkami ↑/↓ ho
+      lze změnit). Ukládá se s recepturou a řídí recepturu na detailu,
+      v PDF i v náhledu míchání.
+    </p>
 
     {# Hidden empty-row template; JS clones it on "+ Přidat surovinu" click #}
     <template id="recipe-empty-row">
       <tr class="line-row" data-index="__INDEX__">
         <td>
+          {{ new_recipe_row.position }}
           {{ new_recipe_row.component_product }}
         </td>
         <td style="text-align:right;">
@@ -190,6 +209,12 @@
         </td>
         <td>
           {{ new_recipe_row.note }}
+        </td>
+        <td class="move-col">
+          <button type="button" class="row-move-btn" data-dir="up"
+                  title="Posunout výš (dřívější přidání)">↑</button>
+          <button type="button" class="row-move-btn" data-dir="down"
+                  title="Posunout níž (pozdější přidání)">↓</button>
         </td>
         <td>
           <input type="checkbox" name="recipe-__INDEX__-DELETE"
@@ -210,10 +235,52 @@
 
     <script>
       (function () {
+        const body = document.getElementById("recipe-body");
+        if (!body) return;
+        const formEl = body.closest("form");
+
+        // Per 0092: mixing order = DOM row order. Rewrite every hidden
+        // position input to 0..n-1 in DOM order — including rows marked
+        // deleted (harmless: their forms are dropped server-side, and
+        // numbering them keeps un-deleted rows from going stale). The
+        // bubbling change event arms the data-guard-unsaved dirty-guard
+        // (its listeners sit on the <form>).
+        function renumber() {
+          body.querySelectorAll("tr.line-row").forEach(function (row, i) {
+            const pos = row.querySelector('input[name$="-position"]');
+            if (pos) pos.value = i;
+          });
+          if (formEl) {
+            formEl.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+        }
+
+        // ↑/↓ swap the row with its neighbour, then renumber.
+        body.addEventListener("click", function (e) {
+          const move = e.target.closest(".row-move-btn");
+          if (move) {
+            const row = move.closest("tr.line-row");
+            if (!row) return;
+            if (move.dataset.dir === "up") {
+              const prev = row.previousElementSibling;
+              if (prev) body.insertBefore(row, prev);
+            } else {
+              const next = row.nextElementSibling;
+              if (next) body.insertBefore(next, row);
+            }
+            renumber();
+            return;
+          }
+          // Row-delete toggle is handled by the shared base.html handler;
+          // renumber after it flips the checkbox (deferred, výdej-JS style).
+          if (e.target.closest(".row-delete-btn")) {
+            queueMicrotask(renumber);
+          }
+        });
+
         const btn = document.getElementById("recipe-add-row");
         if (!btn) return;
         btn.addEventListener("click", function () {
-          const body = document.getElementById("recipe-body");
           const total = document.querySelector("[name=recipe-TOTAL_FORMS]");
           const idx = parseInt(total.value, 10);
           const tpl = document.getElementById("recipe-empty-row").innerHTML;
@@ -236,11 +303,17 @@
               /name="note"/g,
               `name="recipe-${idx}-note"`
             )
+            .replace(
+              /name="position"/g,
+              `name="recipe-${idx}-position"`
+            )
             .replace(/id="id_component_product"/g, `id="id_recipe-${idx}-component_product"`)
             .replace(/id="id_ratio"/g, `id="id_recipe-${idx}-ratio"`)
-            .replace(/id="id_note"/g, `id="id_recipe-${idx}-note"`);
+            .replace(/id="id_note"/g, `id="id_recipe-${idx}-note"`)
+            .replace(/id="id_position"/g, `id="id_recipe-${idx}-position"`);
           body.insertAdjacentHTML("beforeend", html);
           total.value = idx + 1;
+          renumber();
         });
       })();
     </script>

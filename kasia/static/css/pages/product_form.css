@@ -1,0 +1,17 @@
+/* Product form (Nový produkt / Úprava produktu) — per-screen CSS.
+   Linked from product_form.html {% block extra_head %} (per 0069). */
+
+/* ============ RECIPE ROW REORDER (per 0092) ============ */
+/* ↑/↓ move buttons — kept page-scoped for now; if another formset ever
+   grows reorder buttons, promote next to .row-delete-btn in
+   components/tables.css. Box-model mirrors .row-delete-btn so the
+   buttons line up inside a table.lines td. */
+.row-move-btn {
+  background: var(--bg-card); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 0; padding: 0.4rem 0.55rem; line-height: 1.4; cursor: pointer;
+  font: inherit; vertical-align: middle; display: inline-block;
+}
+.row-move-btn:hover { background: var(--line-soft); }
+#recipe-table .move-col { text-align: center; white-space: nowrap; width: 1%; }
+/* A deleted (revertible) row keeps its buttons usable but visually muted
+   via the shared .marked-deleted opacity — no extra rules needed. */

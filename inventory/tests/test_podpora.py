@@ -662,3 +662,40 @@ def test_dodaci_list_detail_renders_failed_banner_when_unresolved(
 
 
 # ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_xls_import_confirm_sets_component_positions(user_vlastnik) -> None:
+    """Per 0092: the importer stamps dense 0..n-1 positions in review
+    (= parsed XLS) order."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    payload = {
+        "name_cs": "Směs s pořadím",
+        "notes": "",
+        "total_kg": "100.000",
+        "form-TOTAL_FORMS": "3",
+        "form-INITIAL_FORMS": "3",
+        "form-MIN_NUM_FORMS": "0",
+        "form-MAX_NUM_FORMS": "1000",
+        # Deliberately anti-alphabetical: Zázvor < Anýz would sort wrong.
+        "form-0-name_cs": "Zázvor",
+        "form-0-qty_kg": "50.000",
+        "form-0-existing_product_id": "",
+        "form-1-name_cs": "Muškát",
+        "form-1-qty_kg": "30.000",
+        "form-1-existing_product_id": "",
+        "form-2-name_cs": "Anýz",
+        "form-2-qty_kg": "20.000",
+        "form-2-existing_product_id": "",
+    }
+    response = client.post("/sklad/katalog/import-xls/potvrdit/", payload)
+    assert response.status_code == 302
+    mixture = Product.objects.get(name_cs="Směs s pořadím")
+    ordered = list(
+        RecipeComponent.objects.filter(mixture_product=mixture)
+        .order_by("position", "id")
+        .values_list("component_product__name_cs", "position")
+    )
+    assert ordered == [("Zázvor", 0), ("Muškát", 1), ("Anýz", 2)]

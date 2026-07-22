@@ -115,7 +115,17 @@ or restructure:
 - **JS/HTMX hooks (sklad `base.html`):** the row-delete toggle (`.row-delete-btn`
   + `data-target` + `.line-row`/`.marked-deleted`, `<button type="button">`
   inside a `<td>`); whole-row nav (`tr.row-link[data-href]` + the
-  `a,button,input,select,label` ignore-list); the `line_row_partial` add-row
+  `a,button,input,select,label` ignore-list); **the recipe-formset reorder
+  (per [`0092`](../../context/decisions/0092-recipe-component-order.md)):**
+  `.row-move-btn` + `data-dir="up|down"` and the hidden per-row `position`
+  input on `product_form.html`, whose `renumber()` rewrites 0..n-1 in **DOM
+  order over all rows incl. `.marked-deleted`** after every move / add-row /
+  delete-toggle and dispatches a bubbling `change` so `data-guard-unsaved`
+  arms — plus the recipe clone hooks `#recipe-table`/`#recipe-body`/
+  `#recipe-empty-row`/`#recipe-add-row`/`recipe-TOTAL_FORMS` (locked here;
+  0090 left them implicit). The server re-normalizes positions to dense
+  0..n-1 over all surviving forms on save (form-index fallback) — don't
+  make the hidden field required or trust client values; the `line_row_partial` add-row
   HTMX targets `#lines-table` / `#lines-body` (beforeend) and the `.secondary`
   "Přidat řádek" button — the button additionally carries `id="add-line-btn"` so
   the auto-append `<script>` in `_movement_form_lines.html` can programmatically
@@ -376,8 +386,17 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   `product_form.html`, vlastník-only like the whole formset — per
   [`0090`](../../context/decisions/0090-component-note-on-operator-recipe-form.md),
   which reverses 0088's admin/ORM-only clause); the add-row clone JS rewrites the
-  `note` widget's `name`/`id` alongside `component_product`/`ratio`. Also settable
-  via admin / ORM.
+  `note` widget's `name`/`id` alongside `component_product`/`ratio`/`position`
+  (the hidden mixing-order input, per 0092). Also settable via admin / ORM.
+- **`RecipeComponent.position` (per
+  [`0092`](../../context/decisions/0092-recipe-component-order.md)):** 0-based
+  per-mixture **mixing order** („míchat v tom pořadí, jak jsou suroviny odshora
+  řazeny") — every component render site (product detail recipe + scaler,
+  recipe PDF, míchání preview, the operator formset, admin) orders by
+  `("position", "id")`; `MixingJobLine`s are created in that order and re-read
+  by `("id",)`. Reordered via the `.row-move-btn` hook above; importer, seed
+  and ORM entry scripts set it from source row order. Do **not** restore an
+  alphabetical `order_by` on these sites.
 - **`Product.default_batch_kg` (per
   [`0089`](../../context/decisions/0089-mixture-default-batch-kg.md)):** the
   mixture's default batch size (`0` = unset, gated on `> 0`). Prefills the míchání

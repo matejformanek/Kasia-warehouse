@@ -5,6 +5,20 @@
 
 ## Done
 
+- **2026-07-22** — **Recipe component mixing order persisted** (decision
+  [`0092`](./decisions/0092-recipe-component-order.md)). The postup's „míchat
+  v tom pořadí" order was silently lost — everything sorted alphabetically.
+  Added `RecipeComponent.position` (migration 0028); all render sites now
+  order by `(position, id)` (detail + scaler, recipe PDF, míchání preview,
+  formset, admin; `MixingJobLine`s created in that order, re-read by id).
+  Operator reorder via ↑/↓ `.row-move-btn` + hidden `position` inputs on
+  `product_form.html` (new locked hooks + `pages/product_form.css`; server
+  re-normalizes dense 0..n-1 over all surviving forms — lenient hidden field).
+  Importer/seed/`_mk_mixture_with_recipe` set position from source order.
+  Backfill of all 18 prod recipes to XLS document order via untracked
+  `scratchpad/backfill_recipe_positions.py` (local ✓; prod after deploy).
+  633 tests pass (+7 new). Rules updated (design-system, frontend-and-templates,
+  kasia-add-xls-recipe skill).
 - **2026-07-22** — **SEZ batch: 14 real recepturas + 25 raws on prod.** All of
   Petr's knedlíkárna XLS files imported SEZ-exclusive via idempotent ORM script
   (untracked `scratchpad/import_sez_recipes.py`, local smoke → prod): Chlupaté

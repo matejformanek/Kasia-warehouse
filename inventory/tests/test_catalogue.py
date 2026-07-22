@@ -651,3 +651,65 @@ def test_catalogue_branch_column_shown_for_vlastnik_all_branches(
     assert low.name_cs in body
     # All-branches vlastník view keeps the per-branch chip column.
     assert "Dochází na" in body
+
+
+# Pass — recipe component mixing order (per 0092)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_recipe_follows_position_order(
+    user_vlastnik, pepper, paprika
+) -> None:
+    """Per 0092: the recipe table (and the scaler) render components in
+    position order — NOT alphabetically ('Paprika sladká' < 'Pepř černý'
+    alphabetically, but pepper carries position 0)."""
+    mixture = Product.objects.create(
+        name_cs="Směs pořadí", kind=Product.Kind.MIXTURE
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=paprika,
+        ratio=Decimal("0.4"), position=1,
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper,
+        ratio=Decimal("0.6"), position=0,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/katalog/{mixture.pk}/").content.decode("utf-8")
+    assert body.index(pepper.name_cs) < body.index(paprika.name_cs)
+
+
+@pytest.mark.django_db
+def test_recipe_pdf_rows_follow_position_order(pepper, paprika, monkeypatch) -> None:
+    """Per 0092: the recipe PDF rows come position-ordered from the service.
+    Asserted on the template context (the PDF byte stream is opaque)."""
+    from inventory.services import dodaci_list as dodaci_list_service
+
+    mixture = Product.objects.create(
+        name_cs="Směs PDF pořadí", kind=Product.Kind.MIXTURE
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=paprika,
+        ratio=Decimal("0.4"), position=1,
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper,
+        ratio=Decimal("0.6"), position=0,
+    )
+
+    captured = {}
+    real_render = dodaci_list_service.render_to_string
+
+    def spy(template_name, context=None):
+        captured["rows"] = context["rows"]
+        return real_render(template_name, context)
+
+    monkeypatch.setattr(dodaci_list_service, "render_to_string", spy)
+    pdf = dodaci_list_service.render_recipe_pdf(mixture)
+    assert pdf[:4] == b"%PDF"
+    assert [r["name"] for r in captured["rows"]] == [
+        pepper.name_cs, paprika.name_cs
+    ]

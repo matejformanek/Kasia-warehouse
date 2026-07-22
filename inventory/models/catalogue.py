@@ -258,11 +258,15 @@ class RecipeComponent(models.Model):
     note = models.CharField(
         "poznámka ke složce", max_length=255, blank=True, default=""
     )
+    # Per 0092: 0-based per-mixture mixing order ("míchat v tom pořadí, jak
+    # jsou suroviny odshora řazeny"). The id tiebreak in Meta.ordering keeps
+    # legacy all-zero rows in creation (= XLS document) order.
+    position = models.PositiveSmallIntegerField("pořadí", default=0)
 
     class Meta:
         verbose_name = "složka receptury"
         verbose_name_plural = "složky receptury"
-        ordering = ("mixture_product__name_cs", "component_product__name_cs")
+        ordering = ("mixture_product__name_cs", "position", "id")
         constraints = [
             UniqueConstraint(
                 fields=["mixture_product", "component_product"],

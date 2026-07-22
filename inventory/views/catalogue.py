@@ -310,7 +310,7 @@ def product_detail(request, pk: int):
         recipe = list(
             RecipeComponent.objects.filter(mixture_product=product)
             .select_related("component_product")
-            .order_by("component_product__name_cs")
+            .order_by("position", "id")
         )
 
     used_in = []
@@ -441,7 +441,7 @@ def product_edit(request, pk: int):
 
     recipe_qs = RecipeComponent.objects.filter(
         mixture_product=product
-    ).order_by("component_product__name_cs")
+    ).order_by("position", "id")
     override_qs = StockThresholdOverride.objects.filter(
         product=product
     ).order_by("branch__code")
@@ -480,10 +480,32 @@ def product_edit(request, pk: int):
         if forms_valid:
             form.save()
             if recipe_formset is not None:
-                instances = recipe_formset.save(commit=False)
-                for inst in instances:
-                    inst.mixture_product = product
-                    inst.save()
+                # Populates deleted_objects and attaches cleaned data; its
+                # return value (new+changed only) is deliberately unused —
+                # position normalization must cover UNCHANGED rows too, or a
+                # partial reorder would collide with untouched positions.
+                recipe_formset.save(commit=False)
+                deleted_forms = set(recipe_formset.deleted_forms)
+                survivors = [
+                    f
+                    for f in recipe_formset.forms
+                    if f not in deleted_forms
+                    and f.cleaned_data.get("component_product")
+                ]
+                # Per 0092: dense 0..n-1 in submitted (JS DOM) order; a
+                # missing position falls back to the form's own index.
+                survivors.sort(
+                    key=lambda f: (
+                        f.cleaned_data.get("position")
+                        if f.cleaned_data.get("position") is not None
+                        else recipe_formset.forms.index(f),
+                        recipe_formset.forms.index(f),
+                    )
+                )
+                for i, f in enumerate(survivors):
+                    f.instance.position = i
+                    f.instance.mixture_product = product
+                    f.instance.save()
                 for deleted in recipe_formset.deleted_objects:
                     deleted.delete()
             if threshold_formset is not None:

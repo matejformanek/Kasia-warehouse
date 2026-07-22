@@ -754,3 +754,140 @@ def test_nav_pobocky_link_hidden_for_obsluha(user_obsluha_tyn) -> None:
 
 
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Recipe component mixing order (per 0092)
+# ---------------------------------------------------------------------------
+
+
+def _recipe_edit_payload(mixture, rows):
+    """Base POST payload for product_edit with `rows` recipe form dicts."""
+    payload = {
+        "name_cs": mixture.name_cs,
+        "kind": "mixture",
+        "notes": "",
+        "recipe-TOTAL_FORMS": str(len(rows)),
+        "recipe-INITIAL_FORMS": str(len(rows)),
+        "recipe-MIN_NUM_FORMS": "0",
+        "recipe-MAX_NUM_FORMS": "1000",
+        "threshold-TOTAL_FORMS": "0",
+        "threshold-INITIAL_FORMS": "0",
+        "threshold-MIN_NUM_FORMS": "0",
+        "threshold-MAX_NUM_FORMS": "1000",
+    }
+    for i, row in enumerate(rows):
+        for key, value in row.items():
+            payload[f"recipe-{i}-{key}"] = value
+    return payload
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipe_edit_renders_move_buttons_and_position(
+    user_vlastnik, pepper
+) -> None:
+    """Per 0092: the formset row carries the hidden position input and the
+    ↑/↓ move buttons (the .row-move-btn locked hook)."""
+    mixture = Product.objects.create(name_cs="Směs R", kind="mixture")
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper,
+        ratio=Decimal("1.000"), position=0,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/katalog/{mixture.pk}/upravit/").content.decode("utf-8")
+    assert 'name="recipe-0-position"' in body
+    assert 'class="row-move-btn"' in body
+    assert 'data-dir="up"' in body
+    assert 'data-dir="down"' in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipe_edit_reorder_persists(user_vlastnik, pepper, paprika) -> None:
+    """Per 0092: swapped position values on the POST persist — including on
+    rows whose OTHER fields are unchanged (the save loop must not rely on
+    save(commit=False)'s changed-only return)."""
+    mixture = Product.objects.create(name_cs="Směs S", kind="mixture")
+    rc_pepper = RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper,
+        ratio=Decimal("0.600"), position=0,
+    )
+    rc_paprika = RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=paprika,
+        ratio=Decimal("0.400"), position=1,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/sklad/katalog/{mixture.pk}/upravit/",
+        _recipe_edit_payload(
+            mixture,
+            [
+                {
+                    "id": str(rc_pepper.pk),
+                    "component_product": str(pepper.pk),
+                    "ratio": "0.600",
+                    "position": "1",
+                },
+                {
+                    "id": str(rc_paprika.pk),
+                    "component_product": str(paprika.pk),
+                    "ratio": "0.400",
+                    "position": "0",
+                },
+            ],
+        ),
+    )
+    assert response.status_code == 302
+    rc_pepper.refresh_from_db()
+    rc_paprika.refresh_from_db()
+    assert rc_paprika.position == 0
+    assert rc_pepper.position == 1
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipe_edit_without_position_falls_back_to_form_order(
+    user_vlastnik, pepper, paprika
+) -> None:
+    """Per 0092: the hidden position field is lenient (required=False) — a
+    POST without it (old payload shape / no-JS) still saves, positions
+    normalized dense 0..n-1 by form index."""
+    mixture = Product.objects.create(name_cs="Směs T", kind="mixture")
+    rc_pepper = RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper,
+        ratio=Decimal("0.600"), position=5,
+    )
+    rc_paprika = RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=paprika,
+        ratio=Decimal("0.400"), position=7,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/sklad/katalog/{mixture.pk}/upravit/",
+        _recipe_edit_payload(
+            mixture,
+            [
+                {
+                    "id": str(rc_pepper.pk),
+                    "component_product": str(pepper.pk),
+                    "ratio": "0.600",
+                },
+                {
+                    "id": str(rc_paprika.pk),
+                    "component_product": str(paprika.pk),
+                    "ratio": "0.400",
+                },
+            ],
+        ),
+    )
+    assert response.status_code == 302
+    rc_pepper.refresh_from_db()
+    rc_paprika.refresh_from_db()
+    # Formset queryset order is (position, id) → pepper (5) before paprika
+    # (7); form index fallback keeps that order, renumbered densely.
+    assert rc_pepper.position == 0
+    assert rc_paprika.position == 1

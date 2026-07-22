@@ -146,12 +146,21 @@ class RecipeComponentForm(forms.ModelForm):
     """One row of a mixture's recipe — inline-edited by vlastník
     on the mixture's product detail / edit screen."""
 
+    # Per 0092: hidden mixing-order input, renumbered by JS in DOM order.
+    # Deliberately lenient (required=False): the view re-normalizes all
+    # positions to dense 0..n-1 on save, falling back to the form index, so
+    # a missing/garbled value can never corrupt the order — and a required
+    # HiddenInput would fail invisibly (errors render nowhere in the table).
+    position = forms.IntegerField(
+        required=False, min_value=0, widget=forms.HiddenInput()
+    )
+
     class Meta:
         model = RecipeComponent
         # Per 0090: `note` is now editable on the operator recipe formset
         # (was admin/ORM-only under 0088). The formset is vlastník-only, so the
         # field inherits that gating.
-        fields = ("component_product", "ratio", "note")
+        fields = ("component_product", "ratio", "note", "position")
         widgets = {
             "note": forms.TextInput(
                 attrs={"placeholder": "Poznámka ke složce (nepovinné)"}

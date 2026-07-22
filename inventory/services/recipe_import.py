@@ -296,7 +296,7 @@ def create_mixture_from_review(
         )
 
         seen_components: set[int] = set()
-        for line, ratio in zip(line_data, ratios, strict=True):
+        for idx, (line, ratio) in enumerate(zip(line_data, ratios, strict=True)):
             line_name = line["name_cs"].strip()
             if not line_name:
                 raise ValidationError("Surovina bez názvu — vyplňte název nebo odeberte řádku.")
@@ -335,6 +335,7 @@ def create_mixture_from_review(
                 mixture_product=mixture,
                 component_product=component_product,
                 ratio=ratio,
+                position=idx,  # review order = XLS document order (0092)
             )
             component.full_clean()
             component.save()

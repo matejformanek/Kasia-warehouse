@@ -60,7 +60,7 @@ def plan_mixing_job(
     recipe = list(
         RecipeComponent.objects.filter(mixture_product=mixture)
         .select_related("component_product")
-        .order_by("component_product__name_cs")
+        .order_by("position", "id")
     )
     if not recipe:
         raise ValidationError({"mixture": "Směs nemá vyplněnou recepturu."})
@@ -154,9 +154,8 @@ def start_mixing_job(
         mixture = job.mixture
         target_qty = job.target_qty
         existing_lines = list(
-            job.lines.select_related("component_product").order_by(
-                "component_product__name_cs"
-            )
+            # id order = creation order = recipe position order (0092)
+            job.lines.select_related("component_product").order_by("id")
         )
         if not existing_lines:
             raise ValidationError(
@@ -217,7 +216,7 @@ def start_mixing_job(
     recipe = list(
         RecipeComponent.objects.filter(mixture_product=mixture)
         .select_related("component_product")
-        .order_by("component_product__name_cs")
+        .order_by("position", "id")
     )
     if not recipe:
         raise ValidationError(

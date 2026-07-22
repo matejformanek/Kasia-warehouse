@@ -166,11 +166,11 @@ class Command(BaseCommand):
             "Pepř černý mletý": (Decimal("0.300"), "hrubě mletý"),
             "Kmín celý": (Decimal("0.200"), ""),
         }
-        for sp_name, (ratio, note) in recipe_targets.items():
+        for idx, (sp_name, (ratio, note)) in enumerate(recipe_targets.items()):
             RecipeComponent.objects.update_or_create(
                 mixture_product=mix,
                 component_product=spices[sp_name],
-                defaults={"ratio": ratio, "note": note},
+                defaults={"ratio": ratio, "note": note, "position": idx},
             )
 
         # Demo mixture that uses the untracked „Voda" + two tracked spices, each
@@ -193,11 +193,11 @@ class Command(BaseCommand):
             (spices["Oregano"], Decimal("0.200"), "sušené"),
             (voda, Decimal("0.500"), "vlažná, doplní se na místě"),
         ]
-        for component, ratio, note in marinada_recipe:
+        for idx, (component, ratio, note) in enumerate(marinada_recipe):
             RecipeComponent.objects.update_or_create(
                 mixture_product=marinada,
                 component_product=component,
-                defaults={"ratio": ratio, "note": note},
+                defaults={"ratio": ratio, "note": note, "position": idx},
             )
         self.stdout.write("• Products + recipes seeded (incl. untracked Voda).")
 

@@ -355,6 +355,61 @@ def test_product_detail_shows_mixing_notes_and_pdf_link(user_vlastnik, pepper) -
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_shows_component_note(user_vlastnik, pepper, paprika) -> None:
+    """Per 0088: the per-component note renders in the mixture detail recipe
+    table (PDF is binary, so we assert the detail page here)."""
+    mixture = Product.objects.create(
+        name_cs="Gulášové koření", kind=Product.Kind.MIXTURE
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper,
+        ratio=Decimal("0.7"), note="hrubě mletý",
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=paprika,
+        ratio=Decimal("0.3"), note="",
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/katalog/{mixture.pk}/").content.decode("utf-8")
+    assert "Poznámka" in body  # the new column header
+    assert "hrubě mletý" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_raw_ingredient_detail_omits_component_note(user_vlastnik, pepper) -> None:
+    """The note lives on the mixture's recipe table only — the raw
+    ingredient's own page (its `used_in` table) must NOT show it (per 0088)."""
+    mixture = Product.objects.create(
+        name_cs="Směs X", kind=Product.Kind.MIXTURE
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper,
+        ratio=Decimal("1.0"), note="TAJNÁ POZNÁMKA",
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/katalog/{pepper.pk}/").content.decode("utf-8")
+    assert "TAJNÁ POZNÁMKA" not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_catalogue_excludes_untracked_product(user_vlastnik, pepper, voda) -> None:
+    """Per 0088: an untracked product never appears in the Katalog and is not
+    counted in the product KPI."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/katalog/").content.decode("utf-8")
+    assert pepper.name_cs in body
+    assert voda.name_cs not in body
+    # KPI counts one product (pepper), not the untracked Voda.
+    assert 'data-kpi-live="products">1</span>' in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_recipe_pdf_download(user_vlastnik, pepper, paprika) -> None:
     mixture = Product.objects.create(
         name_cs="Gulášové koření",

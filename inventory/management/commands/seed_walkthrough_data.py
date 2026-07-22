@@ -144,22 +144,62 @@ class Command(BaseCommand):
             )
             spices[name] = p
 
+        # Untracked „Voda" (per 0088). `defaults` apply only on create, so a
+        # pre-existing tracked "Voda" won't be flipped — fine for a fresh dev DB.
+        # Deliberately kept OUT of the `spices` dict (and every příjem/výdej list)
+        # so no stock ever materializes for it — untracked stays stockless.
+        voda, _ = Product.objects.get_or_create(
+            name_cs="Voda",
+            defaults={
+                "kind": Product.Kind.RAW_SPICE,
+                "is_stock_tracked": False,
+            },
+        )
+
         mix, _ = Product.objects.get_or_create(
             name_cs="Gulášové koření",
             defaults={"kind": Product.Kind.MIXTURE},
         )
+        # ratio + per-component note (per 0088).
         recipe_targets = {
-            "Paprika sladká": Decimal("0.500"),
-            "Pepř černý mletý": Decimal("0.300"),
-            "Kmín celý": Decimal("0.200"),
+            "Paprika sladká": (Decimal("0.500"), "prosít před vážením"),
+            "Pepř černý mletý": (Decimal("0.300"), "hrubě mletý"),
+            "Kmín celý": (Decimal("0.200"), ""),
         }
-        for sp_name, ratio in recipe_targets.items():
+        for sp_name, (ratio, note) in recipe_targets.items():
             RecipeComponent.objects.update_or_create(
                 mixture_product=mix,
                 component_product=spices[sp_name],
-                defaults={"ratio": ratio},
+                defaults={"ratio": ratio, "note": note},
             )
-        self.stdout.write("• Products + recipe seeded.")
+
+        # Demo mixture that uses the untracked „Voda" + two tracked spices, each
+        # with a distinct note (per 0088) — so the „neomezeno" preview + the
+        # per-ingredient comment show live on a fresh dev DB.
+        # update_or_create (not get_or_create) so the recipe-level note lands
+        # even on a re-seed of an already-created row.
+        marinada, _ = Product.objects.update_or_create(
+            name_cs="Marináda na gril",
+            defaults={
+                "kind": Product.Kind.MIXTURE,
+                "notes": (
+                    "Míchat 5 min. Vodu doplnit až na místě dle konzistence.\n"
+                    "Balit á 1 kg. Skladovat v chladu."
+                ),
+            },
+        )
+        marinada_recipe = [
+            (spices["Paprika sladká"], Decimal("0.300"), "sladká, ne uzená"),
+            (spices["Oregano"], Decimal("0.200"), "sušené"),
+            (voda, Decimal("0.500"), "vlažná, doplní se na místě"),
+        ]
+        for component, ratio, note in marinada_recipe:
+            RecipeComponent.objects.update_or_create(
+                mixture_product=marinada,
+                component_product=component,
+                defaults={"ratio": ratio, "note": note},
+            )
+        self.stdout.write("• Products + recipes seeded (incl. untracked Voda).")
 
         # --- Reservations + threshold demo (per 0043 + 0044) ----------
         # Runs unconditionally — each item has its own .exists() guard

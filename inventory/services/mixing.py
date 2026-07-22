@@ -76,6 +76,12 @@ def plan_mixing_job(
             note=note,
         )
         for rc in recipe:
+            # Untracked components (per 0088, e.g. „Voda“) are unlimited — no
+            # MixingJobLine, so they never feed reserved_kg() (which sums only
+            # PLANNED MixingJobLine.derived_qty). Skipping here is what keeps a
+            # planned water line from producing a phantom reservation.
+            if not rc.component_product.is_stock_tracked:
+                continue
             derived = (target_qty * rc.ratio).quantize(Decimal("0.001"))
             if derived <= 0:
                 raise ValidationError(
@@ -168,6 +174,10 @@ def start_mixing_job(
                     f"{job.note or note}".strip()
                 ),
             )
+            # No untracked filter needed here: consume lines are built from the
+            # existing MixingJobLine rows, and plan_mixing_job never creates a
+            # line for an untracked component (per 0088). Correctness is derived
+            # from that — don't add a redundant guard.
             consume_lines = [
                 MovementLine(
                     product=jl.component_product,
@@ -230,6 +240,11 @@ def start_mixing_job(
         consume_lines: list[MovementLine] = []
         snapshots: list[tuple[Product, Decimal, Decimal]] = []
         for rc in recipe:
+            # Untracked components (per 0088, e.g. „Voda“) are unlimited — no
+            # consume MovementLine, no MixingJobLine. A RUNNING mix therefore
+            # never decrements water stock or records it as consumed.
+            if not rc.component_product.is_stock_tracked:
+                continue
             derived = (target_qty * rc.ratio).quantize(Decimal("0.001"))
             if derived <= 0:
                 # Pathological: a positive ratio rounded to 0 at 3 dp.

@@ -60,6 +60,16 @@ def paprika(db) -> Product:
 
 
 @pytest.fixture
+def voda(db) -> Product:
+    """An untracked ingredient (per 0088): kind=raw_spice so it stays
+    selectable in recipes, but is_stock_tracked=False so it never seeds
+    Stock, never deducts, never alerts, never blocks a mix."""
+    return Product.objects.create(
+        name_cs="Voda", kind=Product.Kind.RAW_SPICE, is_stock_tracked=False
+    )
+
+
+@pytest.fixture
 def user_tyn(db, tyn):
     """Generic logged-in user with branch=TYN. No role group — falls
     back to vlastník per accounts.User.is_vlastnik default. Pass 3a/b/c

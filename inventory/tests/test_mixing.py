@@ -558,6 +558,113 @@ def test_mixing_preview_builds_inventura_component_link(
 
 
 # ---------------------------------------------------------------------------
+# Untracked ingredients (per 0088)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_mixing_untracked_component_never_deducted_or_blocking(
+    tyn, user_tyn, pepper, voda
+) -> None:
+    """A mixture with one tracked (pepper) + one untracked (voda) component
+    mixes successfully; only the tracked component gets a consume MovementLine
+    + a Stock delta, and voda never blocks the mix as a shortage."""
+    from inventory.services import start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
+    mixture = _mk_mixture_with_recipe(
+        "S vodou", [(pepper, "0.5"), (voda, "0.5")]
+    )
+    job = start_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("4.000"),
+        user=user_tyn,
+    )
+    assert job.state == MixingJob.State.RUNNING
+    # Only pepper consumed (4 * 0.5 = 2.0); voda produced no line.
+    consume_products = {
+        ln.product_id for ln in job.consume_movement.lines.all()
+    }
+    assert consume_products == {pepper.pk}
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("8.000")
+    # No Stock row was ever created for the untracked component.
+    assert not Stock.objects.filter(product=voda).exists()
+    # No MixingJobLine for the untracked component either.
+    assert {jl.component_product_id for jl in job.lines.all()} == {pepper.pk}
+
+
+@pytest.mark.django_db
+def test_mixing_untracked_component_does_not_block_when_zero_stock(
+    tyn, user_tyn, pepper, voda
+) -> None:
+    """Even with 100% of a huge target routed through water, the mix isn't
+    refused for want of water stock (voda is unlimited)."""
+    from inventory.services import start_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1.000"))
+    mixture = _mk_mixture_with_recipe(
+        "Skoro voda", [(pepper, "0.01"), (voda, "0.99")]
+    )
+    job = start_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("50.000"),
+        user=user_tyn,
+    )
+    assert job.state == MixingJob.State.RUNNING
+
+
+@pytest.mark.django_db
+def test_plan_mixing_job_skips_untracked_no_reservation(
+    tyn, user_tyn, pepper, voda
+) -> None:
+    """A PLANNED job with an untracked component creates no MixingJobLine for
+    it → reserved_kg stays 0 for the untracked product."""
+    from inventory.services import plan_mixing_job, reserved_kg
+
+    mixture = _mk_mixture_with_recipe(
+        "Plán s vodou", [(pepper, "0.5"), (voda, "0.5")]
+    )
+    job = plan_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("6.000"),
+        user=user_tyn,
+    )
+    assert {jl.component_product_id for jl in job.lines.all()} == {pepper.pk}
+    assert reserved_kg(voda, tyn) == Decimal("0.000")
+    # The tracked component IS reserved (6 * 0.5 = 3.0).
+    assert reserved_kg(pepper, tyn) == Decimal("3.000")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_preview_untracked_shows_neomezeno(
+    user_vlastnik, tyn, pepper, voda
+) -> None:
+    # Pepper needs 50 kg (0.5 × 100) — give it plenty so only the untracked
+    # voda's "neomezeno" appears and nothing flags a shortage.
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("100.000"))
+    mixture = _mk_mixture_with_recipe(
+        "Náhled s vodou", [(pepper, "0.5"), (voda, "0.5")]
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get(
+        f"/sklad/_partials/mixing-preview/?branch={tyn.pk}"
+        f"&mixture={mixture.pk}&target_qty=100.000"
+    )
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "neomezeno" in body
+    # Water at 50 kg of a 100 kg target must NOT flag a shortage / overdraw card.
+    assert "nedostatek" not in body
+    # The untracked component id is excluded from the inventura jump.
+    assert f"products={voda.pk}" not in body
+
+
+# ---------------------------------------------------------------------------
 # Screen 14 — Nastavení (operator-facing Settings UI)
 # ---------------------------------------------------------------------------
 

@@ -94,6 +94,17 @@ class Product(models.Model):
     name_cs = models.CharField("název", max_length=128)
     kind = models.CharField("typ", max_length=16, choices=Kind.choices)
     is_active = models.BooleanField("aktivní", default=True)
+    is_stock_tracked = models.BooleanField(
+        "sledovat sklad",
+        default=True,
+        help_text=(
+            "Odškrtnuté produkty (např. „Voda“) se skladově nesledují: nemají"
+            " skladové řádky, nezobrazují se v Katalogu / Přehledu / inventuře,"
+            " nikdy nejsou „Prázdné“/„Dochází“, neblokují výdej ani míchání a"
+            " neposílají upozornění. Nastavuje se pouze při založení produktu"
+            " (per 0088)."
+        ),
+    )
     notes = models.TextField("poznámky", blank=True)
     reorder_threshold_kg = models.DecimalField(
         "objednací bod (kg)",
@@ -230,6 +241,9 @@ class RecipeComponent(models.Model):
         verbose_name="surovina",
     )
     ratio = models.DecimalField("podíl", max_digits=7, decimal_places=6)
+    note = models.CharField(
+        "poznámka ke složce", max_length=255, blank=True, default=""
+    )
 
     class Meta:
         verbose_name = "složka receptury"

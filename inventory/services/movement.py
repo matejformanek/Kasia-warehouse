@@ -147,7 +147,13 @@ def apply_movement(
     # that newly cross into it. The stock-raising leg of a transfer/receipt
     # (+1) produces an empty crossing set, so at most one content-bearing
     # alert per user operation. Reads current stock now (pre-mutation).
-    low_stock_pairs = {(line.product, movement.branch) for line in lines}
+    # Untracked products (per 0088, e.g. „Voda“) never enter the alert set —
+    # a water line must not trigger a phantom „Dochází" crossing e-mail.
+    low_stock_pairs = {
+        (line.product, movement.branch)
+        for line in lines
+        if line.product.is_stock_tracked
+    }
     low_stock_before = capture_low_stock_state(low_stock_pairs)
 
     with transaction.atomic():
@@ -206,15 +212,17 @@ def edit_movement(
     # any mutation — the existing line's product for update/remove, plus the
     # new product for add ops and update ops that change product. Snapshot the
     # low-stock alert state now, e-mail newly-crossed pairs on commit.
+    # Untracked products (per 0088) never enter the alert set — see apply_movement.
     low_stock_pairs: set = set()
     for op in line_changes:
         action = op.get("op")
         if action in ("update", "remove"):
             existing = MovementLine.objects.get(pk=op["line_id"], movement=movement)
-            low_stock_pairs.add((existing.product, movement.branch))
+            if existing.product.is_stock_tracked:
+                low_stock_pairs.add((existing.product, movement.branch))
         if action in ("update", "add"):
             new_product = op.get("fields", {}).get("product")
-            if new_product is not None:
+            if new_product is not None and new_product.is_stock_tracked:
                 low_stock_pairs.add((new_product, movement.branch))
     low_stock_before = capture_low_stock_state(low_stock_pairs)
 

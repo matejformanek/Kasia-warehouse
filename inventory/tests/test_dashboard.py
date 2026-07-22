@@ -320,6 +320,20 @@ def test_branch_dashboard_unstocked_product_is_empty(
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_excludes_untracked_product(
+    user_obsluha_tyn, tyn, pepper, voda
+) -> None:
+    """Per 0088: an untracked product never shows in the obsluha Přehled
+    "Stav skladu" card (not even as Prázdné)."""
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    body = client.get("/sklad/pobocka/TYN/").content.decode("utf-8")
+    assert pepper.name_cs in body
+    assert voda.name_cs not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_branch_dashboard_search_filters_stock(
     user_obsluha_tyn, tyn, pepper, paprika
 ) -> None:

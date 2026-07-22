@@ -210,8 +210,12 @@ def mixing_preview_partial(request):
     any_overdraw = False
     for rc in recipe:
         derived = (target_qty * rc.ratio).quantize(Decimal("0.001"))
+        # Untracked components (per 0088, e.g. „Voda“) are unlimited — never
+        # over, never counted into the overdraw warning card; the template
+        # renders „neomezeno" for their on-hand.
+        untracked = not rc.component_product.is_stock_tracked
         on_hand = stock_by_product.get(rc.component_product_id, Decimal("0.000"))
-        over = derived > on_hand
+        over = (derived > on_hand) and not untracked
         if over:
             any_overdraw = True
         rows.append(
@@ -221,12 +225,18 @@ def mixing_preview_partial(request):
                 "derived": derived,
                 "on_hand": on_hand,
                 "over": over,
+                "untracked": untracked,
             }
         )
     # "Upravit stav surovin" jump: per-branch inventura pre-filtered to this
     # blend's components (?products=…), with a `next=` back to the míchání
-    # form carrying the current selection (per 0060, 3c).
-    component_ids = ",".join(str(rc.component_product_id) for rc in recipe)
+    # form carrying the current selection (per 0060, 3c). Untracked components
+    # are excluded — inventura never lists them.
+    component_ids = ",".join(
+        str(rc.component_product_id)
+        for rc in recipe
+        if rc.component_product.is_stock_tracked
+    )
     michani_next = (
         reverse("inventory:mixing_job_create")
         + "?"

@@ -38,13 +38,14 @@ class RecipeComponentInline(admin.TabularInline):
     model = RecipeComponent
     fk_name = "mixture_product"
     extra = 1
+    fields = ("component_product", "ratio", "note")
     autocomplete_fields = ("component_product",)
 
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("name_cs", "kind", "is_active")
-    list_filter = ("kind", "is_active")
+    list_display = ("name_cs", "kind", "is_stock_tracked", "is_active")
+    list_filter = ("kind", "is_stock_tracked", "is_active")
     search_fields = ("name_cs",)
     inlines = (RecipeComponentInline,)
 
@@ -59,7 +60,7 @@ class StockAdmin(admin.ModelAdmin):
 
 @admin.register(RecipeComponent)
 class RecipeComponentAdmin(admin.ModelAdmin):
-    list_display = ("mixture_product", "component_product", "ratio")
+    list_display = ("mixture_product", "component_product", "ratio", "note")
     list_filter = ("mixture_product",)
     search_fields = ("mixture_product__name_cs", "component_product__name_cs")
     autocomplete_fields = ("mixture_product", "component_product")

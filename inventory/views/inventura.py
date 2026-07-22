@@ -267,7 +267,13 @@ def inventura_edit(request, code: str):
             # Everything across all branches: every active product × every
             # active branch, prefilled with the current stock level.
             grouped = _orders_by_pair()
-            products = list(Product.objects.filter(is_active=True).order_by("name_cs"))
+            # Untracked products (per 0088, e.g. „Voda“) have no Stock and are
+            # excluded from inventura.
+            products = list(
+                Product.objects.filter(
+                    is_active=True, is_stock_tracked=True
+                ).order_by("name_cs")
+            )
             stock_map = {
                 (s.product_id, s.branch_id): s.quantity
                 for s in Stock.objects.all()
@@ -293,7 +299,7 @@ def inventura_edit(request, code: str):
             return out
         # Per-branch: every active product, prefilled with current stock.
         # A ?products= pre-filter (per 0060) narrows this to a blend's inputs.
-        products_qs = Product.objects.filter(is_active=True)
+        products_qs = Product.objects.filter(is_active=True, is_stock_tracked=True)
         if product_filter_pks is not None:
             products_qs = products_qs.filter(pk__in=product_filter_pks)
         products = list(products_qs.order_by("name_cs"))

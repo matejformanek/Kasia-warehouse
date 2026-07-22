@@ -374,6 +374,24 @@ def test_inventura_edit_renders_for_vlastnik(
     assert b'data-current="5.5"' in body
 
 
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_inventura_excludes_untracked_product(
+    user_vlastnik, tyn, pepper, voda
+) -> None:
+    """Per 0088: an untracked product never appears as an editable inventura
+    row — on the per-branch view or the cross-branch "Vše"."""
+    client = Client()
+    client.force_login(user_vlastnik)
+    # Per-branch.
+    body = client.get("/sklad/katalog/inventura/TYN/").content.decode("utf-8")
+    assert pepper.name_cs in body
+    assert voda.name_cs not in body
+    # Cross-branch "Vše".
+    vse = client.get("/sklad/katalog/inventura/vse/").content.decode("utf-8")
+    assert voda.name_cs not in vse
+
+
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_inventura_edit_low_toggle_single_branch(

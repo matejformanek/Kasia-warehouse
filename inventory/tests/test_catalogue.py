@@ -396,6 +396,69 @@ def test_raw_ingredient_detail_omits_component_note(user_vlastnik, pepper) -> No
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_scaler_seeds_from_default_batch(
+    user_vlastnik, pepper
+) -> None:
+    """Per 0089: a mixture with default_batch_kg set (> 0) seeds the
+    „Spočítat dávku" scaler with a dot value and shows the „Výchozí dávka" line."""
+    mixture = Product.objects.create(
+        name_cs="Gulášové koření",
+        kind=Product.Kind.MIXTURE,
+        default_batch_kg=Decimal("337.000"),
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper, ratio=Decimal("1.0")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/katalog/{mixture.pk}/").content.decode("utf-8")
+    assert 'id="recipe-scaler-target" value="337.0"' in body
+    assert "Výchozí dávka" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_detail_scaler_falls_back_to_ten_without_default(
+    user_vlastnik, pepper
+) -> None:
+    """Per 0089: default_batch_kg=0 (the unset sentinel) → the scaler keeps
+    its historic "10" default and the „Výchozí dávka" line is hidden."""
+    mixture = Product.objects.create(
+        name_cs="Gulášové koření", kind=Product.Kind.MIXTURE
+    )
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper, ratio=Decimal("1.0")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/katalog/{mixture.pk}/").content.decode("utf-8")
+    assert 'id="recipe-scaler-target" value="10"' in body
+    assert "Výchozí dávka" not in body
+
+
+@pytest.mark.django_db
+def test_product_form_exposes_default_batch_for_vlastnik() -> None:
+    """Per 0089: the default-batch field is editable for a vlastník (the
+    view passes can_edit_threshold=True)."""
+    from inventory.forms import ProductForm
+
+    form = ProductForm(can_edit_threshold=True)
+    assert "default_batch_kg" in form.fields
+
+
+@pytest.mark.django_db
+def test_product_form_hides_default_batch_for_obsluha() -> None:
+    """Per 0089: the field is popped for a non-vlastník so an obsluha POST
+    can't null out a value an admin set (mirrors reorder_threshold_kg)."""
+    from inventory.forms import ProductForm
+
+    form = ProductForm(can_edit_threshold=False)
+    assert "default_batch_kg" not in form.fields
+    assert "reorder_threshold_kg" not in form.fields
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_catalogue_excludes_untracked_product(user_vlastnik, pepper, voda) -> None:
     """Per 0088: an untracked product never appears in the Katalog and is not
     counted in the product KPI."""

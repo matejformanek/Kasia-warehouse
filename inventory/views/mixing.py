@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -96,6 +96,26 @@ def mixing_job_create(request):
         if request.method == "POST"
         else request.GET.get("target_qty", "")
     )
+    # Per 0089: a {str(pk): "<1dp dot str>"} map of mixtures with a default batch
+    # set (> 0). Emitted as a json_script blob so the dropdown-change JS can
+    # overwrite the total when the operator picks a recipe. Built off the already-
+    # hydrated `mixtures` list — zero extra queries.
+    def _batch_1dp(m):
+        return str(m.default_batch_kg.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+    mixture_defaults = {
+        str(m.pk): _batch_1dp(m) for m in mixtures if m.default_batch_kg > 0
+    }
+    # GET-only server prefill: a plain `?mixture=<pk>` link (from product-detail)
+    # lands with the total already filled. Never on POST — that would clobber the
+    # overdraw re-render echo the tests assert. Only when no explicit ?target_qty=
+    # was passed (an explicit value always wins).
+    if (
+        request.method == "GET"
+        and not target_qty_value
+        and str(selected_mixture_id) in mixture_defaults
+    ):
+        target_qty_value = mixture_defaults[str(selected_mixture_id)]
     actual_produced_value = (
         request.POST.get("actual_produced_qty", "") if request.method == "POST" else ""
     )
@@ -166,6 +186,7 @@ def mixing_job_create(request):
             "selected_mixture_id": str(selected_mixture_id),
             "selected_branch_id": str(selected_branch_id),
             "target_qty_value": target_qty_value,
+            "mixture_defaults": mixture_defaults,
             "actual_produced_value": actual_produced_value,
             "note_value": note_value,
             "error": error,

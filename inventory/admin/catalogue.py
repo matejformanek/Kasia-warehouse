@@ -44,7 +44,7 @@ class RecipeComponentInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("name_cs", "kind", "is_stock_tracked", "is_active")
+    list_display = ("name_cs", "kind", "default_batch_kg", "is_stock_tracked", "is_active")
     list_filter = ("kind", "is_stock_tracked", "is_active")
     search_fields = ("name_cs",)
     inlines = (RecipeComponentInline,)

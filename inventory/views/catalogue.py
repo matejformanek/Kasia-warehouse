@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -334,6 +334,20 @@ def product_detail(request, pk: int):
     else:
         stock_state = "ok"
 
+    # Per 0089: seed the "Spočítat dávku" scaler from the mixture's default
+    # batch when set (> 0). A dot string ("337.0") — the scaler input is
+    # type=text/inputmode=decimal and its JS .replace(",",".")s, so a dot is
+    # safe (never floatformat, per frontend-and-templates.md). None ⇒ template
+    # falls back to "10". Quantize inline (not `from .inventura import _kg1` —
+    # inventura already imports this module, so that would be a circular import).
+    default_batch_1dp = None
+    if product.default_batch_kg > 0:
+        default_batch_1dp = str(
+            product.default_batch_kg.quantize(
+                Decimal("0.1"), rounding=ROUND_HALF_UP
+            )
+        )
+
     return render(
         request,
         "inventory/product_detail.html",
@@ -348,6 +362,7 @@ def product_detail(request, pk: int):
             "recipe": recipe,
             "used_in": used_in,
             "recent_movements": recent_movements,
+            "default_batch_1dp": default_batch_1dp,
         },
     )
 

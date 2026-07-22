@@ -350,6 +350,63 @@ def test_mixing_create_get_lists_only_mixtures_with_recipe(
     assert "Bez receptury" not in body
 
 
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_create_get_prefills_target_from_default_batch(
+    user_vlastnik, pepper
+) -> None:
+    """Per 0089: GET ?mixture=<id> for a mixture with default_batch_kg set
+    prefills „Cílové množství" (1-dp dot) and emits the #mixture-defaults blob."""
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    Product.objects.filter(pk=mixture.pk).update(
+        default_batch_kg=Decimal("337.000")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/michani/novy/?mixture={mixture.pk}").content.decode("utf-8")
+    assert 'id="id_target_qty"' in body
+    assert 'value="337.0"' in body
+    assert 'id="mixture-defaults"' in body
+    assert "337.0" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_create_get_explicit_target_qty_wins(user_vlastnik, pepper) -> None:
+    """Per 0089: an explicit ?target_qty= always overrides the default-batch
+    prefill (the inventura round-trip / scaler mix-link contract)."""
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    Product.objects.filter(pk=mixture.pk).update(
+        default_batch_kg=Decimal("337.000")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(
+        f"/sklad/michani/novy/?mixture={mixture.pk}&target_qty=99"
+    ).content.decode("utf-8")
+    assert 'value="99"' in body
+    assert 'value="337.0"' not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_create_get_no_default_leaves_target_blank(
+    user_vlastnik, pepper
+) -> None:
+    """Per 0089: a mixture with default_batch_kg=0 (unset) leaves the total
+    field blank — today's behaviour, unchanged."""
+    import re
+
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/michani/novy/?mixture={mixture.pk}").content.decode("utf-8")
+    # The target input renders with an empty value=""; the blob has no entry.
+    assert re.search(r'id="id_target_qty"\s+value=""', body)
+    assert 'id="mixture-defaults"' in body
+    assert "337" not in body
+
+
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_mixing_create_post_records_done_job(user_vlastnik, tyn, pepper) -> None:

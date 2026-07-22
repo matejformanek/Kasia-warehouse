@@ -5,6 +5,26 @@
 
 ## Done
 
+- **2026-07-22** — **Přehled empty-count fix + branch dashboard trimmed to
+  critical-only** (decisions
+  [`0093`](./decisions/0093-owner-prehled-empty-rule.md) +
+  [`0094`](./decisions/0094-branch-dashboard-critical-only.md)). **Problem 1:** the
+  owner Přehled „Vyprodáno" under-counted (showed 19 vs Katalog's 58) because
+  `low_stock_rows()` gated on the bare `effective < threshold` and per 0072 the
+  default threshold is 0, so empty-at-0 pairs (`0 < 0 == False`) were dropped.
+  Added opt-in `low_stock_rows(*, include_empty=False)`; `include_empty=True`
+  gates on the existing `_below_alert` (Katalog Prázdné + Dochází union). `home()`
+  now calls it with `include_empty=True` → real empties counted; per-branch
+  breakdown + Objednáno split retained; inventura „Dochází zboží" roll-up (0057)
+  unchanged. **Problem 2:** the obsluha branch Přehled (`branch_dashboard`)
+  rendered all three groups incl. V pořádku, flooding the landing. Now renders
+  only Prázdné + Dochází (view drops `ok_rows`; V pořádku stays in Katalog +
+  Inventura); positive empty-state when nothing critical; `products-stocked` +
+  `total-kg` KPIs dropped `data-kpi-live` (static — 0084 recompute would
+  under-count without V pořádku rendered), `empty`/`low` stay live. Rules updated
+  (design-system: Obsluha/Owner Přehled bullets + 0084 note). Tests added/updated
+  (test_reorder both-directions guard; test_dashboard owner-home empty regression
+  + Objednáno split; branch-dashboard critical-only rework).
 - **2026-07-22** — **Recipe component mixing order persisted** (decision
   [`0092`](./decisions/0092-recipe-component-order.md)). The postup's „míchat
   v tom pořadí" order was silently lost — everything sorted alphabetically.

@@ -43,11 +43,15 @@ def home(request):
 
     branches = list(Branch.objects.filter(is_active=True).order_by("code"))
 
-    # "Dochází zboží" rows per 0043 + 0044 (same low_stock_rows() that feeds
-    # the daily digest), grouped per branch into vyprodáno / dochází / objednáno.
-    # Objednáno reuses the existing PLANNED-příjem order overlay (0057) — a row
-    # with an open order sinks into its own "on the way" group.
-    low_stock = low_stock_rows()
+    # "Dochází zboží" rows per 0043 + 0044, grouped per branch into
+    # vyprodáno / dochází / objednáno. Objednáno reuses the existing
+    # PLANNED-příjem order overlay (0057) — a row with an open order sinks into
+    # its own "on the way" group.
+    # Per 0093 the owner Přehled uses `include_empty=True` (the broader
+    # `_below_alert` rule) so a pair at exactly 0 kg with the default threshold
+    # 0 — dropped by the bare `effective < threshold` — is counted as an empty
+    # instead of silently vanishing. The bucketing below routes it to „empty".
+    low_stock = low_stock_rows(include_empty=True)
     rows_by_branch = {
         b.pk: {"empty": [], "low": [], "ordered": []} for b in branches
     }
@@ -207,11 +211,15 @@ def branch_dashboard(request, code: str):
     # the search box is emptied.
     search = (request.GET.get("q") or "").strip()
 
-    # Stock section — the same grouped design (Prázdné / Dochází / V pořádku)
-    # the obsluha sees in the branch-scoped Katalog, via the shared helper
-    # (0064 + 0072). Iterates *all* active products (not just those with a
-    # Stock row): per 0053 creating a product seeds a 0-kg row on every active
-    # branch, so an un-stocked product surfaces as Prázdné — matching Katalog.
+    # Stock section — the same grouped design the obsluha sees in the
+    # branch-scoped Katalog, via the shared helper (0064 + 0072), but per 0094
+    # only the two CRITICAL groups (Prázdné + Dochází) render here so obsluha
+    # isn't flooded by the healthy long tail — the full catalog stays reachable
+    # via the branch-scoped Katalog + Inventura. `groups["ok_rows"]` is computed
+    # but deliberately not passed to the template. Iterates *all* active
+    # products (not just those with a Stock row): per 0053 creating a product
+    # seeds a 0-kg row on every active branch, so an un-stocked product surfaces
+    # as Prázdné — matching Katalog. `kpi_empty`/`kpi_low` still feed the header.
     active_products = list(
         Product.objects.filter(is_active=True).order_by("name_cs")
     )
@@ -243,7 +251,6 @@ def branch_dashboard(request, code: str):
             "branch": branch,
             "empty_rows": groups["empty_rows"],
             "low_rows": groups["low_rows"],
-            "ok_rows": groups["ok_rows"],
             "recent_movements": recent_movements,
             "search": search,
             "kpi_products": kpi_products,

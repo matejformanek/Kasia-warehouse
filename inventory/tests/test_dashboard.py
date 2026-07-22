@@ -16,6 +16,7 @@ from inventory.services import (
 )
 from inventory.tests._support import (
     _VIEW_TEST_OVERRIDES,
+    _make_planned_prijem,
     _seed_vydej,
 )
 
@@ -58,6 +59,60 @@ def test_dashboard_shows_branch_stock(user_tyn, tyn, sez, pepper, paprika) -> No
     assert "1,5" in body
     assert "2 produktů" in body
     assert "1 produktů" in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_owner_dashboard_counts_empty_at_default_threshold(
+    user_vlastnik, tyn, pepper
+) -> None:
+    """Regression for Problem 1 (0093): a pair empty at the default threshold 0
+    (`0 < 0 == False`) is now counted in the owner Přehled „Vyprodáno" KPI +
+    breakdown + branch panel empty_rows — it was silently dropped before."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("0.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/")
+    assert response.status_code == 200
+
+    assert response.context["kpi_empty"] >= 1
+    assert "TYN" in response.context["kpi_empty_breakdown"]
+    tyn_panel = next(
+        p for p in response.context["branch_panels"] if p["branch"].code == "TYN"
+    )
+    empty_pks = {r.product.pk for r in tyn_panel["empty_rows"]}
+    assert pepper.pk in empty_pks
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_owner_dashboard_empty_with_open_order_counts_as_ordered(
+    user_vlastnik, tyn, pepper, supplier
+) -> None:
+    """Objednáno split preserved (0093): an empty pair with an open PLANNED
+    příjem lands in kpi_ordered, not kpi_empty."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("0.000"))
+    _make_planned_prijem(
+        branch=tyn,
+        product=pepper,
+        qty=Decimal("10.000"),
+        eta=date.today(),
+        user=user_vlastnik,
+        supplier=supplier,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.get("/sklad/")
+    assert response.status_code == 200
+
+    assert response.context["kpi_ordered"] >= 1
+    tyn_panel = next(
+        p for p in response.context["branch_panels"] if p["branch"].code == "TYN"
+    )
+    ordered_pks = {r.product.pk for r in tyn_panel["ordered_rows"]}
+    empty_pks = {r.product.pk for r in tyn_panel["empty_rows"]}
+    assert pepper.pk in ordered_pks
+    assert pepper.pk not in empty_pks
 
 
 @pytest.mark.django_db(transaction=True)
@@ -232,6 +287,12 @@ def _kpi_block(body: str, label: str) -> str:
 def test_branch_dashboard_lists_stock_for_branch(
     user_obsluha_tyn, tyn, sez, pepper, paprika
 ) -> None:
+    # Per 0094 only CRITICAL products render on the branch Přehled, so both TYN
+    # products are given a threshold that puts them in "Dochází".
+    pepper.reorder_threshold_kg = Decimal("10.000")
+    pepper.save()
+    paprika.reorder_threshold_kg = Decimal("5.000")
+    paprika.save()
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("8.000"))
     Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("3.000"))
     # SEZ stock that must NOT appear on TYN's dashboard.
@@ -244,20 +305,21 @@ def test_branch_dashboard_lists_stock_for_branch(
     assert paprika.name_cs in body
     # 99.000 from SEZ should NOT appear (TYN only has 8 and 3).
     assert "99,000" not in body and "99.000" not in body
-    # Grouped design (0064): both are stocked above their default (0) threshold,
-    # so they land in the "V pořádku" group. Rows keep data-filter-text.
+    # Both are below their threshold → "Dochází" group. V pořádku is dropped
+    # from the branch Přehled entirely (0094).
     assert 'class="cat-body"' in body
-    assert "V pořádku" in body
-    ok_html = _group_html(body, "cat-group-ok")
-    assert pepper.name_cs in ok_html
-    assert paprika.name_cs in ok_html
+    low_html = _group_html(body, "cat-group-low")
+    assert pepper.name_cs in low_html
+    assert paprika.name_cs in low_html
+    assert _group_html(body, "cat-group-ok") == ""
 
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_branch_dashboard_groups_by_stock_state(user_obsluha_tyn, tyn) -> None:
-    """A 0-kg / low / ok product each lands in the matching grouped section,
-    and the top KPI Dochází/Prázdné counts equal the group sizes (0064)."""
+    """A low + empty product each lands in its critical group; the ok product is
+    NOT rendered (0094 — V pořádku is Katalog-only). The header KPI Dochází /
+    Prázdné counts equal the group sizes (0064)."""
     ok = Product.objects.create(
         name_cs="OK zbozi", kind=Product.Kind.RAW_SPICE,
         reorder_threshold_kg=Decimal("5.000"),
@@ -278,19 +340,48 @@ def test_branch_dashboard_groups_by_stock_state(user_obsluha_tyn, tyn) -> None:
     client.force_login(user_obsluha_tyn)
     body = client.get("/sklad/pobocka/TYN/").content.decode("utf-8")
 
-    assert ok.name_cs in _group_html(body, "cat-group-ok")
     assert low.name_cs in _group_html(body, "cat-group-low")
     assert empty.name_cs in _group_html(body, "cat-group-empty")
+    # Per 0094 V pořádku is dropped from the branch Přehled: the ok product does
+    # not render here at all (it stays reachable via Katalog + Inventura).
+    assert _group_html(body, "cat-group-ok") == ""
+    assert ok.name_cs not in body
+    assert 'data-filter-bucket="ok"' not in body
     # Header KPI counts match the group sub-heads exactly (1 low, 1 empty).
     assert 'data-kpi-live="low">1</span>' in _kpi_block(body, "Dochází")
     assert 'data-kpi-live="empty">1</span>' in _kpi_block(body, "Prázdné")
-    # Per 0084: the live-recompute hooks the JS depends on render server-side.
+    # Critical buckets still recompute live from visible rows (0084).
     assert 'data-filter-bucket="empty"' in body
     assert 'data-filter-bucket="low"' in body
-    assert 'data-filter-bucket="ok"' in body
-    assert 'data-filter-kg="10.000"' in body
-    assert 'data-kpi-live="products-stocked"' in body
-    assert 'data-kpi-live="total-kg"' in body
+    # Per 0094 these two KPIs are now STATIC (no data-kpi-live) — a live
+    # recompute would under-count without V pořádku rendered; empty/low stay live.
+    assert 'data-kpi-live="products-stocked"' not in body
+    assert 'data-kpi-live="total-kg"' not in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_all_healthy_shows_positive_empty_state(
+    user_obsluha_tyn, tyn
+) -> None:
+    """Per 0094: when nothing is critical, the branch Přehled shows a positive
+    empty-state (not the healthy tail), and the ok product is absent from the
+    Stav-skladu card."""
+    ok = Product.objects.create(
+        name_cs="OK zbozi", kind=Product.Kind.RAW_SPICE,
+        reorder_threshold_kg=Decimal("5.000"),
+    )
+    Stock.objects.create(product=ok, branch=tyn, quantity=Decimal("10.000"))
+
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    body = client.get("/sklad/pobocka/TYN/").content.decode("utf-8")
+
+    assert "nic nedochází" in body
+    assert ok.name_cs not in body
+    assert _group_html(body, "cat-group-empty") == ""
+    assert _group_html(body, "cat-group-low") == ""
+    assert _group_html(body, "cat-group-ok") == ""
 
 
 @pytest.mark.django_db
@@ -338,8 +429,14 @@ def test_branch_dashboard_search_filters_stock(
     user_obsluha_tyn, tyn, pepper, paprika
 ) -> None:
     # Per 0063 the `q` text filter moved client-side: the server renders ALL
-    # stock rows regardless of `q`, each carrying the data-filter-text the JS
-    # folds/matches. (Folding/typo matching itself is verified in-browser.)
+    # (critical) stock rows regardless of `q`, each carrying the data-filter-text
+    # the JS folds/matches. (Folding/typo matching itself is verified in-browser.)
+    # Per 0094 only critical rows render, so both products are given a threshold
+    # that puts them in "Dochází".
+    pepper.reorder_threshold_kg = Decimal("10.000")
+    pepper.save()
+    paprika.reorder_threshold_kg = Decimal("5.000")
+    paprika.save()
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("8.000"))
     Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("3.000"))
     client = Client()

@@ -13,8 +13,10 @@ co máte a&nbsp;co dochází, a&nbsp;odsud rovnou spustit příjem, výdej nebo 
 
 <h3>Co na stránce najdete</h3>
 <ul>
-  <li><strong>Stav skladu</strong> — produkty rozdělené do tří skupin podle
-  barvy (viz níže). Každý produkt má množství v&nbsp;kg.</li>
+  <li><strong>Stav skladu</strong> — jen to, co potřebuje pozornost: skupiny
+  <strong>Prázdné</strong> a&nbsp;<strong>Dochází</strong>. Zdravé zásoby tu
+  schválně nejsou, ať vás nezahltí; celý sklad najdete v&nbsp;<strong>Katalogu</strong>
+  (v&nbsp;levém menu) a&nbsp;v&nbsp;Inventuře.</li>
   <li><strong>Vyhledávací pole</strong> nahoře — jak píšete, seznam se rovnou
   filtruje podle názvu (nemusíte mačkat Enter, zvládne i&nbsp;překlep).</li>
   <li>Vpravo nahoře oranžové tlačítko <strong>„Inventura"</strong> — přejdete na
@@ -25,7 +27,6 @@ co máte a&nbsp;co dochází, a&nbsp;odsud rovnou spustit příjem, výdej nebo 
 <ul>
   <li>🔴 <strong>Prázdné</strong> = efektivně 0&nbsp;kg — reálně není co vydat.</li>
   <li>🟠 <strong>Dochází</strong> = kleslo pod objednací bod, ale kg ještě jsou.</li>
-  <li>⚪ <strong>V&nbsp;pořádku</strong> = zásoba je nad prahem.</li>
   <li><strong>Řiďte se sloupcem „Efektivně"</strong> (= na skladě − rezervováno).
   To je to, s&nbsp;čím reálně můžete počítat; rezervované kg jsou tu, ale už
   slíbené jinam.</li>
@@ -58,12 +59,13 @@ i&nbsp;formulář, kde nám napíšete.</p>
   </div>
   <div class="kpi accent">
     <span class="lbl">Produktů skladem</span>
-    <span class="k-val" data-kpi-live="products-stocked">{{ kpi_products }}</span>
+    {# No data-kpi-live: V pořádku no longer renders here (0094), so a live recompute from visible rows would under-count while filtering. Stays the server-wide branch value. #}
+    <span class="k-val">{{ kpi_products }}</span>
     <span class="k-sub">s nenulovým stavem</span>
   </div>
   <div class="kpi">
     <span class="lbl">Celková zásoba</span>
-    <span class="k-val"><span data-kpi-live="total-kg">{{ kpi_total_mass|floatformat:1 }}</span> <span class="k-unit">kg</span></span>
+    <span class="k-val">{{ kpi_total_mass|floatformat:1 }} <span class="k-unit">kg</span></span>
     <span class="k-sub">{{ branch.code }}</span>
   </div>
 </section>
@@ -90,13 +92,13 @@ i&nbsp;formulář, kde nám napíšete.</p>
            data-filter-empty="#branch-stock-empty">
   </form>
 
-  {% if empty_rows or low_rows or ok_rows %}
+  {# Per 0094: only the two CRITICAL groups (Prázdné + Dochází) render here, so obsluha isn't flooded by the healthy long tail. Full stock is in Katalog + Inventura. #}
+  {% if empty_rows or low_rows %}
     {% if empty_rows %}{% include "inventory/_catalogue_group.html" with group_rows=empty_rows group_id="cat-group-empty" head_class="empty" head_label="Prázdné" head_count=empty_rows|length branch_kind="empty" eff_class="eff-empty" show_branch_chips=False %}{% endif %}
     {% if low_rows %}{% include "inventory/_catalogue_group.html" with group_rows=low_rows group_id="cat-group-low" head_class="low" head_label="Dochází" head_count=low_rows|length branch_kind="low" eff_class="eff-warn" show_branch_chips=False %}{% endif %}
-    {% if ok_rows %}{% include "inventory/_catalogue_group.html" with group_rows=ok_rows group_id="cat-group-ok" head_class="ok" head_label="V pořádku" head_count=ok_rows|length branch_kind="" eff_class="" show_branch_chips=False %}{% endif %}
     <p id="branch-stock-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá hledání.</p>
   {% else %}
-    <p style="color:var(--fg-soft);">Na pobočce zatím není evidováno žádné zboží.</p>
+    <p style="color:var(--fg-soft);">Vše nad objednacím bodem — nic nedochází. Celý sklad najdete v Katalogu.</p>
   {% endif %}
 </div>
 

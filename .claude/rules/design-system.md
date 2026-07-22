@@ -210,7 +210,10 @@ or restructure:
   buckets + a kg sum, not one visible-row total). Gated on any matched tbody
   carrying `data-filter-bucket`, so history / email-log single lists and the
   filter-less home Přehled are untouched. Renaming `data-kpi-live` is a new
-  decision.
+  decision. **Dropping** `data-kpi-live` from a span (as `branch_dashboard` does
+  for `products-stocked`/`total-kg` under 0094, once V pořádku no longer renders
+  there) is a per-template choice that makes that KPI static — it is **not** a
+  hook rename, which stays forbidden.
   The číselníky (Dodavatelé / Odběratelé / Pobočky) carry **no** name search
   (the locked mockups 12–14 show only the Stav filter) — the 0063 standalone
   input added there was removed in the Phase-2 swap. Do **not** reuse the
@@ -348,17 +351,36 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   — **one source of truth** for both the Katalog and the obsluha Přehled below;
   the group section itself is the `_catalogue_group.html` partial.
 - **Obsluha Přehled** (`branch_dashboard`) — its **"Stav skladu"** card uses the
-  **same grouped design** as the Katalog: `catalogue_stock_groups([branch])` fed
-  into the three `_catalogue_group.html` includes (Prázdné / Dochází / V pořádku),
+  **same grouped design** as the Katalog: `catalogue_stock_groups([branch])`
   branch-scoped, `show_branch_chips=False` (single branch → no per-branch chips).
-  The search input uses the grouped multi-tbody hook (`data-filter-rows=".cat-body"`
-  / `data-filter-empty="#branch-stock-empty"`). The header **Dochází/Prázdné** KPIs
-  are sourced from the groups (not `low_stock_rows()`) so they match the sub-heads.
-  All active **stock-tracked** products show — an un-stocked (but tracked)
-  product surfaces as Prázdné. Products with `is_stock_tracked=False` are
-  excluded from this card (as from Katalog and inventura). **Do not
-  flatten this back to a plain status-badge table** or rename the shared group
-  hooks; that is a new decision.
+  Per [`0094`](../../context/decisions/0094-branch-dashboard-critical-only.md)
+  **only the two CRITICAL groups render** — `empty_rows` (Prázdné) + `low_rows`
+  (Dochází), via `_catalogue_group.html`; **V pořádku is Katalog-only** (the view
+  computes `ok_rows` but no longer passes it) so obsluha isn't flooded by the
+  healthy long tail — the full catalog stays reachable via the branch-scoped
+  **Katalog** + Inventura. When nothing is critical the card shows a positive
+  empty-state („Vše nad objednacím bodem…"). The search input uses the grouped
+  multi-tbody hook (`data-filter-rows=".cat-body"` /
+  `data-filter-empty="#branch-stock-empty"`). The header **Dochází/Prázdné** KPIs
+  are sourced from the groups (not `low_stock_rows()`) so they match the
+  sub-heads; the **`products-stocked` + `total-kg`** KPIs are **static** here (no
+  `data-kpi-live` — the 0084 live recompute would under-count without V pořádku
+  rendered), while **`empty` + `low` stay live**. All active **stock-tracked**
+  products are grouped — an un-stocked (but tracked) product surfaces as Prázdné.
+  Products with `is_stock_tracked=False` are excluded from this card (as from
+  Katalog and inventura). **Do not flatten this back to a plain status-badge
+  table**, re-add V pořádku, or rename the shared group hooks; that is a new
+  decision.
+- **Owner Přehled** (`home`) — its attention buckets (the „Vyprodáno"/Prázdné KPI
+  + per-branch empty lists) are intentionally sourced from
+  **`low_stock_rows(include_empty=True)`** — the broadened `_below_alert` rule
+  (Katalog Prázdné + Dochází), per
+  [`0093`](../../context/decisions/0093-owner-prehled-empty-rule.md) — so a pair
+  empty at the default threshold 0 is counted, not dropped by the narrow
+  `effective < threshold`. **Do not "fix" this back to the narrow rule.** (The
+  inventura „Dochází zboží" roll-up keeps the narrow `low_stock_rows()`, its 0057
+  contract; and `branch_dashboard`'s Dochází/Prázdné still come from the
+  *groups*, not `low_stock_rows`.)
 - **Untracked products (`Product.is_stock_tracked=False`, per
   [`0088`](../../context/decisions/0088-recipe-component-notes-and-untracked-ingredients.md)):**
   e.g. „Voda". They carry **no Stock rows** and are **unlimited** — excluded from

@@ -99,9 +99,18 @@ def effective_kg(product: Product, branch: Branch) -> Decimal:
     return (on_hand - reserved_kg(product, branch)).quantize(Decimal("0.001"))
 
 
-def low_stock_rows() -> list[LowStockRow]:
-    """Every carried (product, branch) pair where a threshold is set and
-    effective < threshold. Sorted by deficit DESC.
+def low_stock_rows(*, include_empty: bool = False) -> list[LowStockRow]:
+    """Every carried (product, branch) pair below its attention threshold,
+    sorted by deficit DESC.
+
+    Membership depends on `include_empty`:
+      - `False` (default): the bare `effective < threshold` rule. Used by the
+        inventura „Dochází zboží" roll-up (0057 contract) and existing callers.
+      - `True`: the broader `_below_alert` rule (0074) — the union of the
+        Katalog „Prázdné" + „Dochází" groups. A pair at exactly 0 with the
+        default threshold 0 (the Prázdné case, `0 < 0 == False`) is dropped by
+        the narrow rule but *included* here. Used by the owner Přehled so its
+        „Vyprodáno" bucket counts the real empties (per 0093).
 
     Used by the owner dashboard panel, branch dashboard, and product
     detail page. One source of truth for the per-pair low-stock report.
@@ -163,7 +172,12 @@ def low_stock_rows() -> list[LowStockRow]:
         on_hand = stock.quantity
         reserved = reserved_kg(product, branch)
         effective = (on_hand - reserved).quantize(Decimal("0.001"))
-        if effective < threshold:
+        below = (
+            _below_alert(effective, threshold)
+            if include_empty
+            else effective < threshold
+        )
+        if below:
             ordered = orders_by_pair.get((product.pk, branch.pk))
             rows.append(
                 LowStockRow(
@@ -243,7 +257,9 @@ def _below_alert(effective: Decimal, threshold: Decimal | None) -> bool:
     of the Katalog "Prázdné" + "Dochází" groups (i.e. NOT "V pořádku", per 0072).
 
     Broader than `low_stock_rows`' bare `effective < threshold`: a pair at
-    exactly 0 with a 0 threshold (the Prázdné case) also alerts.
+    exactly 0 with a 0 threshold (the Prázdné case) also alerts. This broader
+    rule is now also opt-in inside `low_stock_rows(include_empty=True)` (per
+    0093) so the owner Přehled counts the real empties.
     """
     if effective <= 0:
         return True

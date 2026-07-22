@@ -226,6 +226,29 @@ def test_low_stock_rows_skips_products_without_threshold(
 
 
 @pytest.mark.django_db
+def test_low_stock_rows_include_empty_flag(tyn, pepper) -> None:
+    """An empty pair at the default threshold 0 (`0 < 0 == False`) is dropped by
+    the default narrow rule but included with `include_empty=True` (the broader
+    `_below_alert` union used by the owner Přehled, per 0093)."""
+    from inventory.services import low_stock_rows
+
+    # pepper keeps its default reorder_threshold_kg (0, per 0072); 0 kg on hand.
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("0.000"))
+
+    # Narrow (default): effective 0 < threshold 0 is False → excluded.
+    narrow = low_stock_rows()
+    assert not any(r.product.pk == pepper.pk for r in narrow)
+
+    # Broad: _below_alert(0, 0) → effective ≤ 0 → included, deficit 0.
+    broad = low_stock_rows(include_empty=True)
+    pepper_rows = [r for r in broad if r.product.pk == pepper.pk]
+    assert len(pepper_rows) == 1
+    assert pepper_rows[0].branch.code == "TYN"
+    assert pepper_rows[0].effective == Decimal("0.000")
+    assert pepper_rows[0].deficit == Decimal("0.000")
+
+
+@pytest.mark.django_db
 def test_low_stock_rows_excludes_untracked_product(tyn, voda) -> None:
     """An untracked product (per 0088) never appears in low_stock_rows,
     regardless of threshold or on-hand — the queryset filters it out."""

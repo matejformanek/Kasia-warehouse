@@ -249,10 +249,15 @@
     budete potřebovat, a recepturu pro toto množství si můžete stáhnout jako PDF.
     Není to zahájení míchání, jen výpočet podle poměrů z receptury.
   </p>
+  {% if product.default_batch_kg %}
+    <p style="color:var(--fg-soft);font-size:0.9rem;margin-top:-0.4rem;">
+      Výchozí dávka: <strong>{{ product.default_batch_kg|floatformat:1 }} kg</strong>
+    </p>
+  {% endif %}
   <div class="field">
     <label for="recipe-scaler-target">Cílové množství (kg)</label>
     <input type="text" inputmode="decimal"
-           id="recipe-scaler-target" value="10"
+           id="recipe-scaler-target" value="{{ default_batch_1dp|default:'10' }}"
            style="max-width:160px;">
   </div>
   <div class="actions" style="margin:-0.2rem 0 1rem;">

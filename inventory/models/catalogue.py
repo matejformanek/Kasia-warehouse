@@ -121,6 +121,20 @@ class Product(models.Model):
             " ve skupině „Prázdné“."
         ),
     )
+    default_batch_kg = models.DecimalField(
+        "výchozí dávka (kg)",
+        max_digits=10,
+        decimal_places=3,
+        null=False,
+        blank=True,
+        default=Decimal("0.000"),
+        help_text=(
+            "Výchozí velikost dávky, kterou systém předvyplní do míchání"
+            " (pole „Cílové množství“) a do kalkulačky dávky na detailu"
+            " produktu (per 0089). 0 = nenastaveno (chová se jako dřív)."
+            " Má smysl jen u směsí."
+        ),
+    )
 
     class Meta:
         verbose_name = "produkt"

@@ -5,6 +5,27 @@
 
 ## Done
 
+- **2026-07-22** — **Per-mixture default batch size (`Product.default_batch_kg`)**
+  (decision [`0089`](./decisions/0089-mixture-default-batch-kg.md)) — prefills the
+  canonical batch size wherever a mix starts. Purely additive; supersedes nothing.
+  - `Product.default_batch_kg` (`DecimalField(max_digits=10, decimal_places=3,
+    null=False, blank, default=0.000)`) — copies the 0072 not-null-with-default +
+    `0`=unset pattern. Migration
+    `inventory/migrations/0027_product_default_batch_kg.py` (DB-defaulted → no
+    prompt). Editable on `ProductForm` **vlastník-only** (reuses `can_edit_threshold`
+    pop + a `clean_default_batch_kg` empty→0 coercion); on `ProductAdmin.list_display`.
+  - Prefill seams: product-detail „Spočítat dávku" scaler seeds from the value
+    (dot string via a `ROUND_HALF_UP` 1-dp quantize inline in `catalogue.py` — not
+    imported from `inventura._kg1`, which would be a circular import) + a „Výchozí
+    dávka: X kg" line when set; míchání `#id_target_qty` filled **GET-only** server-
+    side (never on POST — keeps the overdraw echo intact) plus a `#mixture-defaults`
+    `json_script` blob + a **capture-phase** (no synthetic dispatch) `change`
+    listener that overwrites the total on dropdown change when that recipe's default
+    is > 0. New tests in `test_catalogue.py` (scaler seed / fallback / form
+    visibility) + `test_mixing.py` (GET prefill / explicit-target-wins / no-default).
+  - Phase B (data): `scratchpad/import_garlic_recipes.py` extended to set
+    337 / 339.1 / 320 on the 3 real mixtures (idempotent). Run locally + on prod
+    after the PR deploys (fulfils the old Next „Real-recipe ORM entry batch" item).
 - **2026-07-22** — **Untracked ingredients + per-component recipe notes**
   (decision [`0088`](./decisions/0088-recipe-component-notes-and-untracked-ingredients.md)) —
   schema + guard plumbing ahead of the real-recipe ORM entry batch.
@@ -2818,10 +2839,12 @@ feeds back, hold position and respond to direct asks.
    staff after Petr's sign-off. At cutover, flip `CLAUDE.md`'s "not a production
    system" / "shadow run comes last" lines to the live state.
 
-2. **Real-recipe ORM entry batch** — now unblocked by 0088. Enter the real XLS
-   receptury directly via the ORM (names matched by hand), using an untracked
-   „Voda" row where recipes call for water and per-component `note`s. Not the XLS
-   importer button.
+2. **Real-recipe ORM entry batch** — 3 „Česneková drť" receptury done via
+   `scratchpad/import_garlic_recipes.py` (0088 untracked „Voda" + per-component
+   notes + 0089 `default_batch_kg` 337/339.1/320). **Local done; run on prod after
+   the 0089 PR deploys** (`scp` the script → `docker compose exec -T web
+   … shell < import_garlic_recipes.py` in `/srv/kasia`). Any further real XLS
+   receptury follow the same ORM-entry pattern (not the importer button).
 
 3. **Fix the stale `WEB_IMAGE` pin** on the box `.env`
    (`sha-96acfd8571b4` → current deployed sha) so manual `docker compose

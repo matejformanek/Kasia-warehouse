@@ -81,7 +81,13 @@ class ProductForm(forms.ModelForm):
 
     class Meta:
         model = Product
-        fields = ("name_cs", "kind", "notes", "reorder_threshold_kg")
+        fields = (
+            "name_cs",
+            "kind",
+            "notes",
+            "reorder_threshold_kg",
+            "default_batch_kg",
+        )
         widgets = {
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
@@ -90,6 +96,7 @@ class ProductForm(forms.ModelForm):
             "kind": "Typ",
             "notes": "Poznámka",
             "reorder_threshold_kg": "Objednací bod (kg) — kdy upozornit",
+            "default_batch_kg": "Výchozí dávka (kg)",
         }
 
     def __init__(
@@ -106,10 +113,12 @@ class ProductForm(forms.ModelForm):
             # lock_kind=True in those cases.
             self.fields["kind"].disabled = True
         if not can_edit_threshold:
-            # Per 0043: editing the reorder threshold is vlastník-only.
-            # Drop the field entirely so a non-vlastník POST doesn't
-            # null out the value an admin set.
+            # vlastník-only fields (reorder threshold + default batch, per
+            # 0043 / 0089). Drop them entirely so a non-vlastník POST doesn't
+            # null out a value an admin set. (A popped field never enters
+            # cleaned_data → construct_instance leaves the DB value intact.)
             self.fields.pop("reorder_threshold_kg", None)
+            self.fields.pop("default_batch_kg", None)
 
     def clean_name_cs(self) -> str:
         return validate_active_name_unique(
@@ -126,6 +135,11 @@ class ProductForm(forms.ModelForm):
         # the model default for a present-but-empty field, so a blank submit
         # would IntegrityError — coerce empty → 0 here.
         return self.cleaned_data.get("reorder_threshold_kg") or Decimal("0.000")
+
+    def clean_default_batch_kg(self) -> Decimal:
+        # Same NOT-NULL-with-default coercion as the threshold above (per 0089):
+        # 0 = "no default set". Only runs when the field is present (vlastník).
+        return self.cleaned_data.get("default_batch_kg") or Decimal("0.000")
 
 
 class RecipeComponentForm(forms.ModelForm):

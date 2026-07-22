@@ -117,4 +117,26 @@ dosypte / opravte stavy, uložte, vraťte se sem a&nbsp;namíchejte.</p>
     <a class="secondary" href="{% url 'inventory:home' %}">Zrušit</a>
   </div>
 </form>
+
+{{ mixture_defaults|json_script:"mixture-defaults" }}
+<script>
+  // Per 0089: when the operator picks a recipe, overwrite „Cílové množství" with
+  // that recipe's default batch (if it has one > 0; else leave the field as-is).
+  // Capture-phase (no synthetic dispatch): the #id_mixture <select> already has
+  // an htmx change-trigger firing the preview request; running here in the
+  // capture phase sets target_qty *before* htmx's bubble-phase handler serialises
+  // the form, so the single existing request already carries the fresh qty.
+  (function () {
+    const mixSel = document.getElementById("id_mixture");
+    const qtyIn = document.getElementById("id_target_qty");
+    const blob = document.getElementById("mixture-defaults");
+    if (!mixSel || !qtyIn || !blob) return;
+    let defaults = {};
+    try { defaults = JSON.parse(blob.textContent) || {}; } catch (e) { defaults = {}; }
+    mixSel.addEventListener("change", function () {
+      const d = defaults[mixSel.value];
+      if (d) qtyIn.value = d;
+    }, true);
+  })();
+</script>
 {% endblock %}

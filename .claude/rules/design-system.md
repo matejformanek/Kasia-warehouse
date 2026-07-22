@@ -369,6 +369,17 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   table. Keep it flowing to both surfaces when editing either. Set via ORM /
   admin, not on `RecipeComponentForm` (omitting it preserves existing notes on a
   formset save).
+- **`Product.default_batch_kg` (per
+  [`0089`](../../context/decisions/0089-mixture-default-batch-kg.md)):** the
+  mixture's default batch size (`0` = unset, gated on `> 0`). Prefills the míchání
+  `#id_target_qty` — **GET-only** server echo (never on POST) + a
+  `{{ mixture_defaults|json_script:"mixture-defaults" }}` blob read by a
+  capture-phase `change` listener on `#id_mixture` that overwrites the total on
+  dropdown change — and seeds the product-detail „Spočítat dávku" scaler (dot
+  string, quantized inline in `catalogue.py`) + shows a „Výchozí dávka" line.
+  Editable on `ProductForm` **vlastník-only** (reuses `can_edit_threshold`); set
+  via ORM / admin otherwise. Renaming the `#mixture-defaults` hook or the `> 0`
+  gating is a new decision.
 - **Inventura** (per
   [`0065`](../../context/decisions/0065-inventura-sidebar-nav.md), access
   amended by [`0073`](../../context/decisions/0073-obsluha-own-branch-inventura.md))

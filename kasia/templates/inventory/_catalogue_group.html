@@ -39,7 +39,7 @@ show_branch_chips (bool).
           <td class="num">{% if row.threshold is not None %}{{ row.threshold|floatformat:1 }}{% else %}—{% endif %}</td>
           {% if show_branch_chips %}
             {% if branch_kind == "empty" %}
-              <td>{% for b in row.low_branches %}<span class="empty-branch">{{ b.code }}</span>{% endfor %}</td>
+              <td>{% for b in row.empty_branches %}<span class="empty-branch">{{ b.code }}</span>{% endfor %}</td>
             {% elif branch_kind == "low" %}
               <td>{% for b in row.low_branches %}<span class="low-branch">{{ b.code }}</span>{% endfor %}</td>
             {% endif %}

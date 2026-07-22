@@ -204,6 +204,24 @@ def test_zero_stock_product_groups_as_empty_without_threshold(
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_empty_group_shows_branch_chip_at_zero_threshold(
+    user_vlastnik, tyn
+) -> None:
+    """Per 0091: a product empty on a branch (effective ≤ 0) at the default
+    threshold 0 lists that branch in the „Prázdný na" column — the chip no
+    longer requires effective < a nonzero threshold."""
+    empty = Product.objects.create(
+        name_cs="Prazdne na TYN", kind=Product.Kind.RAW_SPICE
+    )
+    Stock.objects.create(product=empty, branch=tyn, quantity=Decimal("0.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/katalog/?state=empty").content.decode("utf-8")
+    assert '<span class="empty-branch">TYN</span>' in body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_product_detail_shows_zero_threshold_not_dash(
     user_vlastnik, tyn, pepper
 ) -> None:

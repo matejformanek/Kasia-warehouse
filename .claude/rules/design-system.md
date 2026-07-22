@@ -52,7 +52,12 @@ tokens-sklad.css → base-sklad.css →
 `.sub-head` (+ `.empty`/`.low`/`.ok`/`.ordered` variants + `.dot`/`.count`),
 `.cat-group`, `.prod-sub`, `.eff-empty`/`.eff-warn`, `.low-branch`/
 `.empty-branch` — shared by the grouped Katalog, the vlastník Přehled (home)
-and the obsluha Přehled (branch_dashboard). These rules are **no longer**
+and the obsluha Přehled (branch_dashboard). The `.empty-branch` chip
+(„Prázdný na" column) is fed by the row's **`empty_branches`** (carried branches
+at `effective ≤ 0`, per [`0091`](../../context/decisions/0091-empty-branch-chip-independent-of-threshold.md)),
+the `.low-branch` chip („Dochází na") by **`low_branches`** (`effective` below a
+nonzero threshold) — two **separate** lists in `_catalogue_rows`; merging them is
+a new decision. These rules are **no longer**
 page-scoped or duplicated in `pages/catalogue_index.css` / `pages/home.css`;
 the only per-page override left is the `.sub-head` **margins** (home's differ
 from the Katalog canonical and load later, so win).

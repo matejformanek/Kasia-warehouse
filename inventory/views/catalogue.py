@@ -52,6 +52,7 @@ def _catalogue_rows(products, reserved_branches, carried_stocks_by_pair, has_rec
         threshold_min: Decimal | None = None
         is_low = False
         low_branches: list[Branch] = []
+        empty_branches: list[Branch] = []
         for b in reserved_branches:
             on_hand = carried_stocks_by_pair.get((p.pk, b.pk))
             if on_hand is None:
@@ -60,6 +61,13 @@ def _catalogue_rows(products, reserved_branches, carried_stocks_by_pair, has_rec
             reserved += r
             eff_b = on_hand - r
             effective_total += eff_b
+            # Per 0091: the „Prázdný na" chip mirrors the group's own empty rule
+            # (effective ≤ 0), independent of the threshold — so a genuinely-empty
+            # product at the default threshold 0 still shows *where* it is empty
+            # (low_branches / the „Dochází na" chip keeps its < nonzero-threshold
+            # meaning for the low group).
+            if eff_b <= 0:
+                empty_branches.append(b)
             t = threshold_for(p, b)
             if t is not None:
                 threshold_min = t if threshold_min is None else min(threshold_min, t)
@@ -75,6 +83,7 @@ def _catalogue_rows(products, reserved_branches, carried_stocks_by_pair, has_rec
                 "threshold": threshold_min,
                 "is_low": is_low,
                 "low_branches": low_branches,
+                "empty_branches": empty_branches,
                 "has_recipe": p.pk in has_recipe,
             }
         )

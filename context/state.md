@@ -5,6 +5,33 @@
 
 ## Done
 
+- **2026-07-22** — **Production data-wipe command for go-live built + tested**
+  (decision [`0087`](./decisions/0087-production-data-wipe-for-go-live.md);
+  reverses 0034's "shadow dodáky kept / counters not reset" clause — banner added
+  to [`0034`](./decisions/0034-shadow-run-before-go-live.md)).
+  - New `inventory/management/commands/reset_production_data.py` — dry-run by
+    default, `--commit` to mutate. Hard-deletes all operational + entered-catalogue
+    rows in one `transaction.atomic()` in a PROTECT-safe order (14 steps, FK map
+    verified against `inventory/models/`), keeping a reviewed keep-set: the 4
+    owner/admin users (`KEEP_USER_EMAILS`), both branches, auth groups, Settings +
+    recipients, and the seeded internal counterparties + Říčany. The counterparty
+    keep-predicate is **derived from `counterparties._ROLES`** (can't drift from
+    the runtime `.get(name=…, is_internal=…)` lookups). Startup guard aborts (no
+    mutation) unless every kept user exists, ≥1 is a superuser, and each
+    counterparty is present; deliberately does **not** gate on `DEBUG` (must run
+    on prod). `ProtectedError` caught per-step and surfaced with the offending model.
+  - Test `inventory/tests/test_reset_production_data.py` (6 cases): dry-run
+    mutates nothing; `--commit` wipes non-kept + preserves keep-set; kept
+    superuser (+ password) survives; guard aborts with no superuser / a missing
+    kept user; dodák number-sequence reset → next real dodák is `0001`. Builds a
+    full PROTECT-heavy graph (příjem/výdej/dodák, running mixing job, executed
+    transfer, feedback, screen-visits). Suite green (**602**), ruff clean,
+    `manage.py check` clean.
+  - **Pending (human-in-the-loop go-live action, not yet run):** off-repo pg_dump
+    backup of prod → merge to `main` (CI deploy) → run on the box via
+    `docker compose run --rm web python manage.py reset_production_data` (dry-run,
+    then `--commit`) → verify counts + live smoke test → flip the `CLAUDE.md`
+    "not a production system" / "shadow run comes last" lines to the live state.
 - **2026-07-21** — Podpora **video návod** wired: self-hosted 720p MP4
   (`kasia/static/video/video-tutorial.mp4`) with a real `<video>` (poster =
   existing thumbnail, `preload="none"`) replacing the placeholder in
@@ -2742,77 +2769,31 @@ feeds back, hold position and respond to direct asks.
 
 ## In progress
 
-- **2026-07-03** — **Technical restructure (OOP / de-dup / CSS centralization)**
-  on `ft_arch_restructure`. Purely technical, behavior-preserving; decisions
-  [`0068`](./decisions/0068-code-architecture-restructure.md) (packages,
-  CBV/mixins, service classes, counterparty registry, MovementBuilder) +
-  [`0069`](./decisions/0069-css-externalization.md) (inline `<style>` →
-  `kasia/static/css/` layered token system, `<link>`-only). Principles in
-  [`architecture.md`](./architecture.md); inconsistencies surfaced while
-  centralizing are logged in
-  [`refactors/0068-restructure-discrepancies.md`](./refactors/0068-restructure-discrepancies.md)
-  (behavior/pixel changes need explicit approval, not silent fold-in). Baseline
-  suite green at **406 pass**; kept green at each checkpoint. `design-system.md`
-  updated for the new token/CSS locations (class + JS/HTMX hook contract
-  unchanged).
-  - **D0 done** — 0068/0069 + architecture.md + discrepancy log + rule/state
-    updates.
-  - **D1 done** — all six `inventory` monoliths split into packages with
-    re-exporting `__init__` (models 1253→pkg, admin 623, services 2030,
-    forms 716, views 3420, tests 7654→15 modules + `_support.py`). No file
-    now exceeds ~832 LOC. Every checkpoint: ruff clean, `manage.py check`
-    clean, `makemigrations --check` = no changes, 406 tests pass. One
-    inert discrepancy logged (#1: test monkeypatch targets re-pointed).
-  - **D2 done** — counterparty registry (killed 7 getters), single
-    `require_vlastnik` + `RequireVlastnikMixin` (killed 4 variants), shared
-    name-uniqueness validator (killed 3 copies), `build_movement()` for the 7
-    system-movement sites, Supplier/Customer CRUD → reusable `_crud` class-based
-    views (Branch left function-based — right-sizing).
-  - **D3 done** — extracted `catalogue_index` row builder (121→85); other long
-    fns (transaction orchestrators, view-state closures) deliberately left
-    cohesive (logged in `refactors/0068-restructure-discrepancies.md`).
-  - **D4 done** — all inline `<style>` externalized to `kasia/static/css/`
-    (`tokens-{sklad,web}.css` + `base-{sklad,web}.css` + `pages/*.css`),
-    `<link>`-only. Only PDF/e-mail + 404/500 keep inline style. collectstatic
-    OK; render byte-identical (cascade order preserved).
-  - **D5 dropped** — no test static-storage override needed (verified: tests
-    render `{% static 'css/…' %}` with and without a manifest).
-  - **Status: Round 1 + Round 2 done, on PR #26** (all phases green, 406 tests).
-    CI now also gates `collectstatic`. Local Docker stack is up (`make up`).
-    Round 2 (inert-only) landed per
-    [`0070`](./decisions/0070-round2-structure-refinements.md) — see the Done
-    entry above. The broader candidate list in
-    [`refactors/0068-round2-plan.md`](./refactors/0068-round2-plan.md) (revisit
-    long functions, Branch→CBV, visual polish) was **deliberately deferred** —
-    the user chose the inert-only scope; those extras were not pulled in.
-  - **→ next:** `/pr-harden` on PR #26, then merge to ship.
+- **2026-07-22** — **Go-live production data wipe** (decision
+  [`0087`](./decisions/0087-production-data-wipe-for-go-live.md)). The
+  `reset_production_data` command + test are built, tested, and ready to land
+  (see the Done entry above). **Remaining, human-in-the-loop, in order:**
+  1. Off-repo `pg_dump` backup of prod (+ users-only `dumpdata` JSON) into the
+     gitignored `backups/`, `chmod 600`, integrity-checked — never `git add -f`.
+  2. Merge this PR to `main` → CI deploy → confirm the command is on the box.
+  3. Run on the box via `docker compose run --rm web python manage.py
+     reset_production_data` (dry-run, review the table), then `--commit`.
+  4. Verify: exactly 4 users / 2 branches / 2 recipients / 4 customers /
+     5 suppliers / 0 movements-products-stock-dodáky; live smoke test (login,
+     dashboard, míchání, inventura, příjem — no 500s).
+  5. Flip the `CLAUDE.md` "not a production system" / "No real Kasia users" /
+     "shadow run comes last" lines to the live state.
 
 ## Next
 
-1. **Local walkthrough by Matej** against the running docker
-   stack — public site at `make up` → http://localhost/ and the
-   warehouse app at http://localhost/sklad/. All 14 screens +
-   Pass 5 CRUD (5a–5g) are in, both blocking decisions
-   (0040, 0041, 0042) merged. Matej feeds back fixes /
-   ideology changes screen by screen.
+1. **Run the go-live wipe on prod** — the sequence in *In progress* above. This
+   is the immediate go-live step.
 
-2. **UI-direction polish pass** (follows the intermediate live state from
-   [`0054`](./decisions/0054-adopt-ui-directions.md), 2026-06-29). The two
-   base templates + dashboards are ported; remaining work is a per-page
-   alignment/inline-style sweep across the sklad forms, index tables, and
-   detail/confirmation screens (replace fighting inline styles with the new
-   `.row`/`.stack`/`.actions`/`.muted`/`.num`/`.grid-2` utilities), plus
-   swapping the commented hero photo slot once Petr supplies a real photo.
-   Keep the class names + JS/HTMX hooks stable (see `design-system.md`).
-   Then add the deferred public pages (Sortiment, Encyklopedie koření, CSR,
-   segmenty) as later passes.
+2. **14-day shadow run → branch-staff cutover** per
+   [`0034`](./decisions/0034-shadow-run-before-go-live.md) (the numbering-reset
+   clause is now reversed by 0087). The box is live at `https://kasia.cz` since
+   2026-07-14.
 
-3. **Quality-of-life backlog** — three items landed 2026-06-15;
-   nothing currently queued. Reopen as walkthrough surfaces
-   more.
-
-4. **14-day shadow run** per
-   [`0034`](./decisions/0034-shadow-run-before-go-live.md) →
-   branch-staff cutover. (The box is provisioned and, as of
-   2026-07-14, live at `https://kasia.cz` — the old "provision
-   the box" step here is done.)
+3. **Quality-of-life backlog** — reopen as the shadow run / real use surfaces
+   fixes. Google Search Console verification (meta-tag token → wire into
+   `web/base.html` head) is still queued with Matej.

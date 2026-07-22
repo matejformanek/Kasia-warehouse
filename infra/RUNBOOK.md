@@ -4,9 +4,10 @@ Operational playbook for the production VPS. Pairs with decisions
 [`0014`](../context/decisions/0014-language-python-uv.md)–[`0027`](../context/decisions/0027-hosting-hetzner.md)
 and [`.claude/rules/infra-as-code.md`](../.claude/rules/infra-as-code.md).
 
-**Status:** the production box is **not provisioned yet** (as of
-2026-06-08). Everything below is the one-time migration path
-between local Docker Compose development and a live Hetzner box.
+**Status:** the production box is **provisioned and live** — `91.98.47.1`
+(CPX22, Falkenstein fsn1), serving `https://kasia.cz` since 2026-07-14. A push to
+`main` deploys via `deploy.yml`. § 1 below is the one-time provisioning path
+(kept for reference / rebuild); §§ 2–8 are the live operational playbook.
 
 ## 0. Local development (until migration)
 
@@ -295,7 +296,60 @@ cert auto-provisioned like the apex).
   env-gated and the public pages render regardless of whether the script
   loads. Full removal is a compose revert PR.
 
-## 7. Things that are not in this RUNBOOK on purpose
+## 7. Production data reset (go-live, one-time)
+
+Wipes prod back to a clean baseline at go-live, keeping only the owner/admin
+users, both branches, Settings + recipients, and the seeded counterparties.
+Per [`../context/decisions/0087-production-data-wipe-for-go-live.md`](../context/decisions/0087-production-data-wipe-for-go-live.md).
+**Backup first — this is a hard delete.**
+
+### 7.1 Back up prod off-repo (never commit; `backups/` is gitignored)
+
+```
+ssh -i ~/.ssh/kasia_prod app@91.98.47.1 \
+  "cd /srv/kasia && docker compose exec -T db pg_dump -U kasia -d kasia --clean --if-exists --no-owner" \
+  | gzip > backups/prod-pre-golive-wipe-$(date +%F).sql.gz
+gunzip -t backups/prod-pre-golive-wipe-$(date +%F).sql.gz   # verify integrity
+chmod 600 backups/prod-pre-golive-wipe-*.sql.gz
+```
+
+The dump holds SMTP creds, password hashes, and customer PII — `chmod 600`,
+never `git add -f`, never paste into PRs/commits.
+
+### 7.2 Run the wipe (via the deploy.yml one-off-container path)
+
+The command must already be on the box (merged to `main` → deployed). Dry-run
+first, review the before→after table, then commit:
+
+```
+ssh -i ~/.ssh/kasia_prod app@91.98.47.1 \
+  "cd /srv/kasia && docker compose run --rm web python manage.py reset_production_data"
+ssh -i ~/.ssh/kasia_prod app@91.98.47.1 \
+  "cd /srv/kasia && docker compose run --rm web python manage.py reset_production_data --commit"
+```
+
+Use `docker compose run --rm web` (a fresh one-off container, like the `migrate`
+step in `deploy.yml`) — **not** a `make` target (forbidden on the box). The wipe
+is one `transaction.atomic()`; a failed/aborted run leaves prod untouched.
+
+### 7.3 Verify
+
+Re-query counts (expect 4 users / 2 branches / 2 recipients / 4 customers /
+5 suppliers / 0 movements-products-stock-dodáky), then a live smoke test: log in
+as a kept user; open dashboard, míchání, inventura, příjem — no 500s.
+
+### 7.4 Rollback (only if you changed your mind after a clean run)
+
+Restore into the **existing** DB (never drop/recreate — that loses the 0038 ICU
+`cs-CZ` locale):
+
+```
+gunzip -c backups/prod-pre-golive-wipe-<DATE>.sql.gz | \
+  ssh -i ~/.ssh/kasia_prod app@91.98.47.1 \
+  "cd /srv/kasia && docker compose exec -T db psql -U kasia -d kasia"
+```
+
+## 8. Things that are not in this RUNBOOK on purpose
 
 - **Observability / log shipping / metrics / alerting.** ~6 users;
   per [`../.claude/rules/right-sized-for-small-business.md`](../.claude/rules/right-sized-for-small-business.md),

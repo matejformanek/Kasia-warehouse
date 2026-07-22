@@ -1,5 +1,7 @@
 # 0034 — 14-day shadow run before go-live
 
+> **Superseded in part by [0087](./0087-production-data-wipe-for-go-live.md)** — the clause "shadow dodáky are kept, counters not reset at cutover" is reversed: at go-live prod is wiped and the dodák number sequences reset to 0001.
+
 ## Context
 
 Petr's 2026-06-09 reply (Czech, relayed via Matej):

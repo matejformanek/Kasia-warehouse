@@ -1,5 +1,11 @@
 # 0088 — Untracked ingredients (`Product.is_stock_tracked`) + per-component recipe notes
 
+> **Amended by [0090](./0090-component-note-on-operator-recipe-form.md)** — the
+> „`RecipeComponent.note` is **not** added to `RecipeComponentForm`" clause is
+> reversed; the per-component note is now editable on the operator recipe form.
+> Everything else in 0088 (untracked ingredients + the note's render surfaces)
+> stands.
+
 **Date:** 2026-07-22
 **Decider:** Matej (standing in for Petr) — ahead of the real-recipe entry batch
 **Status:** Active

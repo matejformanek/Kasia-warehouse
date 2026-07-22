@@ -148,7 +148,15 @@ class RecipeComponentForm(forms.ModelForm):
 
     class Meta:
         model = RecipeComponent
-        fields = ("component_product", "ratio")
+        # Per 0090: `note` is now editable on the operator recipe formset
+        # (was admin/ORM-only under 0088). The formset is vlastník-only, so the
+        # field inherits that gating.
+        fields = ("component_product", "ratio", "note")
+        widgets = {
+            "note": forms.TextInput(
+                attrs={"placeholder": "Poznámka ke složce (nepovinné)"}
+            ),
+        }
 
     def __init__(self, *args, mixture: Product | None = None, **kwargs) -> None:
         super().__init__(*args, **kwargs)

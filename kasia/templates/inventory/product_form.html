@@ -111,6 +111,24 @@
     {% endif %}
   {% endif %}
 
+  {% comment %} Per 0089: the mixture default batch. In the form for vlastník
+  only (popped otherwise, so the BoundField is falsy → block hidden). {% endcomment %}
+  {% if form.default_batch_kg %}
+    <h2 style="font-size:1.05rem;margin-top:1.5rem;">Výchozí dávka</h2>
+    <p style="color:var(--fg-soft); font-size:0.9rem;">
+      Předvyplní se do míchání (pole „Cílové množství") a do kalkulačky dávky
+      na detailu produktu. Nechte 0, pokud nechcete nic předvyplňovat. Má smysl
+      jen u směsí.
+    </p>
+    <div class="field">
+      <label for="{{ form.default_batch_kg.id_for_label }}">
+        {{ form.default_batch_kg.label }}
+      </label>
+      {{ form.default_batch_kg }}
+      {{ form.default_batch_kg.errors }}
+    </div>
+  {% endif %}
+
   {% if recipe_formset %}
     <h2 style="font-size:1.05rem;margin-top:1.5rem;">Receptura</h2>
     <p style="color:var(--fg-soft); font-size:0.9rem;">
@@ -128,6 +146,7 @@
         <tr>
           <th class="field-required">Surovina</th>
           <th class="field-required" style="text-align:right;">Podíl</th>
+          <th>Poznámka</th>
           <th></th>
         </tr>
       </thead>
@@ -142,6 +161,10 @@
             <td style="text-align:right;">
               {{ rc_form.ratio }}
               {{ rc_form.ratio.errors }}
+            </td>
+            <td>
+              {{ rc_form.note }}
+              {{ rc_form.note.errors }}
             </td>
             <td>
               <input type="checkbox" name="{{ rc_form.DELETE.html_name }}"
@@ -164,6 +187,9 @@
         </td>
         <td style="text-align:right;">
           {{ new_recipe_row.ratio }}
+        </td>
+        <td>
+          {{ new_recipe_row.note }}
         </td>
         <td>
           <input type="checkbox" name="recipe-__INDEX__-DELETE"
@@ -206,8 +232,13 @@
               /name="ratio"/g,
               `name="recipe-${idx}-ratio"`
             )
+            .replace(
+              /name="note"/g,
+              `name="recipe-${idx}-note"`
+            )
             .replace(/id="id_component_product"/g, `id="id_recipe-${idx}-component_product"`)
-            .replace(/id="id_ratio"/g, `id="id_recipe-${idx}-ratio"`);
+            .replace(/id="id_ratio"/g, `id="id_recipe-${idx}-ratio"`)
+            .replace(/id="id_note"/g, `id="id_recipe-${idx}-note"`);
           body.insertAdjacentHTML("beforeend", html);
           total.value = idx + 1;
         });

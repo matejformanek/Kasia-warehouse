@@ -15,11 +15,15 @@ description: >-
 Real recipes from Petr arrive as XLS files (usually in `~/Downloads/`). They are
 entered via a **one-off idempotent ORM script in `scratchpad/`** of the main
 checkout (untracked, kept), smoke-run locally, then run on prod. The canonical
-reference script is `scratchpad/import_garlic_recipes.py` — copy its shape.
+reference scripts are `scratchpad/import_garlic_recipes.py` (multi-recipe, TYN)
+and `scratchpad/import_sez_recipes.py` (14-recipe SEZ batch, branch variable,
+composed postup blocks) — copy their shape.
 
 ## 1. Read the XLS
 
-`xlrd` is already a project dep. Dump the first sheet:
+`xlrd` is already a project dep (`.xls` only; for `.xlsx` use `openpyxl` —
+also installed — with `load_workbook(path, data_only=True)`). Dump the first
+sheet:
 
 ```bash
 uv run python - <<'EOF'
@@ -38,7 +42,15 @@ Typical sheet shape:
   `name_cs` with the user, e.g. sheet "česnek 90 %" → "Česneková pasta 90 %")
 - ingredient rows: `(name, kg)` pairs; kg cells may be **blank** or hold text
 - `Datum` / `Podpis` rows, then the **pracovní postup** free text below them
-  (becomes `Product.notes`; keep Czech quotes „…" intact)
+  (becomes `Product.notes`; keep Czech quotes „…" intact; ALL-CAPS lines are
+  sentence-cased on import). SEZ knedlíkárna sheets also carry a balení line
+  („BALIT Á 5 KG") — include it in the postup.
+
+**Not every XLS is a recipe**: files named „obj …" / „objednávka" are
+finished-product **orders** (product codes + kusy/palety) — context only
+(proper display names, which products exist), never imported. Files with the
+same name but different dates: diff them — identical → one import; different
+→ newest wins (confirm with the user).
 
 ## 2. Resolve gaps with the user (AskUserQuestion)
 
@@ -56,6 +68,24 @@ Before writing any script, list the existing candidate products from the
 - **Mixture name** (`name_cs`) and **default batch** (`default_batch_kg` =
   sum of component kg unless the user says otherwise).
 
+### Petr's ingredient-unification rulings (2026-07-22 — reuse, don't re-ask)
+
+- VLOČKY PF51 = BRAMBOROVÉ VLOČKY → one product **„Bramborové vločky"**
+  (component note `PF51` where the XLS said PF51).
+- KRUPICE ≠ KRUPIČKA → **„Krupice hrubá"** vs **„Krupička"** (and „CUKR
+  KRUPICE" is sugar → **„Cukr krupice"**).
+- All škrob is the same → one product **„Škrob"** (note `Maisita` where the
+  XLS said „škrob maisita").
+- SŮL in SEZ recipes = **„Sůl jedlá"** — a different product from TYN's
+  **„Sůl na drť"** (the „sůl říčany" pytle for česnekové drtě).
+- VEJCE = **„Vejce sušená"** (dried egg; „vaječný bílek" would be separate
+  and is spelled out in recipes when used).
+- AROMA VANILKA = aroma Vanilka Silesia → **„Aroma vanilka"** (note
+  `Silesia`); aroma Jahoda Strawberry → **„Aroma jahoda"** (note
+  `Strawberry`).
+- SMAŽENÁ CIBULE → **„Cibule smažená"**, distinct from the other cibule
+  products.
+
 ## 3. Write the ORM script — `scratchpad/import_<slug>.py`
 
 Follow `scratchpad/import_garlic_recipes.py` exactly:
@@ -69,10 +99,14 @@ Follow `scratchpad/import_garlic_recipes.py` exactly:
   largest line inside the helper).
 - Upsert each `RecipeComponent` (filter → update or create), set `note`, call
   `full_clean()` before `save()` (mirrors `create_mixture_from_review`).
-- Seed **0-kg TYN `Stock` rows** for the mixture + any newly created tracked
-  raws (`get_or_create`, skip untracked). **Never touch SEZ.**
-- End with a printed summary: counts, ratio sums, `default_batch_kg`, TYN/SEZ
-  stock row counts.
+- Seed **0-kg `Stock` rows on the TARGET branch only** for the mixture + all
+  its tracked raws (`get_or_create`, skip untracked) — put the branch in one
+  variable at the top (`TYN` for the garlic recipes, `SEZ` for the knedlíkárna
+  batch). **Never create rows on the other branch**; a raw already carried on
+  the other branch (e.g. Medvědí česnek TYN→SEZ) just gains the target-branch
+  row and keeps its existing one.
+- End with a printed summary: counts, ratio sums, `default_batch_kg`, stock
+  row counts on the target branch **and** the other branch (must be 0 new).
 
 ## 4. Local smoke run
 
@@ -111,7 +145,10 @@ prefills the batch.
 - Duplicate components refused → merge same-product rows, note the split.
 - Name collision → `update_or_create` by `name_cs` updates in place; make sure
   that's intended before running.
-- Postup text: keep Czech typographic quotes („…") verbatim from the XLS.
-- Never create SEZ stock rows; only 0-kg TYN carriage.
+- Postup text: keep Czech typographic quotes („…") verbatim from the XLS;
+  sentence-case ALL-CAPS instruction lines.
+- Stock rows only on the recipe's target branch — never the other one.
 - Blank kg cells in the XLS are common — ask, don't guess (except the
   confirmed *1 pytel sůl = 32 kg* convention).
+- A recipe's XLS „CELKEM" may carry float noise (`800.1999…`) — compute the
+  batch as the exact `Decimal` sum of the component kg, not the CELKEM cell.

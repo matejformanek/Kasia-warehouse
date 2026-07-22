@@ -5,6 +5,22 @@
 
 ## Done
 
+- **2026-07-22** — **SEZ batch: 14 real recepturas + 25 raws on prod.** All of
+  Petr's knedlíkárna XLS files imported SEZ-exclusive via idempotent ORM script
+  (untracked `scratchpad/import_sez_recipes.py`, local smoke → prod): Chlupaté
+  knedlíky, Halušky, Pizza langoše, Selský/Toužimský/Tyrolský/Alpský knedlík,
+  Těsto s cibulkou / standard / s vejci (newer 500 kg 2026-07-21 version wins
+  over the 800 kg 2026-06-15 variant), 4 pudingy (jahodový, pistáciový,
+  vanilkový, čokoládový). Ingredient unification per Petr: Bramborové vločky
+  (= VLOČKY PF51), Krupice hrubá ≠ Krupička, one Škrob, **Sůl jedlá** (new —
+  ≠ TYN „Sůl na drť"), Vejce sušená, Aroma vanilka/jahoda, Cibule smažená;
+  Medvědí česnek reused (TYN row kept, SEZ row added). 40 new 0-kg SEZ Stock
+  rows, 0 new TYN rows; every ratio-sum 1.000000; `default_batch_kg` = exact
+  component sum. Skill `kasia-add-xls-recipe` refined (xlsx/openpyxl, obj-files
+  ≠ recipes, target-branch variable, Petr's rulings, dated-duplicate handling).
+  **Deferred (Petr will send recipes):** malinový + mango puding; Bramborové
+  těsto family, Bramboráčky, Bramborová kaše, Exclusive, bezlepkové, Vícezrný,
+  Jogurtový, Sezimák houskový (only the still-produced ones).
 - **2026-07-22** — **4th real recipe on prod + `kasia-add-xls-recipe` skill.**
   „Česneková pasta 90 %" (XLS sheet „česnek 90 %") entered on prod via
   idempotent ORM script (untracked `scratchpad/import_cesnekova_pasta.py`,

@@ -465,6 +465,90 @@ def test_recipe_edit_saves_changes(user_vlastnik, pepper, paprika) -> None:
 
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_product_form_renders_default_batch_for_vlastnik(
+    user_vlastnik, user_obsluha_tyn
+) -> None:
+    """Per 0089: the „Výchozí dávka" field is actually rendered on the
+    create + edit form for a vlastník, and hidden for obsluha. (0089 added it
+    to the form object but the template — which renders fields explicitly —
+    initially omitted it; this guards the render.)"""
+    mixture = Product.objects.create(
+        name_cs="Směs D", kind="mixture", default_batch_kg=Decimal("337.000")
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    # create form
+    create_body = client.get("/sklad/katalog/novy/").content.decode("utf-8")
+    assert 'name="default_batch_kg"' in create_body
+    assert "Výchozí dávka" in create_body
+    # edit form — value prefilled (dot decimal, safe for a number input)
+    edit_body = client.get(
+        f"/sklad/katalog/{mixture.pk}/upravit/"
+    ).content.decode("utf-8")
+    assert 'name="default_batch_kg"' in edit_body
+    assert 'value="337.000"' in edit_body
+    # obsluha never sees the field
+    client2 = Client()
+    client2.force_login(user_obsluha_tyn)
+    obsluha_body = client2.get("/sklad/katalog/novy/").content.decode("utf-8")
+    assert 'name="default_batch_kg"' not in obsluha_body
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipe_edit_renders_note_column(user_vlastnik, pepper) -> None:
+    """Per 0090: the recipe formset exposes an editable „Poznámka" column."""
+    mixture = Product.objects.create(name_cs="Směs P", kind="mixture")
+    RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper,
+        ratio=Decimal("1.000"), note="hrubě mletý",
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/katalog/{mixture.pk}/upravit/").content.decode("utf-8")
+    assert "Poznámka" in body
+    assert 'name="recipe-0-note"' in body
+    assert "hrubě mletý" in body  # existing note prefilled into the input
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_recipe_edit_saves_component_note(user_vlastnik, pepper) -> None:
+    """Per 0090: a note typed on the operator recipe formset is persisted."""
+    mixture = Product.objects.create(name_cs="Směs Q", kind="mixture")
+    rc = RecipeComponent.objects.create(
+        mixture_product=mixture, component_product=pepper,
+        ratio=Decimal("1.000"), note="",
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/sklad/katalog/{mixture.pk}/upravit/",
+        {
+            "name_cs": mixture.name_cs,
+            "kind": "mixture",
+            "notes": "",
+            "recipe-TOTAL_FORMS": "1",
+            "recipe-INITIAL_FORMS": "1",
+            "recipe-MIN_NUM_FORMS": "0",
+            "recipe-MAX_NUM_FORMS": "1000",
+            "recipe-0-id": str(rc.pk),
+            "recipe-0-component_product": str(pepper.pk),
+            "recipe-0-ratio": "1.000",
+            "recipe-0-note": "navážit přesně",
+            "threshold-TOTAL_FORMS": "0",
+            "threshold-INITIAL_FORMS": "0",
+            "threshold-MIN_NUM_FORMS": "0",
+            "threshold-MAX_NUM_FORMS": "1000",
+        },
+    )
+    assert response.status_code == 302
+    rc.refresh_from_db()
+    assert rc.note == "navážit přesně"
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_catalogue_has_new_product_button(user_obsluha_tyn) -> None:
     client = Client()
     client.force_login(user_obsluha_tyn)

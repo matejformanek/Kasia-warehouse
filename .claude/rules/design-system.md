@@ -366,9 +366,13 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   „Poznámka" column — the `<tfoot>` „Celkem" row carries a matching empty `<td>`)
   and on `product_detail.html`'s **mixture** recipe table — **not** on the raw
   ingredient's own page (`used_in` table) nor the second "Spočítat dávku" scaler
-  table. Keep it flowing to both surfaces when editing either. Set via ORM /
-  admin, not on `RecipeComponentForm` (omitting it preserves existing notes on a
-  formset save).
+  table. Keep it flowing to both surfaces when editing either. **Editable on the
+  operator recipe formset** (`RecipeComponentForm`, a „Poznámka" column on
+  `product_form.html`, vlastník-only like the whole formset — per
+  [`0090`](../../context/decisions/0090-component-note-on-operator-recipe-form.md),
+  which reverses 0088's admin/ORM-only clause); the add-row clone JS rewrites the
+  `note` widget's `name`/`id` alongside `component_product`/`ratio`. Also settable
+  via admin / ORM.
 - **`Product.default_batch_kg` (per
   [`0089`](../../context/decisions/0089-mixture-default-batch-kg.md)):** the
   mixture's default batch size (`0` = unset, gated on `> 0`). Prefills the míchání

@@ -5,6 +5,21 @@
 
 ## Done
 
+- **2026-07-22** — **Per-component recipe note editable on the operator form +
+  default-batch render fix** (decision
+  [`0090`](./decisions/0090-component-note-on-operator-recipe-form.md), amends
+  0088; companion 0089 fix).
+  - `RecipeComponent.note` added to `RecipeComponentForm.Meta.fields` → a „Poznámka"
+    column on the `product_form.html` recipe formset (live rows + `#recipe-empty-row`
+    clone + add-row JS `name`/`id` rewrite). Vlastník-only (the formset already is).
+    Reverses 0088's admin/ORM-only clause (banner added to 0088). No model change.
+  - **0089 companion:** `product_form.html` renders fields explicitly and had
+    omitted `default_batch_kg`, so the vlastník couldn't set „Výchozí dávka" on the
+    create/edit form — now rendered (gated on the BoundField → vlastník-only). Value
+    prefills as dot-decimal (Django's own DecimalField widget, safe for `type=number`).
+  - Tests in `test_ciselniky.py` (note column renders + saves; default-batch field
+    renders for vlastník, hidden for obsluha). Rule text updated in
+    `.claude/rules/design-system.md` § "Katalog is grouped".
 - **2026-07-22** — **Per-mixture default batch size (`Product.default_batch_kg`)**
   (decision [`0089`](./decisions/0089-mixture-default-batch-kg.md)) — prefills the
   canonical batch size wherever a mix starts. Purely additive; supersedes nothing.

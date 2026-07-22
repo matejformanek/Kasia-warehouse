@@ -5,6 +5,18 @@
 
 ## Done
 
+- **2026-07-22** — **„Prázdný na" chip shows empty branches independent of
+  threshold** (decision
+  [`0091`](./decisions/0091-empty-branch-chip-independent-of-threshold.md),
+  refines 0072/0064 display). The red „Prázdné" group's per-branch column was fed
+  by `low_branches` (`effective < threshold`), so a genuinely-empty product at the
+  default threshold 0 (`0 < 0` false — e.g. the new garlic products, TYN 0 kg)
+  showed a **blank** branch. Added a separate **`empty_branches`** list in
+  `_catalogue_rows` (carried branches at `effective ≤ 0`) and render it in the
+  „Prázdný na" column of `_catalogue_group.html`; the „Dochází na" (low) column +
+  `low_branches` are unchanged. Display-only — no change to grouping/KPIs/alerts.
+  Shared partial → fixes Katalog + both Přehled surfaces. Test +
+  `.claude/rules/design-system.md` note.
 - **2026-07-22** — **Per-component recipe note editable on the operator form +
   default-batch render fix** (decision
   [`0090`](./decisions/0090-component-note-on-operator-recipe-form.md), amends

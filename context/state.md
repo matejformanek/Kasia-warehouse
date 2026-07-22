@@ -5,8 +5,9 @@
 
 ## Done
 
-- **2026-07-22** — **Production data-wipe command for go-live built + tested**
-  (decision [`0087`](./decisions/0087-production-data-wipe-for-go-live.md);
+- **2026-07-22** — **Production data wiped to a clean go-live baseline** —
+  `reset_production_data --commit` run on the box (decision
+  [`0087`](./decisions/0087-production-data-wipe-for-go-live.md);
   reverses 0034's "shadow dodáky kept / counters not reset" clause — banner added
   to [`0034`](./decisions/0034-shadow-run-before-go-live.md)).
   - New `inventory/management/commands/reset_production_data.py` — dry-run by
@@ -27,11 +28,26 @@
     full PROTECT-heavy graph (příjem/výdej/dodák, running mixing job, executed
     transfer, feedback, screen-visits). Suite green (**602**), ruff clean,
     `manage.py check` clean.
-  - **Pending (human-in-the-loop go-live action, not yet run):** off-repo pg_dump
-    backup of prod → merge to `main` (CI deploy) → run on the box via
-    `docker compose run --rm web python manage.py reset_production_data` (dry-run,
-    then `--commit`) → verify counts + live smoke test → flip the `CLAUDE.md`
-    "not a production system" / "shadow run comes last" lines to the live state.
+  - **Executed 2026-07-22 (this order):** off-repo `pg_dump` +
+    users-only `dumpdata` JSON backup (gitignored `backups/`,
+    `prod-pre-golive-wipe-2026-07-22.sql.gz` + `prod-users-pre-golive-wipe-2026-07-22.json`,
+    both `chmod 600`, integrity-checked) → merge #46 → CI deploy (image
+    `sha-0f88ccd52e81`) → dry-run (740 rows, matched planning volumes) →
+    `--commit`. **Final prod state:** 4 users (1 superuser: admin@kasia.cz) /
+    2 branches / 2 recipients + Settings / 4 customers / 5 suppliers /
+    0 movements-products-stock-dodáky. Verified: every runtime counterparty
+    lookup resolves (5 supplier + 3 customer roles + Říčany → no 500 on
+    míchání/inventura/převod/objednávka/blank-supplier příjem); live HTTP
+    `healthz 200`, home 200, `/sklad/` 302→login, login 200.
+  - **Ops note — WEB_IMAGE trap (RUNBOOK § 5b):** the box `.env` still pinned the
+    stale `sha-96acfd8571b4`, so a plain `docker compose run` hit "Unknown
+    command"; ran the command by passing the deployed
+    `WEB_IMAGE=…sha-0f88ccd52e81` explicitly. Pin update to the current sha is a
+    follow-up.
+  - **Not flipped yet:** `CLAUDE.md`'s "not a production system" / "No real Kasia
+    users" / "shadow run comes last" lines — the baseline is clean and *ready*
+    for operators, but the 14-day shadow run (0034) hasn't started, so flipping
+    now would overstate it. Flip at the actual operator cutover.
 - **2026-07-21** — Podpora **video návod** wired: self-hosted 720p MP4
   (`kasia/static/video/video-tutorial.mp4`) with a real `<video>` (poster =
   existing thumbnail, `preload="none"`) replacing the placeholder in
@@ -2769,30 +2785,21 @@ feeds back, hold position and respond to direct asks.
 
 ## In progress
 
-- **2026-07-22** — **Go-live production data wipe** (decision
-  [`0087`](./decisions/0087-production-data-wipe-for-go-live.md)). The
-  `reset_production_data` command + test are built, tested, and ready to land
-  (see the Done entry above). **Remaining, human-in-the-loop, in order:**
-  1. Off-repo `pg_dump` backup of prod (+ users-only `dumpdata` JSON) into the
-     gitignored `backups/`, `chmod 600`, integrity-checked — never `git add -f`.
-  2. Merge this PR to `main` → CI deploy → confirm the command is on the box.
-  3. Run on the box via `docker compose run --rm web python manage.py
-     reset_production_data` (dry-run, review the table), then `--commit`.
-  4. Verify: exactly 4 users / 2 branches / 2 recipients / 4 customers /
-     5 suppliers / 0 movements-products-stock-dodáky; live smoke test (login,
-     dashboard, míchání, inventura, příjem — no 500s).
-  5. Flip the `CLAUDE.md` "not a production system" / "No real Kasia users" /
-     "shadow run comes last" lines to the live state.
+- (nothing actively underway — prod is a clean go-live baseline as of
+  2026-07-22; the 14-day shadow run is the next phase, see Next.)
 
 ## Next
 
-1. **Run the go-live wipe on prod** — the sequence in *In progress* above. This
-   is the immediate go-live step.
-
-2. **14-day shadow run → branch-staff cutover** per
+1. **14-day shadow run → branch-staff cutover** per
    [`0034`](./decisions/0034-shadow-run-before-go-live.md) (the numbering-reset
-   clause is now reversed by 0087). The box is live at `https://kasia.cz` since
-   2026-07-14.
+   clause is now reversed by 0087; prod wiped clean 2026-07-22). Petr + Karolína
+   enter real catalogue + movements on `https://kasia.cz`; cutover to branch
+   staff after Petr's sign-off. At cutover, flip `CLAUDE.md`'s "not a production
+   system" / "shadow run comes last" lines to the live state.
+
+2. **Fix the stale `WEB_IMAGE` pin** on the box `.env`
+   (`sha-96acfd8571b4` → current deployed sha) so manual `docker compose
+   run/up` no longer needs an explicit override (RUNBOOK § 5b).
 
 3. **Quality-of-life backlog** — reopen as the shadow run / real use surfaces
    fixes. Google Search Console verification (meta-tag token → wire into

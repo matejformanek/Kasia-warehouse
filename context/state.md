@@ -5,6 +5,17 @@
 
 ## Done
 
+- **2026-07-22** — **4th real recipe on prod + `kasia-add-xls-recipe` skill.**
+  „Česneková pasta 90 %" (XLS sheet „česnek 90 %") entered on prod via
+  idempotent ORM script (untracked `scratchpad/import_cesnekova_pasta.py`,
+  local smoke first): Voda 210 / Česnek granule G2 72,5 (merged 35 + 37,5,
+  split kept in the component note) / Sůl na drť 32 (1 pytel = 32 kg),
+  `default_batch_kg=314.5`, postup in `Product.notes`, 0-kg TYN Stock seeded,
+  SEZ untouched, ratio-sum 1.000000. The ORM-entry workflow is now a project
+  skill: `.claude/skills/kasia-add-xls-recipe/SKILL.md` (skeleton — xlrd dump,
+  gap questions, script pattern per `scratchpad/import_garlic_recipes.py`,
+  local→prod run, gotchas; refine as more XLS recipes land). In-app importer
+  button still unused for real recipes per 0088.
 - **2026-07-22** — **„Prázdný na" chip shows empty branches independent of
   threshold** (decision
   [`0091`](./decisions/0091-empty-branch-chip-independent-of-threshold.md),

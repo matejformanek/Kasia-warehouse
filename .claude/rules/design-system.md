@@ -339,9 +339,36 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   The search input uses the grouped multi-tbody hook (`data-filter-rows=".cat-body"`
   / `data-filter-empty="#branch-stock-empty"`). The header **Dochází/Prázdné** KPIs
   are sourced from the groups (not `low_stock_rows()`) so they match the sub-heads.
-  All active products show — an un-stocked product surfaces as Prázdné. **Do not
+  All active **stock-tracked** products show — an un-stocked (but tracked)
+  product surfaces as Prázdné. Products with `is_stock_tracked=False` are
+  excluded from this card (as from Katalog and inventura). **Do not
   flatten this back to a plain status-badge table** or rename the shared group
   hooks; that is a new decision.
+- **Untracked products (`Product.is_stock_tracked=False`, per
+  [`0088`](../../context/decisions/0088-recipe-component-notes-and-untracked-ingredients.md)):**
+  e.g. „Voda". They carry **no Stock rows** and are **unlimited** — excluded from
+  Katalog / obsluha Přehled / inventura (both self-built querysets) /
+  `low_stock_rows` / `catalogue_stock_groups` / the low-stock alert, and
+  unselectable in the movement product dropdown. They are **never deducted**
+  (`_apply_line_to_stock` early-returns), **never seeded**
+  (`seed_branch_carriage_for_product` early-returns), **never reserved** or
+  consumed in míchání (`plan_mixing_job` / `start_mixing_job` fresh-start skip
+  them), and **never block** a výdej/míchání overdraw. In
+  `_mixing_preview.html` their row shows **„neomezeno"** (Stav „ok"). They still
+  appear on the recipe PDF + mixture detail recipe table (a real ingredient with
+  a ratio/kg). The flag is set at product creation only (ORM/admin), not on
+  `ProductForm`. Adding or removing this exclusion — or exposing the flag on the
+  operator form — is a new decision.
+- **`RecipeComponent.note` (per
+  [`0088`](../../context/decisions/0088-recipe-component-notes-and-untracked-ingredients.md)):**
+  a per-ingredient free-text comment (the same raw spice may carry a different
+  note in a different mixture). Renders on `recipe_pdf.html` (a per-ingredient
+  „Poznámka" column — the `<tfoot>` „Celkem" row carries a matching empty `<td>`)
+  and on `product_detail.html`'s **mixture** recipe table — **not** on the raw
+  ingredient's own page (`used_in` table) nor the second "Spočítat dávku" scaler
+  table. Keep it flowing to both surfaces when editing either. Set via ORM /
+  admin, not on `RecipeComponentForm` (omitting it preserves existing notes on a
+  formset save).
 - **Inventura** (per
   [`0065`](../../context/decisions/0065-inventura-sidebar-nav.md), access
   amended by [`0073`](../../context/decisions/0073-obsluha-own-branch-inventura.md))

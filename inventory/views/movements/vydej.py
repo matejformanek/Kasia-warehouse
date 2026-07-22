@@ -86,9 +86,9 @@ def vydej_create(request):
     # Basis is raw Stock.quantity (matches _compute_overdraw). Missing pairs
     # are absent here and treated as 0 by the JS. ~2 branches × ~12 products.
     stock_map: dict[str, dict[str, str]] = {}
-    for s in Stock.objects.filter(branch__is_active=True).values(
-        "branch_id", "product_id", "quantity"
-    ):
+    for s in Stock.objects.filter(
+        branch__is_active=True, product__is_stock_tracked=True
+    ).values("branch_id", "product_id", "quantity"):
         stock_map.setdefault(str(s["branch_id"]), {})[str(s["product_id"])] = (
             f'{s["quantity"]:.3f}'
         )
@@ -148,6 +148,9 @@ def _compute_overdraw(branch: Branch, lines: list[MovementLine]) -> list[dict]:
     products_by_id: dict[int, Product] = {}
     for ln in lines:
         if ln.product is None or ln.quantity_kg in (None, ""):
+            continue
+        # Untracked products (per 0088) are unlimited — never a shortfall.
+        if not ln.product.is_stock_tracked:
             continue
         requested_by_product[ln.product.pk] = (
             requested_by_product.get(ln.product.pk, Decimal("0.000"))

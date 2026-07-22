@@ -108,6 +108,19 @@ def test_product_create_seeds_stock_rows_for_all_active_branches(
 
 
 @pytest.mark.django_db
+def test_untracked_product_seeds_no_stock_rows(tyn, sez) -> None:
+    """Per 0088: seed_branch_carriage_for_product early-returns for an
+    untracked product, so it never gets a Stock row on any branch."""
+    from inventory.services import seed_branch_carriage_for_product
+
+    voda = Product.objects.create(
+        name_cs="Voda", kind=Product.Kind.RAW_SPICE, is_stock_tracked=False
+    )
+    seed_branch_carriage_for_product(voda)
+    assert not Stock.objects.filter(product=voda).exists()
+
+
+@pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_product_branch_add_creates_zero_stock_row(
     user_vlastnik, tyn, pepper

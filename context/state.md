@@ -5,6 +5,27 @@
 
 ## Done
 
+- **2026-07-22** — **Untracked ingredients + per-component recipe notes**
+  (decision [`0088`](./decisions/0088-recipe-component-notes-and-untracked-ingredients.md)) —
+  schema + guard plumbing ahead of the real-recipe ORM entry batch.
+  - `Product.is_stock_tracked` (`BooleanField(default=True)`) — untracked (e.g.
+    „Voda") = no Stock rows, unlimited, excluded from Katalog / Přehled /
+    inventura / `low_stock_rows` / low-stock alert / movement dropdown, never
+    deducted / reserved / blocking, „neomezeno" in the míchání preview. Guarded at
+    the chokepoints (`_apply_line_to_stock`, `seed_branch_carriage_for_product`,
+    `low_stock_rows`, `catalogue_stock_groups`, both inventura querysets,
+    `plan_mixing_job` + `start_mixing_job`, `apply_movement`/`edit_movement`
+    alert pairs, `MovementLineForm`, výdej `_compute_overdraw` + `stock_map`).
+    Creation-only: **not** on `ProductForm`, exposed on `ProductAdmin`.
+  - `RecipeComponent.note` (`CharField(max_length=255, blank, default="")`) —
+    per-ingredient comment on the recipe PDF + mixture detail table; **not** on
+    the raw-ingredient page nor the scaler table; **not** on `RecipeComponentForm`
+    (formset save preserves it), added to the admin inline + `RecipeComponentAdmin`.
+  - Migration `inventory/migrations/0026_product_is_stock_tracked_recipecomponent_note.py`
+    (both DB-defaulted → no data migration, no interactive prompt). Rule updates in
+    `.claude/rules/design-system.md` § "Katalog is grouped". `seed_walkthrough_data`
+    extended with a „Voda" row + component notes. New tests across mixing / reorder /
+    low-stock-alert / catalogue / dashboard / inventura / carry / detail.
 - **2026-07-22** — **Production data wiped to a clean go-live baseline** —
   `reset_production_data --commit` run on the box (decision
   [`0087`](./decisions/0087-production-data-wipe-for-go-live.md);
@@ -2797,10 +2818,15 @@ feeds back, hold position and respond to direct asks.
    staff after Petr's sign-off. At cutover, flip `CLAUDE.md`'s "not a production
    system" / "shadow run comes last" lines to the live state.
 
-2. **Fix the stale `WEB_IMAGE` pin** on the box `.env`
+2. **Real-recipe ORM entry batch** — now unblocked by 0088. Enter the real XLS
+   receptury directly via the ORM (names matched by hand), using an untracked
+   „Voda" row where recipes call for water and per-component `note`s. Not the XLS
+   importer button.
+
+3. **Fix the stale `WEB_IMAGE` pin** on the box `.env`
    (`sha-96acfd8571b4` → current deployed sha) so manual `docker compose
    run/up` no longer needs an explicit override (RUNBOOK § 5b).
 
-3. **Quality-of-life backlog** — reopen as the shadow run / real use surfaces
+4. **Quality-of-life backlog** — reopen as the shadow run / real use surfaces
    fixes. Google Search Console verification (meta-tag token → wire into
    `web/base.html` head) is still queued with Matej.

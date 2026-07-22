@@ -100,7 +100,13 @@ def catalogue_stock_groups(products, branches):
     Returns a dict: ``rows`` (one per product), ``empty_rows`` / ``low_rows``
     / ``ok_rows`` (the three state groups), and the KPI counts
     ``kpi_products`` / ``kpi_empty`` / ``kpi_low`` / ``kpi_total_kg``.
+
+    Untracked products (per 0088, e.g. „Voda“) carry no Stock rows and are
+    unlimited — drop them at the top so they never surface in the Katalog, the
+    obsluha/vlastník Přehled, or the inventura „Dochází" roll-up (all three call
+    this helper).
     """
+    products = [p for p in products if p.is_stock_tracked]
     totals: dict[int, Decimal] = {}
     for s in Stock.objects.filter(product__in=products, branch__in=branches):
         totals[s.product_id] = totals.get(s.product_id, Decimal("0.000")) + s.quantity

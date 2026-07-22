@@ -112,7 +112,11 @@ def low_stock_rows() -> list[LowStockRow]:
     rows: list[LowStockRow] = []
     stocks = list(
         Stock.objects.select_related("product", "branch")
-        .filter(branch__is_active=True, product__is_active=True)
+        .filter(
+            branch__is_active=True,
+            product__is_active=True,
+            product__is_stock_tracked=True,
+        )
         .order_by("product__name_cs", "branch__code")
     )
     if not stocks:
@@ -183,7 +187,12 @@ def seed_branch_carriage_for_product(product: Product) -> None:
     already carry `product`. Per 0053, row existence IS the carry-flag.
 
     Idempotent: skips branches that already have a Stock row.
+
+    Untracked products (per 0088, e.g. „Voda“) never get a Stock row —
+    they are unlimited and excluded from every stock report.
     """
+    if not product.is_stock_tracked:
+        return
     existing_branch_ids = set(
         Stock.objects.filter(product=product).values_list("branch_id", flat=True)
     )

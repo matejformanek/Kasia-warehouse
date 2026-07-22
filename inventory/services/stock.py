@@ -16,6 +16,10 @@ from ..models import (
 def _apply_line_to_stock(line: MovementLine, *, direction: int) -> None:
     """Mutate the (product, branch) Stock row by `direction * line.quantity_kg`.
     Raises ValidationError if the resulting quantity would go negative."""
+    # Untracked products (e.g. „Voda“, per 0088) are unlimited — no Stock row,
+    # no non-negative check, on any movement path.
+    if not line.product.is_stock_tracked:
+        return
     stock, _ = Stock.objects.select_for_update().get_or_create(
         product=line.product,
         branch_id=line.movement.branch_id,

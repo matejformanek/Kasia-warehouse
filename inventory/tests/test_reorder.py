@@ -226,6 +226,23 @@ def test_low_stock_rows_skips_products_without_threshold(
 
 
 @pytest.mark.django_db
+def test_low_stock_rows_excludes_untracked_product(tyn, voda) -> None:
+    """An untracked product (per 0088) never appears in low_stock_rows,
+    regardless of threshold or on-hand — the queryset filters it out."""
+    from inventory.services import low_stock_rows
+
+    # Force a would-be-critical situation: a Stock row + a high threshold.
+    # (Untracked products normally have no Stock row, but even if one exists
+    # via a legacy path, it must not surface.)
+    voda.reorder_threshold_kg = Decimal("100.000")
+    voda.save()
+    Stock.objects.create(product=voda, branch=tyn, quantity=Decimal("0.000"))
+
+    rows = low_stock_rows()
+    assert not any(r.product.pk == voda.pk for r in rows)
+
+
+@pytest.mark.django_db
 def test_plan_mixing_job_does_not_touch_stock(
     tyn, pepper, user_vlastnik
 ) -> None:

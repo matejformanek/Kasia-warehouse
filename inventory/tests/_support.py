@@ -124,15 +124,23 @@ def _seed_vydej(user, tyn, ricany, pepper, qty="2.000", stock="5.000"):
 
 
 def _mk_mixture_with_recipe(name="Gulášové koření", components=None):
-    """Helper: returns the mixture Product."""
+    """Helper: returns the mixture Product.
+
+    ``components`` is a list of ``(component, ratio)`` or
+    ``(component, ratio, note)`` — the optional 3rd element sets the
+    per-component ``RecipeComponent.note`` (per 0088).
+    """
 
     mixture = Product.objects.create(name_cs=name, kind=Product.Kind.MIXTURE)
     components = components or []
-    for component, ratio in components:
+    for spec in components:
+        component, ratio = spec[0], spec[1]
+        note = spec[2] if len(spec) > 2 else ""
         RecipeComponent.objects.create(
             mixture_product=mixture,
             component_product=component,
             ratio=Decimal(str(ratio)),
+            note=note,
         )
     return mixture
 

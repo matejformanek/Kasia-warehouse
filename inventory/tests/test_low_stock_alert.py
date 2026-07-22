@@ -199,6 +199,29 @@ def test_mixing_consume_crossing_component_alerts(tyn, pepper, user_vlastnik):
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_untracked_component_never_alerts(tyn, pepper, voda, user_vlastnik):
+    """An untracked component (per 0088) with a would-be-critical threshold
+    never triggers a low-stock alert: it produces no consume line and is
+    filtered out of the alert-pair set. The tracked component here keeps plenty
+    of stock, so the whole mix sends zero alerts."""
+    voda.reorder_threshold_kg = Decimal("100.000")
+    voda.save()
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("100.000"))
+    mixture = _mk_mixture_with_recipe(components=[(pepper, "0.5"), (voda, "0.5")])
+
+    start_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("10.000"),  # pepper 5 of 100 → no cross
+        user=user_vlastnik,
+    )
+
+    assert _alerts() == []
+    assert not any(voda.name_cs in m.body for m in mail.outbox)
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
 def test_no_low_stock_subscriber_no_alert_no_error(tyn, ricany, pepper, user_tyn):
     """No is_low_stock_recipient=True subscriber → the crossing sends no alert
     and raises no error (dodák still goes out to active recipients)."""

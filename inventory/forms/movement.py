@@ -106,7 +106,9 @@ class MovementLineForm(forms.Form):
 
     product = forms.ModelChoiceField(
         label="Produkt",
-        queryset=Product.objects.filter(is_active=True),
+        # Untracked products (per 0088, e.g. „Voda“) belong only in recipes —
+        # never selectable on an ordinary příjem / výdej.
+        queryset=Product.objects.filter(is_active=True, is_stock_tracked=True),
     )
     quantity_kg = forms.DecimalField(
         label="Množství (kg)",

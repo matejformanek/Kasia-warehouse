@@ -156,7 +156,7 @@ def render_recipe_pdf(product: Product, target_qty: Decimal | None = None) -> by
     pcts = _amounts_summing_to(ratios, Decimal("100"), 2)
     kgs = _amounts_summing_to(ratios, target_qty, 3)
     rows = [
-        {"name": c.component_product.name_cs, "pct": pct, "kg": kg}
+        {"name": c.component_product.name_cs, "pct": pct, "kg": kg, "note": c.note}
         for c, pct, kg in zip(components, pcts, kgs, strict=True)
     ]
 

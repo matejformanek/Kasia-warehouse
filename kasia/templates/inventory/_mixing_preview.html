@@ -41,13 +41,17 @@ that host page, per 0069) — not inlined here.
     </thead>
     <tbody>
       {% for row in rows %}
-        <tr{% if row.over %} class="short"{% endif %}>
+        <tr{% if row.over and not row.untracked %} class="short"{% endif %}>
           <td>{{ row.component.name_cs }}</td>
           <td class="num">{{ row.ratio }}</td>
           <td class="num">{{ row.derived|floatformat:1 }}</td>
-          <td class="num{% if row.over %} short-txt{% endif %}">{{ row.on_hand|floatformat:1 }}</td>
+          <td class="num{% if row.over and not row.untracked %} short-txt{% endif %}">
+            {% if row.untracked %}neomezeno{% else %}{{ row.on_hand|floatformat:1 }}{% endif %}
+          </td>
           <td>
-            {% if row.over %}
+            {% if row.untracked %}
+              <span class="stav-ok">ok</span>
+            {% elif row.over %}
               <span class="stav-short">nedostatek</span>
             {% else %}
               <span class="stav-ok">ok</span>

@@ -6,6 +6,7 @@ No cross-module form inheritance — every base/subclass chain lives within its
 own submodule.
 """
 
+from .announcement import AnnouncementForm
 from .ciselniky import (
     BranchForm,
     CustomerForm,
@@ -67,6 +68,7 @@ __all__ = [
     "PlannedTransferForm",
     "MixingPlanForm",
     "FeedbackForm",
+    "AnnouncementForm",
     "XLSImportUploadForm",
     "XLSImportReviewHeaderForm",
     "XLSImportReviewLineForm",

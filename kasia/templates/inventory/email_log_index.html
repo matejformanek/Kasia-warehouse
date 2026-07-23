@@ -19,6 +19,9 @@ jistotu, co se komu odeslalo a&nbsp;jestli to prošlo. Vidí ho jen
   <li><strong>Filtr</strong> podle kategorie a&nbsp;stavu.</li>
   <li><strong>Znovu odeslat</strong> — u&nbsp;každého řádku, když se něco
   nedoručilo.</li>
+  <li><strong>Nové oznámení</strong> — nahoře na stránce rozešlete e-mail
+  (informaci, novinku) všem uživatelům, jedné pobočce, nebo vybraným lidem.
+  Příjemci se navzájem nevidí.</li>
 </ul>
 <p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
@@ -26,9 +29,56 @@ jistotu, co se komu odeslalo a&nbsp;jestli to prošlo. Vidí ho jen
 {% block content %}
 <h1>E-maily</h1>
 <p class="muted" style="margin:0 0 1.1rem;">
-  Odeslané e-maily aplikace — dodací listy, upozornění „Dochází zboží" a testy SMTP.
+  Odeslané e-maily aplikace — dodací listy, upozornění „Dochází zboží", oznámení a testy SMTP.
   Celkem {{ total }}{% if failed_count %} · <span style="color:var(--error);">selhalo {{ failed_count }}</span>{% endif %}.
 </p>
+
+{# Oznámení — vlastník-only broadcast composer (per 0097). Whole page is already vlastník-gated. #}
+<details class="announce" {% if announcement_form.is_bound %}open{% endif %}>
+  <summary class="announce-summary">Nové oznámení</summary>
+  <div class="announce-body">
+    <p class="muted" style="margin-top:0;">
+      Rozešle e-mail vybraným uživatelům aplikace. Příjemci se navzájem nevidí
+      (odesíláno skrytou kopií).
+    </p>
+    <form method="post" action="{% url 'inventory:announcement_send' %}" data-guard-unsaved>
+      {% csrf_token %}
+      {% if announcement_form.non_field_errors %}
+        <div class="non-form-errors">{{ announcement_form.non_field_errors }}</div>
+      {% endif %}
+      <div class="field">
+        <label for="{{ announcement_form.subject.id_for_label }}">{{ announcement_form.subject.label }}</label>
+        {{ announcement_form.subject }}
+        {% if announcement_form.subject.errors %}<ul class="errorlist">{% for e in announcement_form.subject.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ announcement_form.body.id_for_label }}">{{ announcement_form.body.label }}</label>
+        {{ announcement_form.body }}
+        {% if announcement_form.body.errors %}<ul class="errorlist">{% for e in announcement_form.body.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ announcement_form.audience.id_for_label }}">{{ announcement_form.audience.label }}</label>
+        {{ announcement_form.audience }}
+        {% if announcement_form.audience.errors %}<ul class="errorlist">{% for e in announcement_form.audience.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+      <div class="field announce-branch">
+        <label for="{{ announcement_form.branch.id_for_label }}">{{ announcement_form.branch.label }}</label>
+        {{ announcement_form.branch }}
+        {% if announcement_form.branch.errors %}<ul class="errorlist">{% for e in announcement_form.branch.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+      <div class="field announce-users">
+        <label>{{ announcement_form.users.label }}</label>
+        <div class="announce-userlist">{{ announcement_form.users }}</div>
+        {% if announcement_form.users.errors %}<ul class="errorlist">{% for e in announcement_form.users.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+      <button class="primary js-confirm" type="submit"
+              data-confirm-danger="false"
+              data-confirm-title="Odeslat oznámení?"
+              data-confirm-body="Rozeslat toto oznámení vybraným uživatelům?"
+              data-confirm-cta="Odeslat">Odeslat oznámení</button>
+    </form>
+  </div>
+</details>
 
 <div class="tab-chips" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
   {% for value, label, n in status_tabs %}
@@ -89,7 +139,7 @@ jistotu, co se komu odeslalo a&nbsp;jestli to prošlo. Vidí ho jen
             data-filter-text="{{ log.recipients }} {{ log.subject }}">
           <td class="mono">{{ log.created_at|date:"d. m. Y H:i" }}</td>
           <td><span class="cat-chip">{{ log.get_category_display }}</span></td>
-          <td class="mono muted">{{ log.recipients }}</td>
+          <td class="mono muted recipients-cell">{{ log.recipients|truncatechars:60 }}</td>
           <td>{{ log.subject|default:"—" }}</td>
           <td>
             {% if log.status == "sent" %}
@@ -126,4 +176,21 @@ jistotu, co se komu odeslalo a&nbsp;jestli to prošlo. Vidí ho jen
 {% else %}
   <p style="color:var(--fg-soft);">Zatím žádné odeslané e-maily.</p>
 {% endif %}
+
+{# Toggle the branch-select vs. users-checkbox rows by the audience choice. #}
+<script>
+  (function () {
+    const audience = document.getElementById("{{ announcement_form.audience.id_for_label }}");
+    if (!audience) return;
+    const branchRow = document.querySelector(".announce-branch");
+    const usersRow = document.querySelector(".announce-users");
+    function sync() {
+      const v = audience.value;
+      if (branchRow) branchRow.style.display = v === "branch" ? "" : "none";
+      if (usersRow) usersRow.style.display = v === "selected" ? "" : "none";
+    }
+    audience.addEventListener("change", sync);
+    sync();
+  })();
+</script>
 {% endblock %}

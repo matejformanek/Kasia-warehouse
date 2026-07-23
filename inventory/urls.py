@@ -111,6 +111,8 @@ urlpatterns = [
     ),
     # E-mailová schránka (outbox log, per 0075) — vlastník-only.
     path("e-maily/", views.email_log_index, name="email_log_index"),
+    # Oznámení broadcast composer (per 0097) — POST-only, vlastník-only.
+    path("e-maily/oznameni/", views.announcement_send, name="announcement_send"),
     path("e-maily/<int:pk>/", views.email_log_detail, name="email_log_detail"),
     path(
         "e-maily/<int:pk>/odeslat-znovu/",

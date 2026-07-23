@@ -706,3 +706,84 @@ def test_xls_import_confirm_sets_component_positions(user_vlastnik) -> None:
         .values_list("component_product__name_cs", "position")
     )
     assert ordered == [("Zázvor", 0), ("Muškát", 1), ("Anýz", 2)]
+
+
+# --- resolve note + notify the creator (per 0098) --------------------------
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_resolve_with_note_persists_and_notifies_creator(
+    user_vlastnik, user_obsluha_tyn
+) -> None:
+    from django.core import mail
+
+    f = Feedback.objects.create(
+        created_by=user_obsluha_tyn, page_url="Katalog", description="Chybí sloupec."
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.post(
+        f"/sklad/podpora/{f.pk}/vyresit/",
+        {"resolution_note": "Přidali jsme sloupec Šarže."},
+    )
+    assert resp.status_code == 302
+    f.refresh_from_db()
+    assert not f.is_open
+    assert f.resolution_note == "Přidali jsme sloupec Šarže."
+    # One resolve notification to the report's creator, with the note in the body.
+    assert len(mail.outbox) == 1
+    msg = mail.outbox[0]
+    assert msg.to == [user_obsluha_tyn.email]
+    assert msg.subject == "Vaše hlášení bylo vyřešeno"
+    assert "Přidali jsme sloupec Šarže." in msg.body
+    log = EmailLog.objects.get(category=EmailLog.Category.FEEDBACK_RESOLVED)
+    assert log.status == EmailLog.Status.SENT
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_resolve_without_note_notifies_without_note_block(
+    user_vlastnik, user_obsluha_tyn
+) -> None:
+    from django.core import mail
+
+    f = Feedback.objects.create(
+        created_by=user_obsluha_tyn, description="Něco."
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    client.post(f"/sklad/podpora/{f.pk}/vyresit/")
+    f.refresh_from_db()
+    assert f.resolution_note == ""
+    assert len(mail.outbox) == 1
+    assert "Poznámka:" not in mail.outbox[0].body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_reopen_is_silent_and_keeps_note(user_vlastnik, user_obsluha_tyn) -> None:
+    from django.core import mail
+
+    f = Feedback.objects.create(
+        created_by=user_obsluha_tyn, description="Něco."
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    client.post(f"/sklad/podpora/{f.pk}/vyresit/", {"resolution_note": "hotovo"})
+    logs_before = EmailLog.objects.filter(
+        category=EmailLog.Category.FEEDBACK_RESOLVED
+    ).count()
+    mail.outbox.clear()
+    # Reopen: no e-mail, no new log, note preserved.
+    client.post(f"/sklad/podpora/{f.pk}/vyresit/")
+    f.refresh_from_db()
+    assert f.is_open
+    assert f.resolution_note == "hotovo"
+    assert len(mail.outbox) == 0
+    assert (
+        EmailLog.objects.filter(
+            category=EmailLog.Category.FEEDBACK_RESOLVED
+        ).count()
+        == logs_before
+    )

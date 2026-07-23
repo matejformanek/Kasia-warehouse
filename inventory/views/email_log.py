@@ -1,9 +1,13 @@
 """E-mailová schránka (outbox) — the vlastník-only „E-maily" Správa page (0075).
 
-Lists every business e-mail the app sent (dodák / low-stock alert / SMTP-test),
-its status, recipients, subject/body and reason, with a resend action. A dodák
-row re-renders from the live DodaciList on resend; a non-dodák row re-sends its
-stored subject/body/recipients. All three views are vlastník-gated.
+Lists every business e-mail the app sent (dodák / low-stock alert / Podpora /
+credentials / Oznámení / SMTP-test), its status, recipients, subject/body and
+reason, with a resend action. On resend a dodák row re-renders from the live
+DodaciList; an Oznámení row (per 0097) re-sends via the BCC path (stored audience
+→ bcc); every other non-dodák row re-sends its stored subject/body/recipients
+into ``to``. The page also hosts the vlastník-only „Oznámení" broadcast composer
+(per 0097) — ``announcement_send`` is its POST target. All views are
+vlastník-gated.
 """
 
 from __future__ import annotations
@@ -15,15 +19,24 @@ from django.urls import reverse
 from django.utils.http import urlencode
 from django.views.decorators.http import require_GET, require_POST
 
+from ..forms import AnnouncementForm
 from ..models import EmailLog
-from ..services import render_dodaci_list_pdf, send_and_log, send_dodaci_list_email
+from ..services import (
+    render_dodaci_list_pdf,
+    send_and_log,
+    send_announcement,
+    send_dodaci_list_email,
+)
 from ._shared import _require_vlastnik, _safe_next
 
 
-@require_GET
-def email_log_index(request):
-    _require_vlastnik(request)
+def _email_log_context(request) -> dict:
+    """Build the outbox list/filter/pager context from ``request.GET``.
 
+    Shared by ``email_log_index`` (GET) and ``announcement_send``'s invalid-form
+    re-render (POST): fully GET-driven so it works under both. The bound/unbound
+    ``AnnouncementForm`` is added by the caller.
+    """
     qs = EmailLog.objects.select_related("dodaci_list", "sent_by")
 
     status = request.GET.get("status") or ""
@@ -56,21 +69,51 @@ def email_log_index(request):
         (EmailLog.Status.FAILED, "Selhalo", failed),
     ]
 
-    return render(
-        request,
-        "inventory/email_log_index.html",
-        {
-            "logs": list(page_obj.object_list),
-            "page_obj": page_obj,
-            "page_querystring": page_querystring,
-            "total": total,
-            "failed_count": failed,
-            "status_tabs": status_tabs,
-            "categories": EmailLog.Category.choices,
-            "filter_status": status,
-            "filter_category": category,
-        },
+    return {
+        "logs": list(page_obj.object_list),
+        "page_obj": page_obj,
+        "page_querystring": page_querystring,
+        "total": total,
+        "failed_count": failed,
+        "status_tabs": status_tabs,
+        "categories": EmailLog.Category.choices,
+        "filter_status": status,
+        "filter_category": category,
+    }
+
+
+@require_GET
+def email_log_index(request):
+    _require_vlastnik(request)
+    ctx = _email_log_context(request)
+    ctx["announcement_form"] = AnnouncementForm()
+    return render(request, "inventory/email_log_index.html", ctx)
+
+
+@require_POST
+def announcement_send(request):
+    """Send one vlastník-composed broadcast „Oznámení" (per 0097)."""
+    _require_vlastnik(request)
+    form = AnnouncementForm(request.POST)
+    if not form.is_valid():
+        ctx = _email_log_context(request)
+        ctx["announcement_form"] = form
+        return render(request, "inventory/email_log_index.html", ctx)
+
+    recipients = form.recipient_emails()
+    log = send_announcement(
+        subject=form.cleaned_data["subject"],
+        body=form.cleaned_data["body"],
+        recipients=recipients,
+        sent_by=request.user,
     )
+    if log.status == EmailLog.Status.SENT:
+        messages.success(
+            request, f"Oznámení odesláno {len(recipients)} příjemcům."
+        )
+    else:
+        messages.error(request, f"Odeslání selhalo: {log.error_message}")
+    return redirect("inventory:email_log_index")
 
 
 @require_GET
@@ -96,6 +139,7 @@ def email_log_resend(request, pk: int):
     _require_vlastnik(request)
     log = get_object_or_404(EmailLog, pk=pk)
 
+    stored_recipients = [r.strip() for r in log.recipients.split(",") if r.strip()]
     if log.dodaci_list_id:
         # Dodák: re-render PDF + subject/body from the live DodaciList.
         pdf_bytes = render_dodaci_list_pdf(log.dodaci_list)
@@ -105,6 +149,15 @@ def email_log_resend(request, pk: int):
             pdf_bytes=pdf_bytes,
             sent_by=request.user,
         )
+    elif log.category == EmailLog.Category.ANNOUNCEMENT:
+        # Oznámení (per 0097): re-send via the BCC path so the audience is never
+        # exposed in `to` — the stored recipients ARE the BCC audience.
+        new_log = send_announcement(
+            subject=log.subject,
+            body=log.body,
+            recipients=stored_recipients,
+            sent_by=request.user,
+        )
     else:
         # Non-dodák: re-send the stored subject/body/recipients as-is.
         new_log = send_and_log(
@@ -112,13 +165,15 @@ def email_log_resend(request, pk: int):
             trigger_reason="ruční opětovné odeslání",
             subject=log.subject,
             body=log.body,
-            recipients=[r.strip() for r in log.recipients.split(",") if r.strip()],
+            recipients=stored_recipients,
             from_email=log.from_email or None,
             sent_by=request.user,
         )
 
     if new_log.status == EmailLog.Status.SENT:
-        messages.success(request, f"E-mail odeslán ({new_log.recipients}).")
+        messages.success(
+            request, f"E-mail odeslán ({len(stored_recipients)} příjemců)."
+        )
     else:
         messages.error(request, f"Odeslání selhalo: {new_log.error_message}")
 

@@ -51,6 +51,18 @@
   <div class="col-main">
     <div class="card">
       <h2 style="font-size:1.05rem;margin-top:0;">Stav skladu</h2>
+
+      {% if product.is_unlimited %}
+      {% comment %} Per 0095: finished products (and untracked Voda) are unlimited — no per-branch stock, KPI, or threshold. {% endcomment %}
+      <p class="muted" style="margin-top:0;">
+        <strong>Neomezené množství</strong>{% if product.kind == "hotovy_vyrobek" %} (hotový výrobek — prodává se na kusy){% endif %}.
+        Tento produkt se skladově nesleduje: nemá stav po pobočkách,
+        nikdy „nedochází" ani neblokuje výdej.
+      </p>
+      {% if product.notes %}
+        <p style="margin-top:1rem;color:var(--fg-soft);">{{ product.notes|linebreaksbr }}</p>
+      {% endif %}
+      {% else %}
       <p class="muted" style="margin-top:0;">
         Objednací bod: <strong>{{ product.reorder_threshold_kg|floatformat:1 }} kg</strong>
         (výchozí pro produkt).
@@ -146,6 +158,7 @@
       {% if product.notes and product.kind != "mixture" %}
         <p style="margin-top:1rem;color:var(--fg-soft);">{{ product.notes|linebreaksbr }}</p>
       {% endif %}
+      {% endif %}
     </div>
   </div>
 
@@ -161,26 +174,34 @@
         <div class="fact-tile">
           <span class="ft-lbl">Stav</span>
           <span class="ft-val plain">
-            {% if stock_state == "empty" %}<span class="chip err">prázdné</span>
+            {% if stock_state == "unlimited" %}<span class="chip neutral">neomezeno</span>
+            {% elif stock_state == "empty" %}<span class="chip err">prázdné</span>
             {% elif stock_state == "low" %}<span class="chip warn">dochází</span>
             {% else %}<span class="chip ok">v pořádku</span>{% endif %}
           </span>
         </div>
-        <div class="fact-tile">
-          <span class="ft-lbl">Na skladě</span>
-          <span class="ft-val">{{ total_quantity|floatformat:1 }} <span class="ft-unit">kg</span></span>
-        </div>
-        <div class="fact-tile accent">
-          <span class="ft-lbl">Efektivně</span>
-          <span class="ft-val">{{ total_effective|floatformat:1 }} <span class="ft-unit">kg</span></span>
-        </div>
+        {% if stock_state == "unlimited" %}
+          <div class="fact-tile">
+            <span class="ft-lbl">Množství</span>
+            <span class="ft-val plain">neomezeno</span>
+          </div>
+        {% else %}
+          <div class="fact-tile">
+            <span class="ft-lbl">Na skladě</span>
+            <span class="ft-val">{{ total_quantity|floatformat:1 }} <span class="ft-unit">kg</span></span>
+          </div>
+          <div class="fact-tile accent">
+            <span class="ft-lbl">Efektivně</span>
+            <span class="ft-val">{{ total_effective|floatformat:1 }} <span class="ft-unit">kg</span></span>
+          </div>
+        {% endif %}
       </div>
     </div>
     <div class="card">
       <h2>Akce</h2>
       <div class="rail-actions">
         <a class="primary" href="{% url 'inventory:product_edit' pk=product.pk %}">Upravit produkt</a>
-        {% if user.is_vlastnik %}
+        {% if user.is_vlastnik and not product.is_unlimited %}
           <a class="secondary" href="{% url 'inventory:stock_adjust_edit' pk=product.pk %}">Upravit stav skladu</a>
         {% endif %}
         {% if product.kind == "mixture" and recipe %}
@@ -391,7 +412,7 @@
 <!-- Actions repeated at the bottom (also in the right rail) so a long page doesn't force a scroll up. -->
 <p class="actions">
   <a class="primary" href="{% url 'inventory:product_edit' pk=product.pk %}">Upravit produkt</a>
-  {% if user.is_vlastnik %}
+  {% if user.is_vlastnik and not product.is_unlimited %}
     <a class="secondary" href="{% url 'inventory:stock_adjust_edit' pk=product.pk %}">Upravit stav skladu</a>
   {% endif %}
   {% if product.kind == "mixture" and recipe %}

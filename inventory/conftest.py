@@ -70,6 +70,17 @@ def voda(db) -> Product:
 
 
 @pytest.fixture
+def hotovy_vyrobek(db) -> Product:
+    """A finished product (per 0095): kind=hotovy_vyrobek, sold by the piece,
+    unlimited (is_unlimited=True) but visible (is_stock_tracked=True default).
+    Never seeds Stock, never blocks výdej; selectable on výdej, excluded from
+    příjem + inventura."""
+    return Product.objects.create(
+        name_cs="Dárkové balení", kind=Product.Kind.HOTOVY_VYROBEK
+    )
+
+
+@pytest.fixture
 def user_tyn(db, tyn):
     """Generic logged-in user with branch=TYN. No role group — falls
     back to vlastník per accounts.User.is_vlastnik default. Pass 3a/b/c

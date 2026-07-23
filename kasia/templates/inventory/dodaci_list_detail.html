@@ -71,7 +71,7 @@
       <tr>
         <th>Pořadí</th>
         <th>Produkt</th>
-        <th style="text-align:right;">Množství (kg)</th>
+        <th style="text-align:right;">Množství</th>
         <th>Šarže</th>
         <th>Poznámka</th>
       </tr>
@@ -81,7 +81,7 @@
         <tr>
           <td style="color:var(--fg-soft);">{{ forloop.counter }}.</td>
           <td>{{ line.product.name_cs }}</td>
-          <td class="num">{{ line.quantity_kg|floatformat:1 }}</td>
+          <td class="num">{% if line.product.unit == "ks" %}{{ line.quantity_kg|floatformat:0 }} ks{% else %}{{ line.quantity_kg|floatformat:1 }} kg{% endif %}</td>
           <td class="cislo">{{ line.sarze }}</td>
           <td>{{ line.note }}</td>
         </tr>

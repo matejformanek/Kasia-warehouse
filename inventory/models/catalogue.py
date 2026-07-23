@@ -90,6 +90,10 @@ class Product(models.Model):
     class Kind(models.TextChoices):
         RAW_SPICE = "raw_spice", "surovina"
         MIXTURE = "mixture", "směs"
+        # Per 0095: a bought-in finished good sold by the piece. Unlimited like
+        # Voda (never deducted/seeded/reserved, never blocks) but visible +
+        # sellable — see `is_unlimited` / `unit` below.
+        HOTOVY_VYROBEK = "hotovy_vyrobek", "hotový výrobek"
 
     name_cs = models.CharField("název", max_length=128)
     kind = models.CharField("typ", max_length=16, choices=Kind.choices)
@@ -135,6 +139,18 @@ class Product(models.Model):
             " Má smysl jen u směsí."
         ),
     )
+
+    @property
+    def is_unlimited(self) -> bool:
+        """Stock effectively infinite: never deducted/seeded/reserved, never
+        blocks, never alerts, shown „neomezeno". True for untracked Voda (0088)
+        and finished products (0095)."""
+        return (not self.is_stock_tracked) or self.kind == self.Kind.HOTOVY_VYROBEK
+
+    @property
+    def unit(self) -> str:
+        """Display unit: „ks" for finished products, „kg" otherwise (0095)."""
+        return "ks" if self.kind == self.Kind.HOTOVY_VYROBEK else "kg"
 
     class Meta:
         verbose_name = "produkt"

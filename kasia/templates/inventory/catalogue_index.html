@@ -46,7 +46,7 @@ Nahoře je proužek s&nbsp;počty (KPI).</p>
 {% block content %}
 <h1>Katalog produktů</h1>
 
-{% if rows or filter_state or filter_q or filter_kind or filter_status != "active" %}
+{% if rows or unlimited_rows or filter_state or filter_q or filter_kind or filter_status != "active" %}
   <section class="kpis" aria-label="Souhrn katalogu">
     <div class="kpi">
       <span class="lbl">Produktů</span>
@@ -85,6 +85,7 @@ Nahoře je proužek s&nbsp;počty (KPI).</p>
       <option value="">— vše —</option>
       <option value="raw_spice" {% if filter_kind == "raw_spice" %}selected{% endif %}>koření</option>
       <option value="mixture" {% if filter_kind == "mixture" %}selected{% endif %}>směs</option>
+      <option value="hotovy_vyrobek" {% if filter_kind == "hotovy_vyrobek" %}selected{% endif %}>hotový výrobek</option>
     </select>
   </div>
   <div class="field">
@@ -140,24 +141,26 @@ Nahoře je proužek s&nbsp;počty (KPI).</p>
 
 <p class="scope-note">Nalezeno: {{ count }} produktů.</p>
 
-{% if rows %}
-  {% if obsluha_branch %}
-    <p class="scope-note">
-      Stavy a rezervace zobrazené pro pobočku <strong>{{ obsluha_branch.code }}</strong>.
-    </p>
-  {% elif selected_branch %}
-    <p class="scope-note">
-      Stavy a rezervace zobrazené pro pobočku <strong>{{ selected_branch.code }}</strong>.
-      <a href="?{% if filter_q %}q={{ filter_q }}&{% endif %}{% if filter_kind %}kind={{ filter_kind }}&{% endif %}{% if filter_status and filter_status != 'active' %}status={{ filter_status }}&{% endif %}{% if filter_state %}state={{ filter_state }}{% endif %}">
-        Zobrazit všechny pobočky
-      </a>
-    </p>
-  {% else %}
-    <p class="scope-note">
-      Stavy a rezervace sečtené přes všechny aktivní pobočky; sloupec „Dochází na" /
-      „Prázdný na" ukazuje, kde produkt dochází/chybí. Pro per-branch pohled vyberte
-      pobočku ve filtru výše.
-    </p>
+{% if rows or unlimited_rows %}
+  {% if rows %}
+    {% if obsluha_branch %}
+      <p class="scope-note">
+        Stavy a rezervace zobrazené pro pobočku <strong>{{ obsluha_branch.code }}</strong>.
+      </p>
+    {% elif selected_branch %}
+      <p class="scope-note">
+        Stavy a rezervace zobrazené pro pobočku <strong>{{ selected_branch.code }}</strong>.
+        <a href="?{% if filter_q %}q={{ filter_q }}&{% endif %}{% if filter_kind %}kind={{ filter_kind }}&{% endif %}{% if filter_status and filter_status != 'active' %}status={{ filter_status }}&{% endif %}{% if filter_state %}state={{ filter_state }}{% endif %}">
+          Zobrazit všechny pobočky
+        </a>
+      </p>
+    {% else %}
+      <p class="scope-note">
+        Stavy a rezervace sečtené přes všechny aktivní pobočky; sloupec „Dochází na" /
+        „Prázdný na" ukazuje, kde produkt dochází/chybí. Pro per-branch pohled vyberte
+        pobočku ve filtru výše.
+      </p>
+    {% endif %}
   {% endif %}
 
   {% if empty_rows %}
@@ -168,6 +171,9 @@ Nahoře je proužek s&nbsp;počty (KPI).</p>
   {% endif %}
   {% if ok_rows %}
     {% include "inventory/_catalogue_group.html" with group_rows=ok_rows group_id="cat-group-ok" head_class="ok" head_label="V pořádku" head_count=ok_rows|length branch_kind="" eff_class="" show_branch_chips=False %}
+  {% endif %}
+  {% if unlimited_rows %}
+    {% include "inventory/_catalogue_group_unlimited.html" with group_rows=unlimited_rows %}
   {% endif %}
 
   <p id="catalogue-empty" style="display:none;color:var(--fg-soft);">Nic neodpovídá filtru.</p>

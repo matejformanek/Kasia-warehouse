@@ -202,10 +202,11 @@ def seed_branch_carriage_for_product(product: Product) -> None:
 
     Idempotent: skips branches that already have a Stock row.
 
-    Untracked products (per 0088, e.g. „Voda“) never get a Stock row —
-    they are unlimited and excluded from every stock report.
+    Unlimited products (untracked „Voda“ per 0088, finished „hotový výrobek“
+    per 0095) never get a Stock row — they are unlimited and excluded from
+    every stock report.
     """
-    if not product.is_stock_tracked:
+    if product.is_unlimited:
         return
     existing_branch_ids = set(
         Stock.objects.filter(product=product).values_list("branch_id", flat=True)

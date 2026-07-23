@@ -94,6 +94,8 @@
 
   <div class="card">
     <h2 style="font-size:1.05rem;margin-top:0;">Položky</h2>
+    {# Per 0095: finished-product pks — the unit JS below shows „ks" per row. #}
+    {{ finished_product_ids|json_script:"edit-finished-ids" }}
     {{ formset.management_form }}
     {% if formset.non_form_errors %}
       <div class="non-form-errors">
@@ -104,7 +106,8 @@
       <thead>
         <tr>
           <th class="field-required">Produkt</th>
-          <th class="field-required">Množství (kg)</th>
+          <th class="field-required">Množství</th>
+          <th class="unit-col">Jedn.</th>
           <th>Šarže</th>
           <th>Expirace</th>
           <th>Poznámka</th>
@@ -123,6 +126,8 @@
               {{ line_form.quantity_kg }}
               {% if line_form.quantity_kg.errors %}<div class="errorlist">{{ line_form.quantity_kg.errors }}</div>{% endif %}
             </td>
+            {# Per 0095: unit column — JS sets „ks" for a finished-product line. #}
+            <td class="line-unit-cell"><span class="line-unit">kg</span></td>
             <td>{{ line_form.sarze }}</td>
             <td>{{ line_form.expiry }}</td>
             <td>{{ line_form.note }}</td>
@@ -142,9 +147,11 @@
     <p>
       {% comment %} Add a line to a DONE movement — a blank line_id posts as an
       "add" op in _line_changes. No ?warn=1 (edit isn't a live over-stock výdej
-      form). Mirrors _movement_form_lines.html's add-line button. {% endcomment %}
+      form); on výdej ?finished=1 keeps finished products („hotový výrobek“) in
+      the dropdown (per 0095) without the over-stock layout. Mirrors
+      _movement_form_lines.html's add-line button. {% endcomment %}
       <button type="button" id="add-line-btn" class="secondary"
-              hx-get="{% url 'inventory:line_row_partial' %}"
+              hx-get="{% url 'inventory:line_row_partial' %}{% if is_vydej %}?finished=1{% endif %}"
               hx-target="#lines-body"
               hx-swap="beforeend"
               hx-vals='js:{index: document.querySelectorAll("#lines-body tr").length}'
@@ -224,6 +231,45 @@
       row.dataset.autopopulated = "1";
       addBtn.click();
     });
+  })();
+
+  // Per 0095: per-row unit label (kg / ks) keyed on the selected product.
+  // json_script emits numbers; <select>.value is a string — coerce. Finished
+  // lines also go integer-only (step=1, min=1) so „10" isn't step-rejected.
+  (function () {
+    const body = document.getElementById("lines-body");
+    if (!body) return;
+    const finEl = document.getElementById("edit-finished-ids");
+    const FINISHED = new Set(finEl ? JSON.parse(finEl.textContent).map(String) : []);
+    function setUnits() {
+      body.querySelectorAll("tr.line-row").forEach((row) => {
+        const prod = row.querySelector('select[name$="-product"]');
+        const unitEl = row.querySelector(".line-unit");
+        const qtyEl = row.querySelector('input[name$="-quantity_kg"]');
+        const finished = prod && FINISHED.has(prod.value);
+        if (unitEl) unitEl.textContent = finished ? "ks" : "kg";
+        if (qtyEl) {
+          // Capture the server-rendered step/min once so a non-finished line
+          // keeps accepting its historical 3-dp value (e.g. míchání-derived
+          // 33.333); only a finished line is forced integer-only.
+          if (qtyEl.dataset.origStep === undefined) {
+            qtyEl.dataset.origStep = qtyEl.getAttribute("step") || "";
+            qtyEl.dataset.origMin = qtyEl.getAttribute("min") || "";
+          }
+          if (finished) {
+            qtyEl.step = "1"; qtyEl.min = "1";
+          } else {
+            if (qtyEl.dataset.origStep) qtyEl.setAttribute("step", qtyEl.dataset.origStep);
+            else qtyEl.removeAttribute("step");
+            if (qtyEl.dataset.origMin) qtyEl.setAttribute("min", qtyEl.dataset.origMin);
+            else qtyEl.removeAttribute("min");
+          }
+        }
+      });
+    }
+    body.addEventListener("change", setUnits);
+    body.addEventListener("htmx:afterSwap", setUnits);
+    setUnits();
   })();
 </script>
 {% endblock %}

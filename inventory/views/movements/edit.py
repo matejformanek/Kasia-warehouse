@@ -18,6 +18,7 @@ from ...models import (
     Movement,
     MovementAudit,
     MovementLine,
+    Product,
 )
 from ...services import counterparties, edit_movement
 from ._shared import _push_validation_error_to_formset
@@ -45,7 +46,11 @@ def movement_edit(request, pk: int):
 
     if request.method == "POST":
         form = form_cls(request.POST)
-        formset = MovementEditLineFormSet(request.POST, prefix="lines")
+        # Per 0095: příjem-edit excludes finished products; výdej-edit keeps them.
+        formset = MovementEditLineFormSet(
+            request.POST, prefix="lines",
+            form_kwargs={"exclude_finished": not is_vydej},
+        )
         if form.is_valid() and formset.is_valid():
             # Per 0086: výdej is dateless (field popped from VydejEditForm) — no
             # date to validate. Príjem edit still guards against a future date.
@@ -99,7 +104,8 @@ def movement_edit(request, pk: int):
             form_initial["dodavatel"] = movement.dodavatel_id
         form = form_cls(initial=form_initial)
         formset = MovementEditLineFormSet(
-            initial=initial_lines, prefix="lines"
+            initial=initial_lines, prefix="lines",
+            form_kwargs={"exclude_finished": not is_vydej},
         )
 
     audit_rows = list(
@@ -118,6 +124,13 @@ def movement_edit(request, pk: int):
             "audit_rows": audit_rows,
             "dodaci_list": DodaciList.objects.filter(movement=movement).first(),
             "is_vydej": is_vydej,
+            # Per 0095: finished-product pks so the per-row unit label shows „ks"
+            # (and the qty input goes integer-only). Only výdej can carry them.
+            "finished_product_ids": list(
+                Product.objects.filter(
+                    is_active=True, kind=Product.Kind.HOTOVY_VYROBEK
+                ).values_list("pk", flat=True)
+            ),
         },
     )
 

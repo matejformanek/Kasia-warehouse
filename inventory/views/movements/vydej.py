@@ -111,6 +111,15 @@ def vydej_create(request):
         branch_inventura = {str(user.branch_id): own}
         inventura_fix_url = own
 
+    # Per 0095: finished products („hotový výrobek“) are unlimited — the live
+    # over-stock JS treats a line whose product is in this set as „neomezeno"
+    # (never over, never blocks) and flips its per-row unit label to „ks".
+    finished_product_ids = list(
+        Product.objects.filter(
+            is_active=True, kind=Product.Kind.HOTOVY_VYROBEK
+        ).values_list("pk", flat=True)
+    )
+
     return render(
         request,
         "inventory/vydej_form.html",
@@ -119,6 +128,7 @@ def vydej_create(request):
             "formset": formset,
             "overdraw_warnings": overdraw_warnings,
             "stock_map": stock_map,
+            "finished_product_ids": finished_product_ids,
             "branch_inventura": branch_inventura,
             "inventura_fix_url": inventura_fix_url,
             "recent_movements": _recent_movements_for_form(
@@ -149,8 +159,9 @@ def _compute_overdraw(branch: Branch, lines: list[MovementLine]) -> list[dict]:
     for ln in lines:
         if ln.product is None or ln.quantity_kg in (None, ""):
             continue
-        # Untracked products (per 0088) are unlimited — never a shortfall.
-        if not ln.product.is_stock_tracked:
+        # Unlimited products (per 0088 / 0095) are never a shortfall — a
+        # finished „hotový výrobek“ line never triggers the overdraw card.
+        if ln.product.is_unlimited:
             continue
         requested_by_product[ln.product.pk] = (
             requested_by_product.get(ln.product.pk, Decimal("0.000"))

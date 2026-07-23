@@ -76,11 +76,12 @@ def plan_mixing_job(
             note=note,
         )
         for rc in recipe:
-            # Untracked components (per 0088, e.g. „Voda“) are unlimited — no
-            # MixingJobLine, so they never feed reserved_kg() (which sums only
-            # PLANNED MixingJobLine.derived_qty). Skipping here is what keeps a
-            # planned water line from producing a phantom reservation.
-            if not rc.component_product.is_stock_tracked:
+            # Unlimited components (per 0088 / 0095) — no MixingJobLine, so they
+            # never feed reserved_kg() (which sums only PLANNED
+            # MixingJobLine.derived_qty). Skipping here is what keeps a planned
+            # unlimited line from producing a phantom reservation. (A component
+            # is always raw_spice, so in practice only untracked Voda hits this.)
+            if rc.component_product.is_unlimited:
                 continue
             derived = (target_qty * rc.ratio).quantize(Decimal("0.001"))
             if derived <= 0:
@@ -239,10 +240,10 @@ def start_mixing_job(
         consume_lines: list[MovementLine] = []
         snapshots: list[tuple[Product, Decimal, Decimal]] = []
         for rc in recipe:
-            # Untracked components (per 0088, e.g. „Voda“) are unlimited — no
-            # consume MovementLine, no MixingJobLine. A RUNNING mix therefore
-            # never decrements water stock or records it as consumed.
-            if not rc.component_product.is_stock_tracked:
+            # Unlimited components (per 0088 / 0095) — no consume MovementLine,
+            # no MixingJobLine. A RUNNING mix therefore never decrements an
+            # unlimited component's stock or records it as consumed.
+            if rc.component_product.is_unlimited:
                 continue
             derived = (target_qty * rc.ratio).quantize(Decimal("0.001"))
             if derived <= 0:

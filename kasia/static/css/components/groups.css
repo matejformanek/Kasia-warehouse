@@ -25,9 +25,12 @@
 .sub-head.low { color: var(--warn); border-left: 3px solid var(--warn); background: var(--warn-tint); }
 .sub-head.ok { color: var(--ok); border-left: 3px solid var(--ok); background: var(--ok-soft); }
 .sub-head.ordered { color: var(--accent-deep); border-left: 3px solid var(--accent); background: var(--accent-tint); }
+/* Finished products (per 0095): neutral slate — unlimited, no stock state. */
+.sub-head.unlimited { color: var(--fg-soft); border-left: 3px solid var(--fg-faint); background: var(--line-soft); }
 .sub-head .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
 .sub-head.empty .dot { background: var(--error); }
 .sub-head.low .dot { background: var(--warn); }
 .sub-head.ok .dot { background: var(--ok); }
 .sub-head.ordered .dot { background: var(--accent); }
+.sub-head.unlimited .dot { background: var(--fg-faint); }
 .sub-head .count { margin-left: auto; font-weight: 600; color: var(--fg-faint); letter-spacing: 0; text-transform: none; }

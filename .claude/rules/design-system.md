@@ -396,6 +396,24 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   a ratio/kg). The flag is set at product creation only (ORM/admin), not on
   `ProductForm`. Adding or removing this exclusion — or exposing the flag on the
   operator form — is a new decision.
+- **Finished products (`Product.kind == "hotovy_vyrobek"`, „hotový výrobek",
+  per [`0095`](../../context/decisions/0095-hotovy-vyrobek-finished-product-type.md)):**
+  a bought-in unlimited good sold **by the piece**. Behaviour keys
+  on **`Product.is_unlimited`** (`not is_stock_tracked OR kind == HOTOVY_VYROBEK`)
+  — the single concept every stock chokepoint uses (never
+  deducted/seeded/reserved, never blocks výdej/míchání overdraw, never alerts).
+  Visibility keys on **`is_stock_tracked`**, so unlike Voda a hotový výrobek
+  **stays visible**: own Katalog group **„Hotové výrobky — neomezeno"**
+  (`unlimited_rows`, rendered only when no `state=` filter), **selectable on
+  výdej** (lands on the dodací list), but **excluded from inventura** (both
+  querysets `.exclude(kind=HOTOVY_VYROBEK)`) and **příjem**
+  (`MovementLineForm(exclude_finished=True)`). Display unit derives from the
+  kind via **`Product.unit`** (`"ks"`/`"kg"`); the piece count lives in the
+  existing `quantity_kg` — **no schema change**. Never in
+  `empty_rows`/`low_rows`/`ok_rows` (computed from the non-unlimited rest), so
+  it can't reach the obsluha Přehled or the inventura „Dochází" toggle.
+  Adding/removing any exclusion, or storing pieces anywhere but `quantity_kg`,
+  is a new decision.
 - **`RecipeComponent.note` (per
   [`0088`](../../context/decisions/0088-recipe-component-notes-and-untracked-ingredients.md)):**
   a per-ingredient free-text comment (the same raw spice may carry a different

@@ -1,0 +1,35 @@
+{% comment %}
+Katalog group for finished products („hotový výrobek“, per 0095). Mirrors
+_catalogue_group.html but simpler: these are unlimited, so no on-hand / reserved
+/ effective / threshold — just the name + „neomezeno". Rendered only when
+unlimited_rows exist and no ?state= stock-state filter is active.
+Params: group_rows (list of {"product": p}).
+{% endcomment %}
+<section class="cat-group" id="cat-group-unlimited">
+  <div class="sub-head unlimited">
+    <span class="dot"></span>Hotové výrobky — neomezeno<span class="count">{{ group_rows|length }}</span>
+  </div>
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Název</th>
+        <th style="text-align:right;">Množství</th>
+      </tr>
+    </thead>
+    <tbody class="cat-body" data-filter-group="#cat-group-unlimited" data-filter-bucket="unlimited">
+      {% for row in group_rows %}
+        <tr class="row-link" data-href="{% url 'inventory:product_detail' pk=row.product.pk %}"
+            data-filter-text="{{ row.product.name_cs }}" data-filter-kg="0"{% if not row.product.is_active %} style="opacity:.6;"{% endif %}>
+          <td>
+            <strong>{{ row.product.name_cs }}</strong>
+            {% if not row.product.is_active %}
+              <span class="muted" style="font-size:.85rem;">(archivováno)</span>
+            {% endif %}
+            <div class="prod-sub">{{ row.product.get_kind_display }}</div>
+          </td>
+          <td class="num muted">neomezeno</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>

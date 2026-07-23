@@ -138,6 +138,8 @@ prodej). Po uložení systém automaticky sníží zásoby a&nbsp;vystaví
   <div class="card">
     <div class="step-head"><span class="step-no">2</span><h2>Položky</h2></div>
     {{ stock_map|json_script:"vydej-stock-map" }}
+    {# Per 0095: finished-product pks — the over-stock JS treats these as „neomezeno" (ks). #}
+    {{ finished_product_ids|json_script:"vydej-finished-ids" }}
     {# Per 0073: emitted for a vlastník (all branches) or an obsluha on own branch — both may fix stock via inventura. #}
     {% if branch_inventura %}{{ branch_inventura|json_script:"vydej-inventura-urls" }}{% endif %}
     {% include "inventory/_movement_form_lines.html" with show_stock_warn=True %}

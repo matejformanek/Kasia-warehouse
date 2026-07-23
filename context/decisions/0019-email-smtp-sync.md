@@ -5,6 +5,12 @@
 > (all business e-mails, rendered subject+body stored, resend from a Správa page).
 > The synchronous-SMTP + fail-silent + resend posture is unchanged.
 
+> **Amended by [`0096`](./0096-manual-first-send-of-dodaky.md)** — "every výdej
+> save sends one e-mail" is no longer true: the *initial* dodák e-mail is sent by
+> an explicit operator "Odeslat" click, not at save. The `[OPRAVA]` re-send on a
+> later correction still fires (once the dodák is sent). The SMTP send mechanics
+> here are otherwise unchanged.
+
 ## Context
 
 R6 (outbound SMTP with attachment + templated body) and R11 (failed

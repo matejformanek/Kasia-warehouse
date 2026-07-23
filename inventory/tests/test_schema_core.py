@@ -10,6 +10,7 @@ from django.urls import reverse
 from inventory.models import (
     Branch,
     Customer,
+    DodaciList,
     Movement,
     MovementAudit,
     MovementLine,
@@ -155,6 +156,17 @@ def test_movement_kind_choices_match_0030() -> None:
     # Locks the enum to decision 0030 (no prevod). Failing this means
     # someone added or removed a kind — update the decision first.
     assert list(Movement.Kind.values) == ["prijem", "vydej"]
+
+
+def test_dodaci_send_state_choices_and_default() -> None:
+    # Locks the enum + default to decision 0096. The migration backfill of
+    # pre-existing rows to SENT is covered by the migration itself (there is no
+    # migration-test harness here — right-sizing).
+    assert list(DodaciList.SendState.values) == ["waiting", "sent"]
+    assert (
+        DodaciList._meta.get_field("send_state").default
+        == DodaciList.SendState.WAITING
+    )
 
 
 @pytest.mark.django_db

@@ -40,7 +40,15 @@ class DodaciList(models.Model):
     """One issued dodací list per výdej Movement. Číslo is the per-(branch,
     year) sequence rendered as TYN-2026-0042 per 0008; current_version is
     the monotonic internal counter per 0007 (initial issue = 1, each
-    correction increments by one); odberatel is a live FK per 0036."""
+    correction increments by one); odberatel is a live FK per 0036.
+
+    send_state (per 0096) gates the *first* e-mail: a dodák is created at výdej
+    in WAITING and nothing is sent until the operator clicks "Odeslat"; once
+    SENT, later movement edits revert to 0007's auto-reissue + [OPRAVA]."""
+
+    class SendState(models.TextChoices):
+        WAITING = "waiting", "čeká na odeslání"
+        SENT = "sent", "odesláno"
 
     movement = models.OneToOneField(
         Movement,
@@ -65,6 +73,12 @@ class DodaciList(models.Model):
     counter = models.PositiveIntegerField("pořadí")
     cislo = models.CharField("číslo", max_length=24, unique=True)
     current_version = models.PositiveIntegerField("aktuální verze", default=1)
+    send_state = models.CharField(
+        "stav odeslání",
+        max_length=16,
+        choices=SendState.choices,
+        default=SendState.WAITING,
+    )
     created_at = models.DateTimeField("vytvořeno", auto_now_add=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -94,8 +108,20 @@ class DodaciList(models.Model):
 
     @property
     def is_edited(self) -> bool:
-        """True iff the dodák has been re-issued at least once (per 0007)."""
+        """True iff the dodák has been re-issued at least once (per 0007). Note
+        (per 0096): a WAITING draft stays v1 through edits, so this now reads as
+        "re-issued after having been sent", not "edited at all"."""
         return self.current_version > 1
+
+    @property
+    def is_waiting(self) -> bool:
+        """True iff the first e-mail hasn't been sent yet (per 0096)."""
+        return self.send_state == self.SendState.WAITING
+
+    @property
+    def is_sent(self) -> bool:
+        """True iff the dodák has been e-mailed at least once (per 0096)."""
+        return self.send_state == self.SendState.SENT
 
     @property
     def total_quantity_kg(self):

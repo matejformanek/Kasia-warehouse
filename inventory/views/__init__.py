@@ -43,6 +43,7 @@ from .dodaci import (
     dodaci_list_index,
     dodaci_list_pdf,
     dodaci_list_resend,
+    dodaci_list_send,
     recipe_pdf,
 )
 from .email_log import email_log_detail, email_log_index, email_log_resend
@@ -104,6 +105,7 @@ __all__ = [
     "dodaci_list_detail",
     "dodaci_list_pdf",
     "recipe_pdf",
+    "dodaci_list_send",
     "dodaci_list_resend",
     "email_log_index",
     "email_log_detail",

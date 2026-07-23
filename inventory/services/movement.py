@@ -168,8 +168,10 @@ def apply_movement(
             _apply_line_to_stock(line, direction=direction)
 
         if movement.kind == Movement.Kind.VYDEJ and not is_internal_vydej:
-            dodaci_list = _create_dodaci_list_for_movement(movement)
-            _send_dodaci_on_commit(dodaci_list, "vystavení")
+            # Per 0096: create the dodák in WAITING but send NOTHING. Stock is
+            # still deducted above; the first e-mail waits for the operator to
+            # click "Odeslat" (send_first_dodaci) after reviewing the draft.
+            _create_dodaci_list_for_movement(movement)
 
         transaction.on_commit(
             lambda: send_low_stock_alert_for_crossings(
@@ -363,8 +365,15 @@ def edit_movement(
         # data + template, and re-sends with an [OPRAVA] subject. The
         # send itself runs on commit so a rollback of the outer atomic
         # block (e.g. a stock overdraw later) skips the e-mail entirely.
+        #
+        # Per 0096 this only applies once the dodák has been SENT. A WAITING
+        # draft is edited freely with no version bump and no e-mail — the
+        # operator's first "Odeslat" click still issues v1 of the final PDF.
         dodaci_list = DodaciList.objects.filter(movement=movement).first()
-        if dodaci_list is not None:
+        if (
+            dodaci_list is not None
+            and dodaci_list.send_state == DodaciList.SendState.SENT
+        ):
             dodaci_list.current_version += 1
             dodaci_list.save(update_fields=["current_version"])
             _send_dodaci_on_commit(dodaci_list, f"oprava: {reason}")

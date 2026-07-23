@@ -17,6 +17,7 @@ from .dodaci_list import (
     render_dodaci_list_pdf,
     render_recipe_pdf,
     send_dodaci_list_email,
+    send_first_dodaci,
 )
 from .email import (
     _active_dodak_recipients,
@@ -73,6 +74,7 @@ __all__ = [
     "render_dodaci_list_pdf",
     "render_recipe_pdf",
     "send_dodaci_list_email",
+    "send_first_dodaci",
     "plan_mixing_job",
     "start_mixing_job",
     "finish_mixing_job",

@@ -130,8 +130,12 @@ def test_dashboard_lists_recent_dodaky(user_tyn, tyn, ricany, pepper) -> None:
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_dashboard_flags_edited_dodak(user_tyn, tyn, ricany, pepper) -> None:
+    from inventory.services import send_first_dodaci
 
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    # Per 0096: a dodák is "editovaný" only after it was sent (edits before
+    # send stay v1). Send first so the edit auto-reissues to v2.
+    send_first_dodaci(dl, sent_by=user_tyn)
     line = mv.lines.get()
     edit_movement(
         movement=mv,
@@ -155,19 +159,36 @@ def test_dashboard_flags_edited_dodak(user_tyn, tyn, ricany, pepper) -> None:
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch) -> None:
-    """A dodák whose latest send at current_version FAILED appears in
-    the 'Nedoručené e-maily' bucket; once re-sent successfully, it
-    drops out."""
+    """A SENT dodák whose latest [OPRAVA] send at current_version FAILED appears
+    in the 'Nedoručené e-maily' bucket; once re-sent successfully, it drops out.
+    Per 0096 the failed bucket only applies to already-sent dodáky — a
+    WAITING+failed-first-send dodák lives in "Čeká na odeslání" instead
+    (see test_dashboard_waiting_failed_first_send_not_in_failed)."""
     from inventory import services
+    from inventory.services import send_first_dodaci
 
-    # First create the výdej WITH a failing SMTP so the initial send logs FAILED.
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    # Send the first e-mail OK → SENT at v1.
+    send_first_dodaci(dl, sent_by=user_tyn)
+
+    # An edit now auto-reissues [OPRAVA]; make that send fail → FAILED at v2.
     def _fail(self, *args, **kwargs):
         raise RuntimeError("smtp down")
 
     monkeypatch.setattr(services.email.EmailMessage, "send", _fail)
-    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    line = mv.lines.get()
+    edit_movement(
+        movement=mv,
+        changes={},
+        line_changes=[
+            {"op": "update", "line_id": line.pk, "fields": {"quantity_kg": Decimal("3.000")}}
+        ],
+        reason="oprava hmotnosti",
+        user=user_tyn,
+    )
+    dl.refresh_from_db()
     assert EmailLog.objects.filter(
-        dodaci_list=dl, status=EmailLog.Status.FAILED
+        dodaci_list=dl, status=EmailLog.Status.FAILED, dodaci_version=2
     ).exists()
 
     client = Client()
@@ -179,7 +200,7 @@ def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch)
     # to_resolve_count should be ≥ 1
     assert "K vyřešení" in body
 
-    # Now restore normal send and re-send → the latest log at v1 is SENT,
+    # Now restore normal send and re-send → the latest log at v2 is SENT,
     # the failed bucket should empty.
     monkeypatch.undo()
     pdf = services.render_dodaci_list_pdf(dl)
@@ -191,6 +212,128 @@ def test_dashboard_flags_failed_send(user_tyn, tyn, ricany, pepper, monkeypatch)
     response2 = client.get("/sklad/")
     body2 = response2.content.decode("utf-8")
     assert "Nedoručený" not in body2
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_home_lists_waiting_dodaky(user_vlastnik, user_tyn, tyn, ricany, pepper) -> None:
+    """Per 0096: the owner Přehled shows an all-branch 'Čeká na odeslání'
+    section for dodáky created but not yet sent."""
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/").content.decode("utf-8")
+    assert "Čeká na odeslání" in body
+    assert dl.cislo in body
+    # The waiting Odeslat button posts to the send route.
+    assert f"/sklad/dodaky/{dl.cislo}/odeslat/" in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_home_waiting_drops_after_send(user_vlastnik, user_tyn, tyn, ricany, pepper) -> None:
+    from inventory.services import send_first_dodaci
+
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    send_first_dodaci(dl, sent_by=user_tyn)
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/").content.decode("utf-8")
+    # The waiting Odeslat button for this dodák is gone once it's sent.
+    assert f"/sklad/dodaky/{dl.cislo}/odeslat/" not in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_dashboard_waiting_failed_first_send_not_in_failed(
+    user_vlastnik, user_tyn, tyn, ricany, pepper, monkeypatch
+) -> None:
+    """Per 0096: a WAITING dodák whose first send FAILED shows only in 'Čeká na
+    odeslání', never in the 'Nedoručený e-mail' bucket."""
+    from inventory import services
+    from inventory.services import send_first_dodaci
+
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+
+    def _fail(self, *args, **kwargs):
+        raise RuntimeError("smtp down")
+
+    monkeypatch.setattr(services.email.EmailMessage, "send", _fail)
+    send_first_dodaci(dl, sent_by=user_tyn)
+    dl.refresh_from_db()
+    assert dl.send_state == dl.SendState.WAITING
+    assert EmailLog.objects.filter(dodaci_list=dl, status=EmailLog.Status.FAILED).exists()
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get("/sklad/").content.decode("utf-8")
+    assert "Čeká na odeslání" in body
+    assert f"/sklad/dodaky/{dl.cislo}/odeslat/" in body
+    assert "Nedoručený" not in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_lists_waiting_dodaky(
+    user_obsluha_tyn, user_tyn, tyn, ricany, pepper
+) -> None:
+    """Per 0096: the branch dashboard shows its own-branch waiting dodáky."""
+    mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    body = client.get("/sklad/pobocka/TYN/").content.decode("utf-8")
+    assert "Čeká na odeslání" in body
+    assert dl.cislo in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_branch_dashboard_waiting_scoped_to_own_branch(
+    user_obsluha_sez, user_tyn, tyn, sez, ricany, pepper
+) -> None:
+    """An obsluha viewing another branch's dashboard 403s; on their own branch
+    they must not see the other branch's waiting dodák."""
+    mv, dl_tyn = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    client = Client()
+    client.force_login(user_obsluha_sez)
+    # Own branch (SEZ) — no waiting dodák there, and TYN's must not leak.
+    body = client.get("/sklad/pobocka/SEZ/").content.decode("utf-8")
+    assert dl_tyn.cislo not in body
+    # Other branch's dashboard is forbidden entirely.
+    assert client.get("/sklad/pobocka/TYN/").status_code == 403
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_index_waiting_section_obsluha_scoped(
+    user_obsluha_sez, user_tyn, tyn, sez, ricany, pepper, paprika
+) -> None:
+    """The dodák index 'Čeká na odeslání' section is branch-scoped for obsluha."""
+    mv_tyn, dl_tyn = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    # A SEZ waiting dodák the obsluha SHOULD see.
+    Stock.objects.create(product=paprika, branch=sez, quantity=Decimal("9.000"))
+    from inventory.services import apply_movement
+
+    mv_sez = apply_movement(
+        movement=Movement(
+            branch=sez,
+            kind=Movement.Kind.VYDEJ,
+            date_issued=date(2026, 6, 12),
+            odberatel=ricany,
+        ),
+        lines=[MovementLine(product=paprika, quantity_kg=Decimal("1.000"))],
+        user=user_tyn,
+    )
+    from inventory.models import DodaciList
+
+    dl_sez = DodaciList.objects.get(movement=mv_sez)
+
+    client = Client()
+    client.force_login(user_obsluha_sez)
+    body = client.get("/sklad/dodaky/").content.decode("utf-8")
+    assert "Čeká na odeslání" in body
+    assert dl_sez.cislo in body
+    assert dl_tyn.cislo not in body
 
 
 @pytest.mark.django_db

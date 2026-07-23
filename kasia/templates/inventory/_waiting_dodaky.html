@@ -1,0 +1,49 @@
+{% comment %}
+  Per 0096: the "Čeká na odeslání" section — dodáky created at výdej but not yet
+  e-mailed. Whole-row-clickable table (tr.row-link → detail), matching the dodák
+  lists elsewhere, plus a per-row "Odeslat" button. Because a .js-confirm form
+  must never nest inside tr.row-link (locked-hook gotcha), the send forms are
+  rendered OUT of the table and the buttons target them via form="…" — the same
+  out-of-form pattern as the PLANNED-příjem cancel (0059). Expects
+  `waiting_dodaky` in context (already branch-scoped by the view where relevant).
+{% endcomment %}
+{% if waiting_dodaky %}
+<section class="card" aria-label="Čeká na odeslání">
+  <h2 style="font-size:1.05rem;margin:0 0 .35rem;">Čeká na odeslání <span class="muted" style="font-weight:500;">— {{ waiting_dodaky|length }}</span></h2>
+  <p class="muted" style="margin:0 0 .6rem;">Dodací listy vytvořené při výdeji, které zatím nebyly odeslány zákazníkovi. Klikněte na řádek pro detail; tlačítkem odešlete e-mail.</p>
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>Číslo</th>
+        <th>Datum</th>
+        <th>Pobočka</th>
+        <th>Odběratel</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for dl in waiting_dodaky %}
+        <tr class="row-link" data-href="{% url 'inventory:dodaci_list_detail' cislo=dl.cislo %}">
+          <td class="cislo">{{ dl.cislo }}</td>
+          <td>{{ dl.date_issued|date:"d. m. Y" }}</td>
+          <td>{{ dl.branch.code }}</td>
+          <td>{{ dl.odberatel.name }}</td>
+          <td style="text-align:right;">
+            <button type="submit" form="send-dodak-{{ dl.pk }}"
+                    class="primary js-confirm"
+                    style="font-size:.85rem;padding:.2rem .6rem;"
+                    data-confirm-danger="false"
+                    data-confirm-title="Odeslat dodací list zákazníkovi?"
+                    data-confirm-body="Odeslat e-mail s dodacím listem {{ dl.cislo }} příjemcům dodacího listu i vystaviteli výdeje?"
+                    data-confirm-cta="Odeslat">Odeslat →</button>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {# Out-of-form send forms — kept outside the row-link table (0059 pattern). #}
+  {% for dl in waiting_dodaky %}
+    <form id="send-dodak-{{ dl.pk }}" method="post" action="{% url 'inventory:dodaci_list_send' cislo=dl.cislo %}" hidden>{% csrf_token %}</form>
+  {% endfor %}
+</section>
+{% endif %}

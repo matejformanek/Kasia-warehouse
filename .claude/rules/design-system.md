@@ -83,8 +83,8 @@ or restructure:
   `.field`, `.messages`/`.msg.*`, `.tab-chip`, `details`, `.row-link`,
   `.recipients`, `.stock-warn`, `.non-form-errors`, `.warnings-banner`,
   `.row-delete-btn`, `.kpis`/`.kpi`, **`data-kpi-live`** (the live-recompute KPI
-  value hook, per 0084), `.js-confirm`, and **`.sub-head`** (the
-  grouped-section header: dot + label + count, coloured red/orange/green —
+  value hook, per 0084), `.js-confirm`, and **`.sub-head`**
+  (the grouped-section header: dot + label + count, coloured red/orange/green —
   used by the grouped Katalog and the per-branch Přehled). Keep the `:root`
   vars child templates use: `--fg-soft`, `--warn`, `--ok`, `--ok-soft`,
   `--error`, `--accent`. Per-screen CSS is a linked stylesheet
@@ -252,6 +252,30 @@ planned příjem (objednávka) and behaves differently in the UI:
   badge-only — informational, never changing effective/deficit/membership.
 
 See [`0059`](../../context/decisions/0059-merge-objednavka-into-prijem.md).
+
+## DodaciList.send_state — manual first send ("Čeká na odeslání", per 0096)
+
+`DodaciList` carries a `send_state` (`waiting` / `sent`, default `waiting`).
+Saving a **výdej** creates the dodák in **WAITING** and **sends no e-mail** — the
+operator reviews/edits freely, then clicks **„Odeslat e-mail zákazníkovi"** on the
+dodák detail (a `.js-confirm` form posting to **`dodaci_list_send`** →
+`POST dodaky/<cislo>/odeslat/`, thin service `send_first_dodaci`) to send the
+first e-mail and flip WAITING → SENT. Only **`is_sent`** dodáky get the „Znovu
+odeslat" action, the auto-`[OPRAVA]` reissue on movement edit (0007), and the
+detail fail-note banner; a WAITING dodák shows the **`.wait-note`** banner + the
+primary Odeslat button instead, and edits to it neither bump the version nor send
+mail (a výdej edit redirects back to its dodák detail). Pending dodáky surface in
+a **„Čeká na odeslání"** section (shared partial `_waiting_dodaky.html`) on the
+dodák index, the owner Přehled (all branches) and the branch dashboard (own
+branch, `_deny_other_branch`/403-scoped). It is a whole-row-clickable
+`table.lines` (`tr.row-link` → detail) with a per-row Odeslat button; because a
+`.js-confirm` form can't nest in `tr.row-link`, the send forms are rendered
+**out of the table** and the buttons target them via `form="send-dodak-{pk}"`
+(the same out-of-form pattern as the PLANNED-příjem cancel, 0059). A
+WAITING+failed-first-send dodák stays in that list, **not** in the „K vyřešení" /
+„Nedoručený e-mail" bucket.
+
+See [`0096`](../../context/decisions/0096-manual-first-send-of-dodaky.md).
 
 ## Native browser dialogs are forbidden in sklad (per 0061)
 

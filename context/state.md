@@ -5,6 +5,25 @@
 
 ## Done
 
+- **2026-07-23** — **Manual first-send of dodáky („Čeká na odeslání")**
+  (decision [`0096`](./decisions/0096-manual-first-send-of-dodaky.md); amends
+  [`0007`](./decisions/0007-auto-reissue-corrected-dodaky.md) +
+  [`0019`](./decisions/0019-email-smtp-sync.md)). Saving a customer **výdej**
+  still deducts stock and creates the dodák, but **sends no e-mail** — the dodák
+  starts in new persisted **`DodaciList.send_state`** (`WAITING`/`SENT`, default
+  WAITING; migration **0030**, pre-existing rows backfilled to SENT). The
+  operator reviews/edits freely (no e-mails, no version bump) and clicks
+  **„Odeslat e-mail zákazníkovi"** → new thin service `send_first_dodaci` (view
+  `dodaci_list_send`, `POST dodaky/<cislo>/odeslat/`, obsluha-scoped, idempotent)
+  sends the initial „vystavení" e-mail and flips WAITING→SENT. After SENT, edits
+  revert to 0007 (version bump + auto-`[OPRAVA]`); a výdej edit now redirects
+  back to its dodák detail. Prominent **„Čeká na odeslání"** section (shared
+  partial `_waiting_dodaky.html`) on the dodák index (+ new „Stav" badge
+  column), owner Přehled (all branches) + branch dashboard (own branch) — a
+  whole-row-clickable `table.lines` with a per-row out-of-form Odeslat button
+  (0059 pattern). Detail/edit/index copy gated on `is_sent`;
+  WAITING+failed-first-send stays in the waiting list, not „Nedoručený e-mail".
+  665 tests pass. Rules updated (design-system + frontend-and-templates).
 - **2026-07-23** — **Third product type „hotový výrobek" (finished product)**
   (decision [`0095`](./decisions/0095-hotovy-vyrobek-finished-product-type.md)).
   A bought-in unlimited good sold **by the piece** („ks"): visible + sellable

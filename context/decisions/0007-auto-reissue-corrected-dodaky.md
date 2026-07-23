@@ -1,5 +1,11 @@
 # 0007 — Auto re-issue and re-email of corrected dodáky
 
+> **Amended by [`0096`](./0096-manual-first-send-of-dodaky.md)** — the *initial*
+> issue is no longer auto-sent at výdej (the dodák waits in `send_state=WAITING`
+> for an operator "Odeslat" click). The auto-reissue + `[OPRAVA]` re-send on
+> correction below is **unchanged for an already-sent dodák**; it simply doesn't
+> fire while the dodák is still WAITING.
+
 > Schema specifics (three-table layout) superseded in part by
 > [`0036`](./0036-dodaci-list-shape.md): the "version" lives as
 > `DodaciList.current_version`, not as a separate

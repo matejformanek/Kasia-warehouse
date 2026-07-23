@@ -239,17 +239,49 @@ def test_apply_vydej_creates_dodaci_list(tyn, ricany, pepper, user_tyn) -> None:
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_LOCMEM_EMAIL)
-def test_apply_vydej_renders_pdf_and_queues_send(
+def test_apply_vydej_creates_waiting_dodak_no_send(
     tyn, ricany, pepper, user_tyn
 ) -> None:
+    """Per 0096: saving a výdej creates the dodák in WAITING and sends nothing
+    — no e-mail, no EmailLog. Stock is still deducted (5 − 2 = 3)."""
     from django.core import mail
 
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
-    apply_movement(
+    mv = apply_movement(
         movement=_vydej(tyn, ricany, user_tyn),
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
         user=user_tyn,
     )
+    assert mail.outbox == []
+    dl = DodaciList.objects.get(movement=mv)
+    assert dl.send_state == DodaciList.SendState.WAITING
+    assert dl.is_waiting is True
+    assert dl.current_version == 1
+    assert EmailLog.objects.count() == 0
+    # Stock still deducted at save.
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("3.000")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_LOCMEM_EMAIL)
+def test_send_first_dodaci_renders_pdf_and_writes_sent_log(
+    tyn, ricany, pepper, user_tyn
+) -> None:
+    """Per 0096: the operator's first send renders the PDF, e-mails the initial
+    "vystavení", flips WAITING → SENT and writes a SENT log at v1."""
+    from django.core import mail
+
+    from inventory.services import send_first_dodaci
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mv = apply_movement(
+        movement=_vydej(tyn, ricany, user_tyn),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
+        user=user_tyn,
+    )
+    dl = DodaciList.objects.get(movement=mv)
+    log = send_first_dodaci(dl, sent_by=user_tyn)
+
     assert len(mail.outbox) == 1
     msg = mail.outbox[0]
     assert "Dodací list TYN-2026-0001" in msg.subject
@@ -259,38 +291,29 @@ def test_apply_vydej_renders_pdf_and_queues_send(
         "karolina@example.cz",
         "user-tyn@example.cz",
     }
-    assert len(msg.attachments) == 1
     filename, content, mimetype = msg.attachments[0]
     assert filename == "TYN-2026-0001.pdf"
     assert mimetype == "application/pdf"
     assert content[:4] == b"%PDF"
     assert len(content) > 1000
 
-
-@pytest.mark.django_db(transaction=True)
-@override_settings(**_LOCMEM_EMAIL)
-def test_apply_vydej_writes_sent_log(tyn, ricany, pepper, user_tyn) -> None:
-    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
-    mv = apply_movement(
-        movement=_vydej(tyn, ricany, user_tyn),
-        lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
-        user=user_tyn,
-    )
-    log = EmailLog.objects.get(dodaci_list__movement=mv)
+    dl.refresh_from_db()
+    assert dl.send_state == DodaciList.SendState.SENT
     assert log.status == EmailLog.Status.SENT
     assert log.dodaci_version == 1
     assert log.trigger_reason == "vystavení"
+    assert log.sent_by_id == user_tyn.pk
 
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_LOCMEM_EMAIL)
-def test_apply_vydej_succeeds_with_no_active_recipients_reaches_issuer(
+def test_send_first_dodaci_reaches_issuer_with_no_active_recipients(
     tyn, ricany, pepper, user_tyn
 ) -> None:
     from inventory.models import SettingsRecipient
+    from inventory.services import send_first_dodaci
 
-    # Per 0081: the _assert_recipients_set guard is gone. With no active
-    # configured recipient the výdej still succeeds and the dodák still reaches
+    # Per 0081: with no active configured recipient the first send still reaches
     # its issuer (movement.created_by), so it can never reach nobody.
     SettingsRecipient.objects.update(is_active=False)
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
@@ -299,11 +322,12 @@ def test_apply_vydej_succeeds_with_no_active_recipients_reaches_issuer(
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
         user=user_tyn,
     )
-    assert Movement.objects.count() == 1
-    assert DodaciList.objects.count() == 1
-    log = EmailLog.objects.get(dodaci_list__movement=mv)
+    dl = DodaciList.objects.get(movement=mv)
+    log = send_first_dodaci(dl, sent_by=user_tyn)
     assert log.status == EmailLog.Status.SENT
     assert user_tyn.email in log.recipients
+    dl.refresh_from_db()
+    assert dl.send_state == DodaciList.SendState.SENT
 
 
 @pytest.mark.django_db
@@ -319,12 +343,13 @@ def test_apply_prijem_creates_no_dodaci_list(tyn, supplier, pepper, user_tyn) ->
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_LOCMEM_EMAIL)
-def test_apply_vydej_failed_send_writes_failed_log(
+def test_send_first_dodaci_failed_send_stays_waiting(
     tyn, ricany, pepper, user_tyn, monkeypatch
 ) -> None:
-    # Patch EmailMessage.send to raise so the locmem backend never sees the
-    # message; the service catches the exception and writes a FAILED log.
+    """Per 0096: a failed first send writes a FAILED log at v1 and leaves the
+    dodák WAITING so the operator can retry."""
     from inventory import services
+    from inventory.services import send_first_dodaci
 
     def _raise(self, *args, **kwargs):
         raise RuntimeError("smtp down")
@@ -337,10 +362,12 @@ def test_apply_vydej_failed_send_writes_failed_log(
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
         user=user_tyn,
     )
-    # Výdej committed.
-    assert Movement.objects.filter(pk=mv.pk).exists()
-    log = EmailLog.objects.get(dodaci_list__movement=mv)
+    dl = DodaciList.objects.get(movement=mv)
+    log = send_first_dodaci(dl, sent_by=user_tyn)
+    dl.refresh_from_db()
+    assert dl.send_state == DodaciList.SendState.WAITING
     assert log.status == EmailLog.Status.FAILED
+    assert log.dodaci_version == 1
     assert "smtp down" in log.error_message
 
 
@@ -420,8 +447,10 @@ def test_smtp_connection_helper_passes_none_for_blank_db_fields(monkeypatch) -> 
 def test_send_dodaci_list_email_calls_helper(
     tyn, ricany, pepper, user_tyn, monkeypatch
 ) -> None:
-    """Real výdej end-to-end exercises the shared helper exactly once."""
+    """The first send (send_first_dodaci) exercises the shared SMTP helper
+    exactly once."""
     from inventory import services
+    from inventory.services import send_first_dodaci
 
     s = Settings.load()
     s.smtp_host = "custom.example.cz"
@@ -437,11 +466,14 @@ def test_send_dodaci_list_email_calls_helper(
     monkeypatch.setattr(services.email, "_smtp_connection_from_settings", _spy)
 
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
-    apply_movement(
+    mv = apply_movement(
         movement=_vydej(tyn, ricany, user_tyn),
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
         user=user_tyn,
     )
+    # apply doesn't send now — the helper fires only on the operator send.
+    assert calls == []
+    send_first_dodaci(DodaciList.objects.get(movement=mv), sent_by=user_tyn)
     assert calls == ["custom.example.cz"]
 
 
@@ -451,9 +483,10 @@ def test_send_dodaci_list_email_failure_still_logs_failed_row(
     tyn, ricany, pepper, user_tyn, monkeypatch
 ) -> None:
     """Per 0049 the helper does not change 0019's fail-silent contract:
-    a send exception still produces a FAILED log row and the výdej
-    commits."""
+    a send exception on the first send still produces a FAILED log row and the
+    výdej stays committed."""
     from inventory import services
+    from inventory.services import send_first_dodaci
 
     def _raise(self, *args, **kwargs):
         raise RuntimeError("smtp boom")
@@ -467,7 +500,7 @@ def test_send_dodaci_list_email_failure_still_logs_failed_row(
         user=user_tyn,
     )
     assert Movement.objects.filter(pk=mv.pk).exists()
-    log = EmailLog.objects.get(dodaci_list__movement=mv)
+    log = send_first_dodaci(DodaciList.objects.get(movement=mv), sent_by=user_tyn)
     assert log.status == EmailLog.Status.FAILED
     assert "smtp boom" in log.error_message
 
@@ -477,10 +510,14 @@ def test_send_dodaci_list_email_failure_still_logs_failed_row(
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_LOCMEM_EMAIL)
-def test_edit_vydej_bumps_current_version_and_audits(
+def test_edit_vydej_after_send_bumps_current_version_and_audits(
     tyn, ricany, pepper, user_tyn
 ) -> None:
+    """Per 0096: once the dodák has been SENT, an edit reverts to 0007 —
+    bump v2 + auto-reissue an [OPRAVA]."""
     from django.core import mail
+
+    from inventory.services import send_first_dodaci
 
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     mv = apply_movement(
@@ -488,6 +525,8 @@ def test_edit_vydej_bumps_current_version_and_audits(
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
         user=user_tyn,
     )
+    # Operator sends the first e-mail → SENT.
+    send_first_dodaci(DodaciList.objects.get(movement=mv), sent_by=user_tyn)
     assert len(mail.outbox) == 1
 
     line = mv.lines.get()
@@ -510,6 +549,42 @@ def test_edit_vydej_bumps_current_version_and_audits(
     assert mail.outbox[-1].subject.startswith("[OPRAVA] Dodací list")
     log = EmailLog.objects.filter(dodaci_list=dl, dodaci_version=2).get()
     assert log.trigger_reason == "oprava: oprava hmotnosti"
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_LOCMEM_EMAIL)
+def test_edit_vydej_while_waiting_no_bump_no_mail(
+    tyn, ricany, pepper, user_tyn
+) -> None:
+    """Per 0096: editing a WAITING dodák bumps no version and sends no e-mail —
+    the operator's first Odeslat click still issues v1."""
+    from django.core import mail
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
+    mv = apply_movement(
+        movement=_vydej(tyn, ricany, user_tyn),
+        lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
+        user=user_tyn,
+    )
+    line = mv.lines.get()
+    edit_movement(
+        movement=mv,
+        changes={},
+        line_changes=[
+            {
+                "op": "update",
+                "line_id": line.pk,
+                "fields": {"quantity_kg": Decimal("3.000")},
+            }
+        ],
+        reason="oprava hmotnosti",
+        user=user_tyn,
+    )
+    dl = DodaciList.objects.get(movement=mv)
+    assert dl.current_version == 1
+    assert dl.send_state == DodaciList.SendState.WAITING
+    assert mail.outbox == []
+    assert EmailLog.objects.filter(dodaci_list=dl).count() == 0
 
 
 @pytest.mark.django_db(transaction=True)
@@ -543,12 +618,16 @@ def test_edit_movement_rollback_does_not_send_oprava(
 ) -> None:
     from django.core import mail
 
+    from inventory.services import send_first_dodaci
+
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     mv = apply_movement(
         movement=_vydej(tyn, ricany, user_tyn),
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("2.000"))],
         user=user_tyn,
     )
+    # Send first so an [OPRAVA] would otherwise be due on edit (0096).
+    send_first_dodaci(DodaciList.objects.get(movement=mv), sent_by=user_tyn)
     outbox_before = len(mail.outbox)
     line = mv.lines.get()
     with pytest.raises(ValidationError):
@@ -765,6 +844,97 @@ def test_dodaci_resend_obsluha_forbidden_other_branch(
         reverse("inventory:dodaci_list_resend", kwargs={"cislo": dl_tyn.cislo})
     )
     assert response.status_code == 403
+
+
+# Manual first-send view (decision 0096) -----------------------------------
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_PLAIN_STATIC, **_LOCMEM_EMAIL)
+def test_dodaci_send_view_flips_to_sent(
+    user_vlastnik, user_tyn, tyn, ricany, pepper
+) -> None:
+    from django.core import mail
+
+    dl = _make_vydej_dodak(tyn, ricany, user_tyn, pepper)
+    assert dl.send_state == DodaciList.SendState.WAITING
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        reverse("inventory:dodaci_list_send", kwargs={"cislo": dl.cislo})
+    )
+    assert response.status_code == 302
+    dl.refresh_from_db()
+    assert dl.send_state == DodaciList.SendState.SENT
+    assert len(mail.outbox) == 1
+    log = EmailLog.objects.get(dodaci_list=dl)
+    assert log.status == EmailLog.Status.SENT
+    assert log.trigger_reason == "vystavení"
+    assert log.dodaci_version == 1
+    assert log.sent_by_id == user_vlastnik.pk
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_PLAIN_STATIC, **_LOCMEM_EMAIL)
+def test_dodaci_send_view_failure_stays_waiting(
+    user_vlastnik, user_tyn, tyn, ricany, pepper, monkeypatch
+) -> None:
+    from inventory import services
+
+    def _raise(self, *args, **kwargs):
+        raise RuntimeError("smtp down")
+
+    monkeypatch.setattr(services.email.EmailMessage, "send", _raise)
+
+    dl = _make_vydej_dodak(tyn, ricany, user_tyn, pepper)
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    client.post(reverse("inventory:dodaci_list_send", kwargs={"cislo": dl.cislo}))
+    dl.refresh_from_db()
+    assert dl.send_state == DodaciList.SendState.WAITING
+    log = EmailLog.objects.get(dodaci_list=dl)
+    assert log.status == EmailLog.Status.FAILED
+    assert log.dodaci_version == 1
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_PLAIN_STATIC, **_LOCMEM_EMAIL)
+def test_dodaci_send_view_idempotent_double_post(
+    user_vlastnik, user_tyn, tyn, ricany, pepper
+) -> None:
+    from django.core import mail
+
+    dl = _make_vydej_dodak(tyn, ricany, user_tyn, pepper)
+
+    client = Client()
+    client.force_login(user_vlastnik)
+    url = reverse("inventory:dodaci_list_send", kwargs={"cislo": dl.cislo})
+    client.post(url)
+    client.post(url)  # second post must not re-send
+    assert len(mail.outbox) == 1
+    assert EmailLog.objects.filter(dodaci_list=dl).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_PLAIN_STATIC, **_LOCMEM_EMAIL)
+def test_dodaci_send_obsluha_forbidden_other_branch(
+    user_obsluha_sez, user_tyn, tyn, ricany, pepper
+) -> None:
+    from django.core import mail
+
+    dl_tyn = _make_vydej_dodak(tyn, ricany, user_tyn, pepper)
+
+    client = Client()
+    client.force_login(user_obsluha_sez)
+    response = client.post(
+        reverse("inventory:dodaci_list_send", kwargs={"cislo": dl_tyn.cislo})
+    )
+    assert response.status_code == 403
+    dl_tyn.refresh_from_db()
+    assert dl_tyn.send_state == DodaciList.SendState.WAITING
+    assert mail.outbox == []
 
 
 @pytest.mark.django_db(transaction=True)

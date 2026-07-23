@@ -78,6 +78,8 @@ i&nbsp;formulář, kde nám můžete napsat.</p>
   </div>
 </section>
 
+{% include "inventory/_waiting_dodaky.html" %}
+
 <div class="grid-2">
   {% for panel in branch_panels %}
     <section class="branch-card" aria-label="Pobočka {{ panel.branch.code }}">

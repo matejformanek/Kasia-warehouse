@@ -252,7 +252,11 @@ def test_resend_non_dodaci_resends_stored_content(user_vlastnik):
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_resend_dodaci_rerenders_pdf(user_tyn, tyn, ricany, pepper):
+    from inventory.services import send_first_dodaci
+
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    # Per 0096: the first send is manual — trigger it so there's a log to resend.
+    send_first_dodaci(dl, sent_by=user_tyn)
     row = EmailLog.objects.filter(dodaci_list=dl).latest("id")
     mail.outbox.clear()
     before = EmailLog.objects.count()

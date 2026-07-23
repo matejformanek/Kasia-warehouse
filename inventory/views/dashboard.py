@@ -117,6 +117,11 @@ def home(request):
     # `_dl_failed_at_current_version`.
     failed_dodaky = []
     for dl in DodaciList.objects.prefetch_related("email_logs"):
+        # Per 0096: a WAITING dodák whose first send failed shows only in the
+        # "Čeká na odeslání" section, never in "Nedoručený e-mail" — the
+        # operator's retry there is the same "Odeslat" click.
+        if dl.send_state == DodaciList.SendState.WAITING:
+            continue
         logs = list(dl.email_logs.all())
         if not _dl_failed_at_current_version(dl, logs):
             continue
@@ -138,6 +143,16 @@ def home(request):
         DodaciList.objects.select_related("branch", "odberatel")
         .filter(current_version__gt=1)
         .order_by("-id")[:5]
+    )
+
+    # Per 0096: dodáky created but not yet e-mailed — a prominent all-branch
+    # "Čeká na odeslání" list so a pending send is never forgotten. Owner
+    # Přehled sees every branch (obsluha are redirected to branch_dashboard
+    # above, so no scoping is needed here).
+    waiting_dodaky = list(
+        DodaciList.objects.select_related("odberatel", "branch")
+        .filter(send_state=DodaciList.SendState.WAITING)
+        .order_by("date_issued", "id")
     )
 
     # Due planned příjmy (per 0066): a PLANNED objednávka whose promised arrival
@@ -171,6 +186,7 @@ def home(request):
             "branch_panels": branch_panels,
             "failed_dodaky": failed_dodaky,
             "edited_dodaky": edited_dodaky,
+            "waiting_dodaky": waiting_dodaky,
             "due_planned": due_planned,
             "can_order": request.user.is_vlastnik,
             "to_resolve_count": (
@@ -225,6 +241,15 @@ def branch_dashboard(request, code: str):
     )
     groups = catalogue_stock_groups(active_products, [branch])
 
+    # Per 0096: dodáky created on this branch but not yet e-mailed. The view
+    # already 403-guards obsluha on other branches above, so this is safe to
+    # show — obsluha see only their own branch's pending sends.
+    waiting_dodaky = list(
+        DodaciList.objects.select_related("odberatel", "branch")
+        .filter(branch=branch, send_state=DodaciList.SendState.WAITING)
+        .order_by("date_issued", "id")
+    )
+
     recent_movements = list(
         Movement.objects.filter(branch=branch, status=Movement.Status.DONE)
         .select_related("odberatel", "dodavatel", "created_by")
@@ -251,6 +276,7 @@ def branch_dashboard(request, code: str):
             "branch": branch,
             "empty_rows": groups["empty_rows"],
             "low_rows": groups["low_rows"],
+            "waiting_dodaky": waiting_dodaky,
             "recent_movements": recent_movements,
             "search": search,
             "kpi_products": kpi_products,

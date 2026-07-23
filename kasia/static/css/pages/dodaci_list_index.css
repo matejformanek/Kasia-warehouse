@@ -6,3 +6,9 @@
   /* Version chip — v1 neutral, v2+ orange (edited). */
   .ver { display: inline-block; font-family: var(--mono); font-size: .78rem; font-weight: 600; padding: .1rem .45rem; border: 1px solid var(--line); background: #fff; color: var(--fg-soft); }
   .ver.edited { background: var(--warn-tint); border-color: var(--warn); color: var(--warn); }
+
+  /* Send-state badge (per 0096): waiting = neutral "pending" tone (matches the
+     Čeká-na-odeslání task badge), sent = quiet green. */
+  .state-badge { display: inline-block; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: .12rem .45rem; white-space: nowrap; }
+  .state-badge.wait { background: var(--bg); border: 1px solid var(--line); color: var(--fg-soft); }
+  .state-badge.sent { background: var(--ok-soft); border: 1px solid var(--ok); color: var(--ok); }

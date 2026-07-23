@@ -25,7 +25,9 @@ from .email import (
     _active_low_stock_recipients,
     _smtp_connection_from_settings,
     send_and_log,
+    send_announcement,
     send_feedback_notification,
+    send_feedback_resolved_notification,
     send_new_user_credentials,
 )
 from .mixing import (
@@ -66,7 +68,9 @@ __all__ = [
     "_active_feedback_recipients",
     "_active_low_stock_recipients",
     "send_and_log",
+    "send_announcement",
     "send_feedback_notification",
+    "send_feedback_resolved_notification",
     "send_new_user_credentials",
     "_reserve_dodak_number",
     "_create_dodaci_list_for_movement",

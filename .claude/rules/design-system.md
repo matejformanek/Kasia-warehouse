@@ -535,6 +535,18 @@ first `<option value="">` is „Všechny". These are **no new GET partial
 endpoint**, so `frontend-and-templates.md`'s `EXCLUDED_URL_NAMES` rule needs no
 entry.
 
+**Two send paths are NOT `SettingsRecipient`-routed** — the per-flag table above
+is authoritative only for dodáky / Podpora-intake / dochází-souhrn:
+
+- **Oznámení** (broadcast composer on the E-maily page, per
+  [`0097`](../../context/decisions/0097-oznameni-broadcast-email.md)) — audience
+  is **app users** picked at send time (all active / one branch / a subset), sent
+  as one **BCC** e-mail (`send_announcement`), not any standing opt-in. Its
+  `announcement_send` route is **POST-only** → no `EXCLUDED_URL_NAMES` entry.
+- **FEEDBACK_RESOLVED** (Podpora resolve notification, per
+  [`0098`](../../context/decisions/0098-podpora-resolve-note-and-notify.md))
+  mails the report's **`created_by`**, not a recipient row.
+
 ## Out of scope for web chrome
 
 `inventory/dodaci_list.html` is a **WeasyPrint PDF** and e-mail templates are

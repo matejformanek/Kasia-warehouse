@@ -5,6 +5,24 @@
 
 ## Done
 
+- **2026-07-23** — **Oznámení broadcast + Podpora resolve note & notify**
+  (decisions [`0097`](./decisions/0097-oznameni-broadcast-email.md) +
+  [`0098`](./decisions/0098-podpora-resolve-note-and-notify.md); migration
+  **0031**). **Oznámení:** vlastník-only broadcast composer on the E-maily page
+  (a bare `<details class="announce">`) — subject/body + audience (all active
+  users / one branch / a checked subset) sent as **one BCC e-mail**
+  (`send_announcement`, audience in `bcc`, `to` = app from-address), logged as new
+  `EmailLog.Category.ANNOUNCEMENT`. `send_and_log` gained keyword-only `bcc` (when
+  set, `recipients` column stores the BCC audience). `EmailLog.recipients` widened
+  `CharField(512)`→`TextField`. Resend of an ANNOUNCEMENT row re-routes through the
+  BCC path (regression-tested — no audience leak into `to`); outbox recipients cell
+  truncated. New `AnnouncementForm` (+ POST-only `announcement_send` view/route, no
+  `EXCLUDED_URL_NAMES` entry). **Podpora:** resolving a hlášení now takes an
+  optional note (inline `<details class="resolve-details">` in the table) → stored
+  in new `Feedback.resolution_note` and e-mails the report's `created_by`
+  (`send_feedback_resolved_notification`, new `EmailLog.Category.FEEDBACK_RESOLVED`);
+  reopen stays silent + keeps the note. 667 tests pass (+ new email_log/podpora/
+  form tests). Rules updated (design-system § Nastavení recipients addendum).
 - **2026-07-23** — **Manual first-send of dodáky („Čeká na odeslání")**
   (decision [`0096`](./decisions/0096-manual-first-send-of-dodaky.md); amends
   [`0007`](./decisions/0007-auto-reissue-corrected-dodaky.md) +

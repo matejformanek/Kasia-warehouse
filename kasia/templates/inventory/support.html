@@ -14,7 +14,8 @@ a&nbsp;nahoře <strong>video návod</strong>.</p>
   <li>Dole je <strong>formulář pro hlášení</strong> chyby, dotazu nebo nápadu.
   Vyberte, které stránky se to týká, a&nbsp;popište to vlastními slovy.</li>
   <li>Hlášení <strong>vidí celý tým</strong>; vlastník je označí jako vyřešené,
-  jakmile je hotovo.</li>
+  jakmile je hotovo. Při vyřešení může přidat <strong>poznámku</strong> a&nbsp;autor
+  hlášení dostane <strong>e-mail</strong>, že je vyřešeno.</li>
   <li>Vážný nebo dlouho neřešený problém můžete napsat <strong>přímo správci</strong>
   (odkaz pod formulářem).</li>
 </ul>
@@ -197,11 +198,16 @@ nápovědu právě k&nbsp;té obrazovce.</p>
           <td>{{ f.description|linebreaksbr }}</td>
           <td><span class="stav-open">● Otevřené</span></td>
           {% if user.is_vlastnik %}
-            <td style="white-space:nowrap;">
-              <form method="post" action="{% url 'inventory:feedback_toggle' pk=f.pk %}" style="display:inline;">
-                {% csrf_token %}
-                <button class="secondary" type="submit">Vyřešit</button>
-              </form>
+            <td>
+              <details class="resolve-details">
+                <summary>Vyřešit</summary>
+                <form method="post" action="{% url 'inventory:feedback_toggle' pk=f.pk %}" class="resolve-form">
+                  {% csrf_token %}
+                  <label for="resolution-note-{{ f.pk }}">Poznámka (volitelné) — dostane ji autor hlášení:</label>
+                  <textarea id="resolution-note-{{ f.pk }}" name="resolution_note" rows="2"></textarea>
+                  <button class="primary" type="submit">Vyřešit a upozornit</button>
+                </form>
+              </details>
             </td>
           {% endif %}
         </tr>
@@ -236,6 +242,7 @@ nápovědu právě k&nbsp;té obrazovce.</p>
             <td style="white-space:nowrap;">
               <span class="stav-done">✓ Vyřešené</span>
               {% if f.resolved_by %}<br><small class="muted">{{ f.resolved_by.email }}<br>{{ f.resolved_at|date:"d. m. Y H:i" }}</small>{% endif %}
+              {% if f.resolution_note %}<div class="resolution-note">{{ f.resolution_note|linebreaksbr }}</div>{% endif %}
             </td>
             {% if user.is_vlastnik %}
               <td style="white-space:nowrap;">

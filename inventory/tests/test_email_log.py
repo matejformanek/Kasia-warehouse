@@ -308,3 +308,210 @@ def test_send_feedback_notification_sends_and_logs(user_vlastnik):
     assert "Katalog" in body
     assert user_vlastnik.email in body
     assert mail.outbox[0].subject == "Nové hlášení z Podpory"
+
+
+# --- Oznámení broadcast (per 0097) -----------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_send_announcement_uses_bcc_and_logs_audience():
+    from inventory.services import send_announcement
+
+    audience = [f"user{i}@example.cz" for i in range(30)]
+    log = send_announcement(
+        subject="Novinka",
+        body="Nasadili jsme to, co jste chtěli.",
+        recipients=audience,
+    )
+    assert log.status == EmailLog.Status.SENT
+    assert log.category == EmailLog.Category.ANNOUNCEMENT
+    # Audience is BCC; `to` is the app from-address, never the audience.
+    msg = mail.outbox[-1]
+    assert msg.bcc == audience
+    assert msg.to == ["no-reply@example.cz"]
+    # The log stores the BCC audience (the real recipients), not the `to`.
+    for addr in audience:
+        assert addr in log.recipients
+    assert "no-reply@example.cz" not in log.recipients  # the `to` addr is not logged
+    assert len(log.recipients) > 512  # TextField widening exercised
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_announcement_send_all_active_users(user_vlastnik, user_obsluha_tyn):
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.post(
+        reverse("inventory:announcement_send"),
+        {"subject": "Ahoj", "body": "Text", "audience": "all"},
+    )
+    assert resp.status_code == 302
+    log = EmailLog.objects.get(category=EmailLog.Category.ANNOUNCEMENT)
+    assert log.status == EmailLog.Status.SENT
+    assert log.sent_by_id == user_vlastnik.pk
+    assert set(mail.outbox[-1].bcc) == {user_vlastnik.email, user_obsluha_tyn.email}
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_announcement_send_branch_mode(user_vlastnik, user_obsluha_tyn, user_obsluha_sez):
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.post(
+        reverse("inventory:announcement_send"),
+        {
+            "subject": "Pobočka",
+            "body": "Jen Týniště",
+            "audience": "branch",
+            "branch": str(user_obsluha_tyn.branch_id),
+        },
+    )
+    assert resp.status_code == 302
+    assert mail.outbox[-1].bcc == [user_obsluha_tyn.email]
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_announcement_send_selected_mode(user_vlastnik, user_obsluha_tyn, user_obsluha_sez):
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.post(
+        reverse("inventory:announcement_send"),
+        {
+            "subject": "Vybraní",
+            "body": "Text",
+            "audience": "selected",
+            "users": [str(user_obsluha_sez.pk)],
+        },
+    )
+    assert resp.status_code == 302
+    assert mail.outbox[-1].bcc == [user_obsluha_sez.email]
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_announcement_send_invalid_rerenders_with_errors(user_vlastnik):
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.post(
+        reverse("inventory:announcement_send"),
+        {"subject": "", "body": "", "audience": "branch"},  # missing subject/body/branch
+    )
+    assert resp.status_code == 200
+    assert resp.context["announcement_form"].errors
+    assert not EmailLog.objects.filter(category=EmailLog.Category.ANNOUNCEMENT).exists()
+    assert len(mail.outbox) == 0
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_announcement_send_failed_status_flashes_error(user_vlastnik, monkeypatch):
+    def _boom(self, *a, **k):
+        raise RuntimeError("SMTP down")
+
+    monkeypatch.setattr("django.core.mail.EmailMessage.send", _boom)
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.post(
+        reverse("inventory:announcement_send"),
+        {"subject": "X", "body": "Y", "audience": "all"},
+    )
+    assert resp.status_code == 302
+    log = EmailLog.objects.get(category=EmailLog.Category.ANNOUNCEMENT)
+    assert log.status == EmailLog.Status.FAILED
+
+
+@pytest.mark.django_db
+def test_announcement_send_obsluha_403(user_obsluha_tyn):
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    resp = client.post(
+        reverse("inventory:announcement_send"),
+        {"subject": "X", "body": "Y", "audience": "all"},
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_resend_announcement_uses_bcc_not_to(user_vlastnik):
+    """Regression: an ANNOUNCEMENT resend must go via BCC, never leak into `to`."""
+    audience = "a@example.cz, b@example.cz, c@example.cz"
+    row = _mk_row(
+        category=EmailLog.Category.ANNOUNCEMENT,
+        subject="Novinka",
+        body="Text",
+        recipients=audience,
+    )
+    mail.outbox.clear()
+    client = Client()
+    client.force_login(user_vlastnik)
+    resp = client.post(reverse("inventory:email_log_resend", args=[row.pk]))
+    assert resp.status_code == 302
+    msg = mail.outbox[-1]
+    assert msg.bcc == ["a@example.cz", "b@example.cz", "c@example.cz"]
+    assert msg.to == ["no-reply@example.cz"]
+    new = EmailLog.objects.exclude(pk=row.pk).latest("id")
+    assert new.category == EmailLog.Category.ANNOUNCEMENT
+    assert new.recipients == audience
+
+
+# --- AnnouncementForm unit tests (per 0097) --------------------------------
+
+
+@pytest.mark.django_db
+def test_announcement_form_branch_required_iff_branch_mode(tyn):
+    from inventory.forms import AnnouncementForm
+
+    f = AnnouncementForm({"subject": "s", "body": "b", "audience": "branch"})
+    assert not f.is_valid()
+    assert "branch" in f.errors
+
+    f = AnnouncementForm(
+        {"subject": "s", "body": "b", "audience": "branch", "branch": str(tyn.pk)}
+    )
+    assert f.is_valid(), f.errors
+
+
+@pytest.mark.django_db
+def test_announcement_form_users_required_iff_selected_mode(user_vlastnik):
+    from inventory.forms import AnnouncementForm
+
+    f = AnnouncementForm({"subject": "s", "body": "b", "audience": "selected"})
+    assert not f.is_valid()
+    assert "users" in f.errors
+
+    f = AnnouncementForm(
+        {
+            "subject": "s",
+            "body": "b",
+            "audience": "selected",
+            "users": [str(user_vlastnik.pk)],
+        }
+    )
+    assert f.is_valid(), f.errors
+    assert f.recipient_emails() == [user_vlastnik.email]
+
+
+@pytest.mark.django_db
+def test_announcement_form_all_mode_dedups_and_orders(user_vlastnik, user_obsluha_tyn):
+    from inventory.forms import AnnouncementForm
+
+    f = AnnouncementForm({"subject": "s", "body": "b", "audience": "all"})
+    assert f.is_valid(), f.errors
+    emails = f.recipient_emails()
+    # Deterministic id-order, deduped, no blanks.
+    assert emails == list(dict.fromkeys(emails))
+    assert set(emails) == {user_vlastnik.email, user_obsluha_tyn.email}
+
+
+@pytest.mark.django_db
+def test_announcement_form_all_mode_excludes_inactive(user_vlastnik, user_obsluha_tyn):
+    from inventory.forms import AnnouncementForm
+
+    user_obsluha_tyn.is_active = False
+    user_obsluha_tyn.save(update_fields=["is_active"])
+    f = AnnouncementForm({"subject": "s", "body": "b", "audience": "all"})
+    assert f.is_valid(), f.errors
+    assert user_obsluha_tyn.email not in f.recipient_emails()

@@ -99,6 +99,7 @@ def send_and_log(
     body: str,
     recipients: list[str],
     from_email: str | None,
+    bcc: list[str] | None = None,
     connection=None,
     attachments: list[tuple[str, bytes, str]] | None = None,
     dodaci_list=None,
@@ -112,10 +113,16 @@ def send_and_log(
     posture ``send_dodaci_list_email`` already had (0019), so a send failure
     inside an ``on_commit`` callback or a request never propagates. Builds the
     SMTP connection from live ``Settings`` (per 0049) when one isn't passed.
-    ``recipients`` is stored comma-joined; ``attachments`` is a list of
-    ``(filename, content, mimetype)`` tuples.
+    ``attachments`` is a list of ``(filename, content, mimetype)`` tuples.
+
+    The ``recipients`` column is stored comma-joined. For a **BCC send** (``bcc``
+    passed — Oznámení, per 0097), the audience goes in the ``bcc`` header while
+    ``recipients`` is a one-address ``to`` (the app's own from-address); we store
+    the **bcc join** as ``recipients`` so the log records the real audience, not
+    the placeholder ``to``. Without ``bcc``, ``recipients`` is stored and used as
+    the ``to`` header unchanged.
     """
-    recipients_joined = ", ".join(recipients)
+    recipients_joined = ", ".join(bcc if bcc else recipients)
     if connection is None:
         connection = _smtp_connection_from_settings(Settings.load())
 
@@ -127,6 +134,7 @@ def send_and_log(
             body=body,
             from_email=from_email or None,
             to=recipients,
+            bcc=bcc or None,
             connection=connection,
         )
         for filename, content, mimetype in attachments or []:
@@ -190,6 +198,82 @@ def send_feedback_notification(feedback) -> EmailLog:
         body=body,
         recipients=recipients,
         from_email=from_email,
+    )
+
+
+def send_feedback_resolved_notification(feedback) -> EmailLog | None:
+    """Notify a Podpora report's creator that it was resolved (per 0098).
+
+    Sibling of ``send_feedback_notification``: routes through ``send_and_log``
+    (0075), so the send is logged (SENT / FAILED) and never re-raises — a mail
+    outage can't block the resolve toggle. Called from ``feedback_toggle_view``
+    inside an ``on_commit`` callback, only on open → resolved. Recipient is the
+    report's ``created_by`` e-mail; returns ``None`` (nothing sent, nothing
+    logged) if that address is blank — defensive only, since ``User.email`` is
+    required. Includes the optional ``resolution_note`` when present.
+    """
+    to_addr = getattr(feedback.created_by, "email", "") or ""
+    if not to_addr:
+        return None
+    s = Settings.load()
+    page = feedback.page_url or "—"
+    support_url = _absolute_url("inventory:support")
+    subject = "Vaše hlášení bylo vyřešeno"
+    note_block = (
+        f"Poznámka:\n{feedback.resolution_note}\n\n"
+        if feedback.resolution_note
+        else ""
+    )
+    body = (
+        f"Dobrý den,\n\n"
+        f"vaše hlášení z Podpory bylo označeno jako vyřešené.\n\n"
+        f"Stránka: {page}\n\n"
+        f"Popis:\n{feedback.description}\n\n"
+        f"{note_block}"
+        f"Otevřít Podporu: {support_url}\n\n"
+        f"S pozdravem, Kasia vera s.r.o."
+    )
+    from_email = (
+        f"{s.email_from_name} <{s.email_from_address}>"
+        if s.email_from_name and s.email_from_address
+        else (s.email_from_address or None)
+    )
+    return send_and_log(
+        category=EmailLog.Category.FEEDBACK_RESOLVED,
+        trigger_reason="Vyřešené hlášení z Podpory",
+        subject=subject,
+        body=body,
+        recipients=[to_addr],
+        from_email=from_email,
+    )
+
+
+def send_announcement(*, subject, body, recipients, sent_by=None) -> EmailLog:
+    """Send one vlastník-composed broadcast „Oznámení" (per 0097).
+
+    Single **BCC** send: the whole audience goes in ``bcc`` (recipients never see
+    each other), the ``to`` header is the app's own from-address (a concrete
+    address is required — the ``from_email`` idiom's ``None`` fallback is not a
+    valid ``To``). Routes through ``send_and_log`` (0075): logged as one
+    ANNOUNCEMENT row whose ``recipients`` column stores the bcc audience.
+    ``sent_by`` is the composing vlastník.
+    """
+    s = Settings.load()
+    from_email = (
+        f"{s.email_from_name} <{s.email_from_address}>"
+        if s.email_from_name and s.email_from_address
+        else (s.email_from_address or None)
+    )
+    to_addr = s.email_from_address or django_settings.DEFAULT_FROM_EMAIL
+    return send_and_log(
+        category=EmailLog.Category.ANNOUNCEMENT,
+        trigger_reason="Oznámení",
+        subject=subject,
+        body=body,
+        recipients=[to_addr],
+        bcc=recipients,
+        from_email=from_email,
+        sent_by=sent_by,
     )
 
 

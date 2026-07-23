@@ -2,11 +2,15 @@
 
 Absorbs the dodák-scoped ``DodaciListEmailLog`` (0007 / 0019): one row per send
 attempt across all send paths — dodák (vystavení / oprava / ruční resend), the
-event-driven low-stock alert (0074), and the SMTP test. Every row stores the
-rendered subject + body so a non-dodák row can be re-sent faithfully; dodák rows
-re-render from the live ``DodaciList`` instead (their subject/body may be empty
-on migrated historical rows). Feeds the vlastník-gated „E-maily" outbox page and
-the dodák detail's "Verze a odeslání" table (via ``related_name="email_logs"``).
+event-driven low-stock alert (0074), the Podpora intake notification (0079) and
+resolve notification (0098), new-user credentials (0082), the vlastník broadcast
+„Oznámení" (0097), and the SMTP test. Every row stores the rendered subject +
+body so a non-dodák row can be re-sent faithfully; dodák rows re-render from the
+live ``DodaciList`` instead (their subject/body may be empty on migrated
+historical rows). For a BCC send (Oznámení, per 0097) the ``recipients`` column
+stores the BCC audience, not the ``to`` header. Feeds the vlastník-gated
+„E-maily" outbox page and the dodák detail's "Verze a odeslání" table (via
+``related_name="email_logs"``).
 """
 
 from django.conf import settings
@@ -25,6 +29,8 @@ class EmailLog(models.Model):
         DODACI_RESEND = "dodaci_resend", "dodací list — opětovné odeslání"
         LOW_STOCK_ALERT = "low_stock_alert", "upozornění — dochází zboží"
         FEEDBACK = "feedback", "hlášení z podpory"
+        FEEDBACK_RESOLVED = "feedback_resolved", "vyřešené hlášení"
+        ANNOUNCEMENT = "announcement", "oznámení"
         NEW_USER_CREDENTIALS = (
             "new_user_credentials",
             "přihlašovací údaje nového uživatele",
@@ -43,7 +49,7 @@ class EmailLog(models.Model):
         choices=Category.choices,
     )
     trigger_reason = models.TextField("důvod odeslání")
-    recipients = models.CharField("příjemci", max_length=512)
+    recipients = models.TextField("příjemci")
     from_email = models.CharField("odesílatel", max_length=255, blank=True, default="")
     subject = models.CharField("předmět", max_length=255)
     body = models.TextField("tělo", blank=True, default="")

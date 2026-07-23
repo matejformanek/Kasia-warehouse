@@ -14,7 +14,10 @@ from ..forms import (
 from ..models import (
     Feedback,
 )
-from ..services import send_feedback_notification
+from ..services import (
+    send_feedback_notification,
+    send_feedback_resolved_notification,
+)
 
 
 def support_view(request):
@@ -80,12 +83,17 @@ def feedback_toggle_view(request, pk: int):
         return redirect("inventory:support")
     f = get_object_or_404(Feedback, pk=pk)
     if f.is_open:
+        # Open → resolved: store the optional note + notify the creator (0098).
         f.resolved_at = timezone.now()
         f.resolved_by = request.user
+        f.resolution_note = request.POST.get("resolution_note", "").strip()
+        f.save(update_fields=["resolved_at", "resolved_by", "resolution_note"])
+        transaction.on_commit(lambda: send_feedback_resolved_notification(f))
     else:
+        # Resolved → open (reopen): silent, keep the note (0098).
         f.resolved_at = None
         f.resolved_by = None
-    f.save(update_fields=["resolved_at", "resolved_by"])
+        f.save(update_fields=["resolved_at", "resolved_by"])
     return redirect("inventory:support")
 
 

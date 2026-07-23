@@ -9,7 +9,8 @@ class Feedback(models.Model):
 
     Per [0046](../context/decisions/0046-support-page.md): free-form Czech
     bug / question / wish, optional page reference, visible to every
-    logged-in user. Vlastník can toggle resolved state.
+    logged-in user. Vlastník can toggle resolved state; on resolve they may
+    add a ``resolution_note`` and the creator is notified by e-mail (per 0098).
     """
 
     created_by = models.ForeignKey(
@@ -32,6 +33,9 @@ class Feedback(models.Model):
         related_name="resolved_feedback",
         verbose_name="vyřešil",
     )
+    # Optional closing note the vlastník types when resolving (per 0098). Kept
+    # on reopen. Included in the resolve notification e-mail to the creator.
+    resolution_note = models.TextField("poznámka k vyřešení", blank=True)
 
     class Meta:
         verbose_name = "hlášení"

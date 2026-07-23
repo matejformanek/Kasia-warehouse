@@ -99,9 +99,15 @@ class DodaciList(models.Model):
 
     @property
     def total_quantity_kg(self):
-        """Sum of all line quantities — feeds screen 08's "hrubý objem" column."""
+        """Sum of the kg line quantities — feeds screen 08's "hrubý objem"
+        column. Per 0095, finished-product („ks") lines are unlimited and their
+        piece count is not kg, so they're excluded from this mass total."""
         return sum(
-            (line.quantity_kg for line in self.movement.lines.all()),
+            (
+                line.quantity_kg
+                for line in self.movement.lines.all()
+                if not line.product.is_unlimited
+            ),
             start=0,
         )
 

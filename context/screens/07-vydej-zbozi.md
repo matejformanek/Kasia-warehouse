@@ -1,5 +1,11 @@
 # Výdej zboží / Issue goods
 
+> **Per [0095](../decisions/0095-hotovy-vyrobek-finished-product-type.md):**
+> finished products („hotový výrobek") are selectable on výdej and land on the
+> dodací list. They are **unlimited** — the per-row unit shows **„ks"**, the
+> live over-stock check treats them as „neomezeno" (never over, never blocks
+> submit), and no stock is deducted.
+
 ## Purpose
 Record that goods are leaving a branch — to a B2B customer, or
 internally to Říčany (per

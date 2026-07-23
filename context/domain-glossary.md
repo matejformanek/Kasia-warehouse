@@ -113,6 +113,16 @@ A branded composite product made by combining several raw spices in a
 fixed recipe (e.g. *Zlaté Kuře*). Produced by a **mixing job**
 (see [`product-ideology.md`](./product-ideology.md)).
 
+### hotový výrobek
+
+**EN:** finished product.
+A bought-in, ready-packed good sold **by the piece** („ks") — e.g. a gift
+set — not mixed in-house. Modelled as a third `Product.Kind`
+(`hotovy_vyrobek`), **unlimited** (never counted, never runs out, never blocks
+a výdej) but **visible** in the Katalog and **sellable on výdej** so it lands on
+the *dodací list*. Not received via *příjem* and not in *inventura*. Per
+[`decisions/0095-hotovy-vyrobek-finished-product-type.md`](./decisions/0095-hotovy-vyrobek-finished-product-type.md).
+
 ### šarže
 
 **EN:** batch / lot.

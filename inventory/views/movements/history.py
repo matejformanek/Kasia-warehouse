@@ -161,8 +161,15 @@ def movement_history(request):
     # Per-movement total kg for the "Množství" column. Lines are already
     # prefetched, so this sums in Python without extra queries.
     for mv in movements:
+        # Per 0095: finished-product („ks") lines are unlimited and not kg —
+        # exclude them so a piece count is never folded into the mass total.
         mv.total_kg = sum(
-            (line.quantity_kg for line in mv.lines.all()), Decimal("0.000")
+            (
+                line.quantity_kg
+                for line in mv.lines.all()
+                if not line.product.is_unlimited
+            ),
+            Decimal("0.000"),
         )
 
     # Query string (minus page) so pagination links keep the current filters.

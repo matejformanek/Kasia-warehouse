@@ -28,6 +28,8 @@ Context variables:
            value="{{ line_form.quantity_kg.value|default_if_none:'' }}">
     {% if line_form.quantity_kg.errors %}<div class="errorlist">{{ line_form.quantity_kg.errors }}</div>{% endif %}
   </td>
+  {# Per 0095: unit in its own column — JS flips it to „ks" for a finished product. #}
+  <td class="line-unit-cell"><span class="line-unit">kg</span></td>
   <td>
     {% if show_stock_warn %}
       {% comment %}

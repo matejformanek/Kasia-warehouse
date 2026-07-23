@@ -5,6 +5,29 @@
 
 ## Done
 
+- **2026-07-23** — **Third product type „hotový výrobek" (finished product)**
+  (decision [`0095`](./decisions/0095-hotovy-vyrobek-finished-product-type.md)).
+  A bought-in unlimited good sold **by the piece** („ks"): visible + sellable
+  (unlike Voda) but never deducted/seeded/reserved, never blocks výdej/míchání.
+  New `Product.Kind.HOTOVY_VYROBEK` (migration **0029**, state-only) + two
+  computed properties — **`is_unlimited`** (`not is_stock_tracked OR kind ==
+  HOTOVY_VYROBEK`, the concept every stock chokepoint now keys on) and
+  **`unit`** (`"ks"`/`"kg"`; pieces stored in the existing `quantity_kg`, no
+  schema field). Chokepoints swapped `is_stock_tracked`→`is_unlimited`
+  (`stock._apply_line_to_stock`, `reorder.seed_branch_carriage_for_product`,
+  `movement` low-stock pairs, `mixing` consume/plan + preview view,
+  `vydej._compute_overdraw`). Katalog: own group **„Hotové výrobky — neomezeno"**
+  (`unlimited_rows`, rendered only with no `?state=`; new
+  `_catalogue_group_unlimited.html` + `.sub-head.unlimited`); empty/low/ok now
+  computed from the finite rest. Výdej dropdown includes finished (výdej lands
+  on the dodák; live JS shows „neomezeno"/„ks", never blocks); příjem + inventura
+  + edit-příjem exclude them (`MovementLineForm(exclude_finished=…)`,
+  `.exclude(kind=HOTOVY_VYROBEK)`). Dodák PDF + on-screen detail render per-line
+  „N ks"/„X kg"; kg aggregate totals (`DodaciList.total_quantity_kg`, Historie
+  „Množství") exclude unlimited lines. Product detail shows „neomezeno" (no
+  per-branch table / KPI / „Upravit stav skladu"); kind locked on edit for
+  unlimited. 651 tests pass (+12 new `test_hotovy_vyrobek.py`). Rules updated
+  (design-system + frontend-and-templates), glossary + screens 04/07 noted.
 - **2026-07-22** — **Přehled empty-count fix + branch dashboard trimmed to
   critical-only** (decisions
   [`0093`](./decisions/0093-owner-prehled-empty-rule.md) +

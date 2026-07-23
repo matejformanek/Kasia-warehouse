@@ -44,6 +44,9 @@
   .line-summary.final { font-size: 1.2rem; font-weight: 600; padding: 1rem 1.2rem; margin: 0 0 1.2rem; }
   .submit-bar { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; margin: 0; }
   td input.line-qty { max-width: 120px; text-align: right; font-family: var(--mono); }
+  /* Per 0095: small dedicated unit column (kg / ks) next to the amount. */
+  .unit-col, td.line-unit-cell { width: 3.5rem; white-space: nowrap; }
+  td .line-unit { color: var(--fg-soft); font-family: var(--mono); font-size: .9rem; }
   td select.line-prod { max-width: 100%; }
   td input.line-sarze { max-width: 130px; font-family: var(--mono); }
   td input.line-exp { max-width: 160px; font-family: var(--mono); }

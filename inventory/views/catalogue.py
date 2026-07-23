@@ -106,16 +106,25 @@ def catalogue_stock_groups(products, branches):
     (all-branches or a single ?branch=) and the obsluha Přehled
     (single-branch). Per 0064 (grouping) + 0072 (empty rule).
 
-    Returns a dict: ``rows`` (one per product), ``empty_rows`` / ``low_rows``
-    / ``ok_rows`` (the three state groups), and the KPI counts
-    ``kpi_products`` / ``kpi_empty`` / ``kpi_low`` / ``kpi_total_kg``.
+    Returns a dict: ``rows`` (one per finite product), ``empty_rows`` /
+    ``low_rows`` / ``ok_rows`` (the three state groups), ``unlimited_rows`` (the
+    finished-product group, per 0095), and the KPI counts ``kpi_products`` /
+    ``kpi_empty`` / ``kpi_low`` / ``kpi_total_kg`` / ``kpi_unlimited``.
 
     Untracked products (per 0088, e.g. „Voda“) carry no Stock rows and are
-    unlimited — drop them at the top so they never surface in the Katalog, the
-    obsluha/vlastník Přehled, or the inventura „Dochází" roll-up (all three call
-    this helper).
+    hidden — drop them at the top (visibility keys on ``is_stock_tracked``) so
+    they never surface in the Katalog, the obsluha/vlastník Přehled, or the
+    inventura „Dochází" roll-up (all three call this helper). Finished products
+    (per 0095, ``is_unlimited`` but visible) are split off into
+    ``unlimited_rows``; the empty/low/ok groups are computed from the finite
+    rest only, so a stockless finished product is never mis-classed „Prázdné".
     """
     products = [p for p in products if p.is_stock_tracked]
+    # Per 0095: finished products are visible but unlimited — their own group,
+    # never in empty/low/ok (which are computed from the finite rest below).
+    unlimited_products = [p for p in products if p.is_unlimited]
+    products = [p for p in products if not p.is_unlimited]
+    unlimited_rows = [{"product": p} for p in unlimited_products]
     totals: dict[int, Decimal] = {}
     for s in Stock.objects.filter(product__in=products, branch__in=branches):
         totals[s.product_id] = totals.get(s.product_id, Decimal("0.000")) + s.quantity
@@ -147,9 +156,11 @@ def catalogue_stock_groups(products, branches):
         "empty_rows": empty_rows,
         "low_rows": low_rows,
         "ok_rows": ok_rows,
+        "unlimited_rows": unlimited_rows,
         "kpi_products": len(rows),
         "kpi_empty": len(empty_rows),
         "kpi_low": len(low_rows),
+        "kpi_unlimited": len(unlimited_rows),
         "kpi_total_kg": sum((r["total"] for r in rows), Decimal("0.000")),
     }
 
@@ -171,7 +182,11 @@ def catalogue_index(request):
     # "all" → no filter
 
     kind = request.GET.get("kind") or ""
-    if kind in (Product.Kind.RAW_SPICE, Product.Kind.MIXTURE):
+    if kind in (
+        Product.Kind.RAW_SPICE,
+        Product.Kind.MIXTURE,
+        Product.Kind.HOTOVY_VYROBEK,
+    ):
         qs = qs.filter(kind=kind)
 
     # Per 0063: text search (`q`) is filtered client-side in the browser
@@ -211,9 +226,12 @@ def catalogue_index(request):
     empty_rows = groups["empty_rows"]
     low_rows = groups["low_rows"]
     ok_rows = groups["ok_rows"]
+    # Per 0095: the finished-product group is shown only when no stock-state
+    # filter is active (Prázdné/Dochází/V pořádku are finite-only states).
+    state_filter = (request.GET.get("state") or "").strip()
+    unlimited_rows = [] if state_filter else groups["unlimited_rows"]
 
     # ?state= narrows both the row count and the rendered groups.
-    state_filter = (request.GET.get("state") or "").strip()
     if state_filter == "low":
         rows, empty_rows, ok_rows = low_rows, [], []
     elif state_filter == "empty":
@@ -228,20 +246,25 @@ def catalogue_index(request):
     # per 0084 the client (base.html apply()) then live-recomputes them from
     # the visible rows as the name filter is typed, restoring these values
     # when the box is cleared.
-    kpi_products = len(rows)
+    # Per 0095: finished (unlimited) rows count toward Produktů + Nalezeno so the
+    # server total matches the client apply() recompute (which counts every
+    # visible .cat-body row, incl. the unlimited group, per 0084).
+    kpi_products = len(rows) + len(unlimited_rows)
     kpi_empty = len(empty_rows)
     kpi_low = len(low_rows)
     kpi_total_kg = sum((r["total"] for r in rows), Decimal("0.000"))
+    total_count = len(rows) + len(unlimited_rows)
 
     return render(
         request,
         "inventory/catalogue_index.html",
         {
             "rows": rows,
-            "count": len(rows),
+            "count": total_count,
             "empty_rows": empty_rows,
             "low_rows": low_rows,
             "ok_rows": ok_rows,
+            "unlimited_rows": unlimited_rows,
             "kpi_products": kpi_products,
             "kpi_empty": kpi_empty,
             "kpi_low": kpi_low,
@@ -336,7 +359,11 @@ def product_detail(request, pk: int):
     recent_movements = list(recent_movements_qs.order_by("-date_issued", "-id")[:20])
 
     # Overall stock state for the detail-page "Stav" chip (rail fact tile).
-    if total <= 0:
+    # Per 0095: an unlimited product (finished „hotový výrobek“ or untracked
+    # Voda) is „neomezeno" — no per-branch table / KPI / stock-adjust.
+    if product.is_unlimited:
+        stock_state = "unlimited"
+    elif total <= 0:
         stock_state = "empty"
     elif any(r["is_low"] for r in branch_rows):
         stock_state = "low"
@@ -437,6 +464,10 @@ def product_edit(request, pk: int):
         or RecipeComponent.objects.filter(
             Q(mixture_product=product) | Q(component_product=product)
         ).exists()
+        # Per 0095: an unlimited product (finished „hotový výrobek“, untracked
+        # Voda) has no Stock rows; flipping it to a tracked kind would never
+        # re-seed carriage. Lock the kind to sidestep that edge.
+        or product.is_unlimited
     )
 
     recipe_qs = RecipeComponent.objects.filter(
@@ -551,7 +582,14 @@ def product_edit(request, pk: int):
         for s in Stock.objects.filter(product=product).select_related("branch")
     }
     carry_rows = []
-    for b in Branch.objects.filter(is_active=True).order_by("code"):
+    # Per 0095: an unlimited product has (and must keep) zero Stock rows — the
+    # carry-controls "Přidat" would create one, breaking the no-rows invariant.
+    # Leave carry_rows empty so the whole card is suppressed in the template.
+    branches_for_carry = (
+        [] if product.is_unlimited
+        else Branch.objects.filter(is_active=True).order_by("code")
+    )
+    for b in branches_for_carry:
         s = carry_stocks_by_branch_id.get(b.pk)
         carry_rows.append(
             {

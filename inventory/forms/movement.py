@@ -102,13 +102,21 @@ class VydejForm(_MovementBaseForm):
 
 
 class MovementLineForm(forms.Form):
-    """One product line on a příjem / výdej form. Used inside a formset."""
+    """One product line on a příjem / výdej form. Used inside a formset.
+
+    `exclude_finished` (per 0095): drop finished products („hotový výrobek“)
+    from the product dropdown. Passed True on příjem (nothing is received into
+    stock for an unlimited good), left False on výdej (a finished line must be
+    sellable so it lands on the dodák). Threaded through the plain
+    `formset_factory` via `BaseFormSet.get_form_kwargs` (form_kwargs=).
+    """
 
     product = forms.ModelChoiceField(
         label="Produkt",
         # Untracked products (per 0088, e.g. „Voda“) belong only in recipes —
-        # never selectable on an ordinary příjem / výdej.
-        queryset=Product.objects.filter(is_active=True, is_stock_tracked=True),
+        # never selectable on an ordinary příjem / výdej. Finished products
+        # (per 0095) stay in by default (výdej); příjem passes exclude_finished.
+        queryset=Product.objects.none(),  # set in __init__
     )
     quantity_kg = forms.DecimalField(
         label="Množství (kg)",
@@ -123,6 +131,13 @@ class MovementLineForm(forms.Form):
         widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
     note = forms.CharField(label="Poznámka", max_length=256, required=False)
+
+    def __init__(self, *args, exclude_finished: bool = False, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        qs = Product.objects.filter(is_active=True, is_stock_tracked=True)
+        if exclude_finished:
+            qs = qs.exclude(kind=Product.Kind.HOTOVY_VYROBEK)
+        self.fields["product"].queryset = qs
 
 
 MovementLineFormSet = forms.formset_factory(

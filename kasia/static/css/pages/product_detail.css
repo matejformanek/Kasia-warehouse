@@ -7,6 +7,7 @@
   .chip.ok { background: var(--ok-soft); color: var(--ok); }
   .chip.warn { background: var(--warn-tint); color: var(--warn); }
   .chip.err { background: var(--error-tint); color: var(--error); }
+  .chip.neutral { background: var(--line-soft); color: var(--fg-soft); }
   .rail .card h2 { font-size: .95rem; }
   .rail-actions { display: flex; flex-direction: column; gap: .55rem; }
   .rail-actions .primary, .rail-actions .secondary { text-align: center; width: 100%; }

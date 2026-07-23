@@ -36,7 +36,10 @@ from ._shared import (
 def prijem_create(request):
     if request.method == "POST":
         form = PrijemForm(request.POST, user=request.user)
-        formset = MovementLineFormSet(request.POST, prefix="lines")
+        formset = MovementLineFormSet(
+            request.POST, prefix="lines",
+            form_kwargs={"exclude_finished": True},
+        )
         if form.is_valid() and formset.is_valid():
             try:
                 assert_no_future_date(form.cleaned_data["date_issued"])
@@ -101,7 +104,9 @@ def prijem_create(request):
                         return redirect("inventory:movement_saved", pk=mv.pk)
     else:
         form = PrijemForm(user=request.user)
-        formset = MovementLineFormSet(prefix="lines")
+        formset = MovementLineFormSet(
+            prefix="lines", form_kwargs={"exclude_finished": True}
+        )
 
     return render(
         request,

@@ -1,5 +1,12 @@
 # Katalog produktů / Product catalogue
 
+> **Per [0095](../decisions/0095-hotovy-vyrobek-finished-product-type.md):** a
+> third Typ — **„hotový výrobek"** (finished product, sold by the piece,
+> unlimited) — is filterable and gets its own group **„Hotové výrobky —
+> neomezeno"** parallel to Prázdné / Dochází / V pořádku. It carries no stock
+> state (shown „neomezeno"), is excluded from inventura + příjem, and is
+> creatable via the normal „+ Nový produkt" form.
+
 ## Purpose
 The single browsable list of everything Kasia handles — raw spices
 (koření), branded single-ingredient packs, and house mixtures (směsi).

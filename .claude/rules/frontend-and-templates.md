@@ -25,6 +25,12 @@ points there, it does not restate it.
   renders **blank**. For prefills use `|unlocalize` (dot) or a `ROUND_HALF_UP`
   1-dp value; display cells use `floatformat:1` freely. (Full rounding contract:
   design-system.md § "Quantities display at 1 dp".)
+- **Finished-product quantities render by unit, not always kg** (per 0095). A
+  „hotový výrobek" line shows „N ks" (int, `floatformat:0`) vs „X kg" (1 dp)
+  keyed on `line.product.unit` — on the dodák PDF + on-screen detail, and via a
+  per-row `.line-unit` label the výdej JS flips to „ks" on product `change`. The
+  movement-form / dodák „Množství" headers are unit-neutral (no „(kg)"). Don't
+  reintroduce a hardcoded „kg" on those surfaces.
 - **Don't `escapejs` a `data-filter-text` value** (the 0063 live-filter hook). The
   row text is built from Django's default auto-escaping; `escapejs` emits `\"`
   that `dataset` reads literally and the filter breaks. Likewise **`data-filter-kg`

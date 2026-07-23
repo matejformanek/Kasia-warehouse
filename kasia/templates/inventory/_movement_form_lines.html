@@ -109,7 +109,11 @@ forms include this partial.
     body.addEventListener("input", refresh);
     body.addEventListener("htmx:afterSwap", refresh);
     body.addEventListener("click", (e) => {
-      if (e.target.closest(".row-delete-btn")) queueMicrotask(refresh);
+      // setTimeout(…,0), not queueMicrotask: base.html's row-delete handler is a
+      // document-level listener that toggles .marked-deleted AFTER this
+      // #lines-body listener (and its microtasks) run, so only a macrotask sees
+      // the settled row set.
+      if (e.target.closest(".row-delete-btn")) setTimeout(refresh, 0);
     });
     refresh();
   });
@@ -144,9 +148,12 @@ forms include this partial.
     // products in its new dropdown before the user touches it.
     body.addEventListener("htmx:afterSwap", refreshProductOptions);
     // .row-delete-btn toggles .marked-deleted in base.html — recount after that
-    // (deferred microtask) so a removed row frees its product for reuse.
+    // so a removed row frees its product for reuse. setTimeout(…,0), not
+    // queueMicrotask: base.html's document-level toggle runs AFTER this
+    // #lines-body listener + its microtasks, so only a macrotask reads the
+    // settled row set.
     body.addEventListener("click", (e) => {
-      if (e.target.closest(".row-delete-btn")) queueMicrotask(refreshProductOptions);
+      if (e.target.closest(".row-delete-btn")) setTimeout(refreshProductOptions, 0);
     });
     refreshProductOptions();
   })();
@@ -287,9 +294,12 @@ forms include this partial.
     // A row added via htmx (Přidat řádek) arrives empty — re-check stock.
     body.addEventListener("htmx:afterSwap", recompute);
     // .row-delete-btn toggles .marked-deleted in base.html's handler — recount
-    // after that runs (deferred microtask), so the deleted row drops out.
+    // after that runs, so the deleted row drops out. setTimeout(…,0), not
+    // queueMicrotask: base.html's document-level toggle runs AFTER this
+    // #lines-body listener + its microtasks, so only a macrotask reads the
+    // settled row set (a microtask would race the toggle and read stale rows).
     body.addEventListener("click", (e) => {
-      if (e.target.closest(".row-delete-btn")) queueMicrotask(recompute);
+      if (e.target.closest(".row-delete-btn")) setTimeout(recompute, 0);
     });
     // The branch select lives outside #lines-body — re-evaluate every row
     // against the new branch's stock when it changes.

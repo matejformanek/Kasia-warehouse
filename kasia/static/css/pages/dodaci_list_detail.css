@@ -28,4 +28,9 @@
   .edit-note { background: var(--warn-tint); border-left: 3px solid var(--warn); padding: .65rem .85rem; font-size: .9rem; margin: 0 0 1.2rem; color: var(--fg); }
   .edit-note strong { color: var(--warn); }
 
+  /* Per 0096: "Čeká na odeslání" banner — neutral pending tone (not an alert),
+     matching the .t-badge.wait task badge. */
+  .wait-note { background: var(--bg); border-left: 3px solid var(--fg-soft); padding: .65rem .85rem; font-size: .9rem; margin: 0 0 1.2rem; color: var(--fg); }
+  .wait-note strong { color: var(--fg); }
+
   table.lines tfoot td { border-top: 2px solid var(--line); border-bottom: 0; font-weight: 700; }

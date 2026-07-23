@@ -100,6 +100,11 @@ urlpatterns = [
         name="dodaci_list_pdf",
     ),
     path(
+        "dodaky/<str:cislo>/odeslat/",
+        views.dodaci_list_send,
+        name="dodaci_list_send",
+    ),
+    path(
         "dodaky/<str:cislo>/znovu-odeslat/",
         views.dodaci_list_resend,
         name="dodaci_list_resend",

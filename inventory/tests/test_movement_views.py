@@ -207,6 +207,8 @@ def test_vydej_post_creates_dodaci_list_and_redirects(
     assert mv.kind == Movement.Kind.VYDEJ
     dl = DodaciList.objects.get(movement=mv)
     assert dl.cislo == "TYN-2026-0001"
+    # Per 0096: the dodák is created WAITING; no e-mail is sent at save.
+    assert dl.send_state == DodaciList.SendState.WAITING
     saved = client.get(f"/sklad/pohyby/{mv.pk}/")
     assert saved.status_code == 200
     assert b"TYN-2026-0001" in saved.content
@@ -446,8 +448,12 @@ def test_dodaci_list_detail_renders(user_tyn, tyn, ricany, pepper) -> None:
     body = response.content.decode("utf-8")
     assert dl.cislo in body
     assert "Stáhnout PDF" in body
-    assert "Znovu odeslat" in body
     assert "Otevřít výdej" in body
+    # Per 0096: a fresh dodák is WAITING — the primary action is the first send,
+    # and "Znovu odeslat" is hidden until it's been sent.
+    assert "Čeká na odeslání" in body
+    assert "Odeslat e-mail zákazníkovi" in body
+    assert "Znovu odeslat" not in body
 
 
 @pytest.mark.django_db(transaction=True)
@@ -536,7 +542,12 @@ def test_movement_edit_post_bumps_version_and_audits(
 ) -> None:
     from django.core import mail
 
+    from inventory.services import send_first_dodaci
+
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    # Per 0096: an edit auto-reissues [OPRAVA] only once the dodák is SENT.
+    send_first_dodaci(dl, sent_by=user_tyn)
+    mail.outbox.clear()
     line = mv.lines.get()
     client = Client()
     client.force_login(user_tyn)

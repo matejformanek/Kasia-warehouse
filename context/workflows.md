@@ -55,10 +55,19 @@ confirmation the system:
 
 1. Decrements branch stock for each line.
 2. Writes a výdej movement record (the internal výdejka).
-3. Renders a **dodací list PDF** with the company header (IČO, DIČ,
-   logo), the odběratel block, the lines, the date, and a place for
-   signature.
-4. Emails that PDF to the owner (Petr) and to Karolína.
+3. Creates the **dodací list** in state **"čeká na odeslání"**
+   (`send_state=WAITING`) — but **sends no e-mail yet** (per
+   [`decisions/0096-manual-first-send-of-dodaky.md`](./decisions/0096-manual-first-send-of-dodaky.md)).
+   The operator lands on the dodák detail with a "Čeká na odeslání"
+   banner.
+
+The operator reviews (and if needed edits) the dodák — **no e-mails go
+out while it is WAITING; edits just re-generate the PDF, no version
+bump**. When they are sure, they click **"Odeslat e-mail zákazníkovi"**.
+Only that click renders the PDF and e-mails it to the dodák recipients +
+the issuer, flipping the dodák to **"odesláno"** (`SENT`). A prominent
+**"Čeká na odeslání"** list on the dodák index, the owner Přehled, and
+the branch dashboard makes sure a pending send is never forgotten.
 
 Karolína then forwards the email to the external accountant, who
 issues the faktura. Invoicing is **not** part of this system.
@@ -75,11 +84,14 @@ Edge cases:
 - The customer wants partial delivery or split shipments. Default
   expectation: one výdej = one dodací list; partial deliveries
   generate two výdeje and two dodáky.
-- The PDF email bounces or fails to send. The dodací list must still
-  exist in the system and be re-emailable from the preview screen,
-  and the failure is surfaced on
+- The first send fails. The dodák stays **WAITING** (not SENT) so it
+  remains in the "Čeká na odeslání" list and the operator simply clicks
+  Odeslat again. (Only an *already-sent* dodák whose later [OPRAVA]
+  re-send fails is surfaced on
   [`02-prehled-vlastnik.md`](./screens/02-prehled-vlastnik.md) under
-  "K vyřešení".
+  "K vyřešení" — a WAITING+failed dodák lives in "Čeká na odeslání"
+  instead.) Either way the dodací list exists and is re-emailable from
+  the detail screen.
 - Dodací list shows **no prices** per
   [`decisions/0029-no-prices-supersedes-0011.md`](./decisions/0029-no-prices-supersedes-0011.md):
   no `cena` field anywhere on the product, no unit price on the
@@ -128,12 +140,16 @@ free-text **reason** the editor is required to enter. The corrected
 movement then reflects the new values; the history shows that it was
 edited; an audit log lists all corrections.
 
-Where the corrected movement is a výdej for which a dodací list was
-already sent, the system **auto-regenerates the PDF and auto-emails
-the updated version** to the original recipients per
+Where the corrected movement is a výdej whose dodací list **has already
+been sent** (`SENT`), the system **auto-regenerates the PDF and
+auto-emails the updated version** to the recipients per
 [`decisions/0007-auto-reissue-corrected-dodaky.md`](./decisions/0007-auto-reissue-corrected-dodaky.md).
-The subject is prefixed `[OPRAVA]`; the body names the change
-reason; a per-dodák version+send audit table on
+The subject is prefixed `[OPRAVA]`; the body names the change reason. If
+the dodák is **still WAITING** (never sent), the edit only re-generates
+the PDF — **no version bump, no e-mail** — because the operator's first
+"Odeslat" click will issue the finished v1 (per
+[`decisions/0096-manual-first-send-of-dodaky.md`](./decisions/0096-manual-first-send-of-dodaky.md)).
+A per-dodák version+send audit table on
 [`09-detail-dodaciho-listu.md`](./screens/09-detail-dodaciho-listu.md)
 records every PDF version emitted and when it was sent.
 

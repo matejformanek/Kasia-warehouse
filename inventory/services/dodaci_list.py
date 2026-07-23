@@ -261,6 +261,29 @@ def send_dodaci_list_email(
     )
 
 
+def send_first_dodaci(dodaci_list: DodaciList, *, sent_by) -> EmailLog:
+    """Perform the operator-triggered *first* send of a WAITING dodák (per 0096).
+
+    Renders the PDF and sends it as the initial "vystavení" e-mail (same
+    template + `DODACI_VYSTAVENI` category the old auto-send used), recording
+    the operator in `sent_by`. On a successful send flips WAITING → SENT so
+    later movement edits revert to 0007's auto-reissue + [OPRAVA]; a FAILED send
+    leaves the dodák WAITING at v1 so the operator can retry. The state mutation
+    stays in the service layer (like `current_version`). Returns the EmailLog.
+    """
+    pdf_bytes = render_dodaci_list_pdf(dodaci_list)
+    log = send_dodaci_list_email(
+        dodaci_list=dodaci_list,
+        trigger_reason="vystavení",
+        pdf_bytes=pdf_bytes,
+        sent_by=sent_by,
+    )
+    if log.status == EmailLog.Status.SENT:
+        dodaci_list.send_state = DodaciList.SendState.SENT
+        dodaci_list.save(update_fields=["send_state"])
+    return log
+
+
 # ---------------------------------------------------------------------------
 # Mixing job services (screen 15, per decision 0039)
 # ---------------------------------------------------------------------------

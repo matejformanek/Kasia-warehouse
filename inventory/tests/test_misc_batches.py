@@ -8,6 +8,7 @@ from django.test import Client, override_settings
 
 from inventory.models import (
     Branch,
+    DodaciList,
     EmailLog,
     Movement,
     MovementLine,
@@ -16,6 +17,7 @@ from inventory.models import (
 )
 from inventory.services import (
     apply_movement,
+    send_first_dodaci,
 )
 from inventory.tests._support import (
     _VIEW_TEST_OVERRIDES,
@@ -263,6 +265,9 @@ def test_send_dodaci_list_iterates_all_active_recipients(
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
         user=user_tyn,
     )
+    # Per 0096: apply no longer sends — trigger the first send to exercise the
+    # (unchanged) recipient resolution and produce the EmailLog.
+    send_first_dodaci(DodaciList.objects.get(movement=mv), sent_by=user_tyn)
     log = EmailLog.objects.get(dodaci_list__movement=mv)
     assert log.status == EmailLog.Status.SENT
     # 2 seeded active rows + new one, plus the issuer (0081) always copied.
@@ -294,6 +299,9 @@ def test_send_dodaci_list_skips_inactive_recipients(
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
         user=user_tyn,
     )
+    # Per 0096: apply no longer sends — trigger the first send to exercise the
+    # (unchanged) recipient resolution and produce the EmailLog.
+    send_first_dodaci(DodaciList.objects.get(movement=mv), sent_by=user_tyn)
     log = EmailLog.objects.get(dodaci_list__movement=mv)
     recips = [r.strip() for r in log.recipients.split(",")]
     # Karolína inactive → Petr + the issuer (0081) always copied.
@@ -327,6 +335,9 @@ def test_send_dodaci_list_branch_scoped_recipient_skipped(
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
         user=user_tyn,
     )
+    # Per 0096: apply no longer sends — trigger the first send to exercise the
+    # (unchanged) recipient resolution and produce the EmailLog.
+    send_first_dodaci(DodaciList.objects.get(movement=mv), sent_by=user_tyn)
     log = EmailLog.objects.get(dodaci_list__movement=mv)
     recips = {r.strip() for r in log.recipients.split(",")}
     # Both seeded rows are unscoped (all branches) → they get it; the issuer
@@ -361,6 +372,9 @@ def test_send_dodaci_list_excludes_non_dodaci_recipient(
         lines=[MovementLine(product=pepper, quantity_kg=Decimal("1.000"))],
         user=user_tyn,
     )
+    # Per 0096: apply no longer sends — trigger the first send to exercise the
+    # (unchanged) recipient resolution and produce the EmailLog.
+    send_first_dodaci(DodaciList.objects.get(movement=mv), sent_by=user_tyn)
     log = EmailLog.objects.get(dodaci_list__movement=mv)
     recips = {r.strip() for r in log.recipients.split(",")}
     assert recips == {"petr@example.cz", "user-tyn@example.cz"}

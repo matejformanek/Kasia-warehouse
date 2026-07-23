@@ -80,6 +80,14 @@ def movement_edit(request, pk: int):
                     _push_validation_error_to_formset(exc, formset)
                 else:
                     messages.success(request, "Úprava uložena.")
+                    # A výdej edit returns to its dodací list (the operator
+                    # reviews the regenerated dodák there); other movements
+                    # stay on the edit screen.
+                    dl = DodaciList.objects.filter(movement=movement).first()
+                    if dl is not None:
+                        return redirect(
+                            "inventory:dodaci_list_detail", cislo=dl.cislo
+                        )
                     return redirect("inventory:movement_edit", pk=pk)
     else:
         initial_lines = [

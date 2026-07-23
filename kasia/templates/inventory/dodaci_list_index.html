@@ -7,9 +7,12 @@
 
 {% block page_help %}
 <h3>Dodací listy</h3>
-<p>Přehled všech vystavených <strong>dodacích listů (dodáků)</strong>. Dodák
-vzniká <strong>automaticky při výdeji</strong> — tady je najdete, otevřete
-a&nbsp;v&nbsp;případě potřeby znovu odešlete.</p>
+<p>Přehled všech <strong>dodacích listů (dodáků)</strong>. Dodák vzniká
+<strong>při výdeji</strong>, ale zákazníkovi se <strong>neodešle sám</strong> —
+nejdřív <strong>čeká na odeslání</strong>, ať ho můžete v&nbsp;klidu zkontrolovat
+a&nbsp;upravit. Odešlete ho pak tlačítkem <strong>Odeslat e-mail zákazníkovi</strong>
+v&nbsp;jeho detailu. Pending dodáky najdete i&nbsp;v&nbsp;sekci
+<strong>„Čeká na odeslání"</strong> nahoře.</p>
 
 <h3>Co tu můžete udělat</h3>
 <ul>
@@ -21,15 +24,19 @@ a&nbsp;v&nbsp;případě potřeby znovu odešlete.</p>
 </ul>
 
 <h3>Dobré vědět</h3>
-<p>Dodák chodí <strong>příjemcům dodacího listu i&nbsp;vystaviteli výdeje</strong>, ne zákazníkovi. Opravíte-li
-výdej v&nbsp;Historii, dodák se přegeneruje (nová verze) a&nbsp;přepošle
-s&nbsp;předponou <strong>[OPRAVA]</strong>.</p>
+<p>Dodák chodí <strong>příjemcům dodacího listu i&nbsp;vystaviteli výdeje</strong>,
+ne zákazníkovi. První odeslání spustíte ručně (viz výše). Až <strong>poté</strong>,
+co byl dodák odeslán, se každá další oprava výdeje automaticky přepošle
+s&nbsp;předponou <strong>[OPRAVA]</strong> (nová verze). Dokud dodák čeká na
+odeslání, úpravy jen přegenerují PDF a&nbsp;nic se neodesílá.</p>
 <p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
 
 {% block content %}
 <h1>Dodací listy</h1>
 <p class="scope-note">Vystavené dodací listy k výdejům, od nejnovějšího. Klikněte na řádek pro detail a PDF.{% if branch_locked %} Pobočka {{ branch_locked.code }}.{% endif %}</p>
+
+{% include "inventory/_waiting_dodaky.html" %}
 
 <form method="get" class="card" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
   {% if not branch_locked %}
@@ -78,6 +85,7 @@ s&nbsp;předponou <strong>[OPRAVA]</strong>.</p>
         <th>Odběratel</th>
         <th>Pol.</th>
         <th style="text-align:right;">Hrubý objem (kg)</th>
+        <th>Stav</th>
         <th>Verze</th>
         <th></th>
       </tr>
@@ -91,6 +99,13 @@ s&nbsp;předponou <strong>[OPRAVA]</strong>.</p>
           <td>{{ dl.odberatel.name }}</td>
           <td>{{ dl.movement.lines.count }}</td>
           <td class="num">{{ dl.total_quantity_kg|floatformat:1 }}</td>
+          <td>
+            {% if dl.is_waiting %}
+              <span class="state-badge wait">{{ dl.get_send_state_display }}</span>
+            {% else %}
+              <span class="state-badge sent">{{ dl.get_send_state_display }}</span>
+            {% endif %}
+          </td>
           <td>
             {% if dl.is_edited %}
               <span class="ver edited">v{{ dl.current_version }}</span>

@@ -639,8 +639,15 @@ def test_vydej_create_view_has_no_date_field(user_obsluha_tyn) -> None:
 def test_dodaci_list_detail_renders_failed_banner_when_unresolved(
     user_tyn, tyn, ricany, pepper
 ) -> None:
-    """When current_version has FAILED log and no SENT log, banner shows."""
+    """When current_version has FAILED log and no SENT log, banner shows —
+    but only for an already-SENT dodák (per 0096 the WAITING fail path routes
+    to the "Čeká na odeslání" surface, not this banner)."""
+    from inventory.models import DodaciList
+
     mv, dl = _seed_vydej(user_tyn, tyn, ricany, pepper)
+    # Simulate an already-issued dodák whose latest re-send FAILED.
+    dl.send_state = DodaciList.SendState.SENT
+    dl.save(update_fields=["send_state"])
     # Replace all logs at current_version with a single FAILED row.
     EmailLog.objects.filter(
         dodaci_list=dl, dodaci_version=dl.current_version

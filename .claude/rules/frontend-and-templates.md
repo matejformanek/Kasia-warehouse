@@ -84,6 +84,14 @@ on the other branch see/reach by URL?"* and gate it (`request.user.is_vlastnik` 
 roll-ups ("Vše"/"Dochází zboží") must 403 for obsluha. Mirror the established
 pattern (`movement_history`, `branch_dashboard`, `dodaci._deny_other_branch`).
 
+The **„Čeká na odeslání" waiting list (0096)** follows this: the
+`branch_dashboard` card is scoped to the resolved branch (obsluha already 403 on
+another branch), the dodák-**index** section inherits the index's obsluha
+own-branch scope, and the owner **Přehled** card is all-branches (obsluha are
+redirected to `branch_dashboard` before it renders, so no scoping there). The
+`dodaci_list_send` POST reuses `_deny_other_branch` — obsluha can't send another
+branch's dodák.
+
 ## Before you commit a template/CSS change
 
 1. **Run the guards:** `uv run pytest inventory/tests/test_template_hygiene.py`

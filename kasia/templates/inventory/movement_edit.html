@@ -21,10 +21,11 @@
 
 <h3>Dobré vědět</h3>
 <ul>
-  <li>Šlo-li o&nbsp;<strong>výdej</strong>, dodací list se přegeneruje (nová
-  verze) a&nbsp;přepošle příjemcům dodacího listu i&nbsp;vystaviteli výdeje
-  s&nbsp;předponou <strong>[OPRAVA]</strong> v&nbsp;předmětu — počítejte
-  s&nbsp;tím.</li>
+  <li>Šlo-li o&nbsp;<strong>výdej</strong>, dodací list se přegeneruje. Byl-li
+  už dodák <strong>odeslán</strong>, přepošle se příjemcům dodacího listu
+  i&nbsp;vystaviteli výdeje s&nbsp;předponou <strong>[OPRAVA]</strong>
+  v&nbsp;předmětu. Pokud <strong>ještě čeká na odeslání</strong>, úprava jen
+  přegeneruje PDF a&nbsp;žádný e-mail se neodešle.</li>
   <li>Zásoby se automaticky <strong>přepočítají</strong> podle rozdílu oproti
   původnímu pohybu.</li>
   <li>Dole je <strong>záznam všech úprav</strong> tohoto pohybu (kdo, kdy, co,
@@ -39,15 +40,26 @@
 </h1>
 
 {% if is_vydej and dodaci_list %}
-  <div class="card" style="background:var(--warn-tint);border-left:3px solid var(--warn);">
-    Tento výdej je svázán s dodacím listem <strong>{{ dodaci_list.cislo }}</strong>
-    (aktuální verze v{{ dodaci_list.current_version }}). Uložení úpravy automaticky
-    vygeneruje novou verzi PDF a odešle ji s předmětem
-    <code>[OPRAVA] …</code> příjemcům dodacího listu i vystaviteli výdeje.
-    Důvod úpravy se připojí k textu e-mailu.
-    <br>
-    <a href="{% url 'inventory:dodaci_list_detail' cislo=dodaci_list.cislo %}">Otevřít dodací list</a>
-  </div>
+  {% if dodaci_list.is_sent %}
+    <div class="card" style="background:var(--warn-tint);border-left:3px solid var(--warn);">
+      Tento výdej je svázán s dodacím listem <strong>{{ dodaci_list.cislo }}</strong>
+      (aktuální verze v{{ dodaci_list.current_version }}). Dodák už byl odeslán, takže
+      uložení úpravy automaticky vygeneruje novou verzi PDF a odešle ji s předmětem
+      <code>[OPRAVA] …</code> příjemcům dodacího listu i vystaviteli výdeje.
+      Důvod úpravy se připojí k textu e-mailu.
+      <br>
+      <a href="{% url 'inventory:dodaci_list_detail' cislo=dodaci_list.cislo %}">Otevřít dodací list</a>
+    </div>
+  {% else %}
+    <div class="card" style="background:var(--bg);border-left:3px solid var(--fg-soft);">
+      Tento výdej je svázán s dodacím listem <strong>{{ dodaci_list.cislo }}</strong>,
+      který <strong>zatím nebyl odeslán</strong> (čeká na odeslání). Uložení úpravy jen
+      přegeneruje PDF — <strong>žádný e-mail se neodešle</strong>. První e-mail odešlete
+      až tlačítkem <em>Odeslat e-mail zákazníkovi</em> na dodacím listu.
+      <br>
+      <a href="{% url 'inventory:dodaci_list_detail' cislo=dodaci_list.cislo %}">Otevřít dodací list</a>
+    </div>
+  {% endif %}
 {% endif %}
 
 <p class="required-legend">povinné pole</p>

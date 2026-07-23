@@ -20,10 +20,11 @@ class DodaciListAdmin(admin.ModelAdmin):
         "branch",
         "odberatel",
         "current_version",
+        "send_state",
         "is_edited_display",
         "created_by",
     )
-    list_filter = ("branch", "year_issued")
+    list_filter = ("branch", "year_issued", "send_state")
     search_fields = ("cislo", "odberatel__name", "movement__id")
     readonly_fields = (
         "cislo",
@@ -31,6 +32,7 @@ class DodaciListAdmin(admin.ModelAdmin):
         "year_issued",
         "counter",
         "current_version",
+        "send_state",
         "movement",
         "odberatel",
         "date_issued",

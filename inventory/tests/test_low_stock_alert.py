@@ -47,15 +47,16 @@ def _vydej(branch, customer, user, product, line_qty):
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_vydej_crossing_below_positive_threshold_alerts(tyn, ricany, pepper, user_tyn):
     """Výdej taking effective from above→below a positive threshold sends the
-    alert (to Petr only) in addition to the dodák."""
+    alert (to Petr only). Per 0096 the dodák no longer auto-sends at výdej, so
+    the alert is the only e-mail."""
     pepper.reorder_threshold_kg = Decimal("5.000")
     pepper.save()
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("6.000"))
 
     _vydej(tyn, ricany, user_tyn, pepper, "2.000")  # 6 → 4, crosses below 5
 
-    # Dodák (to all active recipients) + one alert.
-    assert len(mail.outbox) == 2
+    # Only the low-stock alert — no dodák e-mail at výdej anymore (0096).
+    assert len(mail.outbox) == 1
     alerts = _alerts()
     assert len(alerts) == 1
     assert alerts[0].to == ["petr@example.cz"]  # Karolína not subscribed
@@ -66,14 +67,15 @@ def test_vydej_crossing_below_positive_threshold_alerts(tyn, ricany, pepper, use
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_vydej_staying_above_threshold_no_alert(tyn, ricany, pepper, user_tyn):
-    """Výdej that leaves effective ≥ threshold → dodák only, no alert."""
+    """Výdej that leaves effective ≥ threshold → no alert (and no dodák e-mail
+    at výdej per 0096) → empty outbox."""
     pepper.reorder_threshold_kg = Decimal("5.000")
     pepper.save()
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("10.000"))
 
     _vydej(tyn, ricany, user_tyn, pepper, "3.000")  # 10 → 7, still ≥ 5
 
-    assert len(mail.outbox) == 1  # dodák only
+    assert len(mail.outbox) == 0  # no alert, no dodák e-mail (0096)
     assert _alerts() == []
 
 
@@ -87,7 +89,7 @@ def test_already_below_further_vydej_no_new_alert(tyn, ricany, pepper, user_tyn)
 
     _vydej(tyn, ricany, user_tyn, pepper, "1.000")  # 3 → 2, already below before
 
-    assert len(mail.outbox) == 1  # dodák only
+    assert len(mail.outbox) == 0  # no re-alert, no dodák e-mail (0096)
     assert _alerts() == []
 
 
@@ -224,7 +226,7 @@ def test_mixing_untracked_component_never_alerts(tyn, pepper, voda, user_vlastni
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_no_low_stock_subscriber_no_alert_no_error(tyn, ricany, pepper, user_tyn):
     """No is_low_stock_recipient=True subscriber → the crossing sends no alert
-    and raises no error (dodák still goes out to active recipients)."""
+    and raises no error. Per 0096 the dodák doesn't auto-send → empty outbox."""
     SettingsRecipient.objects.update(is_low_stock_recipient=False)
     pepper.reorder_threshold_kg = Decimal("5.000")
     pepper.save()
@@ -233,4 +235,4 @@ def test_no_low_stock_subscriber_no_alert_no_error(tyn, ricany, pepper, user_tyn
     _vydej(tyn, ricany, user_tyn, pepper, "2.000")  # crosses below, but no subscriber
 
     assert _alerts() == []
-    assert len(mail.outbox) == 1  # dodák only
+    assert len(mail.outbox) == 0  # no alert, no dodák e-mail (0096)

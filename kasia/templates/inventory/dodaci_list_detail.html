@@ -7,7 +7,21 @@
 
 {% block content %}
 <h1>Dodací list <span class="cislo">{{ dodaci_list.cislo }}</span></h1>
-<p class="muted" style="margin:0 0 1.1rem;">Detail vystaveného dodacího listu. Aktuální verze v{{ dodaci_list.current_version }}.</p>
+{% if dodaci_list.is_sent %}
+  <p class="muted" style="margin:0 0 1.1rem;">Detail vystaveného dodacího listu. Aktuální verze v{{ dodaci_list.current_version }}.</p>
+{% else %}
+  <p class="muted" style="margin:0 0 1.1rem;">Detail rozpracovaného dodacího listu. Zákazníkovi zatím nebyl odeslán.</p>
+{% endif %}
+
+{% if dodaci_list.is_waiting %}
+  <p class="wait-note">
+    <strong>Čeká na odeslání.</strong>
+    Dodák je vytvořen a&nbsp;zboží odepsáno ze skladu, ale zákazníkovi
+    <strong>ještě nebyl odeslán</strong>. Zkontrolujte položky a&nbsp;klikněte na
+    <em>Odeslat e-mail zákazníkovi</em>. Do té doby můžete výdej libovolně
+    upravovat bez odeslání e-mailů.
+  </p>
+{% endif %}
 
 {% if dodaci_list.is_edited %}
   <p class="edit-note">
@@ -16,7 +30,7 @@
   </p>
 {% endif %}
 
-{% if current_version_unresolved %}
+{% if dodaci_list.is_sent and current_version_unresolved %}
   <p class="fail-note">
     <strong>Poslední odeslání selhalo.</strong>
     Klikněte na <em>Znovu odeslat</em> níže pro nový pokus. Podrobnosti chyby viz tabulka „Verze a odeslání".
@@ -53,12 +67,25 @@
 <!-- Actions. -->
 <div class="card">
   <div class="actions">
-    <a class="primary" href="{% url 'inventory:dodaci_list_pdf' cislo=dodaci_list.cislo %}">Stáhnout PDF</a>
-    <a class="secondary" href="{% url 'inventory:movement_edit' pk=movement.pk %}">Otevřít výdej</a>
-    <form method="post" action="{% url 'inventory:dodaci_list_resend' cislo=dodaci_list.cislo %}" style="display:inline;">
-      {% csrf_token %}
-      <button class="secondary" type="submit">Znovu odeslat</button>
-    </form>
+    {% if dodaci_list.is_waiting %}
+      <form method="post" action="{% url 'inventory:dodaci_list_send' cislo=dodaci_list.cislo %}" style="display:inline;">
+        {% csrf_token %}
+        <button class="primary js-confirm" type="submit"
+                data-confirm-danger="false"
+                data-confirm-title="Odeslat dodací list zákazníkovi?"
+                data-confirm-body="Odeslat e-mail s dodacím listem {{ dodaci_list.cislo }} příjemcům dodacího listu i vystaviteli výdeje?"
+                data-confirm-cta="Odeslat">Odeslat e-mail zákazníkovi</button>
+      </form>
+      <a class="secondary" href="{% url 'inventory:dodaci_list_pdf' cislo=dodaci_list.cislo %}">Stáhnout PDF</a>
+      <a class="secondary" href="{% url 'inventory:movement_edit' pk=movement.pk %}">Otevřít výdej</a>
+    {% else %}
+      <a class="primary" href="{% url 'inventory:dodaci_list_pdf' cislo=dodaci_list.cislo %}">Stáhnout PDF</a>
+      <a class="secondary" href="{% url 'inventory:movement_edit' pk=movement.pk %}">Otevřít výdej</a>
+      <form method="post" action="{% url 'inventory:dodaci_list_resend' cislo=dodaci_list.cislo %}" style="display:inline;">
+        {% csrf_token %}
+        <button class="secondary" type="submit">Znovu odeslat</button>
+      </form>
+    {% endif %}
     <a class="secondary" href="{% url 'inventory:dodaci_list_index' %}">Zpět na seznam</a>
   </div>
 </div>

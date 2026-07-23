@@ -20,6 +20,7 @@ from ..services import (
     render_dodaci_list_pdf,
     render_recipe_pdf,
     send_dodaci_list_email,
+    send_first_dodaci,
 )
 from ._shared import _dl_failed_at_current_version
 
@@ -55,6 +56,16 @@ def dodaci_list_index(request):
         if branch_id:
             qs = qs.filter(branch_id=branch_id)
 
+    # Per 0096: the "Čeká na odeslání" section is filter-independent (year /
+    # edited don't apply) so a pending dodák can never be hidden behind a
+    # filter — but it inherits the branch scope above (obsluha own-branch, or
+    # the vlastník's chosen branch), which is a security/relevance concern.
+    waiting_dodaky = list(
+        qs.filter(send_state=DodaciList.SendState.WAITING).order_by(
+            "date_issued", "id"
+        )
+    )
+
     if year:
         qs = qs.filter(year_issued=year)
     if edited_only:
@@ -73,6 +84,7 @@ def dodaci_list_index(request):
         {
             "dodaci_listy": qs,
             "count": qs.count(),
+            "waiting_dodaky": waiting_dodaky,
             "branches": branches,
             "years": years,
             "filter_branch": branch_id,
@@ -150,6 +162,30 @@ def recipe_pdf(request, pk: int):
     slug = slugify(product.name_cs) or f"smes-{product.pk}"
     response["Content-Disposition"] = f'inline; filename="receptura-{slug}.pdf"'
     return response
+
+
+@require_POST
+def dodaci_list_send(request, cislo: str):
+    """Operator-triggered *first* send of a WAITING dodák (per 0096).
+
+    Sends the initial "vystavení" e-mail and flips WAITING → SENT on success.
+    Obsluha is branch-scoped (0040). Idempotent: a dodák that is no longer
+    WAITING (already sent, or sent concurrently) short-circuits with an info
+    message so a double-post can't re-send.
+    """
+    dodaci_list = get_object_or_404(DodaciList, cislo=cislo)
+    denied = _deny_other_branch(request, dodaci_list.branch_id)
+    if denied is not None:
+        return denied
+    if dodaci_list.send_state != DodaciList.SendState.WAITING:
+        messages.info(request, "Tento dodací list už byl odeslán.")
+        return redirect("inventory:dodaci_list_detail", cislo=cislo)
+    log = send_first_dodaci(dodaci_list, sent_by=request.user)
+    if log.status == EmailLog.Status.SENT:
+        messages.success(request, f"E-mail odeslán ({log.recipients}).")
+    else:
+        messages.error(request, f"Odeslání selhalo: {log.error_message}")
+    return redirect("inventory:dodaci_list_detail", cislo=cislo)
 
 
 @require_POST

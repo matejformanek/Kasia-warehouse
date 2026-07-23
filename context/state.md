@@ -5,6 +5,20 @@
 
 ## Done
 
+- **2026-07-23** — **SEZ batch 2: 8 more real recipes + 14 raws on prod.**
+  Petr's follow-up XLS + rulings, via untracked
+  `scratchpad/import_sez_recipes_batch2.py` (local smoke → prod, positions per
+  0092): Jogurtový knedlík (batch 801,9 incl. the 4 gram-cell rows), Těsto
+  Exclusive VIA (newer 750 kg 2026-06-08 wins over 700 kg 2026-02-11 — same
+  product), Těsto Exclusive (480,1), Bezlepkové těsto (200), Malinový puding
+  (200,7), Mango chia puding (200), Halušky Alberto (500), Chlupaté knedlíky VIA
+  (500). Rulings: Kaše PF51 = Bramborové vločky (reuse; note „kaše PF51"); BÍLEK
+  = new „Vaječný bílek" (≠ Vejce sušená). 14 new raws (Vaječný bílek, Jogurt
+  sušený, Aroma jogurt, Pyrofosforečnan, Paselli, Jedlá soda, Ethylvanilin,
+  Akofine, Syrovátka, Remyflo R7, CPE 1500, Aroma malina, Směs malina, Chia
+  semínka). 22 new 0-kg SEZ Stock rows, 0 TYN; every ratio-sum 1.000000.
+  **Still deferred (Petr):** Bramborové těsto family, Bramboráčky, Bramborová
+  kaše, Vícezrný, Sezimák houskový — only the still-produced ones.
 - **2026-07-23** — **Oznámení broadcast + Podpora resolve note & notify**
   (decisions [`0097`](./decisions/0097-oznameni-broadcast-email.md) +
   [`0098`](./decisions/0098-podpora-resolve-note-and-notify.md); migration

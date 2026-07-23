@@ -139,8 +139,10 @@ or restructure:
   `dict[branch_id → dict[product_id → "qty" (3-dp dot string)]]` of raw
   `Stock.quantity` for active branches. A script in `_movement_form_lines.html`
   (inside `{% if show_stock_warn %}`) parses it once, then on any
-  `#lines-body` `input`/`change`, any deferred (`queueMicrotask`)
-  `.row-delete-btn` click, and any `[name=branch]` `change` re-runs `recompute()`:
+  `#lines-body` `input`/`change`, any deferred `.row-delete-btn` click (a
+  `setTimeout(…,0)` macrotask so it runs **after** base.html's synchronous
+  `.marked-deleted` toggle, not a `queueMicrotask` which races it), and any
+  `[name=branch]` `change` re-runs `recompute()`:
   it reads the selected `[name=branch]`, walks each
   `.line-row:not(.marked-deleted)`'s `select[name$="-product"]` +
   `input[name$="-quantity_kg"]`, **aggregates requested qty per product**

@@ -5,6 +5,26 @@
 
 ## Done
 
+- **2026-07-26** — **Auto-notify branch obsluha on a vlastník-issued výdej**
+  (decision [`0099`](./decisions/0099-vydej-branch-request-notification.md);
+  migration **0032** — AlterField for new `EmailLog.Category.VYDEJ_REQUEST`).
+  When a vlastník / správce creates a customer výdej for a branch,
+  `apply_movement` fires a post-commit `send_vydej_branch_request(dodaci_list)`
+  (`inventory/services/movement.py`) that e-mails that branch's active obsluha a
+  „žádost o vyřízení výdeje" with the dodák number + a clickable detail link.
+  Gated on `user.is_vlastnik` + a dodák actually created (internal/mixing výdeje
+  skip; obsluha-created výdeje skip). New helpers in
+  `inventory/services/email.py`: `_active_branch_obsluha_recipients` (mirrors
+  `User.is_obsluha`, branch-scoped), `send_vydej_branch_request` (routes through
+  `send_and_log`, returns None when the branch has no obsluha), + a
+  `_default_from_email(s)` extract. The row is **not** linked to the dodák
+  (`dodaci_list=None`) — a standalone internal notification (like
+  FEEDBACK_RESOLVED), so no phantom „odesláno" row on the WAITING dodák's „Verze a
+  odeslání" table. The "done" signal back to the creator is the existing 0081
+  issuer-copy — no new send-side mail. No form/template/model-field change. New
+  `inventory/tests/test_vydej_request.py` (4 cases). 684 tests pass. Rules updated
+  (design-system § Nastavení recipients: „Two → Three" not-SettingsRecipient
+  paths + VYDEJ_REQUEST bullet).
 - **2026-07-23** — **SEZ batch 2: 8 more real recipes + 14 raws on prod.**
   Petr's follow-up XLS + rulings, via untracked
   `scratchpad/import_sez_recipes_batch2.py` (local smoke → prod, positions per

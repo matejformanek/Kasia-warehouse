@@ -18,6 +18,7 @@ from .dodaci_list import (
     render_dodaci_list_pdf,
     send_dodaci_list_email,
 )
+from .email import send_vydej_branch_request
 from .reorder import capture_low_stock_state, send_low_stock_alert_for_crossings
 from .stock import _apply_line_to_stock
 
@@ -167,17 +168,30 @@ def apply_movement(
             line.save()
             _apply_line_to_stock(line, direction=direction)
 
+        dodaci_list = None
         if movement.kind == Movement.Kind.VYDEJ and not is_internal_vydej:
             # Per 0096: create the dodák in WAITING but send NOTHING. Stock is
             # still deducted above; the first e-mail waits for the operator to
             # click "Odeslat" (send_first_dodaci) after reviewing the draft.
-            _create_dodaci_list_for_movement(movement)
+            dodaci_list = _create_dodaci_list_for_movement(movement)
 
         transaction.on_commit(
             lambda: send_low_stock_alert_for_crossings(
                 low_stock_pairs, low_stock_before
             )
         )
+
+        # Per 0099: a vlastník-issued customer výdej auto-asks the branch's
+        # obsluha to fulfil it. Post-commit (like the low-stock alert) so the
+        # dodák row exists and a mail outage can't roll back the výdej. Gated on
+        # the creator being a vlastník: obsluha-created výdeje skip (they are the
+        # fulfiller), and internal / mixing výdeje never make a dodák so
+        # `dodaci_list is None` excludes them. The issuing vlastník is never in
+        # the obsluha recipient list, so no self-notify.
+        if dodaci_list is not None and user.is_vlastnik:
+            transaction.on_commit(
+                lambda: send_vydej_branch_request(dodaci_list)
+            )
 
         return movement
 

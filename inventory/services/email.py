@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.conf import settings as django_settings
+from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage, get_connection
 from django.db.models import Q
 from django.urls import reverse
@@ -12,6 +13,21 @@ from ..models import (
     Settings,
     SettingsRecipient,
 )
+
+User = get_user_model()
+
+
+def _default_from_email(s: Settings) -> str | None:
+    """The app's from-header from live ``Settings`` (per 0049).
+
+    ``"Name <addr>"`` when both are set, else the bare address, else ``None`` so
+    Django falls back to ``DEFAULT_FROM_EMAIL``. (Same idiom copy-pasted at the
+    dodák / low-stock / feedback / announcement / credentials call sites — those
+    are left as a follow-up cleanup.)
+    """
+    if s.email_from_name and s.email_from_address:
+        return f"{s.email_from_name} <{s.email_from_address}>"
+    return s.email_from_address or None
 
 
 def _absolute_url(url_name: str, *args, **kwargs) -> str:
@@ -87,6 +103,27 @@ def _active_feedback_recipients() -> list[str]:
             is_active=True, is_feedback_recipient=True
         )
         .order_by("sort_order", "id")
+        .values_list("email", flat=True)
+    )
+
+
+def _active_branch_obsluha_recipients(branch) -> list[str]:
+    """Active obsluha e-mails scoped to one branch, ordered for the send-to list.
+
+    Mirrors the ``User.is_obsluha`` property exactly (active, in the ``obsluha``
+    group, superusers excluded — a superuser is never obsluha), then scopes to
+    ``branch``. Feeds ``send_vydej_branch_request`` (per 0099). The ``"obsluha"``
+    literal is the de-facto source of truth (hardcoded in ``is_obsluha``,
+    ``forms._sync_role``, the seed + migration ``0002_seed_groups``).
+    """
+    return list(
+        User.objects.filter(
+            is_active=True,
+            branch=branch,
+            groups__name="obsluha",
+            is_superuser=False,
+        )
+        .order_by("email")
         .values_list("email", flat=True)
     )
 
@@ -245,6 +282,59 @@ def send_feedback_resolved_notification(feedback) -> EmailLog | None:
         body=body,
         recipients=[to_addr],
         from_email=from_email,
+    )
+
+
+def send_vydej_branch_request(dodaci_list) -> EmailLog | None:
+    """Ask a branch's obsluha to fulfil a vlastník-issued výdej (per 0099).
+
+    Fired from ``apply_movement``'s ``on_commit`` when the creating user is a
+    vlastník and the výdej produced a dodák. Recipients are the dodák branch's
+    active obsluha (same-branch teammates — plain ``to=``, no BCC); returns
+    ``None`` (nothing sent, nothing logged) when the branch has no obsluha —
+    defensive, like ``send_feedback_resolved_notification``.
+
+    The row is **not** linked to the dodák (``dodaci_list=None``): a standalone
+    internal notification, so it never injects a phantom „odesláno" row into the
+    dodák's „Verze a odeslání" table (which is ungated by ``send_state``). It
+    still appears in the vlastník „E-maily" outbox via its category.
+    """
+    branch = dodaci_list.branch
+    recipients = _active_branch_obsluha_recipients(branch)
+    if not recipients:
+        return None
+    requester = dodaci_list.created_by
+    who = (
+        (requester.get_full_name() or requester.email)
+        if requester
+        else "Uživatel"
+    )
+    s = Settings.load()
+    detail_url = _absolute_url(
+        "inventory:dodaci_list_detail", cislo=dodaci_list.cislo
+    )
+    subject = f"Žádost o vyřízení výdeje — {dodaci_list.cislo}"
+    body = (
+        f"Dobrý den,\n\n"
+        f"{who} vytvořil(a) výdej pro pobočku {branch.name} a žádá o jeho "
+        f"vyřízení.\n\n"
+        f"Dodací list: {dodaci_list.cislo}\n"
+        f"Zákazník: {dodaci_list.odberatel.name}\n\n"
+        f"Zkontrolujte prosím dodací list, případně jej upravte, a poté "
+        f"klikněte na „Odeslat e-mail zákazníkovi“.\n\n"
+        f"Otevřít dodací list: {detail_url}\n\n"
+        f"S pozdravem, Kasia vera s.r.o."
+    )
+    return send_and_log(
+        category=EmailLog.Category.VYDEJ_REQUEST,
+        trigger_reason="Žádost o vyřízení výdeje",
+        subject=subject,
+        body=body,
+        recipients=recipients,
+        from_email=_default_from_email(s),
+        sent_by=requester,
+        dodaci_list=None,
+        dodaci_version=None,
     )
 
 

@@ -20,6 +20,7 @@ from .dodaci_list import (
     send_first_dodaci,
 )
 from .email import (
+    _active_branch_obsluha_recipients,
     _active_dodak_recipients,
     _active_feedback_recipients,
     _active_low_stock_recipients,
@@ -29,6 +30,7 @@ from .email import (
     send_feedback_notification,
     send_feedback_resolved_notification,
     send_new_user_credentials,
+    send_vydej_branch_request,
 )
 from .mixing import (
     cancel_mixing_job,
@@ -64,6 +66,7 @@ __all__ = [
     "edit_movement",
     "_apply_line_to_stock",
     "_smtp_connection_from_settings",
+    "_active_branch_obsluha_recipients",
     "_active_dodak_recipients",
     "_active_feedback_recipients",
     "_active_low_stock_recipients",
@@ -72,6 +75,7 @@ __all__ = [
     "send_feedback_notification",
     "send_feedback_resolved_notification",
     "send_new_user_credentials",
+    "send_vydej_branch_request",
     "_reserve_dodak_number",
     "_create_dodaci_list_for_movement",
     "_amounts_summing_to",

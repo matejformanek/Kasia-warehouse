@@ -27,6 +27,7 @@ class EmailLog(models.Model):
         DODACI_VYSTAVENI = "dodaci_vystaveni", "dodací list — vystavení"
         DODACI_OPRAVA = "dodaci_oprava", "dodací list — oprava"
         DODACI_RESEND = "dodaci_resend", "dodací list — opětovné odeslání"
+        VYDEJ_REQUEST = "vydej_request", "žádost o vyřízení výdeje"
         LOW_STOCK_ALERT = "low_stock_alert", "upozornění — dochází zboží"
         FEEDBACK = "feedback", "hlášení z podpory"
         FEEDBACK_RESOLVED = "feedback_resolved", "vyřešené hlášení"

@@ -535,8 +535,8 @@ first `<option value="">` is „Všechny". These are **no new GET partial
 endpoint**, so `frontend-and-templates.md`'s `EXCLUDED_URL_NAMES` rule needs no
 entry.
 
-**Two send paths are NOT `SettingsRecipient`-routed** — the per-flag table above
-is authoritative only for dodáky / Podpora-intake / dochází-souhrn:
+**Three send paths are NOT `SettingsRecipient`-routed** — the per-flag table
+above is authoritative only for dodáky / Podpora-intake / dochází-souhrn:
 
 - **Oznámení** (broadcast composer on the E-maily page, per
   [`0097`](../../context/decisions/0097-oznameni-broadcast-email.md)) — audience
@@ -546,6 +546,11 @@ is authoritative only for dodáky / Podpora-intake / dochází-souhrn:
 - **FEEDBACK_RESOLVED** (Podpora resolve notification, per
   [`0098`](../../context/decisions/0098-podpora-resolve-note-and-notify.md))
   mails the report's **`created_by`**, not a recipient row.
+- **VYDEJ_REQUEST** (request-to-branch mail on a vlastník-issued výdej, per
+  [`0099`](../../context/decisions/0099-vydej-branch-request-notification.md)) —
+  audience = that branch's active obsluha Users (`User.branch` + `obsluha` group,
+  via `_active_branch_obsluha_recipients`), not a recipient row; fired from
+  `apply_movement`'s `on_commit`. POST-only flow → no `EXCLUDED_URL_NAMES` entry.
 
 ## Out of scope for web chrome
 

@@ -24,6 +24,7 @@ from ..models import (
 )
 from ..services import (
     cancel_mixing_job,
+    delete_completed_mixing_job,
     edit_completed_mixing_job,
     finish_mixing_job,
     plan_mixing_job,
@@ -447,6 +448,34 @@ def mixing_job_edit(request, pk: int):
         return redirect("inventory:mixing_job_detail", pk=job.pk)
     messages.success(request, "Dávka upravena — stav skladu byl přepočítán.")
     return redirect("inventory:mixing_job_detail", pk=job.pk)
+
+
+@require_http_methods(["POST"])
+def mixing_job_delete(request, pk: int):
+    """Hard-delete a DONE dávka and return its stock (per 0101): ingredients
+    back, produced směs removed, record + internal movements erased. Refuses
+    (friendly message) if the produced směs has since been sold below what this
+    míchání added. Obsluha delete only their own branch."""
+    job = get_object_or_404(MixingJob, pk=pk)
+    if (
+        request.user.is_obsluha
+        and request.user.branch_id != job.branch_id
+    ):
+        return HttpResponse(
+            "Nemáte oprávnění smazat tuto dávku.",
+            content_type="text/plain; charset=utf-8",
+            status=403,
+        )
+    try:
+        delete_completed_mixing_job(mixing_job=job, user=request.user)
+    except ValidationError as exc:
+        messages.error(
+            request,
+            "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc),
+        )
+        return redirect("inventory:mixing_job_detail", pk=job.pk)
+    messages.success(request, "Dávka smazána — stav skladu byl vrácen.")
+    return redirect("inventory:mixing_job_index")
 
 
 @require_http_methods(["POST"])

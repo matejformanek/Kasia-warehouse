@@ -19,6 +19,7 @@ from ..models import (
 )
 from . import counterparties
 from .movement import apply_movement, build_movement, edit_movement
+from .stock import _apply_line_to_stock
 
 
 def _micharna_customer() -> Customer:
@@ -699,6 +700,56 @@ def edit_completed_mixing_job(
             jl.save(update_fields=update_fields)
 
         return mixing_job
+
+
+def delete_completed_mixing_job(*, mixing_job: MixingJob, user) -> None:
+    """Hard-delete a DONE míchání dávka, returning its stock (per 0101).
+
+    A míchání is a self-contained internal operation (consume výdej + produce
+    příjem to/from the internal Míchárna, no dodák/e-mail), so it can be erased
+    wholesale: the ingredients go back on the shelf, the produced směs is
+    removed, and the record + both movements + their audit rows are deleted —
+    nothing remains in the míchání list or in Historie.
+
+    Stock is reversed with the `_apply_line_to_stock` primitive (which enforces
+    `stock_non_negative`), NOT via `edit_movement` — the audit rows would be
+    cascade-deleted with the movements anyway, and `edit_movement` would also
+    schedule a spurious low-stock e-mail when the produced-mixture removal drops
+    that stock. Removing the produce line first fail-fasts if the směs has since
+    been sold below what this míchání added (ValidationError → whole delete
+    rolls back). `user` is accepted for interface symmetry; a hard delete keeps
+    no actor record.
+    """
+    if mixing_job.state != MixingJob.State.DONE:
+        raise ValidationError(
+            {"state": "Smazat lze pouze dokončenou dávku."}
+        )
+
+    with transaction.atomic():
+        consume_movement = mixing_job.consume_movement
+        produce_movement = mixing_job.produce_movement
+
+        # Remove the produced směs from stock first (fail-fast if sold down).
+        # produce is a příjem (was +1) → reverse with direction=-1.
+        if produce_movement is not None:
+            for ml in produce_movement.lines.select_related(
+                "product", "movement", "movement__branch"
+            ):
+                _apply_line_to_stock(ml, direction=-1)
+        # Return consumed ingredients. consume is a výdej (was -1) → +1.
+        if consume_movement is not None:
+            for ml in consume_movement.lines.select_related(
+                "product", "movement", "movement__branch"
+            ):
+                _apply_line_to_stock(ml, direction=1)
+
+        # Delete the record + its two internal movements entirely. The job FK to
+        # each movement is PROTECT, so the job goes first; deleting the movements
+        # then cascades their MovementLine + MovementAudit rows.
+        mixing_job.delete()
+        for movement in (consume_movement, produce_movement):
+            if movement is not None:
+                movement.delete()
 
 
 # ---------------------------------------------------------------------------

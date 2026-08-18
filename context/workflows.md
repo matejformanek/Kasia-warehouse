@@ -191,6 +191,15 @@ audited `edit_movement` machinery; internal Míchárna counterparties mean
 no dodák/e-mail is ever re-sent. Setting „Namícháno" to 0 is a cancel and
 is refused by the edit (use Zrušit).
 
+**Deleting a dávka.** A míchání recorded by mistake can be **hard-deleted**
+from its DONE detail (red „Smazat dávku") per
+[`decisions/0101-michani-hard-delete.md`](./decisions/0101-michani-hard-delete.md):
+the record + its two internal movements are erased and the **stock is returned**
+(ingredients back, produced směs removed). It is refused if the směs has since
+been sold below what the míchání added (stock would go negative). Because a
+míchání is a self-contained internal operation (no dodák, no external party),
+nothing external dangles — but the deletion leaves no audit trail.
+
 **Recipe creation:** a mixture's recipe (the RecipeComponent rows
 that govern míchání consumption) can be created two ways:
 manually at `/katalog/novy/` + inline recipe editor on the product

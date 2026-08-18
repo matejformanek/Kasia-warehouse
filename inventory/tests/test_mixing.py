@@ -562,6 +562,102 @@ def test_edit_completed_idempotent_no_audit_rows(
     assert MovementAudit.objects.count() == audit_before
 
 
+# delete_completed_mixing_job (per 0101) ----------------------------------
+
+
+@pytest.mark.django_db
+def test_delete_completed_returns_stock_and_erases(
+    tyn, user_tyn, pepper, paprika
+) -> None:
+    """Hard delete returns every ingredient, removes the produced směs, and
+    erases the record + both internal movements."""
+    from inventory.services import (
+        delete_completed_mixing_job,
+        record_completed_mixing_job,
+    )
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1000.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("1000.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "0.7"), (paprika, "0.3")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("100.000"),
+        actual_produced_qty=Decimal("100.000"),
+        user=user_tyn,
+    )
+    cm_pk, pm_pk, job_pk = (
+        job.consume_movement_id,
+        job.produce_movement_id,
+        job.pk,
+    )
+    delete_completed_mixing_job(mixing_job=job, user=user_tyn)
+    # Record + both movements gone.
+    assert not MixingJob.objects.filter(pk=job_pk).exists()
+    assert not Movement.objects.filter(pk__in=[cm_pk, pm_pk]).exists()
+    # Stock returned to pre-míchání levels; produced směs removed.
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("1000.000")
+    assert Stock.objects.get(product=paprika, branch=tyn).quantity == Decimal("1000.000")
+    ms = Stock.objects.filter(product=mixture, branch=tyn).first()
+    assert (ms.quantity if ms else Decimal("0.000")) == Decimal("0.000")
+
+
+@pytest.mark.django_db
+def test_delete_completed_refused_when_mixture_sold_down(
+    tyn, user_tyn, pepper
+) -> None:
+    """If the produced směs was sold below what the míchání added, the delete is
+    refused (stock can't go negative) and nothing is erased."""
+    from inventory.services import (
+        delete_completed_mixing_job,
+        record_completed_mixing_job,
+    )
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("100.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("10.000"),
+        actual_produced_qty=Decimal("10.000"),
+        user=user_tyn,
+    )
+    # Simulate the směs being sold down below the produced amount.
+    Stock.objects.filter(product=mixture, branch=tyn).update(quantity=Decimal("2.000"))
+    with pytest.raises(ValidationError):
+        delete_completed_mixing_job(mixing_job=job, user=user_tyn)
+    # Nothing deleted; job + movements survive; ingredient stock untouched.
+    job.refresh_from_db()
+    assert job.state == MixingJob.State.DONE
+    assert job.consume_movement is not None and job.produce_movement is not None
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("90.000")
+
+
+@pytest.mark.django_db
+def test_delete_completed_empty_movements(tyn, user_tyn, pepper, paprika) -> None:
+    """The job-12 shape (both movements empty) deletes cleanly, no stock move."""
+    from inventory.services import delete_completed_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("200.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("200.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "0.7"), (paprika, "0.3")])
+    job = _seed_empty_movement_done_job(
+        tyn,
+        mixture,
+        user_tyn,
+        [(pepper, "0.7", "70.000"), (paprika, "0.3", "30.000")],
+    )
+    cm_pk, pm_pk, job_pk = (
+        job.consume_movement_id,
+        job.produce_movement_id,
+        job.pk,
+    )
+    delete_completed_mixing_job(mixing_job=job, user=user_tyn)
+    assert not MixingJob.objects.filter(pk=job_pk).exists()
+    assert not Movement.objects.filter(pk__in=[cm_pk, pm_pk]).exists()
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("200.000")
+
+
 # View tests --------------------------------------------------------------
 
 
@@ -1007,6 +1103,82 @@ def test_mixing_edit_obsluha_forbidden_on_other_branch(
         {"produced_qty": "6.0", "recompute": "on"},
     )
     assert response.status_code == 403
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_delete_view_success(user_vlastnik, tyn, pepper) -> None:
+    from inventory.services import record_completed_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("100.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("10.000"),
+        actual_produced_qty=Decimal("10.000"),
+        user=user_vlastnik,
+    )
+    job_pk = job.pk
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(f"/sklad/michani/{job_pk}/smazat/")
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/sklad/michani/"
+    assert not MixingJob.objects.filter(pk=job_pk).exists()
+    # Ingredient returned; produced mixture removed.
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("100.000")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_delete_view_refused_keeps_job(user_vlastnik, tyn, pepper) -> None:
+    from inventory.services import record_completed_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("100.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("10.000"),
+        actual_produced_qty=Decimal("10.000"),
+        user=user_vlastnik,
+    )
+    Stock.objects.filter(product=mixture, branch=tyn).update(quantity=Decimal("2.000"))
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(f"/sklad/michani/{job.pk}/smazat/")
+    assert response.status_code == 302
+    assert response.headers["Location"] == f"/sklad/michani/{job.pk}/"
+    # Not deleted.
+    assert MixingJob.objects.filter(pk=job.pk).exists()
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_delete_obsluha_forbidden_on_other_branch(
+    user_obsluha_tyn, sez, pepper
+) -> None:
+    from inventory.services import record_completed_mixing_job
+
+    User = get_user_model()
+    sez_runner = User.objects.create_user(
+        email="sez-del@example.cz", password="x" * 12, branch=sez
+    )
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("50.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = record_completed_mixing_job(
+        branch=sez,
+        mixture=mixture,
+        target_qty=Decimal("5.000"),
+        actual_produced_qty=Decimal("5.000"),
+        user=sez_runner,
+    )
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(f"/sklad/michani/{job.pk}/smazat/")
+    assert response.status_code == 403
+    assert MixingJob.objects.filter(pk=job.pk).exists()
 
 
 @pytest.mark.django_db

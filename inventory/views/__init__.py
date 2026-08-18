@@ -56,6 +56,7 @@ from .inventura import inventura_edit, stock_adjust_edit
 from .mixing import (
     mixing_job_cancel,
     mixing_job_create,
+    mixing_job_delete,
     mixing_job_detail,
     mixing_job_edit,
     mixing_job_finish,
@@ -123,6 +124,7 @@ __all__ = [
     "mixing_preview_partial",
     "mixing_job_detail",
     "mixing_job_edit",
+    "mixing_job_delete",
     "mixing_job_finish",
     "mixing_job_cancel",
     "mixing_plan_create",

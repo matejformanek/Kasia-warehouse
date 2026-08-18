@@ -508,7 +508,14 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   `#mixing-edit-form` / `recompute` / `data-ratio` / the `line-<pk>-actual_qty` /
   `produced_qty` hooks is a new decision. The status card **drops** the "Pohyb
   spotřeby / Pohyb produkce" `movement_edit` links (movements stay reachable via
-  Historie); "Stáhnout recepturu (PDF)" stays.
+  Historie); "Stáhnout recepturu (PDF)" stays. A separate **danger form** below
+  carries **„Smazat dávku"** (a red `.js-confirm`) posting to **`mixing_job_delete`**
+  (`michani/<pk>/smazat/`, POST-only, branch-scoped) — per
+  [`0101`](../../context/decisions/0101-michani-hard-delete.md) it **hard-deletes**
+  the DONE dávka + its two internal movements and **returns the stock**
+  (ingredients back, produced směs removed via `_apply_line_to_stock`; refused if
+  the směs was sold below what it added). It is its **own** `<form>` (not nested
+  in the edit form / any `tr.row-link`). No `EXCLUDED_URL_NAMES` entry (POST-only).
 - **Inventura** (per
   [`0065`](../../context/decisions/0065-inventura-sidebar-nav.md), access
   amended by [`0073`](../../context/decisions/0073-obsluha-own-branch-inventura.md))

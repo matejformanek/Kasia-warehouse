@@ -31,6 +31,16 @@
   PR #58. Tests in `inventory/tests/test_mixing.py`. Docs: design-system.md,
   screens/15-michani.md, workflows.md, domain-glossary.md („míchání" /
   „míchárna" / „Namícháno").
+- **2026-08-18** — **Míchání „Smazat" — hard-delete a completed dávka** (decision
+  [`0101`](./decisions/0101-michani-hard-delete.md); no migration). A red
+  „Smazat dávku" on the DONE dávka detail (`mixing_job_delete` view + route
+  `michani/<pk>/smazat/`, POST-only, branch-scoped) **hard-deletes** the record +
+  its two internal Míchárna movements (+ audit) and **returns the stock**
+  (ingredients back, produced směs removed via `_apply_line_to_stock` — refused
+  if the směs was sold below what it added, so no negative stock). New service
+  `delete_completed_mixing_job` (exported). Leaves no trace in Historie —
+  deliberate, justified by the internal no-external-artifact nature of a míchání.
+  Help + Podpora updated. Tests in `inventory/tests/test_mixing.py`.
 - **2026-07-26** — **Auto-notify branch obsluha on a vlastník-issued výdej**
   (decision [`0099`](./decisions/0099-vydej-branch-request-notification.md);
   migration **0032** — AlterField for new `EmailLog.Category.VYDEJ_REQUEST`).

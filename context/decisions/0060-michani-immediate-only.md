@@ -1,5 +1,7 @@
 # 0060 — Míchání is a single immediate action
 
+> Superseded in part by 0100
+
 **Date:** 2026-07-01
 **Decider:** Matej (relaying Petr's ask via the live-app Podpora review)
 **Status:** Active

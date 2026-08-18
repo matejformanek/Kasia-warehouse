@@ -1,6 +1,7 @@
 # 0039 — Mixing job shape: consume-at-start, snapshot recipe, yield as delta
 
 > *Superseded by [0044](./0044-reservations-planned-states.md) in part — see § (1) Reserve vs. consume at start. §§ (2) and (3) remain in force.*
+> *Superseded by [0100](./0100-michani-single-quantity-and-unified-edit.md) in part — see § (3) yield-as-delta: for new jobs `target_qty` is set equal to produced, so there is no delta.*
 
 ## Context
 

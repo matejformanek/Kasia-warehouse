@@ -78,6 +78,11 @@ urlpatterns = [
     path("michani/novy/", views.mixing_job_create, name="mixing_job_create"),
     path("michani/<int:pk>/", views.mixing_job_detail, name="mixing_job_detail"),
     path(
+        "michani/<int:pk>/upravit/",
+        views.mixing_job_edit,
+        name="mixing_job_edit",
+    ),
+    path(
         "michani/<int:pk>/dokoncit/",
         views.mixing_job_finish,
         name="mixing_job_finish",

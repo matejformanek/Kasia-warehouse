@@ -1,5 +1,18 @@
 # Míchání směsi / Mixing job
 
+> **Superseded in part by
+> [`../decisions/0100-michani-single-quantity-and-unified-edit.md`](../decisions/0100-michani-single-quantity-and-unified-edit.md)
+> (2026-08-18).** Míchání is now a **single number**: „Namícháno (kg)" — how
+> much of the blend you made. Consumption is always recipe-proportional
+> (`namícháno × ratio`); there is **no separate target-vs-produced input** (the
+> 0039/0060 two-input model is retired). It models the workers' real
+> **Friday-reconciliation** habit — record the week's total made, the system
+> does the proportional deduction (a "clever inventura" for mixtures). A DONE
+> dávka gains a **unified edit** on its detail page (change „Namícháno" +
+> recompute consumption from the recipe, or override per ingredient). See the
+> "Update — 0100" section at the foot of this file. The screen text below is the
+> older two-step spec, kept for history.
+
 > **Open questions in this screen** (reserve-vs-consume,
 > after-the-fact recording, dust loss tracking) are closed by
 > [`../decisions/0039-mixing-job-shape.md`](../decisions/0039-mixing-job-shape.md):
@@ -199,3 +212,34 @@ Míchání create + preview restyled per mockup `06` (airy immediate form, mono
 numeric inputs); preview partial gains Stav pills + a green white-text
 "Upravit stav surovin" shortage CTA. HTMX preview wiring + `inventura_link`
 preserved. Míchání historie restyled per mockup `18`.
+
+## Update — 0100 (2026-08-18): single „Namícháno" + unified edit
+
+Per [`../decisions/0100-michani-single-quantity-and-unified-edit.md`](../decisions/0100-michani-single-quantity-and-unified-edit.md),
+the screen collapses to the workers' real workflow:
+
+- **Create is one field.** The former "Cílové množství" input is relabelled
+  **„Namícháno (kg)"** (same `id_target_qty` / POST name / `#mixture-defaults`
+  0089 prefill hook). The optional "Skutečně vyrobeno" input is **gone**.
+  Consumption is always `namícháno × ratio`; the derived-consumption preview
+  reads "Spotřebuje se = podíl × namícháno". Save is one immediate DONE action
+  (`record_completed_mixing_job` with `target_qty == actual_produced_qty`).
+- **The DONE detail page is a unified edit.** „Namícháno (kg)" input +
+  a **„Přepočítat spotřebu podle receptury"** checkbox (checked by default) +
+  per-ingredient consumption inputs. Checked → the per-line inputs are
+  read-only and recompute live as `produced × ratio`; unchecked → the operator
+  overrides consumption per line. Save posts to `mixing_job_edit`
+  (`michani/<pk>/upravit/`, POST-only) → the `edit_completed_mixing_job`
+  service → the audited `edit_movement` stock path. „Namícháno" = 0 is refused
+  (that is a Zrušit). Number-input prefills are 1-dp ROUND_HALF_UP dot values
+  (per 0061 — no phantom `.x5` corrections). The old "Pohyb spotřeby / Pohyb
+  produkce" `movement_edit` links are removed from the status card (movements
+  stay reachable via Historie); "Stáhnout recepturu (PDF)" stays.
+- **Index** shows a single **„Namícháno (kg)"** column (the redundant
+  "Skutečně vyrobeno" column is collapsed; legacy jobs where the two differ
+  show `actual_produced_qty`).
+- The legacy PLANNED/RUNNING lifecycle (plan/start/finish/cancel) is retained
+  only for any in-flight job — retired from creation, per 0060.
+- The **13–18 Aug prod data repair** (jobs 8–12, TYN) scales the mis-entered
+  consumption up to `produced × ratio` and rebuilds job 12's empty movements
+  via the same service — see 0100 and `scratchpad/repair_mixing_aug.py`.

@@ -5,6 +5,30 @@
 
 ## Done
 
+- **2026-08-18** — **Míchání = single „Namícháno" quantity + unified edit + data
+  repair** (decision
+  [`0100`](./decisions/0100-michani-single-quantity-and-unified-edit.md);
+  supersedes-in-part 0060 + 0039 §(3); **no migration**). Míchání is now one
+  number — „Namícháno (kg)", how much of the směs was made — driving both the
+  produced-stock add and recipe-proportional consumption (`namícháno × ratio`);
+  the old two-input target-vs-produced form is gone (matches the workers' Friday
+  reconciliation). New service `edit_completed_mixing_job` in
+  `inventory/services/mixing.py` (exported in `services/__init__.py`) powers a
+  **unified edit** on the DONE dávka detail (`mixing_job_edit` view + route
+  `michani/<pk>/upravit/`, POST-only): change „Namícháno" and recompute
+  consumption from the recipe (checkbox „Přepočítat…", default on) or override
+  per ingredient — routed through the audited `edit_movement` path, rolls back on
+  overdraw, no dodák/e-mail (internal Míchárna). Create screen relabelled
+  („Namícháno", `#id_target_qty`/`#mixture-defaults` hooks unchanged); index
+  collapses the redundant „Skutečně vyrobeno" column; number-input prefills are
+  1-dp ROUND_HALF_UP dot (`_kg1`, per 0061). Status-card `movement_edit` links
+  removed; recipe PDF kept. Repair script `scratchpad/repair_mixing_aug.py`
+  (env-`APPLY`-gated, `manage.py shell <`) scales the 13–18 Aug mis-entered prod
+  jobs 8–12 (TYN) consumption up to `produced × ratio` and rebuilds job 12's
+  empty movements — **dry-run first on prod, not yet applied**. Tests in
+  `inventory/tests/test_mixing.py` (54 pass). Docs: design-system.md,
+  screens/15-michani.md, workflows.md, domain-glossary.md („míchání" /
+  „míchárna" / „Namícháno").
 - **2026-07-26** — **Auto-notify branch obsluha on a vlastník-issued výdej**
   (decision [`0099`](./decisions/0099-vydej-branch-request-notification.md);
   migration **0032** — AlterField for new `EmailLog.Category.VYDEJ_REQUEST`).

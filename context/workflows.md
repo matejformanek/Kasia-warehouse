@@ -167,16 +167,29 @@ In MVP per
 (Petr's 2026-06-09 brief: ~25 mixtures, ≤15 components each).
 Branch staff (or owner-level users) open
 [`screens/15-michani.md`](./screens/15-michani.md), pick a mixture
-product (`kind = mixture`), set a target produced quantity in kg,
-and run the job. The job consumes the component products in the
-ratios from the recipe per
+product (`kind = mixture`), and enter **one number** — **„Namícháno
+(kg)"**, how much of the blend they made — per
+[`decisions/0100-michani-single-quantity-and-unified-edit.md`](./decisions/0100-michani-single-quantity-and-unified-edit.md).
+The system adds that finished-mixture stock and, in the same immediate
+action, deducts the source spices in **recipe proportion**
+(`namícháno × ratio`) per
 [`decisions/0005-mixture-recipe-model.md`](./decisions/0005-mixture-recipe-model.md)
-(snapshot at job start; actual consumed may differ from target;
-opt-in source-batch traceability per
-[`decisions/0001-sarze-tracking.md`](./decisions/0001-sarze-tracking.md))
-and produces mixture stock on the mixture product's
-`(product, branch)` row in kg per
+(snapshot at job start; opt-in source-batch traceability per
+[`decisions/0001-sarze-tracking.md`](./decisions/0001-sarze-tracking.md)),
+landing on the mixture product's `(product, branch)` row in kg per
 [`decisions/0028-mass-only-supersedes-0006.md`](./decisions/0028-mass-only-supersedes-0006.md).
+This matches the real **Friday-reconciliation** habit — record the week's
+total made, let the system do the proportional deduction (a "clever
+inventura" for mixtures). The two-input target-vs-produced model
+(0039/0060) is retired.
+
+**Fixing a dávka.** The DONE dávka detail page carries a **unified edit**:
+change „Namícháno" and either let consumption **recompute from the recipe**
+(a „Přepočítat spotřebu podle receptury" checkbox, on by default) or
+override it per ingredient. The stock delta is re-applied through the
+audited `edit_movement` machinery; internal Míchárna counterparties mean
+no dodák/e-mail is ever re-sent. Setting „Namícháno" to 0 is a cancel and
+is refused by the edit (use Zrušit).
 
 **Recipe creation:** a mixture's recipe (the RecipeComponent rows
 that govern míchání consumption) can be created two ways:

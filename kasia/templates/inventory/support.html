@@ -44,7 +44,7 @@ nápovědu právě k&nbsp;té obrazovce.</p>
       <li><strong>Detail produktu</strong> — stav po pobočkách včetně šarží, receptura u&nbsp;směsí, ruční úprava stavu, nastavení objednacího bodu (prahu), archivace.</li>
       <li><strong>Příjem</strong> — příjemka od dodavatele. Položky (kg + šarže) a&nbsp;pole <strong>Očekávaný příjezd</strong>: necháte-li ho prázdné, zásoby naskladní hned; vyplníte-li ho, jde o&nbsp;<strong>plánovaný příjem (objednávku)</strong> — naskladní se až po potvrzení.</li>
       <li><strong>Výdej</strong> — výdejka odběrateli. Po uložení se zásoby sníží, vystaví se <strong>dodací list (PDF)</strong> a&nbsp;automaticky odejde e-mailem příjemcům dodacího listu i&nbsp;vystaviteli výdeje (ne zákazníkovi).</li>
-      <li><strong>Míchání</strong> — namíchání směsi jedním krokem. Vyberete pobočku, směs a&nbsp;cílové množství → suroviny se odečtou a&nbsp;směs naskladní. Žádné plánování / dokončování dávky.</li>
+      <li><strong>Míchání</strong> — namíchání směsi jedním krokem a&nbsp;jedním číslem. Vyberete pobočku, směs a&nbsp;zadáte <strong>Namícháno (kg)</strong> → suroviny se v&nbsp;poměru receptury odečtou a&nbsp;směs naskladní. Na detailu dávky lze množství i&nbsp;spotřebu dodatečně upravit.</li>
       <li><strong>Inventura</strong> — hromadné přepočítání skladu pro jednu pobočku. Projdete řádky, zapíšete skutečné hodnoty, změněné řádky zezelenají, dole je součet (kolik řádků a&nbsp;čistá změna v&nbsp;kg); uložíte jedním tlačítkem.</li>
       <li><strong>Dodací listy</strong> — přehled vystavených dodáků, filtr podle pobočky a&nbsp;období, znovuodeslání PDF e-mailem.</li>
       <li><strong>Historie</strong> — kompletní log všech pohybů. Filtry podle druhu, pobočky, období. Záložka <strong>„Plánované“</strong> obsahuje objednané příjmy čekající na přijetí (tlačítko „Přijmout“).</li>
@@ -83,13 +83,13 @@ nápovědu právě k&nbsp;té obrazovce.</p>
       <li>Klikněte „Vystavit výdej“. Zásoby se sníží, vygeneruje se <strong>dodací list (PDF)</strong> a&nbsp;<strong>automaticky odejde e-mailem</strong> příjemcům dodacího listu i&nbsp;vystaviteli výdeje. Zákazník PDF nedostává.</li>
     </ol>
 
-    <h3>3. Míchání směsi (jeden krok)</h3>
+    <h3>3. Míchání směsi (jedno číslo, jeden krok)</h3>
     <ol>
       <li>Menu → „Míchání“.</li>
-      <li>Vyberte <strong>pobočku</strong>, <strong>směs</strong> a&nbsp;<strong>cílové množství</strong> (kolik kg směsi chcete).</li>
-      <li>Volitelně vyplňte „Skutečně vyrobeno“, liší-li se výsledek od cíle (prázdné = cíl).</li>
-      <li>Klikněte „<strong>Namíchat</strong>“. Suroviny se podle receptury <strong>odečtou</strong> a&nbsp;směs se <strong>naskladní</strong> — vše jedním krokem. Žádné plánování ani dokončování dávky.</li>
+      <li>Vyberte <strong>pobočku</strong> a&nbsp;<strong>směs</strong>, pak zadejte <strong>Namícháno (kg)</strong> — kolik kg směsi jste namíchali.</li>
+      <li>Klikněte „<strong>Namíchat</strong>“. Suroviny se podle receptury <strong>odečtou v&nbsp;tomto poměru</strong> (Namícháno&nbsp;×&nbsp;podíl) a&nbsp;směs se <strong>naskladní</strong> — vše jedním krokem. Žádné plánování ani dokončování dávky, žádné druhé pole.</li>
       <li>Chybí-li surovina, zobrazí se zelené tlačítko „<strong>Upravit stav surovin</strong>“. Otevře inventuru <em>jen</em> pro suroviny této směsi — dosypte / opravte stavy, uložte, vraťte se a&nbsp;namíchejte.</li>
+      <li><strong>Spletli jste se?</strong> Na <strong>detailu dávky</strong> lze „Namícháno“ i&nbsp;spotřebu surovin kdykoli upravit. Přepínač „<strong>Přepočítat spotřebu podle receptury</strong>“ (zapnutý) spotřebu dopočítá z&nbsp;Namícháno; vypnete-li ho, zadáte spotřebu u&nbsp;každé suroviny ručně. Stav skladu se opraví.</li>
     </ol>
 
     <h3>4. Inventura (hromadné přepočítání skladu)</h3>
@@ -121,7 +121,7 @@ nápovědu právě k&nbsp;té obrazovce.</p>
       <li><strong>Dodací list jde příjemcům dodacího listu i&nbsp;vystaviteli výdeje, ne zákazníkovi.</strong> Po výdeji odchází automaticky — zvlášť ho neřešíte.</li>
       <li><strong>Plánovaný příjem se přičte až po „Přijmout“.</strong> Dokud objednávka nedorazí a&nbsp;nepotvrdíte ji v&nbsp;Historii → „Plánované“, zásoby zůstávají beze změny.</li>
       <li><strong>Chce-li Míchání dosypat surovinu</strong>, použijte zelené „Upravit stav surovin“ přímo z&nbsp;chybové hlášky — otevře inventuru jen pro suroviny té směsi. Pak se vraťte a&nbsp;namíchejte.</li>
-      <li><strong>Míchání je jeden krok.</strong> Není žádné plánování, spouštění ani dokončování dávky — kliknete „Namíchat“ a&nbsp;je hotovo. „Skutečně vyrobeno“ nechte prázdné, pokud sedí na cíl.</li>
+      <li><strong>Míchání je jedno číslo, jeden krok.</strong> Zadáte jen „Namícháno (kg)“ — kolik jste namíchali — a&nbsp;kliknete „Namíchat“. Žádné plánování, spouštění ani dokončování dávky, žádné druhé pole. Spletli jste se? Na detailu dávky množství i&nbsp;spotřebu opravíte.</li>
       <li><strong>Šarže není povinná, ale doporučená</strong> — bez ní nelze dohledat původ při reklamaci.</li>
       <li><strong>Oprava pohybu vyžaduje důvod</strong> a&nbsp;u&nbsp;výdeje znovu odešle dodák příjemcům dodacího listu i&nbsp;vystaviteli výdeje s&nbsp;předponou <strong>[OPRAVA]</strong> — počítejte s&nbsp;tím, ať se nediví.</li>
       <li><strong>Inventura je pro celou pobočku najednou.</strong> Změněné řádky zezelenají, dole je součet (kolik řádků, čistá změna kg); uložíte jedním tlačítkem. Ideální na pravidelný přepočet skladu.</li>

@@ -474,6 +474,41 @@ blocks and in `0054` — point there rather than copying hex into this rule.
   Editable on `ProductForm` **vlastník-only** (reuses `can_edit_threshold`); set
   via ORM / admin otherwise. Renaming the `#mixture-defaults` hook or the `> 0`
   gating is a new decision.
+- **Míchání — single „Namícháno" + unified edit (per
+  [`0100`](../../context/decisions/0100-michani-single-quantity-and-unified-edit.md)):**
+  the **create** screen has **one** quantity input labelled **„Namícháno (kg)"** —
+  the same input, keeping `#id_target_qty` / POST name `target_qty` /
+  `#mixture-defaults` (0089) prefill hook **unchanged** (only the `<label>` text
+  changed); the old „Skutečně vyrobeno" (`#id_actual_produced_qty`) input is
+  removed. Consumption is always `namícháno × ratio`. The **DONE dávka detail**
+  (`mixing_job_detail.html`) is an **edit form** (`#mixing-edit-form`,
+  `data-guard-unsaved`) posting to **`mixing_job_edit`**
+  (`michani/<pk>/upravit/`, **POST-only** → no `EXCLUDED_URL_NAMES` entry):
+  a `produced_qty` number input („Namícháno"), a checkbox **`recompute`**
+  („Přepočítat spotřebu podle receptury") — rendered as a **`.recompute-toggle`
+  sliding switch** (`+ .switch` span) reusing the inventura toggle's exact look,
+  styled in `pages/mixing_job_detail.css` (`<link>`ed from the detail template's
+  `{% block extra_head %}`; the template also gained `{% load static %}`).
+  Its **initial checked state is server-driven** (`recompute_default` — checked
+  iff every consume line already equals `produced × ratio`, so a manually-
+  overridden job loads **unchecked** with its real values; the JS **never
+  recomputes on load**, only on an explicit tick-on or a „Namícháno" edit while
+  ticked). Per-line
+  consumption inputs **`line-<jobline_pk>-actual_qty`** each carrying
+  **`data-ratio`** (`|unlocalize`d dot). Number-input `value=` prefills are
+  **view-computed 1-dp ROUND_HALF_UP dot** values (`produced_1dp`, per-line
+  `line.actual_1dp`, via the `_kg1` helper — **never** `floatformat` /
+  `stringformat:'.1f'`, per 0061). A bottom-of-template inline `<script>` (gated
+  on `job.state == "done"`) makes the line inputs read-only + recomputes them
+  live as `produced × data-ratio` with **`toFixed(1)`** (a dot — never
+  `toLocaleString('cs')`) while `recompute` is checked, and frees them when
+  unchecked. Save is a **non-danger `.js-confirm`** ("Uložit změny dávky? Stav
+  skladu se upraví.", `data-confirm-danger="false"`) — no native dialogs (0061).
+  „Namícháno" = 0 is refused by the view (that is a Zrušit). Renaming
+  `#mixing-edit-form` / `recompute` / `data-ratio` / the `line-<pk>-actual_qty` /
+  `produced_qty` hooks is a new decision. The status card **drops** the "Pohyb
+  spotřeby / Pohyb produkce" `movement_edit` links (movements stay reachable via
+  Historie); "Stáhnout recepturu (PDF)" stays.
 - **Inventura** (per
   [`0065`](../../context/decisions/0065-inventura-sidebar-nav.md), access
   amended by [`0073`](../../context/decisions/0073-obsluha-own-branch-inventura.md))

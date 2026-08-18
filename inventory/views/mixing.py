@@ -24,11 +24,20 @@ from ..models import (
 )
 from ..services import (
     cancel_mixing_job,
+    edit_completed_mixing_job,
     finish_mixing_job,
     plan_mixing_job,
     record_completed_mixing_job,
     start_mixing_job,
 )
+
+
+def _kg1(x: Decimal) -> Decimal:
+    """Round a kg quantity to 1 dp with ROUND_HALF_UP — the shared prefill
+    contract (mirrors inventura's `_kg1`) so number-input `value=` prefills
+    agree with the `floatformat:1` display and never resurface a phantom
+    correction (per 0061)."""
+    return x.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
 
 
 @require_GET
@@ -116,9 +125,6 @@ def mixing_job_create(request):
         and str(selected_mixture_id) in mixture_defaults
     ):
         target_qty_value = mixture_defaults[str(selected_mixture_id)]
-    actual_produced_value = (
-        request.POST.get("actual_produced_qty", "") if request.method == "POST" else ""
-    )
     note_value = request.POST.get("note", "") if request.method == "POST" else ""
 
     error: str | None = None
@@ -149,19 +155,15 @@ def mixing_job_create(request):
             ):
                 error = "Nemáte oprávnění pro tuto pobočku."
             else:
-                # "Skutečně vyrobeno" is an optional override; blank → target.
-                try:
-                    actual_produced_qty = Decimal(
-                        request.POST.get("actual_produced_qty", "")
-                    )
-                except (InvalidOperation, ValueError):
-                    actual_produced_qty = target_qty
+                # Per 0100: one number. „Namícháno" drives both the produced
+                # stock and the recipe-proportional consumption — target and
+                # produced are set equal.
                 try:
                     job = record_completed_mixing_job(
                         branch=branch,
                         mixture=mixture,
                         target_qty=target_qty,
-                        actual_produced_qty=actual_produced_qty,
+                        actual_produced_qty=target_qty,
                         user=request.user,
                         note=note,
                     )
@@ -187,7 +189,6 @@ def mixing_job_create(request):
             "selected_branch_id": str(selected_branch_id),
             "target_qty_value": target_qty_value,
             "mixture_defaults": mixture_defaults,
-            "actual_produced_value": actual_produced_value,
             "note_value": note_value,
             "error": error,
         },
@@ -309,10 +310,35 @@ def mixing_job_detail(request, pk: int):
         # id order = creation order = recipe position order at plan time (0092)
         job.lines.select_related("component_product").order_by("id")
     )
+    # Per 0100: the DONE edit form prefills every number input with a 1-dp
+    # ROUND_HALF_UP dot value (never floatformat) so a load never looks edited.
+    for line in lines:
+        line.actual_1dp = _kg1(line.actual_qty)
+    produced = (
+        job.actual_produced_qty
+        if job.actual_produced_qty is not None
+        else job.target_qty
+    )
+    produced_1dp = _kg1(produced)
+    # The „Přepočítat" checkbox defaults to the job's ACTUAL state, not always on:
+    # if every consume line already equals produced × ratio the job is
+    # recipe-proportional (default checked); if any line was manually overridden
+    # the box loads UNCHECKED so the real saved values show and a re-save doesn't
+    # silently recompute them away. (Compared at stored 3-dp precision, matching
+    # the service's bare quantize.)
+    recompute_default = all(
+        line.actual_qty == (produced * line.ratio_at_start).quantize(Decimal("0.001"))
+        for line in lines
+    )
     return render(
         request,
         "inventory/mixing_job_detail.html",
-        {"job": job, "lines": lines},
+        {
+            "job": job,
+            "lines": lines,
+            "produced_1dp": produced_1dp,
+            "recompute_default": recompute_default,
+        },
     )
 
 
@@ -359,6 +385,67 @@ def mixing_job_finish(request, pk: int):
         )
         return redirect("inventory:mixing_job_detail", pk=job.pk)
     messages.success(request, "Dávka dokončena.")
+    return redirect("inventory:mixing_job_detail", pk=job.pk)
+
+
+@require_http_methods(["POST"])
+def mixing_job_edit(request, pk: int):
+    """Unified edit of a DONE dávka (per 0100): change „Namícháno" and, either
+    recompute consumption from the recipe (default) or override it per line.
+    Routes the stock delta through edit_completed_mixing_job. Obsluha edit only
+    their own branch."""
+    job = get_object_or_404(MixingJob, pk=pk)
+    if (
+        request.user.is_obsluha
+        and request.user.branch_id != job.branch_id
+    ):
+        return HttpResponse(
+            "Nemáte oprávnění upravit tuto dávku.",
+            content_type="text/plain; charset=utf-8",
+            status=403,
+        )
+    try:
+        produced_qty = Decimal(request.POST.get("produced_qty", ""))
+    except (InvalidOperation, ValueError):
+        messages.error(request, "Namícháno musí být číslo.")
+        return redirect("inventory:mixing_job_detail", pk=job.pk)
+    if produced_qty <= 0:
+        messages.error(
+            request,
+            "Namícháno musí být větší než 0. Pokud dávku rušíte, použijte Zrušit.",
+        )
+        return redirect("inventory:mixing_job_detail", pk=job.pk)
+
+    recompute = "recompute" in request.POST
+    line_actuals: dict[int, Decimal] = {}
+    if not recompute:
+        for jl in job.lines.all():
+            raw = request.POST.get(f"line-{jl.pk}-actual_qty")
+            if raw is None or raw == "":
+                continue
+            try:
+                line_actuals[jl.pk] = Decimal(raw)
+            except (InvalidOperation, ValueError):
+                messages.error(
+                    request, f"Spotřeba {jl.component_product} musí být číslo."
+                )
+                return redirect("inventory:mixing_job_detail", pk=job.pk)
+    try:
+        edit_completed_mixing_job(
+            mixing_job=job,
+            produced_qty=produced_qty,
+            recompute_consumption=recompute,
+            line_actuals=line_actuals or None,
+            user=request.user,
+            reason="úprava dávky",
+        )
+    except ValidationError as exc:
+        messages.error(
+            request,
+            "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc),
+        )
+        return redirect("inventory:mixing_job_detail", pk=job.pk)
+    messages.success(request, "Dávka upravena — stav skladu byl přepočítán.")
     return redirect("inventory:mixing_job_detail", pk=job.pk)
 
 

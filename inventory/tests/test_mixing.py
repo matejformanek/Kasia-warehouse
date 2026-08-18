@@ -11,6 +11,7 @@ from inventory.models import (
     DodaciList,
     DodaciListNumberSequence,
     MixingJob,
+    MixingJobLine,
     Movement,
     MovementAudit,
     MovementLine,
@@ -311,6 +312,256 @@ def test_record_completed_mixing_job_one_shot(
     )
 
 
+# edit_completed_mixing_job (per 0100) ------------------------------------
+
+
+def _seed_empty_movement_done_job(branch, mixture, user, components):
+    """Hand-build a DONE MixingJob whose consume/produce movements exist but
+    carry ZERO MovementLines — the job-12 shape the repair must rebuild.
+
+    ``components`` is a list of ``(product, ratio, derived)``.
+    """
+    from inventory.services.movement import build_movement
+
+    micharna_c = Customer.objects.get(name="Míchárna", is_internal=True)
+    micharna_s = Supplier.objects.get(name="Míchárna", is_internal=True)
+    consume = build_movement(
+        branch=branch,
+        kind=Movement.Kind.VYDEJ,
+        counterparty=micharna_c,
+        date_issued=date(2026, 8, 14),
+        created_by=user,
+    )
+    consume.save()
+    produce = build_movement(
+        branch=branch,
+        kind=Movement.Kind.PRIJEM,
+        counterparty=micharna_s,
+        date_issued=date(2026, 8, 14),
+        created_by=user,
+    )
+    produce.save()
+    job = MixingJob.objects.create(
+        branch=branch,
+        mixture=mixture,
+        target_qty=Decimal("1.000"),
+        actual_produced_qty=Decimal("1.000"),
+        state=MixingJob.State.DONE,
+        created_by=user,
+        consume_movement=consume,
+        produce_movement=produce,
+    )
+    for prod, ratio, derived in components:
+        MixingJobLine.objects.create(
+            mixing_job=job,
+            component_product=prod,
+            ratio_at_start=Decimal(ratio),
+            derived_qty=Decimal(derived),
+            actual_qty=Decimal(derived),
+        )
+    return job
+
+
+@pytest.mark.django_db
+def test_edit_completed_recompute_scales_all_lines(
+    tyn, user_tyn, pepper, paprika
+) -> None:
+    """recompute=True scales every consume line + the produce line to the new
+    produced amount, and overwrites target_qty."""
+    from inventory.services import (
+        edit_completed_mixing_job,
+        record_completed_mixing_job,
+    )
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1000.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("1000.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "0.7"), (paprika, "0.3")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("100.000"),
+        actual_produced_qty=Decimal("100.000"),
+        user=user_tyn,
+    )
+    # Baseline after seed: consume 70/30, produce 100.
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("930.000")
+    assert Stock.objects.get(product=mixture, branch=tyn).quantity == Decimal("100.000")
+
+    edit_completed_mixing_job(
+        mixing_job=job,
+        produced_qty=Decimal("200.000"),
+        recompute_consumption=True,
+        user=user_tyn,
+    )
+    job.refresh_from_db()
+    assert job.target_qty == Decimal("200.000")
+    assert job.actual_produced_qty == Decimal("200.000")
+    # Consume scaled to 140 / 60; produce to 200.
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("860.000")
+    assert Stock.objects.get(product=paprika, branch=tyn).quantity == Decimal("940.000")
+    assert Stock.objects.get(product=mixture, branch=tyn).quantity == Decimal("200.000")
+    lines = {jl.component_product_id: jl for jl in job.lines.all()}
+    assert lines[pepper.pk].actual_qty == Decimal("140.000")
+    assert lines[pepper.pk].derived_qty == Decimal("140.000")
+    assert lines[paprika.pk].actual_qty == Decimal("60.000")
+
+
+@pytest.mark.django_db
+def test_edit_completed_manual_override_touches_only_supplied_lines(
+    tyn, user_tyn, pepper, paprika
+) -> None:
+    """recompute=False overrides only the supplied consume lines (+ produce);
+    an unsupplied line keeps its actual, and derived_qty is never touched."""
+    from inventory.services import (
+        edit_completed_mixing_job,
+        record_completed_mixing_job,
+    )
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1000.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("1000.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "0.7"), (paprika, "0.3")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("100.000"),
+        actual_produced_qty=Decimal("100.000"),
+        user=user_tyn,
+    )
+    pepper_line = job.lines.get(component_product=pepper)
+    paprika_line = job.lines.get(component_product=paprika)
+
+    edit_completed_mixing_job(
+        mixing_job=job,
+        produced_qty=Decimal("100.000"),
+        recompute_consumption=False,
+        line_actuals={pepper_line.pk: Decimal("65.000")},
+        user=user_tyn,
+    )
+    pepper_line.refresh_from_db()
+    paprika_line.refresh_from_db()
+    # pepper overridden 70 → 65 (5 kg returned to stock); derived untouched.
+    assert pepper_line.actual_qty == Decimal("65.000")
+    assert pepper_line.derived_qty == Decimal("70.000")
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("935.000")
+    # paprika untouched.
+    assert paprika_line.actual_qty == Decimal("30.000")
+    assert Stock.objects.get(product=paprika, branch=tyn).quantity == Decimal("970.000")
+    # produce unchanged.
+    assert Stock.objects.get(product=mixture, branch=tyn).quantity == Decimal("100.000")
+
+
+@pytest.mark.django_db
+def test_edit_completed_rebuilds_empty_movements(
+    tyn, user_tyn, pepper, paprika
+) -> None:
+    """The job-12 shape: both movements empty. The edit adds every consume
+    line + the produce line, mutating stock for the first time."""
+    from inventory.services import edit_completed_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("200.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("200.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "0.7"), (paprika, "0.3")])
+    job = _seed_empty_movement_done_job(
+        tyn,
+        mixture,
+        user_tyn,
+        [(pepper, "0.7", "70.000"), (paprika, "0.3", "30.000")],
+    )
+    assert job.consume_movement.lines.count() == 0
+    assert job.produce_movement.lines.count() == 0
+
+    edit_completed_mixing_job(
+        mixing_job=job,
+        produced_qty=Decimal("100.000"),
+        recompute_consumption=True,
+        user=user_tyn,
+    )
+    job.refresh_from_db()
+    assert job.consume_movement.lines.count() == 2
+    assert job.produce_movement.lines.count() == 1
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("130.000")
+    assert Stock.objects.get(product=paprika, branch=tyn).quantity == Decimal("170.000")
+    assert Stock.objects.get(product=mixture, branch=tyn).quantity == Decimal("100.000")
+    assert job.target_qty == Decimal("100.000")
+
+
+@pytest.mark.django_db
+def test_edit_completed_zero_produced_removes_produce_line(
+    tyn, user_tyn, pepper
+) -> None:
+    """produced_qty=0 removes the produce line + nulls the FK, keeps consume
+    + target_qty."""
+    from inventory.services import (
+        edit_completed_mixing_job,
+        record_completed_mixing_job,
+    )
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("100.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("10.000"),
+        actual_produced_qty=Decimal("10.000"),
+        user=user_tyn,
+    )
+    produce_mv = job.produce_movement
+    edit_completed_mixing_job(
+        mixing_job=job,
+        produced_qty=Decimal("0"),
+        recompute_consumption=True,
+        user=user_tyn,
+    )
+    job.refresh_from_db()
+    assert job.produce_movement is None
+    assert job.actual_produced_qty == Decimal("0.000")
+    assert job.target_qty == Decimal("10.000")  # kept (CHECK __gt=0)
+    produce_mv.refresh_from_db()
+    assert produce_mv.lines.count() == 0
+    # Mixture stock reversed to 0; consume untouched.
+    assert Stock.objects.get(product=mixture, branch=tyn).quantity == Decimal("0.000")
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("90.000")
+
+
+@pytest.mark.django_db
+def test_edit_completed_idempotent_no_audit_rows(
+    tyn, user_tyn, pepper, paprika
+) -> None:
+    """Re-running the same edit is a no-op — edit_movement skips no-op fields,
+    so no new MovementAudit rows are written."""
+    from inventory.services import (
+        edit_completed_mixing_job,
+        record_completed_mixing_job,
+    )
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1000.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("1000.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "0.7"), (paprika, "0.3")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("100.000"),
+        actual_produced_qty=Decimal("100.000"),
+        user=user_tyn,
+    )
+    # First edit — changes nothing (produced already 100, recompute gives 70/30).
+    edit_completed_mixing_job(
+        mixing_job=job,
+        produced_qty=Decimal("100.000"),
+        recompute_consumption=True,
+        user=user_tyn,
+    )
+    audit_before = MovementAudit.objects.count()
+    # Re-run — must be a pure no-op.
+    edit_completed_mixing_job(
+        mixing_job=job,
+        produced_qty=Decimal("100.000"),
+        recompute_consumption=True,
+        user=user_tyn,
+    )
+    assert MovementAudit.objects.count() == audit_before
+
+
 # View tests --------------------------------------------------------------
 
 
@@ -441,9 +692,9 @@ def test_mixing_create_post_records_done_job(user_vlastnik, tyn, pepper) -> None
 
 @pytest.mark.django_db(transaction=True)
 @override_settings(**_VIEW_TEST_OVERRIDES)
-def test_mixing_create_post_actual_produced_override(user_vlastnik, tyn, pepper) -> None:
-    # The optional "skutečně vyrobeno" override records a produced qty that
-    # differs from the target (per 0060).
+def test_mixing_create_post_produced_equals_namichano(user_vlastnik, tyn, pepper) -> None:
+    # Per 0100: one field. „Namícháno" (posted as target_qty) sets both the
+    # target and the produced amount — they are always equal.
     Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("5.000"))
     mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
     client = Client()
@@ -454,13 +705,13 @@ def test_mixing_create_post_actual_produced_override(user_vlastnik, tyn, pepper)
             "branch": tyn.pk,
             "mixture": mixture.pk,
             "target_qty": "2.000",
-            "actual_produced_qty": "1.900",
         },
     )
     assert response.status_code == 302
     job = MixingJob.objects.get()
     assert job.state == MixingJob.State.DONE
-    assert job.actual_produced_qty == Decimal("1.900")
+    assert job.target_qty == Decimal("2.000")
+    assert job.actual_produced_qty == Decimal("2.000")
 
 
 @pytest.mark.django_db
@@ -478,7 +729,6 @@ def test_mixing_create_overdraw_keeps_form(
             "branch": tyn.pk,
             "mixture": mixture.pk,
             "target_qty": "5.000",
-            "actual_produced_qty": "4.800",
             "note": "poznámka k dávce",
         },
     )
@@ -487,8 +737,7 @@ def test_mixing_create_overdraw_keeps_form(
     assert "pod nulu" in body or "Skladová" in body
     assert MixingJob.objects.count() == 0
     # Per 0060 (3b): every POSTed value is echoed back so nothing is lost.
-    assert 'value="5.000"' in body  # target_qty
-    assert 'value="4.800"' in body  # actual_produced_qty
+    assert 'value="5.000"' in body  # target_qty (Namícháno)
     assert "poznámka k dávce" in body  # note
     assert f'value="{tyn.pk}" selected' in body  # branch stays selected
     assert f'value="{mixture.pk}" selected' in body  # směs stays selected
@@ -570,6 +819,193 @@ def test_mixing_obsluha_forbidden_on_other_branch(
     client = Client()
     client.force_login(user_obsluha_tyn)
     response = client.get(f"/sklad/michani/{job.pk}/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_detail_done_renders_edit_form(user_vlastnik, tyn, pepper) -> None:
+    """The DONE detail page shows the unified edit form (per 0100)."""
+    from inventory.services import record_completed_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("100.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("10.000"),
+        actual_produced_qty=Decimal("10.000"),
+        user=user_vlastnik,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    body = client.get(f"/sklad/michani/{job.pk}/").content.decode("utf-8")
+    assert 'id="id_produced_qty"' in body
+    assert 'name="recompute"' in body
+    assert f"/sklad/michani/{job.pk}/upravit/" in body
+    # No banker's-rounding prefill: value is a 1-dp dot.
+    assert 'value="10.0"' in body
+    # movement_edit links dropped from the status card.
+    assert "Pohyb spotřeby" not in body
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_detail_recompute_checkbox_reflects_state(
+    user_vlastnik, tyn, pepper, paprika
+) -> None:
+    """Per 0100 UX fix: the „Přepočítat" checkbox defaults to the job's actual
+    state — checked for a recipe-proportional job, UNCHECKED (with real values
+    shown) for a manually-overridden one, so a re-save never silently recomputes
+    a manual override away."""
+    import re
+
+    from inventory.services import (
+        edit_completed_mixing_job,
+        record_completed_mixing_job,
+    )
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1000.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("1000.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "0.7"), (paprika, "0.3")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("100.000"),
+        actual_produced_qty=Decimal("100.000"),
+        user=user_vlastnik,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    # Recipe-proportional → checkbox checked.
+    body = client.get(f"/sklad/michani/{job.pk}/").content.decode("utf-8")
+    m = re.search(r'id="id_recompute"([^>]*)>', body)
+    assert m and "checked" in m.group(1)
+
+    # Manually override one line → no longer proportional.
+    pepper_line = job.lines.get(component_product=pepper)
+    edit_completed_mixing_job(
+        mixing_job=job,
+        produced_qty=Decimal("100.000"),
+        recompute_consumption=False,
+        line_actuals={pepper_line.pk: Decimal("65.000")},
+        user=user_vlastnik,
+    )
+    body2 = client.get(f"/sklad/michani/{job.pk}/").content.decode("utf-8")
+    m2 = re.search(r'id="id_recompute"([^>]*)>', body2)
+    assert m2 and "checked" not in m2.group(1)
+    # The real overridden value is shown (65.0), NOT the recomputed 70.0.
+    assert 'value="65.0"' in body2
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_edit_view_recompute(user_vlastnik, tyn, pepper) -> None:
+    from inventory.services import record_completed_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("100.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("10.000"),
+        actual_produced_qty=Decimal("10.000"),
+        user=user_vlastnik,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/sklad/michani/{job.pk}/upravit/",
+        {"produced_qty": "20.0", "recompute": "on"},
+    )
+    assert response.status_code == 302
+    job.refresh_from_db()
+    assert job.actual_produced_qty == Decimal("20.000")
+    assert job.target_qty == Decimal("20.000")
+    assert Stock.objects.get(product=mixture, branch=tyn).quantity == Decimal("20.000")
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("80.000")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_edit_view_manual_override(user_vlastnik, tyn, pepper, paprika) -> None:
+    from inventory.services import record_completed_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("1000.000"))
+    Stock.objects.create(product=paprika, branch=tyn, quantity=Decimal("1000.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "0.7"), (paprika, "0.3")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("100.000"),
+        actual_produced_qty=Decimal("100.000"),
+        user=user_vlastnik,
+    )
+    pepper_line = job.lines.get(component_product=pepper)
+    client = Client()
+    client.force_login(user_vlastnik)
+    # recompute checkbox absent ⇒ manual override of just pepper.
+    response = client.post(
+        f"/sklad/michani/{job.pk}/upravit/",
+        {"produced_qty": "100.0", f"line-{pepper_line.pk}-actual_qty": "65.0"},
+    )
+    assert response.status_code == 302
+    pepper_line.refresh_from_db()
+    assert pepper_line.actual_qty == Decimal("65.000")
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("935.000")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_edit_view_rejects_zero(user_vlastnik, tyn, pepper) -> None:
+    from inventory.services import record_completed_mixing_job
+
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("100.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = record_completed_mixing_job(
+        branch=tyn,
+        mixture=mixture,
+        target_qty=Decimal("10.000"),
+        actual_produced_qty=Decimal("10.000"),
+        user=user_vlastnik,
+    )
+    client = Client()
+    client.force_login(user_vlastnik)
+    response = client.post(
+        f"/sklad/michani/{job.pk}/upravit/", {"produced_qty": "0"}
+    )
+    assert response.status_code == 302
+    job.refresh_from_db()
+    # Unchanged — a 0-kg edit is refused (pointed at Zrušit).
+    assert job.actual_produced_qty == Decimal("10.000")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_mixing_edit_obsluha_forbidden_on_other_branch(
+    user_obsluha_tyn, sez, pepper
+) -> None:
+    from inventory.services import record_completed_mixing_job
+
+    User = get_user_model()
+    sez_runner = User.objects.create_user(
+        email="sez-edit@example.cz", password="x" * 12, branch=sez
+    )
+    Stock.objects.create(product=pepper, branch=sez, quantity=Decimal("50.000"))
+    mixture = _mk_mixture_with_recipe("M", [(pepper, "1.0")])
+    job = record_completed_mixing_job(
+        branch=sez,
+        mixture=mixture,
+        target_qty=Decimal("5.000"),
+        actual_produced_qty=Decimal("5.000"),
+        user=sez_runner,
+    )
+    client = Client()
+    client.force_login(user_obsluha_tyn)
+    response = client.post(
+        f"/sklad/michani/{job.pk}/upravit/",
+        {"produced_qty": "6.0", "recompute": "on"},
+    )
     assert response.status_code == 403
 
 

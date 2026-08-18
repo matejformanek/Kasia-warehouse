@@ -179,6 +179,36 @@ contains paprika 30 %, sůl 20 %, …".
 One execution of a mixing job: consumed N kg of source spices to
 produce M kg of mixture, on date D, at branch B.
 
+### míchání
+
+**EN:** mixing / blending (the act).
+Making a *směs* by weighing out its source spices in the recipe
+proportions and blending them. In this system one *míchání* is one
+immediate action: the operator records how much they made
+(*Namícháno*) and the source spices are deducted in recipe
+proportion while the finished směs is stocked. Per
+[`../decisions/0100-michani-single-quantity-and-unified-edit.md`](../decisions/0100-michani-single-quantity-and-unified-edit.md).
+
+### míchárna
+
+**EN:** the mixing room / mixing station.
+The place (or notional internal party) where *míchání* happens. In
+the ledger, the consume and produce movements of a mixing job use a
+seeded internal *Míchárna* counterparty (odběratel for the consume
+výdej, dodavatel for the produce příjem) so they are excluded from
+the dodací-list / e-mail path per
+[`../decisions/0039-mixing-job-shape.md`](../decisions/0039-mixing-job-shape.md).
+
+### Namícháno
+
+**EN:** amount mixed (kg made this batch / this week).
+The single number the operator enters for a *míchání*: how many kg of
+the směs they actually made. It drives both the finished-mixture stock
+added and the recipe-proportional deduction of source spices
+(`namícháno × ratio`). It replaces the older two-input
+target-vs-produced model per
+[`../decisions/0100-michani-single-quantity-and-unified-edit.md`](../decisions/0100-michani-single-quantity-and-unified-edit.md).
+
 ## Movements
 
 ### příjem

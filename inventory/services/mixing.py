@@ -511,6 +511,196 @@ def record_completed_mixing_job(
     )
 
 
+def edit_completed_mixing_job(
+    *,
+    mixing_job: MixingJob,
+    produced_qty: Decimal,
+    recompute_consumption: bool,
+    line_actuals: dict[int, Decimal] | None = None,
+    user,
+    reason: str | None = None,
+) -> MixingJob:
+    """Edit a DONE míchání dávka's made-amount + per-ingredient consumption.
+
+    Per [0100](../context/decisions/0100-michani-single-quantity-and-unified-edit.md):
+    the single source of truth behind both the unified detail-page edit and
+    the 13–18 Aug data repair. Rides the existing ``edit_movement`` machinery,
+    so the whole edit is atomic + audited and rolls back cleanly on any stock
+    overdraw. Internal Míchárna counterparties mean no dodák / e-mail is ever
+    re-sent.
+
+    - ``produced_qty`` — the new „Namícháno" (kg). ``0`` removes the produce
+      line and un-links ``produce_movement`` (a batch of 0 kg is a cancel; the
+      caller-facing edit view refuses ``<= 0`` and points at Zrušit — the
+      service stays robust for the repair, which never passes 0).
+    - ``recompute_consumption=True`` — each consume line becomes
+      ``produced_qty × ratio_at_start``. ``False`` — each line takes
+      ``line_actuals[jobline_pk]`` (falling back to its existing ``actual_qty``
+      when absent).
+
+    Rebuilds empty movements (job 12): where a ``MixingJobLine`` has no
+    matching ``MovementLine``, the line is ``add``-ed to the existing movement.
+    """
+    if mixing_job.state != MixingJob.State.DONE:
+        raise ValidationError(
+            {"state": "Upravit lze pouze dokončenou dávku."}
+        )
+    if produced_qty is None or produced_qty < 0:
+        raise ValidationError(
+            {"produced_qty": "Vyrobené množství nemůže být záporné."}
+        )
+
+    # edit_movement rejects an empty reason (movement.py) — default it here so
+    # neither caller has to.
+    reason = (reason or "").strip() or (
+        f"míchání: úprava dokončené dávky (dávka #{mixing_job.pk})"
+    )
+    line_actuals = line_actuals or {}
+    produced_qty = Decimal(produced_qty)
+
+    with transaction.atomic():
+        job_lines = list(
+            mixing_job.lines.select_related("component_product").order_by("id")
+        )
+
+        # --- produced_qty == 0 short-circuit ----------------------------------
+        # A recomputed 0 consume line would trip the quantity_kg__gt=0 guard
+        # before the produce line is ever reached, so don't recompute: just
+        # remove the produce line, null the FK, and leave consumption untouched.
+        # target_qty is kept (CHECK target_qty__gt=0 forbids 0).
+        if produced_qty == 0:
+            produce_movement = mixing_job.produce_movement
+            if produce_movement is not None:
+                remove_changes = [
+                    {"op": "remove", "line_id": ml.pk}
+                    for ml in produce_movement.lines.all()
+                ]
+                if remove_changes:
+                    edit_movement(
+                        movement=produce_movement,
+                        changes={},
+                        line_changes=remove_changes,
+                        reason=reason,
+                        user=user,
+                    )
+                mixing_job.produce_movement = None
+            mixing_job.actual_produced_qty = Decimal("0.000")
+            mixing_job.save(
+                update_fields=["actual_produced_qty", "produce_movement"]
+            )
+            return mixing_job
+
+        # --- Compute + validate every new consume qty BEFORE any op -----------
+        new_consume: dict[int, Decimal] = {}
+        for jl in job_lines:
+            if recompute_consumption:
+                new_qty = (produced_qty * jl.ratio_at_start).quantize(
+                    Decimal("0.001")
+                )
+            else:
+                raw = line_actuals.get(jl.pk, jl.actual_qty)
+                new_qty = Decimal(raw).quantize(Decimal("0.001"))
+            if new_qty <= 0:
+                raise ValidationError(
+                    {
+                        "line_actuals": (
+                            f"Spotřeba {jl.component_product} musí být > 0."
+                        )
+                    }
+                )
+            new_consume[jl.pk] = new_qty
+
+        # --- Consume movement: update changed, add missing (job-12 rebuild) ---
+        consume_movement = mixing_job.consume_movement
+        consume_by_product = {
+            ml.product_id: ml for ml in consume_movement.lines.all()
+        }
+        consume_changes: list[dict] = []
+        for jl in job_lines:
+            new_qty = new_consume[jl.pk]
+            existing = consume_by_product.get(jl.component_product_id)
+            if existing is None:
+                consume_changes.append(
+                    {
+                        "op": "add",
+                        "fields": {
+                            "product": jl.component_product,
+                            "quantity_kg": new_qty,
+                            "sarze": jl.sarze or "",
+                        },
+                    }
+                )
+            elif existing.quantity_kg != new_qty:
+                consume_changes.append(
+                    {
+                        "op": "update",
+                        "line_id": existing.pk,
+                        "fields": {"quantity_kg": new_qty},
+                    }
+                )
+        if consume_changes:
+            edit_movement(
+                movement=consume_movement,
+                changes={},
+                line_changes=consume_changes,
+                reason=reason,
+                user=user,
+            )
+
+        # --- Produce movement: update (or add for job-12 rebuild) -------------
+        produced_qty_q = produced_qty.quantize(Decimal("0.001"))
+        produce_movement = mixing_job.produce_movement
+        produce_line = produce_movement.lines.filter(
+            product=mixing_job.mixture
+        ).first()
+        if produce_line is None:
+            edit_movement(
+                movement=produce_movement,
+                changes={},
+                line_changes=[
+                    {
+                        "op": "add",
+                        "fields": {
+                            "product": mixing_job.mixture,
+                            "quantity_kg": produced_qty_q,
+                        },
+                    }
+                ],
+                reason=reason,
+                user=user,
+            )
+        elif produce_line.quantity_kg != produced_qty_q:
+            edit_movement(
+                movement=produce_movement,
+                changes={},
+                line_changes=[
+                    {
+                        "op": "update",
+                        "line_id": produce_line.pk,
+                        "fields": {"quantity_kg": produced_qty_q},
+                    }
+                ],
+                reason=reason,
+                user=user,
+            )
+
+        # --- Persist header + job lines ---------------------------------------
+        mixing_job.actual_produced_qty = produced_qty_q
+        # produced_qty > 0 here, so target_qty (CHECK __gt=0) can take it.
+        mixing_job.target_qty = produced_qty_q
+        mixing_job.save(update_fields=["actual_produced_qty", "target_qty"])
+
+        for jl in job_lines:
+            update_fields = ["actual_qty"]
+            jl.actual_qty = new_consume[jl.pk]
+            if recompute_consumption:
+                jl.derived_qty = new_consume[jl.pk]
+                update_fields.append("derived_qty")
+            jl.save(update_fields=update_fields)
+
+        return mixing_job
+
+
 # ---------------------------------------------------------------------------
 # Manual stock adjustment (Pass 5d, per decision 0041)
 # ---------------------------------------------------------------------------

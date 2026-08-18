@@ -13,14 +13,14 @@ plánování, spouštění ani dokončování dávky.</p>
 
 <h3>Jak namíchat směs</h3>
 <ol>
-  <li>Klikněte na <strong>„Nové míchání"</strong>.</li>
-  <li>Vyberte <strong>pobočku</strong>, <strong>směs</strong> a&nbsp;<strong>cílové
-  množství</strong> (kolik kg chcete).</li>
-  <li>Volitelně <strong>„Skutečně vyrobeno"</strong> — necháte-li prázdné, počítá
-  se cíl.</li>
-  <li><strong>Namíchat</strong>: suroviny se podle receptury odečtou a&nbsp;směs
-  se naskladní.</li>
+  <li>Klikněte na <strong>„Nová výrobní dávka"</strong>.</li>
+  <li>Vyberte <strong>pobočku</strong>, <strong>směs</strong> a&nbsp;<strong>Namícháno
+  (kg)</strong> — kolik kg jste namíchali.</li>
+  <li><strong>Namíchat</strong>: suroviny se podle receptury v&nbsp;tomto poměru
+  odečtou a&nbsp;směs se naskladní.</li>
 </ol>
+<p>Na detailu dávky lze <strong>Namícháno</strong> i&nbsp;spotřebu surovin kdykoli
+upravit.</p>
 <p>Chybí-li surovina, zelené <strong>„Upravit stav surovin"</strong> otevře
 inventuru jen pro suroviny té směsi — dosypte, uložte, vraťte se a&nbsp;namíchejte.</p>
 <p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
@@ -45,8 +45,7 @@ inventuru jen pro suroviny té směsi — dosypte, uložte, vraťte se a&nbsp;na
         <th style="width:9.5rem;">Datum</th>
         <th>Směs</th>
         <th>Pobočka</th>
-        <th style="text-align:right;">Cílové množství (kg)</th>
-        <th style="text-align:right;">Skutečně vyrobeno (kg)</th>
+        <th style="text-align:right;">Namícháno (kg)</th>
         <th>Stav</th>
         <th>Operátor</th>
       </tr>
@@ -57,9 +56,8 @@ inventuru jen pro suroviny té směsi — dosypte, uložte, vraťte se a&nbsp;na
           <td class="col-date">{{ j.started_at|date:"d. m. Y H:i" }}</td>
           <td>{{ j.mixture.name_cs }}</td>
           <td><span class="branch-code">{{ j.branch.code }}</span></td>
-          <td class="num">{{ j.target_qty|floatformat:1 }}</td>
           <td class="num">
-            {% if j.actual_produced_qty is not None %}{{ j.actual_produced_qty|floatformat:1 }}{% endif %}
+            {% if j.actual_produced_qty is not None %}{{ j.actual_produced_qty|floatformat:1 }}{% else %}{{ j.target_qty|floatformat:1 }}{% endif %}
           </td>
           <td>
             {% if j.state == "planned" %}

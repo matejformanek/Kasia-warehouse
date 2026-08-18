@@ -7,21 +7,22 @@
 
 {% block page_help %}
 <h3>Míchání — výroba směsi</h3>
-<p>Tady <strong>namícháte směs</strong>. Je to <strong>jeden krok</strong>: podle
-receptury se suroviny odečtou ze skladu a&nbsp;hotová směs se naskladní. Žádné
-plánování ani „spouštění / dokončování" dávky — vyplníte a&nbsp;kliknete.</p>
+<p>Tady <strong>namícháte směs</strong>. Je to <strong>jeden krok</strong> a&nbsp;<strong>jedno
+číslo</strong>: zadáte, kolik kg jste namíchali, a&nbsp;podle receptury se suroviny v&nbsp;tomto
+poměru odečtou ze skladu a&nbsp;hotová směs se naskladní. Žádné plánování ani
+„spouštění / dokončování" dávky — vyplníte a&nbsp;kliknete.</p>
 
 <h3>Krok za krokem</h3>
 <ol>
   <li>Vyberte <strong>pobočku</strong>.</li>
   <li>Vyberte <strong>směs</strong> (musí mít recepturu).</li>
-  <li>Zadejte <strong>cílové množství</strong> — kolik kg směsi chcete vyrobit.
-  Systém rovnou ukáže, kolik které suroviny to spotřebuje.</li>
-  <li>Volitelně vyplňte <strong>„Skutečně vyrobeno"</strong>, pokud se výsledek
-  liší od cíle. Necháte-li prázdné, počítá se cíl.</li>
+  <li>Zadejte <strong>Namícháno (kg)</strong> — kolik kg směsi jste namíchali.
+  Systém rovnou ukáže, kolik které suroviny se v&nbsp;tomto poměru spotřebuje.</li>
   <li>Klikněte na <strong>Namíchat</strong>. Suroviny se odečtou, směs se
   naskladní — hotovo.</li>
 </ol>
+<p>Spletli jste se? Na detailu dávky lze <strong>Namícháno</strong> i&nbsp;spotřebu
+kdykoli upravit.</p>
 
 <h3>Když chybí surovina</h3>
 <p>Nemáte-li dost některé suroviny, objeví se zelené tlačítko <strong>„Upravit
@@ -83,7 +84,7 @@ dosypte / opravte stavy, uložte, vraťte se sem a&nbsp;namíchejte.</p>
       </div>
 
       <div class="field">
-        <label class="field-required" for="id_target_qty">Cílové množství (kg)</label>
+        <label class="field-required" for="id_target_qty">Namícháno (kg)</label>
         <input class="num-in" type="number" step="0.1" min="0.1"
                name="target_qty" id="id_target_qty"
                value="{{ target_qty_value }}"
@@ -92,15 +93,7 @@ dosypte / opravte stavy, uložte, vraťte se sem a&nbsp;namíchejte.</p>
                hx-target="#mixing-preview"
                hx-include="closest form"
                hx-params="branch,mixture,target_qty">
-      </div>
-
-      <div class="field">
-        <label for="id_actual_produced_qty">Skutečně vyrobeno (kg)</label>
-        <input class="num-in" type="number" step="0.1" min="0"
-               name="actual_produced_qty" id="id_actual_produced_qty"
-               value="{{ actual_produced_value }}"
-               placeholder="—">
-        <p class="field-help">Volitelné — vyplňte jen když se vyrobené množství liší od cíle.</p>
+        <p class="field-help">Kolik kg směsi jste namíchali. Suroviny se podle receptury odečtou v tomto poměru.</p>
       </div>
 
       <div class="field full">
@@ -120,7 +113,7 @@ dosypte / opravte stavy, uložte, vraťte se sem a&nbsp;namíchejte.</p>
 
 {{ mixture_defaults|json_script:"mixture-defaults" }}
 <script>
-  // Per 0089: when the operator picks a recipe, overwrite „Cílové množství" with
+  // Per 0089: when the operator picks a recipe, overwrite „Namícháno" with
   // that recipe's default batch (if it has one > 0; else leave the field as-is).
   // Capture-phase (no synthetic dispatch): the #id_mixture <select> already has
   // an htmx change-trigger firing the preview request; running here in the

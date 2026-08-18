@@ -25,8 +25,10 @@
   removed; recipe PDF kept. Repair script `scratchpad/repair_mixing_aug.py`
   (env-`APPLY`-gated, `manage.py shell <`) scales the 13–18 Aug mis-entered prod
   jobs 8–12 (TYN) consumption up to `produced × ratio` and rebuilds job 12's
-  empty movements — **dry-run first on prod, not yet applied**. Tests in
-  `inventory/tests/test_mixing.py` (54 pass). Docs: design-system.md,
+  empty movements — **applied on prod 2026-08-18** (dry-run reviewed first; final
+  TYN stock: Česnek granule G2 ≈ 11 913, Sůl na drť ≈ 11 437, Česnek minced G5 ≈
+  44 181; re-run confirmed idempotent, 0 new audit rows). Shipped to prod via
+  PR #58. Tests in `inventory/tests/test_mixing.py`. Docs: design-system.md,
   screens/15-michani.md, workflows.md, domain-glossary.md („míchání" /
   „míchárna" / „Namícháno").
 - **2026-07-26** — **Auto-notify branch obsluha on a vlastník-issued výdej**

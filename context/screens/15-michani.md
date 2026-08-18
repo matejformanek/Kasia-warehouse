@@ -243,3 +243,14 @@ the screen collapses to the workers' real workflow:
 - The **13–18 Aug prod data repair** (jobs 8–12, TYN) scales the mis-entered
   consumption up to `produced × ratio` and rebuilds job 12's empty movements
   via the same service — see 0100 and `scratchpad/repair_mixing_aug.py`.
+
+## Update — 0101 (2026-08-18): „Smazat" hard-delete a completed dávka
+
+Per [`../decisions/0101-michani-hard-delete.md`](../decisions/0101-michani-hard-delete.md),
+the DONE dávka detail carries a red **„Smazat dávku"** button (`mixing_job_delete`,
+`michani/<pk>/smazat/`, POST-only, branch-scoped). It **hard-deletes** the record
++ its two internal movements (+ audit) and **returns the stock** — ingredients
+back, produced směs removed (via the `_apply_line_to_stock` primitive, so it is
+refused if the směs was sold below what this míchání added). Nothing remains in
+the míchání list or Historie. Use it for a míchání entered by mistake; the
+audited storno (`cancel_mixing_job`) remains only for legacy in-flight jobs.

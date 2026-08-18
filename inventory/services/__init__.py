@@ -34,6 +34,7 @@ from .email import (
 )
 from .mixing import (
     cancel_mixing_job,
+    delete_completed_mixing_job,
     edit_completed_mixing_job,
     finish_mixing_job,
     plan_mixing_job,
@@ -90,6 +91,7 @@ __all__ = [
     "cancel_mixing_job",
     "record_completed_mixing_job",
     "edit_completed_mixing_job",
+    "delete_completed_mixing_job",
     "apply_stock_adjustment",
     "LowStockRow",
     "threshold_for",

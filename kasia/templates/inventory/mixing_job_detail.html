@@ -25,8 +25,11 @@ opraví.</p>
   <li>Klikněte <strong>„Uložit změny“</strong>. Sklad se opraví; e-mail se
   neposílá (míchání je interní).</li>
 </ol>
-<p>Chcete dávku zrušit? „Namícháno = 0“ nelze uložit — zrušení řešte jinak
-(u&nbsp;běžících dávek tlačítkem Zrušit).</p>
+<p><strong>Smazat dávku</strong> — červené tlačítko dole dávku
+<strong>nenávratně odstraní a&nbsp;vrátí stav skladu</strong> (suroviny zpět,
+hotová směs odečtena). Použijte, když byla dávka zapsána omylem. Nelze smazat,
+pokud už byla směs vyskladněna (stav by klesl pod nulu). „Namícháno = 0“ nelze
+uložit — na smazání je tlačítko Smazat.</p>
 <p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
 {% endblock %}
 
@@ -249,6 +252,24 @@ opraví.</p>
               data-confirm-cta="Uložit"
               data-confirm-danger="false">Uložit změny</button>
     </div>
+  </div>
+</form>
+
+<form method="post" action="{% url 'inventory:mixing_job_delete' pk=job.pk %}">
+  {% csrf_token %}
+  <div class="card" style="background:var(--warn-tint);">
+    <h2 style="font-size:1.05rem;margin-top:0;color:var(--error);">Smazat dávku</h2>
+    <p style="color:var(--fg-soft);">
+      Nenávratně odstraní tuto dávku a&nbsp;<strong>vrátí stav skladu</strong> —
+      suroviny se vrátí na sklad a&nbsp;hotová směs se odečte. Záznam ani pohyby
+      nezůstanou v&nbsp;historii. Nelze smazat, pokud už byla směs vyskladněna
+      (stav by klesl pod nulu).
+    </p>
+    <button type="submit" class="secondary js-confirm"
+            style="color:var(--error);border-color:var(--error);"
+            data-confirm-title="Smazat dávku?"
+            data-confirm-body="Suroviny se vrátí na sklad a hotová směs se odečte. Záznam bude nenávratně smazán."
+            data-confirm-cta="Smazat dávku">Smazat dávku</button>
   </div>
 </form>
 {% endif %}

@@ -37,7 +37,9 @@ prodej). Po uložení systém automaticky sníží zásoby a&nbsp;vystaví
   <li>Je-li zboží málo, máte u&nbsp;zablokovaného výdeje odkaz <strong>na
   inventuru</strong> předvyplněnou dotčenými produkty (vlastník na kteroukoli
   pobočku, obsluha na svou) — opravte stav a&nbsp;vraťte se.</li>
-  <li>Tentýž produkt nejde zadat na dvou řádcích — sečtěte do jednoho.</li>
+  <li>Tutéž surovinu můžete zadat na <strong>víc řádcích</strong> (např. různá
+  balení) — systém množství <strong>sečte</strong> a&nbsp;na dodacím listu je
+  ukáže jako samostatné řádky.</li>
   <li>Potřebujete-li výdej později opravit, jděte do <strong>Historie</strong> →
   otevřít → Upravit (dodák se přegeneruje a&nbsp;přepošle s&nbsp;„[OPRAVA]").</li>
 </ul>
@@ -142,7 +144,7 @@ prodej). Po uložení systém automaticky sníží zásoby a&nbsp;vystaví
     {{ finished_product_ids|json_script:"vydej-finished-ids" }}
     {# Per 0073: emitted for a vlastník (all branches) or an obsluha on own branch — both may fix stock via inventura. #}
     {% if branch_inventura %}{{ branch_inventura|json_script:"vydej-inventura-urls" }}{% endif %}
-    {% include "inventory/_movement_form_lines.html" with show_stock_warn=True %}
+    {% include "inventory/_movement_form_lines.html" with show_stock_warn=True allow_duplicate_products=True %}
     <p class="line-summary" id="summary-mid"></p>
 
     <div id="stock-block-banner" class="card" style="margin-top:1.2rem;" hidden>

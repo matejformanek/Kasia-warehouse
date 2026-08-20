@@ -174,12 +174,20 @@ or restructure:
   `refreshProductOptions()`, **disables an already-chosen product in every other
   row's dropdown** so a product can't be picked on two lines; it runs on the
   same `input`/`change` + `htmx:afterSwap` (fresh added rows) + row-delete
-  events. Per [`0071`](../../context/decisions/0071-prijem-dedup-products.md)
-  this dedup runs on **both** movement forms (an always-rendered IIFE in
-  `_movement_form_lines.html`, outside the `show_stock_warn` block) — příjem now
-  blocks duplicate products too (client-side only; a posted duplicate is
-  harmless — two additive received lines). `show_stock_warn` still gates **only**
-  the výdej over-stock check, not the dedup. Missing (branch, product)
+  events. Per [`0071`](../../context/decisions/0071-prijem-dedup-products.md) this
+  dedup was on **both** movement forms; per
+  [`0102`](../../context/decisions/0102-vydej-allow-duplicate-products.md) it now
+  runs on **příjem only** — the dedup IIFE in `_movement_form_lines.html` is
+  wrapped in `{% if not allow_duplicate_products %}`, and `vydej_form.html`
+  includes the partial with **`allow_duplicate_products=True`** (příjem passes it
+  `False`). So on **výdej the same spice may be listed on several lines** (e.g.
+  different package sizes) and the server sums it: the overdraw check aggregates
+  requested qty per product (0042), `apply_movement` deducts per line, and the
+  dodák renders **one row per line** (`DodaciList.total_quantity_kg` sums all
+  rows). Renaming `allow_duplicate_products` is a new decision. `show_stock_warn`
+  still gates **only** the výdej over-stock check, not the dedup — and that
+  over-stock `recompute()` already sums per product, so the live warning stays
+  correct with duplicates. Missing (branch, product)
   ⇒ `0` avail. The server aggregate-duplicates overdraw check (0042) stays as a
   harmless safety net. The
   old htmx machinery (`stock_warn_partial` view/route, `_stock_warn.html`,

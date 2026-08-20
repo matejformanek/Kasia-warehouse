@@ -118,10 +118,12 @@ forms include this partial.
     refresh();
   });
 
-  // Block duplicate products across lines on BOTH movement forms (per 0071):
+  {% if not allow_duplicate_products %}
+  // Block duplicate products across lines (per 0071, výdej-scoped-out by 0102):
   // once a product is chosen in one line, disable it in every other line's
-  // dropdown so the same product can't be picked twice. Mirrors výdej, which
-  // also runs the over-stock check below; příjem now runs this dedup too.
+  // dropdown so the same product can't be picked twice. Runs on příjem only —
+  // výdej passes allow_duplicate_products=True so the same spice (e.g. two
+  // package sizes) can be listed on several lines and the server sums them.
   // Client-side only — a posted duplicate is harmless (two additive lines).
   (function () {
     const body = document.getElementById("lines-body");
@@ -157,6 +159,7 @@ forms include this partial.
     });
     refreshProductOptions();
   })();
+  {% endif %}
 </script>
 
 {% if show_stock_warn %}
@@ -283,9 +286,10 @@ forms include this partial.
       }
     }
 
-    // Product dedup (disable an already-chosen product in other rows) is wired
-    // once for BOTH forms in the always-run IIFE above (per 0071); this block
-    // only runs the výdej over-stock check.
+    // Product dedup (disable an already-chosen product in other rows) is
+    // gated OFF for výdej (allow_duplicate_products=True, per 0102) — the same
+    // spice may be listed on several lines and the server sums it; this block
+    // only runs the výdej over-stock check, which already aggregates per product.
 
     // Delegated on stable elements, so rows added later are covered with no
     // observers. input + change both bubble from every row's product/qty.

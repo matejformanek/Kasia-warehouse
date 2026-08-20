@@ -5,6 +5,20 @@
 
 ## Done
 
+- **2026-08-20** — **Výdej allows the same spice on multiple lines (sums it)**
+  (decision [`0102`](./decisions/0102-vydej-allow-duplicate-products.md);
+  supersedes-in-part [`0071`](./decisions/0071-prijem-dedup-products.md); **no
+  server change**). A branch worker needs to record one spice in different package
+  sizes (10 kg + 5 kg) as separate výdej lines; the form used to block picking a
+  product twice. The block was purely the client-side `refreshProductOptions()`
+  dedup — the server already sums duplicates (overdraw aggregation 0042, per-line
+  deduction, dodák renders one row per line, `total_quantity_kg` sums). Change:
+  the dedup IIFE in `_movement_form_lines.html` is wrapped in
+  `{% if not allow_duplicate_products %}`; `vydej_form.html` includes with
+  `allow_duplicate_products=True`, `prijem_form.html` explicit `False` (příjem
+  keeps its 0071 dedup). Docs: design-system.md dedup note, workflows.md výdej
+  prose, support.html + vydej_form page_help. Tests in `test_movement_views.py`
+  (duplicate-line výdej sums stock + dodák totals; dedup gating on/off by form).
 - **2026-08-18** — **Míchání = single „Namícháno" quantity + unified edit + data
   repair** (decision
   [`0100`](./decisions/0100-michani-single-quantity-and-unified-edit.md);

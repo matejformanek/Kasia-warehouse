@@ -95,7 +95,7 @@ rozhoduje jediné pole („Očekávaný příjezd"), viz níže.</p>
   <!-- STEP 2: Položky + running summary (no over-stock check — příjem adds) -->
   <div class="card">
     <div class="step-head"><span class="step-no">2</span><h2>Položky</h2></div>
-    {% include "inventory/_movement_form_lines.html" with show_stock_warn=False %}
+    {% include "inventory/_movement_form_lines.html" with show_stock_warn=False allow_duplicate_products=False %}
     <p class="line-summary" id="summary-mid"></p>
   </div>
 

@@ -1,5 +1,7 @@
 # 0071 — Block duplicate products on the příjem form (mirror výdej)
 
+> Superseded in part by 0102
+
 **Date:** 2026-07-04
 **Decider:** Matej (from the live walkthrough feedback)
 **Status:** Active

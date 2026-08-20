@@ -50,8 +50,12 @@ on phone/email as today.
 
 Once the order is agreed, branch staff open the system, start a
 **výdej** at their branch, pick the **odběratel** from the customer
-list, add one or more items with quantities, and confirm. On
-confirmation the system:
+list, add one or more items with quantities, and confirm. The **same
+spice may be listed on several lines** — e.g. two package sizes (10 kg +
+5 kg) of one spice, since the catalogue is mass-only and has no packaging
+field (per [`decisions/0102-vydej-allow-duplicate-products.md`](./decisions/0102-vydej-allow-duplicate-products.md)).
+The výdej **sums** the lines against stock; the dodák shows **each line as
+its own row**. On confirmation the system:
 
 1. Decrements branch stock for each line.
 2. Writes a výdej movement record (the internal výdejka).

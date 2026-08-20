@@ -290,6 +290,84 @@ def test_vydej_post_accepts_round_number(user_tyn, tyn, ricany, pepper) -> None:
     assert Movement.objects.count() == 1
 
 
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_vydej_post_duplicate_product_lines_sum_stock(
+    user_tyn, tyn, ricany, pepper
+) -> None:
+    """Per 0102: the same spice may be listed on several výdej lines (e.g. two
+    package sizes). The two lines survive as separate rows and stock drops by
+    their SUM."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("20.000"))
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.post(
+        "/sklad/vydej/novy/",
+        {
+            "branch": tyn.pk,
+            "odberatel": ricany.pk,
+            "lines-TOTAL_FORMS": "2",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-product": pepper.pk,
+            "lines-0-quantity_kg": "10.000",
+            "lines-1-product": pepper.pk,
+            "lines-1-quantity_kg": "5.000",
+        },
+    )
+    assert response.status_code == 302, response.content[:500]
+    mv = Movement.objects.get()
+    assert mv.kind == Movement.Kind.VYDEJ
+    # Both lines survive as separate rows — no server-side merge.
+    assert mv.lines.filter(product=pepper).count() == 2
+    # Stock dropped by the SUM (10 + 5 = 15): 20 − 15 = 5.
+    assert Stock.objects.get(product=pepper, branch=tyn).quantity == Decimal("5.000")
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_vydej_dodak_totals_duplicate_lines(user_tyn, tyn, ricany, pepper) -> None:
+    """Per 0102: the dodák renders one row per line and total_quantity_kg sums
+    them (no line-item model, no merge)."""
+    Stock.objects.create(product=pepper, branch=tyn, quantity=Decimal("20.000"))
+    client = Client()
+    client.force_login(user_tyn)
+    response = client.post(
+        "/sklad/vydej/novy/",
+        {
+            "branch": tyn.pk,
+            "odberatel": ricany.pk,
+            "lines-TOTAL_FORMS": "2",
+            "lines-INITIAL_FORMS": "0",
+            "lines-MIN_NUM_FORMS": "1",
+            "lines-MAX_NUM_FORMS": "1000",
+            "lines-0-product": pepper.pk,
+            "lines-0-quantity_kg": "10.000",
+            "lines-1-product": pepper.pk,
+            "lines-1-quantity_kg": "5.000",
+        },
+    )
+    assert response.status_code == 302, response.content[:500]
+    mv = Movement.objects.get()
+    dl = DodaciList.objects.get(movement=mv)
+    assert dl.movement.lines.count() == 2
+    assert dl.total_quantity_kg == Decimal("15.000")
+
+
+@pytest.mark.django_db
+@override_settings(**_VIEW_TEST_OVERRIDES)
+def test_vydej_form_omits_dedup_prijem_keeps_it(user_tyn) -> None:
+    """Per 0102: the duplicate-product dedup (refreshProductOptions) is gated OFF
+    on výdej (allow_duplicate_products=True) and still runs on příjem."""
+    client = Client()
+    client.force_login(user_tyn)
+    vydej = client.get("/sklad/vydej/novy/").content.decode("utf-8")
+    prijem = client.get("/sklad/prijem/novy/").content.decode("utf-8")
+    assert "refreshProductOptions" not in vydej
+    assert "refreshProductOptions" in prijem
+
+
 @pytest.mark.django_db
 @override_settings(**_VIEW_TEST_OVERRIDES)
 def test_vydej_form_embeds_stock_map_and_no_htmx(user_tyn, tyn, pepper) -> None:

@@ -1,5 +1,7 @@
 # 0052 — N-list recipients for dodáky + low-stock summary (supersedes 0031 in part)
 
+> **Superseded in part by [0103](./0103-dodak-to-customer-emails.md)** — the "internal only / never to customers" intent is overturned: dodáky now also go to the odběratel's kontaktní e-maily.
+
 > **Amended by [0081](./0081-per-recipient-notification-preferences.md)** — the
 > flat active-list is decoupled into per-flag opt-ins (`is_dodaci_recipient` /
 > `is_feedback_recipient`) + a per-recipient branch scope, and the

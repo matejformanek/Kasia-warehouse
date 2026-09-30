@@ -72,8 +72,10 @@ where that conversation becomes a record.
 
 ## What you can do here
 - Pick an odběratel (default = Říčany; switch with one click).
-- Inline-add a new odběratel (name, IČO, DIČ, address; optional email
-  / phone as contact data — not used by the dodák-send code).
+- Inline-add a new odběratel (name, IČO, DIČ, address; optional phone
+  as contact data). Kontaktní e-maily are edited on the odběratel form and
+  receive every dodák per
+  [`decisions/0103-dodak-to-customer-emails.md`](../decisions/0103-dodak-to-customer-emails.md).
 - Set the date.
 - Add and remove lines, with products and quantities in kg.
 - Optionally record šarže per line (per

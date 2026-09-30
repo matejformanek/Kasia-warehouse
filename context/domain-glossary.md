@@ -390,6 +390,14 @@ the system produces.
 The B2B reseller to whom goods are issued on a dodací list. Has name,
 IČO, DIČ, billing/delivery address.
 
+### kontaktní e-maily
+
+**EN:** contact e-mail addresses (of an odběratel).
+The list of e-mail addresses stored on an odběratel. Every dodací list
+e-mail for that odběratel (first send, „Znovu odeslat", `[OPRAVA]`) is
+also sent to them, per
+[`decisions/0103-dodak-to-customer-emails.md`](./decisions/0103-dodak-to-customer-emails.md).
+
 ### dodavatel
 
 **EN:** supplier.

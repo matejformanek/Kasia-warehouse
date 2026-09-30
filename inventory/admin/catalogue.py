@@ -25,6 +25,9 @@ class CustomerAdmin(admin.ModelAdmin):
     list_display = ("name", "ico", "is_default_recipient", "is_active")
     list_filter = ("is_default_recipient", "is_active")
     search_fields = ("name", "ico", "dic")
+    # Kontaktní e-maily (0103) are edited on the odběratel page, where
+    # CustomerForm validates them; the raw JSON widget here would not.
+    exclude = ("emails",)
 
 
 @admin.register(Supplier)

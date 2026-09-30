@@ -196,13 +196,16 @@ def send_dodaci_list_email(
     pdf_bytes: bytes,
     sent_by=None,
 ) -> EmailLog:
-    """Send one dodák e-mail to the branch-scoped recipients + its issuer.
+    """Send one dodák e-mail to the branch-scoped recipients, issuer + odběratel.
 
     Per 0081: recipients are the active, dodák-opted-in `SettingsRecipient` rows
     whose branch scope matches this dodák (`_active_dodak_recipients(branch)`),
     **unioned with the issuer** (`movement.created_by`) so a dodák can never
     reach nobody — this replaces the removed `_assert_recipients_set` výdej
-    guard. Renders subject/body/from + attaches the PDF, then delegates the send
+    guard — and, per 0103, with the odběratel's kontaktní e-maily
+    (`dodaci_list.odberatel.emails`). All go in one case-insensitively deduped
+    `to=` list. Every dodák send (first send, resend, [OPRAVA]) comes here.
+    Renders subject/body/from + attaches the PDF, then delegates the send
     + logging to `send_and_log` (per 0075) — which writes a SENT or FAILED
     `EmailLog` row and never re-raises. The výdej / oprava write that triggered
     the send is already committed. `sent_by` records the operator for a manual
@@ -216,6 +219,15 @@ def send_dodaci_list_email(
     issuer_email = (dodaci_list.movement.created_by.email or "").strip()
     if issuer_email:
         recipients = [*recipients, issuer_email]
+    # Per 0103: the odběratel's kontaktní e-maily (the same odběratel the PDF
+    # renders) also receive every dodák send. Defensive: bad stored JSON (not a
+    # list / non-str items) is ignored so it never blocks internal recipients.
+    customer_emails = dodaci_list.odberatel.emails if dodaci_list.odberatel_id else None
+    if isinstance(customer_emails, list):
+        recipients = [
+            *recipients,
+            *(e.strip() for e in customer_emails if isinstance(e, str) and e.strip()),
+        ]
     seen: set[str] = set()
     recipients = [
         r

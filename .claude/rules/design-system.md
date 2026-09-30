@@ -577,7 +577,10 @@ now per-flag: dodáky go to `is_active AND is_dodaci_recipient AND (dodaci_branc
 null OR == dodák.branch)`; Podpora to `is_active AND is_feedback_recipient` (with
 `FEEDBACK_NOTIFY_EMAIL` fallback); the „dochází" souhrn unchanged
 (`is_low_stock_recipient`). Every dodák is **also** mailed to its issuer
-(`movement.created_by`), so the old `_assert_recipients_set` výdej guard is gone.
+(`movement.created_by`), so the old `_assert_recipients_set` výdej guard is gone,
+and — per [`0103`](../../context/decisions/0103-dodak-to-customer-emails.md) — to
+the odběratel's **kontaktní e-maily** (`Customer.emails`, edited as rows on
+`customer_form.html`), all in one deduped `to=` list.
 The JS-clone hooks (`#recipient-body` / `#recipient-empty-row` /
 `#recipient-add-row` / `recipient-TOTAL_FORMS`) are unchanged — the hidden empty
 row hand-writes the two new checkboxes (dodák pre-checked) + a `<select>` whose

@@ -5,6 +5,8 @@ from __future__ import annotations
 from decimal import Decimal
 
 from django import forms
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 
 from ..models import (
     Branch,
@@ -51,9 +53,13 @@ class CustomerForm(forms.ModelForm):
     0030) and changing them belongs in the admin / vlastník surface.
     """
 
+    # Not in Meta.fields: the repeated ``emails`` rows are read via getlist in
+    # clean_emails() and applied in save(). Declared so errors attach to it.
+    emails = forms.CharField(required=False, label="Kontaktní e-maily")
+
     class Meta:
         model = Customer
-        fields = ("name", "ico", "dic", "address", "email", "phone", "is_active")
+        fields = ("name", "ico", "dic", "address", "phone", "is_active")
         widgets = {
             "address": forms.Textarea(attrs={"rows": 2}),
         }
@@ -62,6 +68,46 @@ class CustomerForm(forms.ModelForm):
         return validate_active_name_unique(
             Customer, "name", self.cleaned_data["name"], instance=self.instance, label="odběratel"
         )
+
+    def _submitted_emails(self) -> list[str]:
+        """Raw repeated ``emails`` POST values (one per row), stripped."""
+        if not self.is_bound or not hasattr(self.data, "getlist"):
+            return []
+        return [(e or "").strip() for e in self.data.getlist("emails")]
+
+    @property
+    def email_rows(self) -> list[str]:
+        """Values to render as rows: the submitted ones on a bound form (so a
+        failed POST re-renders what the operator typed), else the saved list."""
+        if self.is_bound:
+            return [e for e in self._submitted_emails() if e]
+        return list(self.instance.emails or [])
+
+    def clean_emails(self) -> list[str]:
+        # Kontaktní e-maily per 0103: drop blanks, dedupe case-insensitively
+        # (first spelling wins), validate each address.
+        emails: list[str] = []
+        invalid: list[str] = []
+        seen: set[str] = set()
+        for email in self._submitted_emails():
+            if not email or email.lower() in seen:
+                continue
+            seen.add(email.lower())
+            try:
+                validate_email(email)
+            except ValidationError:
+                invalid.append(email)
+                continue
+            emails.append(email)
+        if invalid:
+            raise ValidationError(
+                [f"Neplatná e-mailová adresa: „{e}“." for e in invalid]
+            )
+        return emails
+
+    def save(self, commit: bool = True):
+        self.instance.emails = self.cleaned_data.get("emails", [])
+        return super().save(commit=commit)
 
 
 # ---------------------------------------------------------------------------

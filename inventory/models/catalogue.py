@@ -31,7 +31,10 @@ class Customer(models.Model):
     ico = models.CharField("IČO", max_length=8, blank=True)
     dic = models.CharField("DIČ", max_length=16, blank=True)
     address = models.TextField("adresa", blank=True)
-    email = models.EmailField("e-mail", blank=True)
+    # Per 0103: every dodák e-mail for this odběratel is also sent here.
+    # A JSON list of strings (not ArrayField) so tests also run on SQLite;
+    # addresses are validated by CustomerForm.
+    emails = models.JSONField(default=list, blank=True, verbose_name="kontaktní e-maily")
     phone = models.CharField("telefon", max_length=32, blank=True)
     is_default_recipient = models.BooleanField("výchozí odběratel", default=False)
     is_internal = models.BooleanField(

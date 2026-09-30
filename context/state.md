@@ -5,6 +5,18 @@
 
 ## Done
 
+- **2026-09-30** — **Odběratel kontaktní e-maily also receive the dodák**
+  (decision [`0103`](./decisions/0103-dodak-to-customer-emails.md);
+  supersedes-in-part [`0031`](./decisions/0031-emails-internal-only-supersedes-0009.md) + [`0052`](./decisions/0052-n-list-recipients-supersedes-0031.md)).
+  `Customer.email` → `Customer.emails` (`JSONField` list — SQLite-safe for host tests, migration
+  `0033_customer_emails` — **old values dropped, no copy**; re-enter on prod).
+  `CustomerForm` reads repeated `emails` POST values (strip, drop blanks,
+  case-insensitive dedup, Czech error per bad address); `customer_form.html`
+  edits them as rows („+ Přidat e-mail" / „×", `<template>` clone, CSS in
+  `pages/customer_form.css`); `customer_index.html` shows them joined.
+  `send_dodaci_list_email` appends `dodaci_list.odberatel.emails` — covers first
+  send (0096), all „Znovu odeslat" paths and the `[OPRAVA]` reissue. Tests in
+  `inventory/tests/test_customer_emails.py`.
 - **2026-08-20** — **Výdej allows the same spice on multiple lines (sums it)**
   (decision [`0102`](./decisions/0102-vydej-allow-duplicate-products.md);
   supersedes-in-part [`0071`](./decisions/0071-prijem-dedup-products.md); **no

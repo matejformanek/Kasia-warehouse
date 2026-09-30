@@ -2,6 +2,8 @@
 
 > **Superseded in part 2026-06-28 by [`0052-n-list-recipients-supersedes-0031.md`](./0052-n-list-recipients-supersedes-0031.md)** — the "fixed pair `[Petr, Karolína]`" shape under § Choice is replaced by an operator-managed N-list; the "internal only / never to customers" intent stands.
 
+> **Superseded in part by [0103](./0103-dodak-to-customer-emails.md)** — dodáky now also go to the odběratel's kontaktní e-maily (`Customer.email` is replaced by the `Customer.emails` list, which the send code reads).
+
 ## Context
 
 Petr's 2026-06-09 reply (Czech, relayed via Matej):

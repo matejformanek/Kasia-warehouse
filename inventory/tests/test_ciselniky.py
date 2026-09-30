@@ -196,14 +196,14 @@ def test_customer_create_by_obsluha(user_obsluha_tyn) -> None:
             "ico": "11223344",
             "dic": "CZ11223344",
             "address": "Hradec Králové",
-            "email": "ulipy@example.cz",
+            "emails": "ulipy@example.cz",
             "phone": "+420 111 222 333",
             "is_active": "on",
         },
     )
     assert response.status_code == 302
     cust = Customer.objects.get(name="Hospůdka U Lípy")
-    assert cust.email == "ulipy@example.cz"
+    assert cust.emails == ["ulipy@example.cz"]
     assert cust.is_default_recipient is False  # not flipped by operator
 
 

@@ -27,6 +27,8 @@ inventory; Karolína to weigh in on accountant compatibility.
 > One product per ingredient; N variants per pack format; stock on the variant. Recipes attach at product level. Mass-only ruled out because Kasia repacks bulk → retail jars. New opens introduced: repack-as-movement-type, variant pricing model — both for *Decide before MVP*.
 >
 > **Reopened and re-closed 2026-06-09 → [`decisions/0028-mass-only-supersedes-0006.md`](./decisions/0028-mass-only-supersedes-0006.md):** Petr's brief explicitly narrows the model to **mass-only** — "neřeším druh balení, zajímá mne jen celková hmotnost". No `Variant` table, no pack format, stock in kg only. Variant-pricing open dropped along with the Variant table. Repack-as-movement-type open closed by [`0033`](./decisions/0033-prebalovani-out-of-scope-supersedes-0013.md): no přebalování workflow.
+>
+> **Amended 2026-09-30 → [`decisions/0103-dodak-to-customer-emails.md`](./decisions/0103-dodak-to-customer-emails.md):** `Customer.email` is replaced by the `Customer.emails` list (kontaktní e-maily); every dodák send now also goes to those addresses.
 
 ### Říčany transfer — tracked movement or stock-out-and-gone
 

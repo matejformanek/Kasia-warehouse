@@ -55,7 +55,7 @@ při Výdeji a&nbsp;tisknou se na dodací list.</p>
     </thead>
     <tbody>
       {% for cust in customers %}
-        <tr data-filter-text="{{ cust.name }} {{ cust.ico }} {{ cust.email }}" {% if not cust.is_active %}style="opacity:0.55;"{% endif %}>
+        <tr data-filter-text="{{ cust.name }} {{ cust.ico }} {{ cust.emails|join:" " }}" {% if not cust.is_active %}style="opacity:0.55;"{% endif %}>
           <td>
             <strong>{{ cust.name }}</strong>
             {% if cust.is_default_recipient %}
@@ -67,7 +67,7 @@ při Výdeji a&nbsp;tisknou se na dodací list.</p>
             {% if cust.dic %}<br><small style="color:var(--fg-soft);">{{ cust.dic }}</small>{% endif %}
           </td>
           <td>
-            {{ cust.email|default:"—" }}
+            {{ cust.emails|join:", "|default:"—" }}
             {% if cust.phone %}<br><small style="color:var(--fg-soft);">{{ cust.phone }}</small>{% endif %}
           </td>
           <td>{{ cust.address|default:"—"|linebreaksbr }}</td>

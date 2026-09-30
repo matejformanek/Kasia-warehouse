@@ -1,5 +1,8 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{% if mode == "create" %}Nový odběratel{% else %}Úprava odběratele{% endif %} — Kasia vera{% endblock %}
+
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/customer_form.css' %}">{% endblock %}
 
 {% block content %}
 <h1>
@@ -39,10 +42,30 @@
     {{ form.address }}
     {{ form.address.errors }}
   </div>
-  <div class="field">
-    <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
-    {{ form.email }}
-    {{ form.email.errors }}
+  <div class="field customer-emails" role="group" aria-labelledby="customer-emails-label">
+    <label id="customer-emails-label">Kontaktní e-maily</label>
+    <p class="field-help">Na tyto adresy se posílá dodací list (PDF) při každém odeslání.</p>
+    <div id="customer-email-rows">
+      {% for addr in form.email_rows %}
+        <div class="email-row">
+          <input type="email" name="emails" value="{{ addr }}" aria-label="Kontaktní e-mail">
+          <button type="button" class="email-remove" aria-label="Odebrat e-mail" title="Odebrat e-mail">×</button>
+        </div>
+      {% empty %}
+        <div class="email-row">
+          <input type="email" name="emails" value="" aria-label="Kontaktní e-mail">
+          <button type="button" class="email-remove" aria-label="Odebrat e-mail" title="Odebrat e-mail">×</button>
+        </div>
+      {% endfor %}
+    </div>
+    {{ form.emails.errors }}
+    <template id="customer-email-empty-row">
+      <div class="email-row">
+        <input type="email" name="emails" value="" aria-label="Kontaktní e-mail">
+        <button type="button" class="email-remove" aria-label="Odebrat e-mail" title="Odebrat e-mail">×</button>
+      </div>
+    </template>
+    <button type="button" class="secondary" id="customer-email-add-row">+ Přidat e-mail</button>
   </div>
   <div class="field">
     <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
@@ -61,4 +84,27 @@
   </button>
   <a class="secondary" href="{% url 'inventory:customer_index' %}">Zrušit</a>
 </form>
+
+<script>
+  // Kontaktní e-maily rows (per 0103): add from the <template>, remove with ×.
+  // A removal dispatches a bubbling change so data-guard-unsaved arms.
+  (function () {
+    const rows = document.getElementById("customer-email-rows");
+    const addBtn = document.getElementById("customer-email-add-row");
+    const tpl = document.getElementById("customer-email-empty-row");
+    if (!rows || !addBtn || !tpl) return;
+    addBtn.addEventListener("click", function () {
+      rows.appendChild(tpl.content.cloneNode(true));
+      const inputs = rows.querySelectorAll("input[name=emails]");
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    });
+    rows.addEventListener("click", function (e) {
+      const btn = e.target.closest(".email-remove");
+      if (!btn) return;
+      const row = btn.closest(".email-row");
+      if (row) row.remove();
+      rows.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  })();
+</script>
 {% endblock %}

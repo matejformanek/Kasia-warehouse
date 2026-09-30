@@ -225,3 +225,21 @@ def test_customer_without_emails_sends_as_before(tyn, ricany, pepper, user_tyn) 
     assert set(mail.outbox[0].to) == INTERNAL
     assert len(mail.outbox[0].to) == 3
     assert {r.strip() for r in log.recipients.split(",")} == INTERNAL
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(**_LOCMEM_EMAIL)
+@pytest.mark.parametrize(
+    ("bad", "extra"),
+    [
+        ("x@y.cz", set()),
+        ({"a": 1}, set()),
+        ([1, "a@b.cz", None, "  "], {"a@b.cz"}),
+    ],
+)
+def test_bad_stored_emails_still_send_to_internal(tyn, pepper, user_tyn, bad, extra) -> None:
+    cust = Customer.objects.create(name="Bistro", emails=bad)
+    dl = _dodak(tyn, cust, user_tyn, pepper)
+    log = send_first_dodaci(dl, sent_by=user_tyn)
+    assert log.status == EmailLog.Status.SENT
+    assert set(mail.outbox[0].to) == INTERNAL | extra

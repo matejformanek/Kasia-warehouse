@@ -220,9 +220,14 @@ def send_dodaci_list_email(
     if issuer_email:
         recipients = [*recipients, issuer_email]
     # Per 0103: the odběratel's kontaktní e-maily (the same odběratel the PDF
-    # renders) also receive every dodák send.
-    if dodaci_list.odberatel_id:
-        recipients = [*recipients, *(e.strip() for e in dodaci_list.odberatel.emails or [])]
+    # renders) also receive every dodák send. Defensive: bad stored JSON (not a
+    # list / non-str items) is ignored so it never blocks internal recipients.
+    customer_emails = dodaci_list.odberatel.emails if dodaci_list.odberatel_id else None
+    if isinstance(customer_emails, list):
+        recipients = [
+            *recipients,
+            *(e.strip() for e in customer_emails if isinstance(e, str) and e.strip()),
+        ]
     seen: set[str] = set()
     recipients = [
         r

@@ -4,6 +4,8 @@ from django.contrib.auth.decorators import login_not_required
 from django.http import HttpResponse
 from django.urls import include, path, reverse_lazy
 
+from accounts.forms import RoleCheckedAuthenticationForm
+from accounts.security import ThrottledPasswordResetView
 from web.content import COMPANY, NAV
 
 
@@ -32,6 +34,8 @@ urlpatterns = [
         # on both GET and invalid POST).
         auth_views.LoginView.as_view(
             template_name="registration/login.html",
+            # Per 0104: refuse accounts without a valid role (fail closed).
+            authentication_form=RoleCheckedAuthenticationForm,
             redirect_authenticated_user=True,
             extra_context={"company": COMPANY, "nav": NAV, "active": ""},
         ),
@@ -44,7 +48,8 @@ urlpatterns = [
     path(
         "sklad/reset-hesla/",
         login_not_required(
-            auth_views.PasswordResetView.as_view(
+            # Per 0104: per-IP throttled (cache-based) against inbox spam.
+            ThrottledPasswordResetView.as_view(
                 template_name="registration/password_reset_form.html",
                 email_template_name="registration/password_reset_email.html",
                 subject_template_name="registration/password_reset_subject.txt",

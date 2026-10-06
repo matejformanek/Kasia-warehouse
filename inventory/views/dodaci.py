@@ -22,20 +22,16 @@ from ..services import (
     send_dodaci_list_email,
     send_first_dodaci,
 )
-from ._shared import _dl_failed_at_current_version
+from ._shared import _dl_failed_at_current_version, deny_other_branch
 
 
 def _deny_other_branch(request, branch_id):
-    """403 if an obsluha tries to reach a dodák outside their own branch.
-    Mirrors the `movement_history` / `branch_dashboard` own-branch scoping
-    (decision 0040 §"obsluha sees only own-branch documents")."""
-    if request.user.is_obsluha and request.user.branch_id != branch_id:
-        return HttpResponse(
-            "Nemáte oprávnění zobrazit tento dodací list.",
-            status=403,
-            content_type="text/plain; charset=utf-8",
-        )
-    return None
+    """403 if an obsluha tries to reach a dodák outside their own branch
+    (decision 0040 §"obsluha sees only own-branch documents"). Thin wrapper
+    over the shared ``deny_other_branch`` (0104) keeping the dodák message."""
+    return deny_other_branch(
+        request, branch_id, "Nemáte oprávnění zobrazit tento dodací list."
+    )
 
 
 @require_GET

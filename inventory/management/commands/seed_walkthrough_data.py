@@ -100,6 +100,9 @@ class Command(BaseCommand):
         )
         karolina.set_password("heslo1234")
         karolina.save()
+        # Per 0104 roles fail closed — a vlastník needs the group explicitly.
+        vlastnik_group, _ = Group.objects.get_or_create(name="vlastnik")
+        karolina.groups.add(vlastnik_group)
 
         for email, fname, lname, branch in [
             ("tyn@kasia.local", "Eva", "Týnišťská", tyn),

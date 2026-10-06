@@ -71,11 +71,24 @@ class User(AbstractUser):
 
     @property
     def is_vlastnik(self) -> bool:
-        """True iff this user is owner-level — superuser, in the
-        `vlastnik` group, or unassigned (the default for shadow-run
-        per decision 0034, where only Petr + Karolína use the system
-        and neither is branch-scoped). Branch staff get the `obsluha`
-        group explicitly on account creation."""
+        """True iff this user is owner-level — superuser, or in the
+        `vlastnik` group (and not also in `obsluha`).
+
+        Per 0104 roles **fail closed**: a user in neither group has no role
+        (neither vlastník nor obsluha) and is refused at login. This reverses
+        the old "unassigned → vlastník" shadow-run default (0034/0099); the
+        0003 data migration gave every then-groupless user the group."""
         if self.is_superuser:
             return True
-        return not self.is_obsluha
+        if self.is_obsluha:
+            return False
+        return self.groups.filter(name="vlastnik").exists()
+
+    @property
+    def has_valid_role(self) -> bool:
+        """Login gate (0104): superuser, vlastník, or obsluha WITH a branch.
+        Anything else (no group, or a branch-less obsluha that would be
+        unscoped everywhere) must not get a session."""
+        if self.is_superuser or self.is_vlastnik:
+            return True
+        return self.is_obsluha and self.branch_id is not None

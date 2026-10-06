@@ -6,21 +6,49 @@ Two roles per `context/people-and-roles.md` + the
 - `vlastnik` — owner-level (Petr, Karolína). No branch FK.
 - `obsluha` — branch staff. Exactly one branch FK (TYN or SEZ).
 
-The role choice maps onto Django's group membership (`obsluha`
-group present ↔ obsluha) and `User.branch_id`.
+The role choice maps onto Django's group membership (`vlastnik` /
+`obsluha` group, both explicit per 0104) and `User.branch_id`.
 """
 
 from __future__ import annotations
 
 from django import forms
-from django.contrib.auth.forms import PasswordResetForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm
 from django.contrib.auth.models import Group
+from django.db.models import Q
 from django.template import loader
 from django.utils.crypto import get_random_string
 
 from inventory.models import Branch
 
 from .models import User
+
+NO_ROLE_LOGIN_MESSAGE = (
+    "Váš účet nemá přiřazenou roli (nebo pobočku). "
+    "Kontaktujte prosím vlastníka, aby vám přístup nastavil."
+)
+
+
+class RoleCheckedAuthenticationForm(AuthenticationForm):
+    """Login form that fails closed on roles (per 0104).
+
+    A correct password is not enough: the account must be a superuser, a
+    vlastník, or an obsluha with a branch (``User.has_valid_role``). A user
+    in neither group — or a branch-less obsluha, who would be unscoped across
+    every branch filter — is refused with a Czech message.
+    """
+
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        "no_role": NO_ROLE_LOGIN_MESSAGE,
+    }
+
+    def confirm_login_allowed(self, user) -> None:
+        super().confirm_login_allowed(user)
+        if not user.has_valid_role:
+            raise forms.ValidationError(
+                self.error_messages["no_role"], code="no_role"
+            )
 
 
 class LoggedPasswordResetForm(PasswordResetForm):
@@ -208,21 +236,31 @@ class UserEditForm(_UserBaseForm):
 def _sync_role(user: User, role: str) -> None:
     """Translate the chosen role into group membership.
 
-    Per `accounts.User.is_obsluha` / `is_vlastnik`: obsluha = member of
-    the `obsluha` group. Owner-level = absence from that group.
+    Per 0104 roles fail closed, so BOTH groups are explicit: vlastník =
+    `vlastnik` group (and not `obsluha`); obsluha = `obsluha` group (and not
+    `vlastnik`). A user in neither group has no role and can't log in.
     """
+    vlastnik_group, _ = Group.objects.get_or_create(name="vlastnik")
     obsluha_group, _ = Group.objects.get_or_create(name="obsluha")
     if role == ROLE_OBSLUHA:
         user.groups.add(obsluha_group)
+        user.groups.remove(vlastnik_group)
     else:
+        user.groups.add(vlastnik_group)
         user.groups.remove(obsluha_group)
 
 
 def _count_other_active_vlastnik(exclude_pk: int) -> int:
-    """How many active vlastník users exist *besides* the given pk."""
+    """How many active vlastník users exist *besides* the given pk.
+
+    Mirrors ``User.is_vlastnik`` (0104): superuser, or in `vlastnik` and not
+    in `obsluha`. ``distinct()`` because the groups join duplicates rows.
+    """
     return (
         User.objects.filter(is_active=True)
+        .filter(Q(is_superuser=True) | Q(groups__name="vlastnik"))
+        .exclude(Q(is_superuser=False) & Q(groups__name="obsluha"))
         .exclude(pk=exclude_pk)
-        .exclude(groups__name="obsluha")
+        .distinct()
         .count()
     )

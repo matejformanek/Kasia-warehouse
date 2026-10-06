@@ -359,3 +359,30 @@ gunzip -c backups/prod-pre-golive-wipe-<DATE>.sql.gz | \
 - **A staging environment.** Prod-only by
   [`../context/decisions/0026-ci-cd-github-actions.md`](../context/decisions/0026-ci-cd-github-actions.md).
 - **Auto-rollback.** Manual per § 3.
+
+## 9. Login lockout (django-axes) — break-glass unlock
+
+Per [`../context/decisions/0104-app-security-hardening.md`](../context/decisions/0104-app-security-hardening.md):
+5 failed logins (on `/sklad/prihlaseni/` or `/admin/`) lock that
+**(e-mail, client IP)** pair for **1 hour**; it unlocks by itself after the
+cool-off, and a successful login resets the counter. The user sees the Czech
+„Příliš mnoho pokusů" page (HTTP 429). To unlock someone immediately:
+
+```
+ssh -i ~/.ssh/kasia_prod app@91.98.47.1 \
+  "cd /srv/kasia && docker compose exec -T web python manage.py axes_reset_username <email>"
+# or clear every lockout:
+ssh -i ~/.ssh/kasia_prod app@91.98.47.1 \
+  "cd /srv/kasia && docker compose exec -T web python manage.py axes_reset"
+```
+
+`axes_list_attempts` shows the current failure records. The password-reset form
+(`/sklad/reset-hesla/`) has its own per-IP limit (5 POSTs / hour, in-process
+cache) — it clears on `docker compose restart web` or after the hour.
+
+**Roles fail closed (0104):** a login refused with „Váš účet nemá přiřazenou
+roli…" means the account is in neither the `vlastnik` nor the `obsluha` group
+(or is obsluha without a pobočka). Fix it in `/sklad/uzivatele/` (pick the role)
+or in `/admin/` (groups). Health check:
+`docker compose exec -T web python manage.py shell -c "from accounts.models import User; print(User.objects.filter(is_superuser=False, groups__isnull=True).count())"`
+→ must print `0`.

@@ -7,9 +7,12 @@ compose and for the production VPS — runtime differences come from
 """
 
 import os
+import sys
+from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -18,8 +21,27 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return os.environ.get(name, "1" if default else "0").lower() in {"1", "true", "yes", "on"}
 
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-dev-key-do-not-use-in-prod")
+_DEV_SECRET_KEY = "insecure-dev-key-do-not-use-in-prod"
+# The placeholder shipped in .env.example — a copied-but-unedited .env.
+_EXAMPLE_SECRET_KEY = "change-me-to-a-long-random-string"
+
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", _DEV_SECRET_KEY)
 DEBUG = _env_bool("DJANGO_DEBUG", default=False)
+
+# Per 0104: refuse to run a non-DEBUG process on a missing/known key (forged
+# sessions + password-reset tokens). On prod this fails the deploy's
+# `migrate` step, so the old container keeps serving. Skipped under pytest
+# (host `make test` runs with no env); the Docker build passes its own
+# throwaway key for collectstatic, CI passes `ci-only-secret`.
+if (
+    not DEBUG
+    and SECRET_KEY in {"", _DEV_SECRET_KEY, _EXAMPLE_SECRET_KEY}
+    and "pytest" not in sys.modules
+):
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY is missing or a known default; set a real key in "
+        ".env (or DJANGO_DEBUG=1 for local development)."
+    )
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 # Behind the TLS-terminating Caddy proxy (per 0024 / 0056). Caddy sets
@@ -31,6 +53,13 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
 SESSION_COOKIE_SECURE = _env_bool("DJANGO_SECURE_COOKIES", default=False)
 CSRF_COOKIE_SECURE = _env_bool("DJANGO_SECURE_COOKIES", default=False)
+# Per 0104: a session lasts one working day (12 h), not Django's 2 weeks —
+# a forgotten session on a shared warehouse PC expires overnight.
+SESSION_COOKIE_AGE = 12 * 60 * 60
+# HSTS is deliberately NOT set here (per 0104): Caddy adds it on the prod
+# kasia.cz host only. A Django-side SECURE_HSTS_SECONDS would also fire on
+# local `make up` (https://localhost via `tls internal`) and pin HSTS on
+# localhost in the developer's browser. `check --deploy` W004 is accepted.
 
 # Absolute base URL (scheme + host, no trailing slash) for links in outgoing
 # e-mails. The send path runs off-request (on_commit / management commands), so
@@ -48,6 +77,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_htmx",
+    # Login brute-force lockout (per 0104).
+    "axes",
     "accounts",
     "inventory",
     "web",
@@ -71,10 +102,15 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
-    # Last on purpose (per 0077): the response-phase ScreenVisit write needs
+    # Last app middleware on purpose (per 0077; only AxesMiddleware follows):
+    # the response-phase ScreenVisit write needs
     # request.user (AuthenticationMiddleware) and request.htmx (HtmxMiddleware),
     # both set by the outer middlewares before the inner chain runs.
     "inventory.middleware.ScreenVisitMiddleware",
+    # django-axes (per 0104) — the axes docs want it last; it only turns an
+    # AxesBackend lockout signal into the lockout response, so sitting after
+    # ScreenVisitMiddleware changes nothing for 0077.
+    "axes.middleware.AxesMiddleware",
 ]
 
 # --- Auth flow (per 0020; paths moved under /sklad/ per 0050) ---------------
@@ -120,6 +156,29 @@ DATABASES = {
 
 # --- Auth (per 0020) --------------------------------------------------------
 AUTH_USER_MODEL = "accounts.User"
+
+# AxesStandaloneBackend first (per 0104): it counts failures and blocks a
+# locked-out (username, IP) pair before ModelBackend checks the password.
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# --- Login brute-force lockout (django-axes, per 0104) ---------------------
+# 5 failures lock that (username, client IP) pair for an hour — keyed on BOTH
+# so one attacker can't lock a user out from everywhere and one IP can't lock
+# everybody out. Covers /sklad/prihlaseni/ and /admin/ (both authenticate via
+# `username=`). Break-glass unlock: infra/RUNBOOK.md (`axes_reset`).
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(hours=1)
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+AXES_RESET_ON_SUCCESS = True
+# Django's AuthenticationForm posts the e-mail as `username` (axes >= 7.0.2
+# would otherwise look for USERNAME_FIELD = "email" and key on None).
+AXES_USERNAME_FORM_FIELD = "username"
+# The real client IP behind Caddy (rightmost X-Forwarded-For), not the proxy's.
+AXES_CLIENT_IP_CALLABLE = "accounts.security.client_ip"
+AXES_LOCKOUT_TEMPLATE = "registration/locked_out.html"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

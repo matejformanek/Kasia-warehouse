@@ -83,6 +83,11 @@ on the other branch see/reach by URL?"* and gate it (`request.user.is_vlastnik` 
 `is_obsluha` + `branch_id`, 403 on mismatch). The vlastník-only cross-branch
 roll-ups ("Vše"/"Dochází zboží") must 403 for obsluha. Mirror the established
 pattern (`movement_history`, `branch_dashboard`, `dodaci._deny_other_branch`).
+A view that loads a branch-owned object **by pk** calls the shared
+`deny_other_branch(request, obj.branch_id)` from `inventory/views/_shared.py`
+(per [`0104`](../../context/decisions/0104-app-security-hardening.md) — used by
+`movement_edit` / `movement_saved` / `prijem_confirm` / `prijem_plan_cancel`).
+Roles fail closed (0104): a user in neither group is **not** a vlastník.
 
 The **„Čeká na odeslání" waiting list (0096)** follows this: the
 `branch_dashboard` card is scoped to the resolved branch (obsluha already 403 on

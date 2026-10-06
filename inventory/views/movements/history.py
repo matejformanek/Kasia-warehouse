@@ -15,6 +15,7 @@ from ...models import (
     DodaciList,
     Movement,
 )
+from .._shared import deny_other_branch
 
 
 @require_GET
@@ -24,6 +25,10 @@ def movement_saved(request, pk: int):
         Movement.objects.select_related("branch", "odberatel", "dodavatel"),
         pk=pk,
     )
+    # Per 0104: obsluha sees only their own branch's confirmation page.
+    denied = deny_other_branch(request, movement.branch_id)
+    if denied is not None:
+        return denied
     dodaci_list = DodaciList.objects.filter(movement=movement).first()
     return render(
         request,

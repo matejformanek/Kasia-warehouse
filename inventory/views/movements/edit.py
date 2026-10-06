@@ -21,6 +21,7 @@ from ...models import (
     Product,
 )
 from ...services import counterparties, edit_movement
+from .._shared import deny_other_branch
 from ._shared import _push_validation_error_to_formset
 
 _MOVEMENT_EDITABLE_FIELDS = ("branch", "date_issued", "dodavatel", "odberatel", "note")
@@ -33,6 +34,10 @@ def movement_edit(request, pk: int):
         Movement.objects.select_related("branch", "odberatel", "dodavatel"),
         pk=pk,
     )
+    # Per 0104: obsluha may only edit their own branch's movements (IDOR).
+    denied = deny_other_branch(request, movement.branch_id)
+    if denied is not None:
+        return denied
     # Per 0059: PLANNED príjmy are edited/confirmed via prijem_confirm, not the
     # DONE-movement editor (which would apply status-aware stock logic).
     if movement.status == Movement.Status.PLANNED:
@@ -45,7 +50,7 @@ def movement_edit(request, pk: int):
     is_vydej = movement.kind == Movement.Kind.VYDEJ
 
     if request.method == "POST":
-        form = form_cls(request.POST)
+        form = form_cls(request.POST, user=request.user, movement=movement)
         # Per 0095: příjem-edit excludes finished products; výdej-edit keeps them.
         formset = MovementEditLineFormSet(
             request.POST, prefix="lines",
@@ -110,7 +115,7 @@ def movement_edit(request, pk: int):
             form_initial["odberatel"] = movement.odberatel_id
         else:
             form_initial["dodavatel"] = movement.dodavatel_id
-        form = form_cls(initial=form_initial)
+        form = form_cls(initial=form_initial, user=request.user, movement=movement)
         formset = MovementEditLineFormSet(
             initial=initial_lines, prefix="lines",
             form_kwargs={"exclude_finished": not is_vydej},

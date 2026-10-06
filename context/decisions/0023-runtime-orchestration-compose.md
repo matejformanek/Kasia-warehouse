@@ -1,5 +1,7 @@
 # 0023 — Runtime orchestration: Docker Compose v2
 
+> **Superseded in part by [`0105`](./0105-infra-security-hardening.md)** — the `backup` service is replaced by the `db-dump` sidecar.
+
 ## Context
 
 The deployment shape called out in

@@ -1,7 +1,7 @@
 # Per context/decisions/0023-runtime-orchestration-compose.md.
 # Same file is used for local dev and on the production VPS;
-# differences live in .env. The `backup` service is profiled so it
-# stays out of the local dev loop.
+# differences live in .env. The `db-dump` backup sidecar (and Umami) are
+# profiled to `prod` so they stay out of the local dev loop.
 
 name: kasia
 
@@ -26,7 +26,7 @@ services:
     networks: [internal]
 
   db:
-    image: postgres:18-trixie
+    image: postgres:18.6-trixie
     environment:
       POSTGRES_DB: kasia
       POSTGRES_USER: kasia
@@ -60,7 +60,10 @@ services:
     networks: [internal]
 
   proxy:
-    image: caddy:2-alpine
+    # Pinned to the version running on prod 2026-10-06 (digest
+    # sha256:6aeddd44…). Bump via PR; an image change recreates the proxy,
+    # which also picks up Caddyfile edits (single-file bind mount, RUNBOOK § 5b).
+    image: caddy:2.11.4-alpine
     depends_on:
       - web
     ports:
@@ -82,7 +85,7 @@ services:
   umami:
     # Public-site analytics per context/decisions/0076-public-site-analytics.md.
     # Pinned to the exact release tag, never `latest`; immutable digest recorded
-    # in the PR that bumps this line. Prod-only, same as `backup` — the local
+    # in the PR that bumps this line. Prod-only, same as `db-dump` — the local
     # `make up` loop never needs the analytics stack.
     image: umamisoftware/umami:3.2.0
     profiles: [prod]
@@ -100,7 +103,7 @@ services:
 
   umami-db:
     # Umami's own Postgres — the warehouse cluster stays untouched (0076).
-    image: postgres:18-trixie
+    image: postgres:18.6-trixie
     profiles: [prod]
     environment:
       POSTGRES_DB: umami
@@ -121,27 +124,51 @@ services:
     restart: unless-stopped
     networks: [internal]
 
-  backup:
-    # Off-box restic backups to Hetzner Storage Box per
-    # context/decisions/0027-hosting-hetzner.md. Excluded from the
-    # default local dev loop via the `prod` profile.
+  db-dump:
+    # Logical dump of the warehouse DB per
+    # context/decisions/0105-infra-security-hardening.md. Replaces the
+    # never-configured offen/docker-volume-backup service (and its
+    # root-equivalent docker.sock mount). Writes `pg_dump -Fc` files to a host
+    # dir OUTSIDE the checkout (deploy.yml hard-resets /srv/kasia), so
+    # Hetzner's daily server backup carries a consistent logical dump, not
+    # only a crash-consistent live data dir. Every 12 h (the Hetzner backup
+    # window is random), keeps the newest 14. Same image tag as `db` so
+    # pg_dump matches the server major. deploy.yml pre-creates the dir as app
+    # (mode 700); uid:gid default to `app` on the box (`id app` → 1000:1001,
+    # measured 2026-10-06). Every shell `$` is doubled (`$$`) so compose
+    # doesn't interpolate it.
+    image: postgres:18.6-trixie
     profiles: [prod]
-    image: offen/docker-volume-backup:latest
+    user: "${DB_DUMP_UID:-1000}:${DB_DUMP_GID:-1001}"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      BACKUP_CRON_EXPRESSION: "0 3 * * *"
-      BACKUP_FILENAME: kasia-%Y-%m-%dT%H-%M-%S.tar.gz
-      BACKUP_SOURCES: /backup
-      BACKUP_STOP_CONTAINER_LABEL: kasia-backup
-      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY}
-      RESTIC_PASSWORD: ${RESTIC_PASSWORD}
+      PGHOST: db
+      PGUSER: kasia
+      PGDATABASE: kasia
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while :; do
+          f=/dumps/kasia-$$(date -u +%Y-%m-%dT%H%M%SZ).dump
+          if pg_dump -Fc -f "$$f.tmp"; then
+            mv "$$f.tmp" "$$f" && echo "db-dump: wrote $$f"
+          else
+            rm -f "$$f.tmp"; echo "db-dump: pg_dump FAILED" >&2
+          fi
+          ls -1t /dumps/kasia-*.dump 2>/dev/null | tail -n +15 | xargs -r rm -f
+          sleep 43200
+        done
     volumes:
-      # Mount matches the db service (see note there) so backups capture
-      # the version-specific cluster subdirectory.
-      - pgdata:/backup/pgdata:ro
-      - umami_pgdata:/backup/umami_pgdata:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${DB_DUMP_DIR:-/home/app/kasia-dumps}:/dumps
+    healthcheck:
+      # Unhealthy when no dump younger than 26 h exists.
+      test: ["CMD-SHELL", "find /dumps -name 'kasia-*.dump' -mmin -1560 | grep -q ."]
+      interval: 1h
+      timeout: 10s
+      start_period: 15m
     restart: unless-stopped
     networks: [internal]
 

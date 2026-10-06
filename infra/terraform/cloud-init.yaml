@@ -4,6 +4,10 @@
 # unprivileged `app` user, and clones the repo to /srv/kasia.
 # Production .env is *not* deployed by this file — Matej writes it
 # manually after first boot per infra/RUNBOOK.md.
+#
+# Runs at FIRST BOOT ONLY. main.tf ignores changes to this file (lifecycle
+# ignore_changes, per 0105) so editing it never replaces the live box; the
+# same hardening is applied to the running box by hand per RUNBOOK § 10.
 
 package_update: true
 package_upgrade: true
@@ -14,6 +18,9 @@ packages:
   - git
   - gnupg
   - ufw
+  # SSH hardening per context/decisions/0105-infra-security-hardening.md.
+  - fail2ban
+  - unattended-upgrades
 
 ssh_authorized_keys: []  # filled by hcloud_ssh_key for root; app inherits below
 
@@ -28,6 +35,25 @@ write_files:
   - path: /etc/sysctl.d/99-kasia.conf
     content: |
       vm.swappiness = 10
+
+  # sshd hardening (0105). `10-` sorts before any `50-cloud-init.conf`, and
+  # sshd keeps the FIRST value it reads for each keyword. Root stays
+  # key-only (prohibit-password), not `no`: `app` has no sudo, so root is
+  # the only admin path.
+  - path: /etc/ssh/sshd_config.d/10-hardening.conf
+    permissions: "0644"
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin prohibit-password
+
+  # fail2ban: sshd jail only (Ubuntu's defaults: 10 min ban after 5 fails).
+  - path: /etc/fail2ban/jail.d/10-kasia.conf
+    permissions: "0644"
+    content: |
+      [sshd]
+      enabled = true
+      backend = systemd
 
 runcmd:
   # Swap (2 GB).
@@ -67,3 +93,12 @@ runcmd:
   - ufw allow 80/tcp
   - ufw allow 443/tcp
   - ufw --force enable
+
+  # db-dump sidecar target (0105) — outside the checkout; deploy.yml also
+  # re-creates it idempotently.
+  - install -d -m 700 -o app -g app /home/app/kasia-dumps
+
+  # Pick up the sshd drop-in + start fail2ban (0105). unattended-upgrades
+  # is enabled by default on Ubuntu 24.04 once installed.
+  - sshd -t && systemctl reload ssh
+  - systemctl enable --now fail2ban

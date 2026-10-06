@@ -3,7 +3,10 @@
 # runtime carries only the Pango stack + DejaVu fonts + the .venv.
 
 ARG PYTHON_VERSION=3.14
-ARG UV_VERSION=0.5
+# Exact tag, not the floating `0.5` (per 0105). 0.5.31 is the image `0.5`
+# resolved to on 2026-10-06 (same digest), so builds are unchanged; a uv bump
+# is its own PR.
+ARG UV_VERSION=0.5.31
 
 # --- uv binary ----------------------------------------------------------------
 # Newer buildx refuses variable expansion in COPY --from=…; the workaround is

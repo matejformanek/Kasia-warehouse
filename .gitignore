@@ -88,8 +88,9 @@ ipython_config.py
 # Django staticfiles output (collectstatic target).
 staticfiles/
 
-# Terraform state — never committed; backed up via restic per
-# context/decisions/0027-hosting-hetzner.md.
+# Terraform state — never committed; local-only on Matej's workstation
+# (0105 dropped the restic plan from 0027 — keep a copy next to the
+# laptop DB dumps in backups/).
 infra/terraform/.terraform/
 infra/terraform/*.tfstate
 infra/terraform/*.tfstate.*
@@ -229,6 +230,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 backups/
+# Local scratch (one-off import scripts with proprietary recipes) — never
+# commit, never ship in the image (also in .dockerignore).
+scratchpad/
 
 # Claude Code worktrees — local, throwaway git worktrees under .claude/.
 # Each is its own checkout (registered via `git worktree`); never commit them.

@@ -31,3 +31,10 @@ infra
 staticfiles
 *.sqlite3
 *.log
+
+# Laptop DB dumps (PII + password hashes) and local scratch — never in the
+# image (per 0105).
+backups/
+scratchpad/
+*.dump
+*.sql.gz

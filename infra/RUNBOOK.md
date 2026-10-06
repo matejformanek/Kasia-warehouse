@@ -20,8 +20,8 @@ docker compose build
 docker compose up
 ```
 
-That brings up `web` + `db` + `proxy`. The `backup` service is
-profiled to `prod` only and stays out of the local loop. Visit
+That brings up `web` + `db` + `proxy`. The `db-dump` backup sidecar
+and Umami are profiled to `prod` only and stay out of the local loop. Visit
 http://localhost/healthz; expect `200 OK`.
 
 ## 1. First-time provisioning (Hetzner box)
@@ -50,6 +50,18 @@ terraform apply
 
 Note the `server_ipv4` output — that's the box's IP.
 
+⚠️ **On the live box, every `apply` is gated on the plan** (per
+[`0105`](../context/decisions/0105-infra-security-hardening.md)). State is
+**local-only** (`infra/terraform/terraform.tfstate`, gitignored — keep a copy
+in `backups/`); `terraform state list` must show the 4 existing resources
+first. Use `terraform plan -out=tfplan.bin` and read it: it must say
+`0 to destroy` and never `must be replaced`. `hcloud_server.web` carries
+`lifecycle { ignore_changes = [user_data, ssh_keys, image] }` and
+`delete_protection` / `rebuild_protection` — a deliberate rebuild means
+removing those in a reviewed PR first. Never change `TF_VAR_ssh_pub_key`
+away from `kasia_prod.pub`. The CI terraform job plans against a dummy token
+and no state, so it cannot catch a replace.
+
 ### 1.3 Populate the on-box `.env`
 
 ```
@@ -61,9 +73,7 @@ $EDITOR .env                                  # fill in real secrets
 chmod 600 .env
 ```
 
-`.env` is **never** committed. Restic secrets
-(`RESTIC_REPOSITORY`, `RESTIC_PASSWORD`) need a separate decision
-on the Storage Box endpoint before backups run.
+`.env` is **never** committed. Backups need no secrets (§ 1.6).
 
 ### 1.4 Set GitHub Actions secrets
 
@@ -71,12 +81,17 @@ In the GitHub repo settings → Secrets and variables → Actions:
 
 | Secret      | Value                                                  |
 |-------------|--------------------------------------------------------|
-| `SSH_KEY`   | contents of `~/.ssh/kasia_prod` (the private key)      |
+| `SSH_KEY`   | contents of `~/.ssh/kasia_deploy` — the dedicated deploy private key, authorised on `app` only (§ 10). Until § 10 is done it is still `~/.ssh/kasia_prod`. |
 
-Host and user are hardcoded literals in `.github/workflows/deploy.yml`
-(`host: 91.98.47.1`, `username: app`) — non-secret. If the box is
+`SSH_KEY` is a **repository** secret (checked 2026-10-06; the `production`
+environment has no secrets of its own). Host and user are hardcoded literals
+in `.github/workflows/deploy.yml` (`host: 91.98.47.1`, `username: app`) —
+non-secret, as is the host-key `fingerprint:` (ECDSA — update it after a
+rebuild: `ssh-keyscan -t ecdsa <ip> | ssh-keygen -lf -`). If the box is
 re-IP'd, edit the workflow rather than rotating a secret. GHCR push
-is authenticated by the built-in `GITHUB_TOKEN`; no PAT.
+is authenticated by the built-in `GITHUB_TOKEN`; no PAT. A rebuilt box seeds
+`app`'s `authorized_keys` from root's (`kasia_prod` only) — re-append the
+deploy public key (§ 10 step 4) before the first deploy.
 
 ### 1.5 Trigger the first deploy
 
@@ -88,23 +103,27 @@ from the Actions tab. Watch:
 
 Verify: `curl http://<server_ipv4>/healthz` returns `200`.
 
-### 1.6 Set up backups
+### 1.6 Backups (per [`0105`](../context/decisions/0105-infra-security-hardening.md))
 
-Create the Storage Box via the Hetzner console (BX11 in the same
-region). On the box:
+Nothing to set up by hand beyond the Terraform apply:
+
+- **Hetzner server backups** — `backups = true` in `main.tf`; 7 rolling
+  daily images of the whole disk. ⚠️ **They are deleted together with the
+  server** — accepted gap; the off-box path is the manual laptop dump (§ 4.1).
+- **`db-dump` sidecar** (`compose.yaml`, prod profile) — `pg_dump -Fc` of the
+  warehouse DB every 12 h into `/home/app/kasia-dumps` (mode 700, created by
+  `deploy.yml`), newest 14 kept. Each Hetzner image therefore holds
+  consistent logical dumps. Check it:
 
 ```
-restic -r sftp:u123456@u123456.your-storagebox.de:/kasia init
+ssh -i ~/.ssh/kasia_prod app@91.98.47.1 \
+  'ls -lt ~/kasia-dumps | head -3; cd /srv/kasia && docker compose --profile prod ps db-dump'
 ```
 
-Record the repo path + password in the on-box `.env`
-(`RESTIC_REPOSITORY`, `RESTIC_PASSWORD`). Then:
+Expect a `kasia-<UTC timestamp>.dump` younger than 12 h and `(healthy)`
+(unhealthy = no dump younger than 26 h → `docker compose logs db-dump`).
 
-```
-docker compose --profile prod up -d backup
-```
-
-Restore drill: see § 4.
+Restore: § 4.
 
 ## 2. Routine deploy
 
@@ -141,21 +160,103 @@ a manual revert.
 
 A backup that hasn't been restored doesn't exist
 ([`.claude/rules/right-sized-for-small-business.md`](../.claude/rules/right-sized-for-small-business.md)).
-Cadence: TBD once we have operating history; aim quarterly.
+Cadence: quarterly, and after any Postgres major bump. Retention today:
+14 on-box dumps (≈ 7 days at 12 h) inside each of 7 daily Hetzner images.
+
+All dumps are `pg_dump -Fc` (custom format) and hold **SMTP creds, password
+hashes and customer PII** — `chmod 600`, keep under `backups/` (gitignored +
+dockerignored), never paste into PRs/commits.
+
+### 4.1 Take an off-box (laptop) dump
+
+The only copy that survives losing the server (§ 1.6). Take one before any
+risky infra change, and periodically:
 
 ```
-docker compose stop web
-restic -r $RESTIC_REPOSITORY snapshots
-restic -r $RESTIC_REPOSITORY restore <id> --target /tmp/restore
-# Drop into a fresh pgdata volume, point the db service at it.
-docker compose up -d
+ssh -i ~/.ssh/kasia_prod app@91.98.47.1 \
+  "cd /srv/kasia && docker compose exec -T db pg_dump -U kasia -d kasia -Fc" \
+  > backups/prod-$(date +%F).dump
+chmod 600 backups/prod-$(date +%F).dump
+pg_restore -l backups/prod-$(date +%F).dump | grep -c 'TABLE DATA'   # sanity (31 on 2026-10-06)
 ```
 
-Retention policy SOP — number of daily / weekly / monthly snapshots
-to keep — is currently open
-([`../context/open-questions.md`](../context/open-questions.md)
-§ Decide later). Write the SOP into this file once a month of real
-operation gives us shape.
+Or copy the newest sidecar dump:
+`scp -i ~/.ssh/kasia_prod "app@91.98.47.1:kasia-dumps/$(ssh -i ~/.ssh/kasia_prod app@91.98.47.1 'ls -1t ~/kasia-dumps | head -1')" backups/`.
+
+### 4.2 Restore drill (local, scratch DB — never touches prod or your dev data)
+
+Uses a **separate compose project** (`-p kasia-drill`) so its volume is
+fresh and the everyday `kasia` dev DB is untouched. The `.env` forces the
+console e-mail backend so nothing restored can mail real people.
+
+```
+cd <a checkout of main>
+cat > .env <<'ENV'
+POSTGRES_PASSWORD=drill-only
+DJANGO_SECRET_KEY=drill-only
+DJANGO_DEBUG=1
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+CADDYFILE=./Caddyfile.dev
+ENV
+docker compose -p kasia-drill up -d --wait db           # fresh initdb, ICU cs-CZ (0038)
+docker compose -p kasia-drill exec -T db \
+  pg_restore -U kasia -d kasia --no-owner --clean --if-exists --exit-on-error \
+  < backups/<dump>.dump
+```
+
+Compare per-table row counts with prod (read-only on prod) — `counts.sql`:
+
+```
+select table_name,
+  (xpath('/row/c/text()', query_to_xml(format('select count(*) as c from %I.%I',
+     table_schema, table_name), false, true, '')))[1]::text::int
+from information_schema.tables
+where table_schema = 'public' and table_type = 'BASE TABLE' order by 1;
+```
+
+```
+docker compose -p kasia-drill exec -T db psql -U kasia -d kasia -tA < counts.sql > drill.txt
+ssh -i ~/.ssh/kasia_prod app@91.98.47.1 \
+  'cd /srv/kasia && docker compose exec -T db psql -U kasia -d kasia -tA' < counts.sql > prod.txt
+diff prod.txt drill.txt && echo IDENTICAL
+DATABASE_URL=postgres://kasia:drill-only@127.0.0.1:5432/kasia DJANGO_SECRET_KEY=x \
+  DJANGO_DEBUG=1 EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend \
+  uv run python manage.py migrate --check                 # schema == code
+docker compose -p kasia-drill down -v && rm .env          # throw it away
+```
+
+(The drill publishes `127.0.0.1:5432`, so stop the dev stack first.) Counts
+only match exactly when prod hasn't changed since the dump; otherwise expect
+small deltas in `inventory_screenvisit` / `django_session`.
+
+**Drill log**
+
+| Date | Dump | Result |
+|---|---|---|
+| 2026-10-06 | `backups/prod-2026-10-06-pre-hardening.dump` (laptop `pg_dump -Fc`) | Restored clean (`--exit-on-error`, rc 0); DB locale `icu / cs-CZ`; all **31** public tables **identical** to prod (e.g. users 8, products 157, movements 255, movement lines 579, dodáky 49, stock 120, míchání 44); `migrate --check` clean. The `db-dump` sidecar was also run against the restored DB as uid 1000:1001: wrote a valid archive (31 TABLE DATA entries), healthcheck passed, retention kept the newest 14. |
+
+### 4.3 Restore into production (disaster)
+
+1. **Take a laptop dump of whatever is there now** (§ 4.1), even if broken.
+2. Get the dump onto the box: newest `~/kasia-dumps/*.dump`, or `scp` a
+   laptop dump to `app@91.98.47.1:`. If the disk itself is gone, first
+   restore the server from a Hetzner backup image (console → server →
+   Backups → Restore — `rebuild_protection` must be lifted via Terraform
+   for a rebuild-from-image) and take its newest `~/kasia-dumps` file.
+3. Stop writers, restore **into the existing DB** (never drop/recreate it —
+   that loses the 0038 ICU `cs-CZ` locale), start again:
+
+```
+ssh -i ~/.ssh/kasia_prod app@91.98.47.1
+cd /srv/kasia
+docker compose --profile prod stop web db-dump
+docker compose exec -T db pg_restore -U kasia -d kasia --no-owner \
+  --clean --if-exists --exit-on-error < ~/kasia-dumps/<dump>.dump
+docker compose --profile prod up -d --no-deps web db-dump   # WEB_IMAGE trap: § 5b
+```
+
+4. Verify: `/healthz` 200, log in, open Přehled + Historie; compare counts
+   with the drill query above.
 
 ## 5. Domain cutover to HTTPS at `kasia.cz`
 
@@ -237,11 +338,14 @@ Caddyfile is a **single-file bind mount** (`./Caddyfile:/etc/caddy/...`),
 and `git reset --hard` replaces the file with a new inode — the running
 container keeps seeing the **old** file, so neither the deploy nor a
 `caddy reload` picks the change up. After any Caddyfile-touching merge,
-run `docker compose --profile prod up -d --force-recreate proxy` on the
-box (a few seconds of downtime; certs persist in the `caddy_data`
-volume). Deploys that change the `proxy` service itself (ports, image)
-recreate it automatically — that's why the Phase B cutover worked without
-this step.
+run `docker compose --profile prod up -d --no-deps --force-recreate proxy`
+on the box (a few seconds of downtime; certs persist in the `caddy_data`
+volume). **`--no-deps` is mandatory**: without it compose re-evaluates `web`
+against the `.env` `WEB_IMAGE` pin and can roll prod back (trap below).
+Verify with `curl -sI https://kasia.cz/` (e.g. the 0105 HSTS header present,
+no `Server:`). Deploys that change the `proxy` service itself (ports, image)
+recreate it automatically — that's why the Phase B cutover and the 0105
+image pin worked without this step.
 
 ⚠️ **`WEB_IMAGE` trap on manual recreates.** `deploy.yml` exports
 `WEB_IMAGE=ghcr.io/…:sha-*` only inside its own SSH session — it is not
@@ -272,7 +376,8 @@ cert auto-provisioned like the apex).
 - **Log in:** `https://analytics.kasia.cz/`, user `admin`. A fresh install
   boots with password `umami` — **rotate it immediately** (first boot
   2026-07-14 did this; the rotated password was left one-time-fetchable at
-  `/home/app/umami-admin-pw.txt`, mode 600 — fetch and `rm`).
+  `/home/app/umami-admin-pw.txt`, mode 600 — **still present on
+  2026-10-06**; fetch it into a password manager and `rm` it, § 10 step 12).
 - **Website entries:** Nastavení → Websites in the Umami UI. The `kasia.cz`
   entry exists; its ID is wired as `UMAMI_WEBSITE_ID` in `/srv/kasia/.env`.
   To add another site, create the entry, copy its ID — a second site needs
@@ -284,10 +389,9 @@ cert auto-provisioned like the apex).
 - **Caddyfile changes** (including the `analytics.kasia.cz` block) need the
   **proxy force-recreate** after the merge deploys — see the single-file
   bind-mount trap in § 5b.
-- **Backups:** `umami_pgdata` is mounted read-only into the `backup`
-  service; the nightly 03:00 restic run to the Storage Box covers it
-  alongside `pgdata`. Restore works the same as § 4, targeting
-  `umami_pgdata`.
+- **Backups:** `umami_pgdata` is covered only by the Hetzner server backup
+  image (crash-consistent; Postgres recovers via WAL). The `db-dump`
+  sidecar dumps the warehouse DB only — analytics loss is tolerable (0105).
 - **Upgrades:** bump the pinned `umamisoftware/umami:<version>` tag in
   `compose.yaml` via PR (record the image digest in the PR description);
   the container runs its own DB migrations on boot.
@@ -386,3 +490,146 @@ roli…" means the account is in neither the `vlastnik` nor the `obsluha` group
 or in `/admin/` (groups). Health check:
 `docker compose exec -T web python manage.py shell -c "from accounts.models import User; print(User.objects.filter(is_superuser=False, groups__isnull=True).count())"`
 → must print `0`.
+
+## 10. Live-box hardening (one-off, per 0105)
+
+> **Documented one-off exception to
+> [`.claude/rules/infra-as-code.md`](../.claude/rules/infra-as-code.md).**
+> `cloud-init.yaml` carries the same hardening for any *future* box, but it
+> only runs at first boot and Terraform now ignores it (lifecycle block), so
+> the running box is changed by hand, exactly once, with these commands.
+> Matej runs them; nothing here is automated. Afterwards record the date in
+> `context/state.md`. Per
+> [`0105`](../context/decisions/0105-infra-security-hardening.md).
+
+Facts measured 2026-10-06: `app` = uid 1000 / gid 1001, in `docker`, no
+sudo; `/etc/ssh/sshd_config.d/` empty (Ubuntu default → password auth on,
+root login allowed); `unattended-upgrades` installed; `fail2ban` absent;
+`SSH_KEY` is a **repository** secret (no environment secret) and the
+`production` environment has **no** branch restriction or reviewers;
+`/home/app/umami-admin-pw.txt` still exists.
+
+Do the steps **in order**. Never close your first root session until the
+step-9 checks pass.
+
+**A — before anything**
+
+1. Laptop dump (§ 4.1) and copy `infra/terraform/terraform.tfstate` into
+   `backups/` (`chmod 600`).
+2. Confirm break-glass works: Hetzner Console → server → **Console** (VNC)
+   opens, and you know where **Rescue → Reset root password** is. This is the
+   way back in if sshd ends up locked.
+
+**B — merge + Terraform**
+
+3. Merge the 0105 PR. The deploy already uses the pinned host-key
+   `fingerprint:` (a mismatch fails before any remote command — safe) and
+   recreates `db`, `umami-db`, `proxy`, starts `db-dump`, removes the old
+   `backup` container. Then, from an up-to-date `main`:
+
+```
+cd infra/terraform
+terraform state list            # expect the 4 resources
+# TF_VAR_* exactly as in § 1.2 (ssh_pub_key = kasia_prod.pub)
+terraform plan -no-color -out=tfplan.bin
+# MUST read: "0 to add, 1 to change, 0 to destroy" —
+#   backups / delete_protection / rebuild_protection false -> true.
+# Anything "must be replaced" → STOP.
+terraform apply tfplan.bin && rm tfplan.bin
+```
+
+**C — dedicated deploy key (rotates only the GitHub key)**
+
+4. Generate and authorise it on `app` only:
+
+```
+ssh-keygen -t ed25519 -f ~/.ssh/kasia_deploy -N '' -C gha-deploy-kasia
+ssh -i ~/.ssh/kasia_prod app@91.98.47.1 'cat >> ~/.ssh/authorized_keys' < ~/.ssh/kasia_deploy.pub
+ssh -i ~/.ssh/kasia_deploy -o IdentitiesOnly=yes app@91.98.47.1 'cd /srv/kasia && docker compose ps'
+```
+
+5. Swap the secret (repo-level — there is no environment secret to shadow
+   it) and prove a deploy:
+
+```
+gh secret set SSH_KEY -R matejformanek/Kasia-warehouse < ~/.ssh/kasia_deploy
+gh workflow run deploy.yml --ref main
+gh run watch "$(gh run list --workflow=deploy --limit 1 --json databaseId -q '.[0].databaseId')" --exit-status
+```
+
+6. **Keep `kasia_prod` on `app` and root.** It is Matej's admin key — the
+   RUNBOOK and the ops skills use `app@` with it. *Optional, only if Matej
+   explicitly agrees:* remove the `kasia-prod` line from
+   `/home/app/.ssh/authorized_keys` — after that `app@` works only with the
+   deploy key, every `ssh -i ~/.ssh/kasia_prod app@…` command in this file
+   must become `root@` + `su - app`, and the deploy key becomes the only
+   direct `app` credential.
+
+**D — sshd hardening (session 1 stays open throughout)**
+
+7. Session 1:
+
+```
+ssh -i ~/.ssh/kasia_prod root@91.98.47.1
+cat > /etc/ssh/sshd_config.d/10-hardening.conf <<'EOF'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin prohibit-password
+EOF
+chmod 644 /etc/ssh/sshd_config.d/10-hardening.conf
+sshd -t && sshd -T | grep -Ei '^(permitrootlogin|passwordauthentication|kbdinteractiveauthentication) '
+# expect: permitrootlogin without-password (= prohibit-password),
+#         passwordauthentication no, kbdinteractiveauthentication no
+systemctl reload ssh
+```
+
+8. **New terminal** (session 1 still open) — all four must behave:
+
+```
+ssh -i ~/.ssh/kasia_prod   -o IdentitiesOnly=yes root@91.98.47.1 true && echo root-key-ok
+ssh -i ~/.ssh/kasia_prod   -o IdentitiesOnly=yes app@91.98.47.1  true && echo app-admin-ok
+ssh -i ~/.ssh/kasia_deploy -o IdentitiesOnly=yes app@91.98.47.1  true && echo deploy-key-ok
+ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password,keyboard-interactive \
+    root@91.98.47.1           # expect: Permission denied (publickey).
+```
+
+9. Any failure → in session 1: `rm /etc/ssh/sshd_config.d/10-hardening.conf
+   && systemctl reload ssh`, re-test, investigate. Only when all four pass,
+   close session 1.
+
+**E — fail2ban + unattended-upgrades (root)**
+
+10. ```
+    apt-get update && apt-get install -y fail2ban
+    printf '[sshd]\nenabled = true\nbackend = systemd\n' > /etc/fail2ban/jail.d/10-kasia.conf
+    systemctl enable --now fail2ban && fail2ban-client status sshd
+    ```
+    Ubuntu defaults: 5 failures → 10 min ban. Locked yourself out? Hetzner
+    Console → `fail2ban-client set sshd unbanip <your-ip>`.
+11. unattended-upgrades is already installed — just confirm it is on:
+    `systemctl is-enabled unattended-upgrades && cat /etc/apt/apt.conf.d/20auto-upgrades`
+    (both `APT::Periodic` lines `"1"`).
+
+**F — cleanup + verification**
+
+12. Umami password file: as `app`, `cat ~/umami-admin-pw.txt` into a
+    password manager, confirm it logs in at `https://analytics.kasia.cz/`
+    (and that `admin` / `umami` does **not**), then `rm ~/umami-admin-pw.txt`.
+13. Old backup image: `docker image rm offen/docker-volume-backup:latest`
+    (as `app`; harmless if already gone).
+14. Verify from the laptop:
+
+```
+curl -sI https://kasia.cz/ | grep -iE '^(strict-transport-security|server|via):'
+#   → only "strict-transport-security: max-age=31536000"
+nc -zv -w3 91.98.47.1 5432 ; nc -zv -w3 91.98.47.1 8000   # both must fail
+ssh -i ~/.ssh/kasia_prod app@91.98.47.1 'ls -lt ~/kasia-dumps | head -3'
+```
+
+Also check Hetzner Console → server shows **Backups: enabled** and the
+delete/rebuild **protection** lock icons.
+15. Add a dated line to `context/state.md` → Done.
+
+**Not changed by this section (decide separately):** move `SSH_KEY` to a
+`production`-environment secret and restrict that environment to `main`
+(today any branch's workflow can read the repo secret; fork PRs cannot).

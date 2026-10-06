@@ -1,10 +1,9 @@
 name: deploy
 
-# Dormant until infra/RUNBOOK.md one-time bring-up is complete:
-# Hetzner box provisioned, /srv/kasia .env populated, single GH
-# Actions secret SSH_KEY set (host + user are hardcoded literals
-# below — non-secret per 2026-06-16 decision). GHCR push uses the
-# built-in GITHUB_TOKEN — no PAT.
+# Push to main → build image → SSH deploy to the Hetzner box. Single GH
+# Actions secret SSH_KEY (host + user are hardcoded literals below —
+# non-secret per 2026-06-16 decision). GHCR push uses the built-in
+# GITHUB_TOKEN — no PAT.
 
 on:
   push:
@@ -14,6 +13,11 @@ on:
 concurrency:
   group: deploy-prod
   cancel-in-progress: false
+
+# Least privilege per context/decisions/0105-infra-security-hardening.md:
+# nothing at the top level, each job asks for what it needs. Third-party
+# actions are pinned by commit SHA (tag in the trailing comment).
+permissions: {}
 
 env:
   REGISTRY: ghcr.io
@@ -28,13 +32,15 @@ jobs:
     outputs:
       image_tag: ${{ steps.meta.outputs.image_tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -47,13 +53,15 @@ jobs:
           IMAGE="${IMAGE,,}"
           SHA_TAG="${IMAGE}:sha-${GITHUB_SHA::12}"
           LATEST_TAG="${IMAGE}:latest"
-          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
-          echo "sha_tag=${SHA_TAG}" >> "$GITHUB_OUTPUT"
-          echo "latest_tag=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
-          echo "image_tag=${SHA_TAG}" >> "$GITHUB_OUTPUT"
+          {
+            echo "image=${IMAGE}"
+            echo "sha_tag=${SHA_TAG}"
+            echo "latest_tag=${LATEST_TAG}"
+            echo "image_tag=${SHA_TAG}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           push: true
@@ -67,18 +75,28 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: production
+    # No GITHUB_TOKEN scopes needed — the job only uses the SSH_KEY secret.
+    permissions: {}
     steps:
       - name: SSH deploy
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: 91.98.47.1
           username: app
           key: ${{ secrets.SSH_KEY }}
+          # Pin the box's host key (0105). drone-ssh (Go x/crypto) negotiates
+          # the ECDSA host key, so this is the ECDSA fingerprint — measured
+          # 2026-10-06 with x/crypto v0.45.0 (drone-ssh 1.8.2's version) and
+          # `ssh-keyscan -t ecdsa 91.98.47.1 | ssh-keygen -lf -`. A rebuilt
+          # box gets new host keys: update this line (RUNBOOK § 10).
+          fingerprint: "SHA256:ueDuVPs6IDsd4ObHD9qIv/InfFN4oMo8fX84skx4pbo"
           script: |
             set -euo pipefail
             cd /srv/kasia
             git fetch --depth 1 origin main
             git reset --hard origin/main
+            # db-dump sidecar target (0105) — outside the checkout, app-owned.
+            install -d -m 700 "$HOME/kasia-dumps"
             export WEB_IMAGE="${{ needs.build.outputs.image_tag }}"
             docker compose --profile prod pull
             docker compose run --rm web python manage.py migrate --noinput

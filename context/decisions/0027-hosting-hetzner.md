@@ -1,5 +1,7 @@
 # 0027 — Hosting + backups: Hetzner Cloud CPX22 + Storage Box BX11
 
+> **Superseded in part by [`0105`](./0105-infra-security-hardening.md)** — the backup design (Storage Box + restic); hosting stands.
+
 ## Context
 
 The deploy target — one VPS in the EU, cheap, well-supported, with

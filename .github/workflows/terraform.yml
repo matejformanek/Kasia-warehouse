@@ -2,12 +2,19 @@ name: terraform
 
 # Plan-only — apply runs manually from Matej's workstation per
 # context/decisions/0025-iac-terraform-hcloud.md.
+#
+# NB: the plan below runs against a dummy token and no state, so it can NOT
+# show what an apply would do to the live box. The real gate is Matej's local
+# `terraform plan` against the local state (infra/RUNBOOK.md § 1.2 / 0105).
 
 on:
   pull_request:
     paths:
       - "infra/terraform/**"
       - ".github/workflows/terraform.yml"
+
+# Least privilege per context/decisions/0105-infra-security-hardening.md.
+permissions: {}
 
 defaults:
   run:
@@ -18,12 +25,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: "1.9.8"
 

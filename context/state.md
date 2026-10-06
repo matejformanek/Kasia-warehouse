@@ -5,6 +5,18 @@
 
 ## Done
 
+- **2026-10-06** — **Infra security hardening** (decision
+  [`0105`](./decisions/0105-infra-security-hardening.md); supersedes-in-part
+  0023 + 0027's backup design). Terraform: `lifecycle ignore_changes =
+  [user_data, ssh_keys, image]` (a plan on old main would have **replaced the
+  box**), `backups` + delete/rebuild protection — **apply pending (Matej)**.
+  `compose.yaml`: broken restic `backup` (+ docker.sock) → `db-dump` pg_dump
+  sidecar (12 h, keep 14, `/home/app/kasia-dumps`). Caddy HSTS + no
+  `Server`/`Via`, no CSP. Pinned caddy/postgres/uv images, SHA-pinned
+  actions, `permissions: {}`, deploy host-key `fingerprint:`. cloud-init:
+  sshd drop-in, fail2ban, unattended-upgrades. **Live-box steps pending
+  (Matej):** `infra/RUNBOOK.md` § 10. Restore drill passed (RUNBOOK § 4.2).
+  Accepted gap: Hetzner backups die with the server.
 - **2026-10-06** — **App security hardening** (decision
   [`0104`](./decisions/0104-app-security-hardening.md); supersedes-in-part
   [`0099`](./decisions/0099-vydej-branch-request-notification.md)'s

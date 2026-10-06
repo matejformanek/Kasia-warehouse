@@ -11,6 +11,21 @@
 # `dig +short kasia.cz` / `www.kasia.cz` return 91.98.47.1. See RUNBOOK § 5.
 
 kasia.cz {
+    # Per context/decisions/0105-infra-security-hardening.md. HSTS lives here,
+    # in the prod-only Caddyfile, not in Django (SECURE_HSTS_SECONDS would also
+    # pin https://localhost via Caddyfile.dev's `tls internal`). The apex has
+    # been HTTPS-only since 2026-07-14. No includeSubDomains (analytics and any
+    # future subdomain decide for themselves), no preload.
+    # Deleting Server / X-Powered-By / Via makes Caddy defer the header ops until
+    # the response is written, so gunicorn's `Server:` is stripped too.
+    # No CSP on purpose (0105). NB: editing this file needs a proxy
+    # recreate — RUNBOOK § 5b.
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        -Server
+        -X-Powered-By
+        -Via
+    }
     reverse_proxy web:8000
     encode zstd gzip
     log {

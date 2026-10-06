@@ -135,6 +135,8 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 # Umami tracker vars, public paths only (decision 0076).
                 "web.context_processors.umami",
+                # site_url + canonical_url for the public SEO head (0106).
+                "web.context_processors.seo",
             ],
         },
     },

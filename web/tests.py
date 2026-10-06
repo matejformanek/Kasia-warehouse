@@ -7,6 +7,9 @@ branch addresses. The public site stores no data (the contact form was removed
 in 0052).
 """
 
+import json
+import re
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client, override_settings
@@ -129,6 +132,87 @@ def test_sitemap_xml() -> None:
     assert "<urlset" in body
     assert "/o-nas/" in body
     assert "/produkty/" in body  # new page promoted to the IA (0058)
+
+
+# --- SEO surface (decision 0106) ---------------------------------------------
+
+
+def _jsonld_blocks(body: str) -> list[dict]:
+    """Every <script type="application/ld+json"> payload, parsed."""
+    blocks = re.findall(
+        r'<script type="application/ld\+json">(.*?)</script>', body, re.S
+    )
+    assert blocks, "no JSON-LD blocks found"
+    return [json.loads(b) for b in blocks]
+
+
+def test_canonical_and_og_url_are_request_derived() -> None:
+    body = Client().get(reverse("web:home")).content.decode("utf-8")
+    assert '<link rel="canonical" href="http://testserver/">' in body
+    assert '<meta property="og:url" content="http://testserver/">' in body
+    prov = Client().get(reverse("web:provozovny")).content.decode("utf-8")
+    assert (
+        '<link rel="canonical" href="http://testserver/provozovny/">' in prov
+    )
+
+
+def test_robots_meta_and_theme_color_present() -> None:
+    body = Client().get(reverse("web:home")).content.decode("utf-8")
+    assert '<meta name="robots" content="index, follow">' in body
+    assert '<meta name="theme-color" content="#006634">' in body
+
+
+def test_twitter_card_is_summary_large_image() -> None:
+    body = Client().get(reverse("web:home")).content.decode("utf-8")
+    assert '<meta name="twitter:card" content="summary_large_image">' in body
+    assert 'property="og:image:width" content="1600"' in body
+
+
+def test_per_page_og_title_overrides_are_wired() -> None:
+    home = Client().get(reverse("web:home")).content.decode("utf-8")
+    kontakt = Client().get(reverse("web:kontakt")).content.decode("utf-8")
+    home_og = re.search(r'property="og:title" content="([^"]+)"', home)
+    kontakt_og = re.search(r'property="og:title" content="([^"]+)"', kontakt)
+    assert home_og and kontakt_og
+    assert home_og.group(1) != kontakt_og.group(1)
+    assert "Kontakt" in kontakt_og.group(1)
+
+
+def test_robots_txt_and_sitemap_share_request_host() -> None:
+    robots = Client().get("/robots.txt").content.decode("utf-8")
+    sitemap = Client().get("/sitemap.xml").content.decode("utf-8")
+    assert "Sitemap: http://testserver/sitemap.xml" in robots
+    assert "<loc>http://testserver/</loc>" in sitemap
+
+
+def test_sitemap_has_lastmod() -> None:
+    body = Client().get("/sitemap.xml").content.decode("utf-8")
+    assert body.count("<lastmod>") == 5
+    assert re.search(r"<lastmod>\d{4}-\d{2}-\d{2}</lastmod>", body)
+
+
+def test_provozovny_local_business_jsonld() -> None:
+    body = Client().get(reverse("web:provozovny")).content.decode("utf-8")
+    assert body.count('"@type": "LocalBusiness"') == 4
+    blocks = _jsonld_blocks(body)  # every block must parse
+    graph = next(b for b in blocks if "@graph" in b)
+    assert len(graph["@graph"]) == 4
+    ricany = graph["@graph"][0]
+    assert ricany["@id"] == "http://testserver/provozovny/#ricany"
+    assert ricany["parentOrganization"]["@id"] == "http://testserver/#organization"
+    assert ricany["geo"]["@type"] == "GeoCoordinates"
+    assert ricany["address"]["addressLocality"] == "Říčany u Prahy"
+
+
+def test_home_organization_jsonld_parses_and_is_enriched() -> None:
+    body = Client().get(reverse("web:home")).content.decode("utf-8")
+    blocks = _jsonld_blocks(body)
+    org = next(b for b in blocks if b.get("@type") == "Organization")
+    assert org["@id"] == "http://testserver/#organization"
+    assert org["brand"]["name"] == "VERA GURMET"
+    assert org["contactPoint"]["contactType"] == "customer service"
+    # The GBP/Maps share link Matej supplied 2026-07-14 (0106).
+    assert org["sameAs"] == ["https://share.google/2DIeLjyxqXM3aUrL2"]
 
 
 # --- The warehouse app moved under /sklad/ and is still gated ----------------

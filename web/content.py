@@ -88,6 +88,7 @@ EXECUTIVES = [
 PROVOZOVNY = [
     {
         "name": "Říčany u Prahy",
+        "slug": "ricany",
         "role": "Sídlo společnosti",
         "is_hq": True,
         "street": "Nádražní 1202/5",
@@ -102,6 +103,7 @@ PROVOZOVNY = [
     },
     {
         "name": "Sezimovo Ústí",
+        "slug": "sezimovo-usti",
         "role": "Provozovna",
         "is_hq": False,
         "street": "Pod Kovosvitem 1096",
@@ -116,6 +118,7 @@ PROVOZOVNY = [
     },
     {
         "name": "Toužim",
+        "slug": "touzim",
         "role": "Provozovna",
         "is_hq": False,
         "street": "Malé náměstí 608",
@@ -130,6 +133,7 @@ PROVOZOVNY = [
     },
     {
         "name": "Týniště nad Orlicí",
+        "slug": "tyniste",
         "role": "Provozovna",
         "is_hq": False,
         "street": "Turkova 77",
@@ -162,6 +166,11 @@ COMPANY["map_link"] = _gmaps_link(COMPANY["lat"], COMPANY["lng"])
 for _p in PROVOZOVNY:
     _p["map_embed"] = _gmaps_embed(_p["lat"], _p["lng"])
     _p["map_link"] = _gmaps_link(_p["lat"], _p["lng"])
+
+# --- sitemap.xml <lastmod> (decision 0106) -----------------------------------
+# Date the public copy last changed. Date-only is valid W3C datetime; bump
+# manually whenever public-page content changes.
+CONTENT_LASTMOD = "2026-10-06"
 
 # --- Public navigation (5 pages after 0058 promoted Sortiment/Produkty) ------
 NAV = [

@@ -13,7 +13,8 @@ from django.shortcuts import render
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
-from .content import COMPANY, EXECUTIVES, NAV, PROVOZOVNY
+from .content import COMPANY, CONTENT_LASTMOD, EXECUTIVES, NAV, PROVOZOVNY
+from .context_processors import public_base_url
 
 
 def _public_context(active: str, **extra) -> dict:
@@ -87,7 +88,15 @@ def sitemap_xml(request):
         "web:provozovny",
         "web:kontakt",
     ]
-    urls = [request.build_absolute_uri(reverse(name)) for name in pages]
+    # Same base-URL helper as the <head> canonical + robots.txt (0106), so
+    # the three surfaces can never disagree on scheme/host. lastmod is the
+    # manually-bumped copy date from content.py — no changefreq/priority
+    # (Google ignores both).
+    base = public_base_url(request)
+    urls = [
+        {"loc": base + reverse(name), "lastmod": CONTENT_LASTMOD}
+        for name in pages
+    ]
     return TemplateResponse(
         request,
         "web/sitemap.xml",

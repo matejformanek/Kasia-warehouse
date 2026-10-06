@@ -3,8 +3,47 @@
 
 {% block title %}Provozovny — {{ company.legal_name }}{% endblock %}
 {% block meta_description %}Čtyři provozovny {{ company.legal_name }} — Říčany u Prahy, Sezimovo Ústí, Toužim a Týniště nad Orlicí — a síť obchodních zástupců po celé České republice. Adresy, telefony, mapy a otevírací doba.{% endblock %}
+{% block og_title %}Provozovny — {{ company.legal_name }}{% endblock %}
+{% block og_description %}Čtyři provozovny — Říčany u Prahy, Sezimovo Ústí, Toužim a Týniště nad Orlicí — a síť obchodních zástupců po celé České republice. Adresy, telefony, mapy a otevírací doba.{% endblock %}
 
-{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/provozovny.css' %}">{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/provozovny.css' %}">
+{# --- JSON-LD LocalBusiness per provozovna (decision 0106; hand-built — content.py values must stay free of & " ' < >) --- #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {% for p in provozovny %}{
+      "@type": "LocalBusiness",
+      "@id": "{{ site_url }}/provozovny/#{{ p.slug }}",
+      "name": "{{ company.legal_name }} — {{ p.name }}",
+      "url": "{{ site_url }}/provozovny/",
+      "image": "{{ site_url }}{% static p.photo %}",
+      "telephone": "{{ p.phone }}",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "{{ p.street }}",
+        "addressLocality": "{{ p.city }}",
+        "postalCode": "{{ p.postal_code }}",
+        "addressCountry": "CZ"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": {{ p.lat|stringformat:".7f" }},
+        "longitude": {{ p.lng|stringformat:".7f" }}
+      },
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        "opens": "07:00",
+        "closes": "15:00"
+      },
+      "parentOrganization": {"@id": "{{ site_url }}/#organization"}
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <!-- HERO — centered -->

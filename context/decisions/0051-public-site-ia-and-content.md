@@ -3,6 +3,8 @@
 > **Partially superseded by [0052](./0052-kontakt-info-only-drop-contactinquiry.md)** — the Kontakt poptávkový formulář and the `ContactInquiry` durable-store rationale no longer apply; Kontakt is now an info-only page. The four-page IA, content-decoupling, and modern-web essentials below still stand.
 >
 > **IA amended by [0058](./0058-public-redesign-and-produkty-page.md)** — the locked four-page IA is now **five pages**: Sortiment/Produkty (`/produkty/`) is promoted. Kvalita / Pro koho stay folded (not standalone). Content-decoupling + modern-web essentials still stand.
+>
+> **SEO essentials amended by [0106](./0106-public-seo-pass.md)** — canonical/og:url, per-page OG, robots-meta hook, theme-color, sitemap lastmod; the LocalBusiness JSON-LD promised below finally ships there.
 
 ## Context
 

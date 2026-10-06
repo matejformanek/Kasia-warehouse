@@ -112,6 +112,16 @@ or restructure:
   Page-specific CSS (e.g. kontakt `.k-split`, produkty `.cat-grid`, provozovny
   location cards) lives in `kasia/static/css/pages/<screen>.css`, `<link>`ed from
   each template's `{% block extra_head %}` (`<link>` only, no `@import`).
+  **SEO surface (0106):** the `web.context_processors.seo` context processor
+  supplies `site_url` / `canonical_url` (request-derived — no configured base
+  URL; Caddy pins the host per 0056) to every render, feeding the canonical
+  link, `og:url`, robots.txt and (via `public_base_url`) sitemap.xml; the
+  `{% block robots %}` hook in `web/base.html` (default `index, follow`) is
+  the per-page noindex override. Renaming the processor, its context keys, or
+  the `robots` block is a new decision. JSON-LD (`Organization` in
+  `web/base.html`, `LocalBusiness` ×4 in `provozovny.html` `extra_head`) is
+  hand-built — `web/content.py` public string values must stay free of
+  `& " ' < >`.
 - **JS/HTMX hooks (sklad `base.html`):** the row-delete toggle (`.row-delete-btn`
   + `data-target` + `.line-row`/`.marked-deleted`, `<button type="button">`
   inside a `<td>`); whole-row nav (`tr.row-link[data-href]` + the

@@ -5,33 +5,55 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{{ company.legal_name }}{% endblock %}</title>
 <meta name="description" content="{% block meta_description %}{{ company.legal_name }} — dovoz, zpracování a balení koření od roku {{ company.founded_year }}. Přes {{ company.spice_count }} druhů koření a {{ company.product_count }} kulinářských produktů pro gastro a velkoobchod.{% endblock %}">
-{# --- Open Graph (decision 0051) --- #}
+{# --- Canonical + robots + theme (decision 0106; site_url/canonical_url from web.context_processors.seo) --- #}
+<link rel="canonical" href="{{ canonical_url }}">
+<meta name="robots" content="{% block robots %}index, follow{% endblock %}">
+<meta name="theme-color" content="#006634">
+{# --- Open Graph (decision 0051; og:url + per-page overrides per 0106) --- #}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{ company.legal_name }}">
+<meta property="og:url" content="{{ canonical_url }}">
 <meta property="og:title" content="{% block og_title %}{{ company.legal_name }} — koření a kulinářské produkty{% endblock %}">
 <meta property="og:description" content="{% block og_description %}{{ company.legal_name }} — koření, směsi a kulinářské produkty od roku {{ company.founded_year }}.{% endblock %}">
 <meta property="og:locale" content="cs_CZ">
-<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/kasia-logo.jpg' %}">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="{{ site_url }}{% static 'brand/kasia-logo.jpg' %}">
+<meta property="og:image:width" content="1600">
+<meta property="og:image:height" content="619">
+<meta property="og:image:alt" content="{{ company.legal_name }}">
+<meta property="og:image:type" content="image/jpeg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{{ site_url }}{% static 'brand/kasia-logo.jpg' %}">
 <link rel="icon" type="image/png" sizes="32x32" href="{% static 'brand/favicon-32.png' %}">
 <link rel="icon" type="image/png" sizes="192x192" href="{% static 'brand/favicon-192.png' %}">
 <link rel="apple-touch-icon" sizes="180x180" href="{% static 'brand/apple-touch-icon.png' %}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-{# --- JSON-LD Organization (decision 0051) --- #}
+{# --- JSON-LD Organization (decision 0051; enriched per 0106 — hand-built, so content.py values must stay free of & " ' < >) --- #}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Organization",
+  "@id": "{{ site_url }}/#organization",
   "name": "{{ company.legal_name }}",
-  "url": "{{ request.scheme }}://{{ request.get_host }}/",
-  "logo": "{{ request.scheme }}://{{ request.get_host }}{% static 'brand/kasia-logo.jpg' %}",
+  "url": "{{ site_url }}/",
+  "logo": "{{ site_url }}{% static 'brand/kasia-logo.jpg' %}",
+  "description": "Dovoz, zpracování a balení koření od roku {{ company.founded_year }} — koření, kořenicí směsi a kulinářské produkty pro velkoobchod, gastro a výrobce potravin.",
   "foundingDate": "{{ company.founded_year }}",
   "email": "{{ company.email }}",
   "telephone": "{{ company.phone_primary }}",
   "vatID": "",
   "taxID": "{{ company.ico }}",
+  "brand": {"@type": "Brand", "name": "VERA GURMET"},
+  "sameAs": ["https://share.google/2DIeLjyxqXM3aUrL2"],
+  "areaServed": "CZ",
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "telephone": "{{ company.phone_primary }}",
+    "email": "{{ company.email }}",
+    "contactType": "customer service",
+    "availableLanguage": "Czech"
+  },
   "address": {
     "@type": "PostalAddress",
     "streetAddress": "{{ company.street }}",

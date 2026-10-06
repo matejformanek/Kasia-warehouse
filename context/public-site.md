@@ -94,7 +94,7 @@ obchodních zástupců po ČR) → CTA. Export markets live in
 
 ### Provozovny (`/provozovny/`)
 Card per location (building photo, role badge, adresa, telefon, otevírací
-doba, **embedded OSM map** + "Otevřít v mapách" link) — real public data
+doba, **embedded Google Map** (per 0058) + "Otevřít v mapách" link) — real public data
 from kasia.cz. **Four** locations (the public site is curated and decoupled
 from the warehouse DB, which still tracks stock only at TYN + SEZ — see
 [`warehouses.md`](./warehouses.md)):
@@ -114,22 +114,31 @@ No form. The page is a contact directory:
   Věra Kovačková (Administrativa), Petr Formánek (Nákup) — foto + jméno +
   role; per-person e-mail/telefon se zobrazí, až je Matej dodá (placeholder
   "" → odkaz se nevykreslí).
-- **Embedded OSM map** of the sídlo + "Otevřít v mapách" link.
+- **Embedded Google Map** of the sídlo (per 0058) + "Otevřít v mapách" link.
 
 Map coords are geocoded once during development (Nominatim) and hardcoded in
-`web/content.py`; the OSM export iframe is cookie-free, the site's only
-external runtime dependency, and degrades gracefully (the "Otevřít v mapách"
-link still works if OSM is down).
+`web/content.py`; the Google Maps embed may set third-party cookies (the
+footer note says so) and degrades gracefully (the "Otevřít v mapách" link
+still works if the embed is down).
 
-## Modern essentials (every page)
-Responsive layout; SEO `<title>` + meta description + Open Graph; JSON-LD
-`Organization` structured data; hand-rolled `robots.txt` + `sitemap.xml`
-(no `django.contrib.sitemaps` — right-sized for four pages); short Czech
-privacy note in the footer (no tracking cookies; mapy vkládány z
-OpenStreetMap — pass 2 shortened it, dropping the long IP-clause sentence);
-the footer is three tidy columns (firma / Kontakt / Odkazy) + a legal strip;
-accessible markup
-(skip-link, `lang="cs"`, `aria-current`); favicon reused from
+## Modern essentials (every page — SEO surface per 0106)
+Responsive layout; per-page `<title>` + meta description; `<link
+rel="canonical">` + `og:url` + `site_url` all request-derived via the
+`web.context_processors.seo` context processor (no configured base URL —
+Caddy pins the host per 0056); per-page Open Graph title/description
+overrides on all 5 pages; `og:image` with dimensions/alt +
+`twitter:card summary_large_image`; a `{% block robots %}` override hook
+(default `index, follow`) + `theme-color`; JSON-LD `Organization` (enriched:
+`@id`, brand, contactPoint, `sameAs` → the Google Business Profile link) on
+every page and **`LocalBusiness` ×4** on Provozovny (NAP + geo + hours per
+branch, `@graph` in `provozovny.html` `extra_head`); hand-rolled
+`robots.txt` + `sitemap.xml` with `<lastmod>` from `CONTENT_LASTMOD` in
+`web/content.py` — bump it when public copy changes (no
+`django.contrib.sitemaps` — right-sized for five pages; no
+changefreq/priority — Google ignores both); short Czech privacy note in the
+footer; the footer is three tidy columns (firma / Kontakt / Odkazy) + a
+legal strip; accessible markup (skip-link, `lang="cs"`, `aria-current`,
+meaningful Czech `alt` on every image); favicon reused from
 `kasia/static/brand/`. Exec portraits + branch photos live in
 `kasia/static/web/` (`exec-*.jpg`, `branch-*.jpg`).
 

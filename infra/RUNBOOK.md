@@ -363,6 +363,27 @@ Verify: `curl -I http://kasia.cz` → 301/308 → `https://kasia.cz`;
 `curl -I https://www.kasia.cz` → 301 → `https://kasia.cz`;
 `docker compose logs proxy` → cert obtained, no ACME errors.
 
+### 5c. Post-cutover follow-ups (SEO / discoverability — user-side)
+
+Both phases executed 2026-07-14; SEO markup shipped per
+[`../context/decisions/0106-public-seo-pass.md`](../context/decisions/0106-public-seo-pass.md).
+What remains is user-side (Google accounts, not code):
+
+1. **Google Search Console** — register the property for
+   `https://kasia.cz`. Prefer the **Domain property via DNS TXT** record
+   (one ask to the domain manager); the fallback **HTML-tag verification**
+   is a one-line `kasia/templates/web/base.html`
+   `<meta name="google-site-verification">` commit once the token exists.
+   Then submit `/sitemap.xml` and hit *Request indexing* on the homepage.
+2. **Google Business Profile** — owner-verified with website URL + hours
+   set (2026-07-14). Remaining: set the profile **description** (Upravit
+   profil → O firmě → Popis) by pasting
+   [`../context/gbp-description.txt`](../context/gbp-description.txt)
+   verbatim (Czech, under the 750-char limit). The Maps place link is
+   already wired as `sameAs` in the Organization JSON-LD.
+3. After any public-copy change, bump `CONTENT_LASTMOD` in
+   `web/content.py` (the sitemap `<lastmod>`).
+
 ## 6. Analytics (Umami)
 
 Self-hosted Umami v3 per

@@ -42,6 +42,16 @@ IČO, founding year, and headcount band (25–49 employees). Re-check:
 headcount band can shift between snapshots; verify against ARES or
 a newer source before quoting.
 
+### https://share.google/2DIeLjyxqXM3aUrL2
+
+The public Google Business Profile / Maps place share link for the
+Kasia vera listing (owner-verified by Matej 2026-07-14; knowledge-graph
+id `kgmid=/g/11c748bwym`). Supplied by Matej 2026-07-14 and wired as
+`"sameAs"` in the Organization JSON-LD in `kasia/templates/web/base.html`
+(decision [`0106`](./decisions/0106-public-seo-pass.md)). Re-check on
+refresh: the link still resolves to the listing and the listing still
+shows kasia.cz as the website.
+
 ## Domain / market context
 
 (Add to this section as research continues.)

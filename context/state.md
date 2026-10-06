@@ -5,6 +5,19 @@
 
 ## Done
 
+- **2026-10-06** — **Public-site SEO pass ported + shipped**
+  ([`0106`](./decisions/0106-public-seo-pass.md), amends 0051; drafted
+  2026-07-14 as "0076" on the never-merged `ft_wa_seo`, renumbered because
+  0076 is Umami) on `ft_wa_seo_finish`. `web.context_processors.seo`
+  (`site_url`/`canonical_url`, request-derived, **no env var**) feeds
+  `<link rel="canonical">` + `og:url` + robots.txt + sitemap (`public_base_url`);
+  `{% block robots %}` hook + `theme-color`; per-page OG title/description on
+  all 5 pages; `og:image` dims/alt + `twitter:card summary_large_image`;
+  Organization JSON-LD enriched (`@id`, brand, contactPoint, `sameAs` → GBP
+  link in `context/research-sources.md`); **LocalBusiness ×4** on
+  `/provozovny/` (`slug` keys in `web/content.py`); sitemap `<lastmod>` from
+  `CONTENT_LASTMOD`. RUNBOOK § 5c (user-side GSC + GBP follow-ups);
+  `context/gbp-description.txt` drafted. 8 SEO tests in `web/tests.py`.
 - **2026-10-06** — **Infra security hardening** (decision
   [`0105`](./decisions/0105-infra-security-hardening.md); supersedes-in-part
   0023 + 0027's backup design). Terraform: `lifecycle ignore_changes =
@@ -3106,6 +3119,11 @@ feeds back, hold position and respond to direct asks.
   2026-07-22; the 14-day shadow run is the next phase, see Next.)
 
 ## Next
+
+0. **SEO user-side follow-ups** (RUNBOOK § 5c; per
+   [`0106`](./decisions/0106-public-seo-pass.md)) once the PR is merged:
+   Google Search Console verification + submit `/sitemap.xml`; paste
+   `context/gbp-description.txt` into the Business Profile description.
 
 1. **14-day shadow run → branch-staff cutover** per
    [`0034`](./decisions/0034-shadow-run-before-go-live.md) (the numbering-reset

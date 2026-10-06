@@ -63,6 +63,9 @@ files**:
 - **Templates:** `kasia/templates/inventory/<screen>.html` (sklad, extends
   `base.html`) and `kasia/templates/web/<page>.html` (public, extends
   `web/base.html`). Reusable fragments are `_partial.html`.
+- **Public SEO URLs:** `web/context_processors.py` (`seo` → `site_url` /
+  `canonical_url`, request-derived per 0106) feeds the public head, robots.txt
+  and sitemap.xml — see design-system.md § "Keep stable".
 - **CSS (0069/0070):** `kasia/static/css/` — `tokens-sklad.css` /
   `tokens-web.css` → `base-sklad.css` / `base-web.css` → `components/*.css`
   (**sklad-only**, fixed `<link>` order in `base.html`) → `pages/<screen>.css`

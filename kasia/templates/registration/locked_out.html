@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Příliš mnoho pokusů — Kasia vera{% endblock %}
+
+{% block content %}
+{% comment %}Rendered by django-axes (AXES_LOCKOUT_TEMPLATE) after repeated failed logins, and by the password-reset throttle (per 0104).{% endcomment %}
+<h1>Příliš mnoho pokusů</h1>
+<div class="card">
+  <p>Z bezpečnostních důvodů jsme další pokusy dočasně zablokovali.</p>
+  <p>Zkuste to prosím znovu přibližně za hodinu. Pokud přístup potřebujete hned, kontaktujte vlastníka.</p>
+  <a class="secondary" href="{% url 'web:home' %}">Zpět na úvod</a>
+</div>
+{% endblock %}

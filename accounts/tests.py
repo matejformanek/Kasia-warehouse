@@ -95,11 +95,16 @@ def _view_overrides(request):
         yield
 
 
+def _make_vlastnik(email: str, **extra) -> User:
+    """Per 0104 roles fail closed: a vlastník needs the group explicitly."""
+    u = User.objects.create_user(email=email, password="x" * 12, **extra)
+    u.groups.add(Group.objects.get_or_create(name="vlastnik")[0])
+    return u
+
+
 @pytest.fixture
 def vlastnik(db) -> User:
-    return User.objects.create_user(
-        email="vlastnik@example.cz", password="x" * 12
-    )
+    return _make_vlastnik("vlastnik@example.cz")
 
 
 @pytest.fixture
@@ -288,9 +293,7 @@ def test_user_create_duplicate_email_rejected(vlastnik) -> None:
 @pytest.mark.django_db
 def test_user_edit_changes_role_and_branch(vlastnik) -> None:
     # Create a second vlastník so we don't trip the last-owner protection.
-    other = User.objects.create_user(
-        email="other@example.cz", password="x" * 12
-    )
+    other = _make_vlastnik("other@example.cz")
     tyn = Branch.objects.get(code="TYN")
     client = Client()
     client.force_login(vlastnik)
@@ -334,9 +337,7 @@ def test_user_edit_last_vlastnik_demotion_refused(vlastnik) -> None:
 @pytest.mark.django_db
 def test_user_deactivate_success(vlastnik) -> None:
     # Need at least one other vlastník to deactivate this one.
-    target = User.objects.create_user(
-        email="leaving@example.cz", password="x" * 12
-    )
+    target = _make_vlastnik("leaving@example.cz")
     client = Client()
     client.force_login(vlastnik)
     response = client.post(

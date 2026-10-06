@@ -1,5 +1,6 @@
 """Cross-module view helpers (permissions, dodak-failed flag, safe next)."""
 
+from django.http import HttpResponse
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from accounts.permissions import require_vlastnik
@@ -22,6 +23,24 @@ def _dl_failed_at_current_version(dodaci_list: DodaciList, logs) -> bool:
         return False
     return any(log.status == EmailLog.Status.FAILED for log in at_cv)
 
+
+
+DENY_OTHER_BRANCH_MESSAGE = "Nemáte oprávnění k datům jiné pobočky."
+
+
+def deny_other_branch(request, branch_id, message: str = DENY_OTHER_BRANCH_MESSAGE):
+    """Return a 403 response if an obsluha reaches another branch's object.
+
+    The shared own-branch guard (decision 0040 dodáky, extended to movements by
+    0104). ``None`` means allowed — callers do
+    ``if (denied := deny_other_branch(...)) is not None: return denied``.
+    An obsluha without a branch is denied everything branch-owned.
+    """
+    if request.user.is_obsluha and request.user.branch_id != branch_id:
+        return HttpResponse(
+            message, status=403, content_type="text/plain; charset=utf-8"
+        )
+    return None
 
 
 def _require_vlastnik(request) -> None:

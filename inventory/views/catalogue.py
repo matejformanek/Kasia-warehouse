@@ -589,6 +589,10 @@ def product_edit(request, pk: int):
         [] if product.is_unlimited
         else Branch.objects.filter(is_active=True).order_by("code")
     )
+    if request.user.is_obsluha and branches_for_carry:
+        # Per 0104: obsluha sees only their own branch's carry badge + stock
+        # (still read-only per 0053) — not other branches' quantities.
+        branches_for_carry = branches_for_carry.filter(pk=request.user.branch_id)
     for b in branches_for_carry:
         s = carry_stocks_by_branch_id.get(b.pk)
         carry_rows.append(

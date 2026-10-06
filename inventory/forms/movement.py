@@ -177,6 +177,20 @@ MovementEditLineFormSet = forms.formset_factory(
 )
 
 
+def _lock_edit_branch_for_obsluha(form, user, movement) -> None:
+    """Per 0104: obsluha can't move a movement to another branch.
+
+    A disabled field takes its value from the field-level ``initial`` (the
+    bound POST value is ignored), so ``initial`` MUST be set alongside
+    ``disabled`` — otherwise an obsluha POST would clean ``branch`` to None
+    and fail "required". Keyed on the role, not on ``branch_id``.
+    """
+    if user is None or movement is None or not user.is_obsluha:
+        return
+    form.fields["branch"].initial = movement.branch_id
+    form.fields["branch"].disabled = True
+
+
 class _MovementEditBaseForm(_MovementBaseForm):
     reason = forms.CharField(
         label="Důvod úpravy",
@@ -195,10 +209,11 @@ class PrijemEditForm(_MovementEditBaseForm):
         empty_label="— Neuveden —",
     )
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, user=None, movement=None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self.fields["branch"].queryset = Branch.objects.filter(is_active=True)
+        _lock_edit_branch_for_obsluha(self, user, movement)
 
 
 class VydejEditForm(_MovementEditBaseForm):
@@ -208,13 +223,14 @@ class VydejEditForm(_MovementEditBaseForm):
         queryset=Customer.objects.filter(is_active=True),
     )
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, user=None, movement=None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         # Per 0086: výdej is dateless — edit keeps it dateless too for
         # consistency ("always today"). Príjem edit still shows the date.
         self.fields.pop("date_issued", None)
         self.fields["branch"].queryset = Branch.objects.filter(is_active=True)
+        _lock_edit_branch_for_obsluha(self, user, movement)
 
 
 # ---------------------------------------------------------------------------

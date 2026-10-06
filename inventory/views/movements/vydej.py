@@ -86,9 +86,13 @@ def vydej_create(request):
     # Basis is raw Stock.quantity (matches _compute_overdraw). Missing pairs
     # are absent here and treated as 0 by the JS. ~2 branches × ~12 products.
     stock_map: dict[str, dict[str, str]] = {}
-    for s in Stock.objects.filter(
+    stock_qs = Stock.objects.filter(
         branch__is_active=True, product__is_stock_tracked=True
-    ).values("branch_id", "product_id", "quantity"):
+    )
+    if request.user.is_obsluha:
+        # Per 0104: obsluha's branch is locked — ship only their own stock.
+        stock_qs = stock_qs.filter(branch_id=request.user.branch_id)
+    for s in stock_qs.values("branch_id", "product_id", "quantity"):
         stock_map.setdefault(str(s["branch_id"]), {})[str(s["product_id"])] = (
             f'{s["quantity"]:.3f}'
         )

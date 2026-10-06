@@ -24,7 +24,7 @@ from ...services import (
     confirm_planned_receipt,
     counterparties,
 )
-from .._shared import _safe_next
+from .._shared import _safe_next, deny_other_branch
 from ._shared import (
     _build_lines,
     _push_validation_error_to_formset,
@@ -136,6 +136,10 @@ def prijem_confirm(request, pk: int):
     movement = get_object_or_404(
         Movement.objects.select_related("branch", "dodavatel"), pk=pk
     )
+    # Per 0104: obsluha confirms only their own branch's planned příjem.
+    denied = deny_other_branch(request, movement.branch_id)
+    if denied is not None:
+        return denied
     if movement.status != Movement.Status.PLANNED:
         messages.info(request, "Tento příjem už byl potvrzen nebo zrušen.")
         return redirect("inventory:movement_saved", pk=movement.pk)
@@ -214,6 +218,10 @@ def prijem_plan_cancel(request, pk: int):
     stock, so a plain delete (cascading its lines) is safe. All logged-in
     users."""
     movement = get_object_or_404(Movement, pk=pk)
+    # Per 0104: obsluha cancels only their own branch's planned příjem.
+    denied = deny_other_branch(request, movement.branch_id)
+    if denied is not None:
+        return denied
     if movement.status != Movement.Status.PLANNED:
         messages.error(request, "Zrušit lze pouze plánovaný příjem.")
         return redirect("inventory:movement_history")

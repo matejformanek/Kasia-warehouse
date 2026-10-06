@@ -1,5 +1,7 @@
 # 0099 — Auto-notify branch obsluha when a vlastník issues a výdej
 
+> **Superseded in part by [0104](./0104-app-security-hardening.md)** — roles now fail closed: an unassigned (groupless) user is no longer `is_vlastnik` and cannot log in.
+
 **Date:** 2026-07-26
 **Decider:** Matej (standing in for Petr)
 **Status:** Active

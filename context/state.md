@@ -5,6 +5,25 @@
 
 ## Done
 
+- **2026-10-06** — **App security hardening** (decision
+  [`0104`](./decisions/0104-app-security-hardening.md); supersedes-in-part
+  [`0099`](./decisions/0099-vydej-branch-request-notification.md)'s
+  "unassigned → vlastník" clause). Shared `deny_other_branch` (403 for obsluha on
+  another branch) on `movement_edit` / `movement_saved` / `prijem_confirm` /
+  `prijem_plan_cancel`; edit-form `branch` disabled for obsluha with
+  `initial=movement.branch_id`; planned-transfer detail links only the own leg.
+  Obsluha-only own-branch data in `mixing_preview_partial`, výdej `stock_map`,
+  product-edit carry rows. **Roles fail closed** + migration
+  `accounts/0003_assign_vlastnik_group` (every non-superuser not in obsluha gets
+  `vlastnik`; prod ids 6/10/13/14 — **id 14 frcumpelik@gmail.com to be reviewed
+  by Matej**), `_sync_role` sets both groups, login gate refuses role-less /
+  branch-less-obsluha accounts. django-axes (5 fails → (username, IP) locked
+  1 h, Czech 429 page; unlock in `infra/RUNBOOK.md` § 9) + per-IP
+  password-reset throttle. `SECRET_KEY` guard (non-DEBUG refuses missing/default
+  keys; prod key verified OK), 12 h sessions, XLS importer caps (500×30, xlsx
+  ≤ 50 MB unzipped). Django 5.2.17, Pillow 12.3.0, psycopg 3.3.6, django-htmx
+  1.29.0. No CSP / Django HSTS (Caddy, 0105). Tests:
+  `inventory/tests/test_security_hardening.py`, `accounts/test_security.py`.
 - **2026-09-30** — **Odběratel kontaktní e-maily also receive the dodák**
   (decision [`0103`](./decisions/0103-dodak-to-customer-emails.md);
   supersedes-in-part [`0031`](./decisions/0031-emails-internal-only-supersedes-0009.md) + [`0052`](./decisions/0052-n-list-recipients-supersedes-0031.md)).

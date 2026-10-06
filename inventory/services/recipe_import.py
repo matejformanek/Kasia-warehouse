@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import zipfile
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
@@ -15,6 +16,14 @@ from ..models import (
 )
 
 _RATIO_QUANT = Decimal("0.000001")  # 6 dp, matches RecipeComponent.ratio
+
+# Per 0104: bound the work an uploaded workbook can cause. A real recipe is
+# ~20 rows x ~5 cols; anything past these caps is ignored (never read). The
+# .xlsx zip-bomb guard rejects a workbook whose members inflate past ~50 MB
+# (the form already caps the upload itself at 2.5 MB, per 0048).
+_MAX_ROWS = 500
+_MAX_COLS = 30
+_XLSX_MAX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024
 
 
 @dataclass
@@ -69,6 +78,23 @@ def _normalize_ratios(quantities: list[Decimal]) -> list[Decimal]:
     return ratios
 
 
+def _assert_xlsx_not_zip_bomb(file_obj) -> None:
+    """Reject an .xlsx whose zip members' declared uncompressed total exceeds
+    ``_XLSX_MAX_UNCOMPRESSED_BYTES`` (per 0104). Rewinds ``file_obj`` after."""
+    try:
+        with zipfile.ZipFile(file_obj) as zf:
+            total = sum(info.file_size for info in zf.infolist())
+    except zipfile.BadZipFile as exc:
+        raise ValueError("Soubor nelze přečíst — poškozený soubor .xlsx.") from exc
+    finally:
+        try:
+            file_obj.seek(0)
+        except (AttributeError, OSError):
+            pass
+    if total > _XLSX_MAX_UNCOMPRESSED_BYTES:
+        raise ValueError("Soubor je po rozbalení příliš velký.")
+
+
 def _parse_xls_rows(file_obj, filename: str) -> list[list[Any]]:
     """Dispatch by extension and return rows as a uniform list[list[Any]].
 
@@ -87,11 +113,12 @@ def _parse_xls_rows(file_obj, filename: str) -> list[list[Any]]:
             from openpyxl import load_workbook
         except ImportError as exc:  # pragma: no cover - dep is declared
             raise ValueError("openpyxl není nainstalován.") from exc
+        _assert_xlsx_not_zip_bomb(file_obj)
         wb = load_workbook(file_obj, data_only=True, read_only=True)
         ws = wb.worksheets[0]
         rows = [
             [cell.value for cell in row]
-            for row in ws.iter_rows()
+            for row in ws.iter_rows(max_row=_MAX_ROWS, max_col=_MAX_COLS)
         ]
         wb.close()
         return rows
@@ -104,8 +131,8 @@ def _parse_xls_rows(file_obj, filename: str) -> list[list[Any]]:
         wb = xlrd.open_workbook(file_contents=file_obj.read())
         ws = wb.sheet_by_index(0)
         return [
-            [ws.cell_value(r, c) for c in range(ws.ncols)]
-            for r in range(ws.nrows)
+            [ws.cell_value(r, c) for c in range(min(ws.ncols, _MAX_COLS))]
+            for r in range(min(ws.nrows, _MAX_ROWS))
         ]
 
     raise ValueError("Soubor nelze přečíst — očekáván formát .xls nebo .xlsx.")

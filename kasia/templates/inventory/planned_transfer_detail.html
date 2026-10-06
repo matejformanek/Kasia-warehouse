@@ -68,12 +68,22 @@
       </thead>
       <tbody>
         {% for mv in paired_movements %}
+          {# Per 0104: obsluha opens only their own branch's leg — the other one would 403. #}
+          {% if user.is_vlastnik or mv.branch_id == user.branch_id %}
           <tr class="row-link" data-href="{% url 'inventory:movement_edit' pk=mv.pk %}">
             <td>{{ mv.get_kind_display }}</td>
             <td>{{ mv.branch.code }}</td>
             <td>{{ mv.date_issued|date:"d. m. Y" }}</td>
             <td><a href="{% url 'inventory:movement_edit' pk=mv.pk %}">Otevřít pohyb</a></td>
           </tr>
+          {% else %}
+          <tr>
+            <td>{{ mv.get_kind_display }}</td>
+            <td>{{ mv.branch.code }}</td>
+            <td>{{ mv.date_issued|date:"d. m. Y" }}</td>
+            <td></td>
+          </tr>
+          {% endif %}
         {% endfor %}
       </tbody>
     </table>

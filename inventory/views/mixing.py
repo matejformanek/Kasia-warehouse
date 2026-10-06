@@ -31,6 +31,7 @@ from ..services import (
     record_completed_mixing_job,
     start_mixing_job,
 )
+from ._shared import deny_other_branch
 
 
 def _kg1(x: Decimal) -> Decimal:
@@ -205,6 +206,10 @@ def mixing_preview_partial(request):
         branch = Branch.objects.get(pk=branch_id)
     except (ValueError, Branch.DoesNotExist):
         return HttpResponse("")
+    # Per 0104: obsluha previews only their own branch's stock.
+    denied = deny_other_branch(request, branch.pk)
+    if denied is not None:
+        return denied
     try:
         mixture_id = int(request.GET.get("mixture", "") or 0)
         mixture = Product.objects.get(pk=mixture_id, kind=Product.Kind.MIXTURE)

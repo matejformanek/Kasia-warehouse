@@ -350,8 +350,21 @@ def test_dashboard_requires_login() -> None:
 
 
 @pytest.mark.django_db
-def test_user_is_vlastnik_default_unassigned(user_tyn) -> None:
-    # user_tyn has no group → default vlastník per accounts.User.is_vlastnik.
+def test_user_without_group_has_no_role(tyn) -> None:
+    # Per 0104 roles fail closed: a groupless user is NOT a vlastník any more
+    # (reverses the old "unassigned → vlastník" default).
+    from django.contrib.auth import get_user_model
+
+    u = get_user_model().objects.create_user(
+        email="no-role@example.cz", password="x" * 12, branch=tyn
+    )
+    assert u.is_vlastnik is False
+    assert u.is_obsluha is False
+    assert u.has_valid_role is False
+
+
+@pytest.mark.django_db
+def test_user_in_vlastnik_group_is_vlastnik(user_tyn) -> None:
     assert user_tyn.is_vlastnik is True
     assert user_tyn.is_obsluha is False
 

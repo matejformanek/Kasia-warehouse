@@ -82,25 +82,34 @@ def hotovy_vyrobek(db) -> Product:
 
 @pytest.fixture
 def user_tyn(db, tyn):
-    """Generic logged-in user with branch=TYN. No role group — falls
-    back to vlastník per accounts.User.is_vlastnik default. Pass 3a/b/c
-    tests use this fixture and rely on the owner-dashboard routing
-    that "unassigned → vlastník" produces."""
+    """Generic logged-in vlastník that happens to carry branch=TYN. In the
+    `vlastnik` group explicitly — per 0104 roles fail closed, so a groupless
+    user is no longer an owner. Pass 3a/b/c tests rely on the owner-dashboard
+    routing this produces."""
+    from django.contrib.auth.models import Group
+
     User = get_user_model()
-    return User.objects.create_user(
+    u = User.objects.create_user(
         email="user-tyn@example.cz",
         password="x" * 12,
         branch=tyn,
     )
+    u.groups.add(Group.objects.get_or_create(name="vlastnik")[0])
+    return u
 
 
 @pytest.fixture
 def user_vlastnik(db):
+    """Owner-level user, explicitly in the `vlastnik` group (per 0104)."""
+    from django.contrib.auth.models import Group
+
     User = get_user_model()
-    return User.objects.create_user(
+    u = User.objects.create_user(
         email="vlastnik@example.cz",
         password="x" * 12,
     )
+    u.groups.add(Group.objects.get_or_create(name="vlastnik")[0])
+    return u
 
 
 @pytest.fixture

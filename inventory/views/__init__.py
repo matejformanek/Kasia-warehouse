@@ -77,6 +77,7 @@ from .movements import (
     vydej_create,
 )
 from .settings import settings_edit, settings_test_smtp
+from .statistiky import statistiky_index
 from .support import feedback_toggle_view, support_view
 from .transfers import (
     planned_transfer_cancel,
@@ -119,6 +120,7 @@ __all__ = [
     "email_log_resend",
     "announcement_send",
     "activity_index",
+    "statistiky_index",
     "mixing_job_index",
     "mixing_job_create",
     "mixing_preview_partial",

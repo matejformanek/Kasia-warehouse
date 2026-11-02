@@ -54,6 +54,7 @@ SCREEN_LABELS = {
     "branch_index": "Pobočky",
     "user_index": "Uživatelé",
     "activity_index": "Aktivita",
+    "statistiky_index": "Statistiky",
     "password_change": "Změna hesla",
     "password_change_done": "Změna hesla — hotovo",
 }

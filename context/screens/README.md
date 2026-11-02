@@ -63,6 +63,8 @@ Every screen uses the structure laid out in [`_template.md`](_template.md):
 
 - [13 — Správa uživatelů / User management](13-sprava-uzivatelu.md)
 - [14 — Nastavení / Settings](14-nastaveni.md)
+- [18 — Statistiky / Analytics](18-statistiky.md) — vlastník-only charts per
+  [`../decisions/0107-analytics-dashboard-chartjs.md`](../decisions/0107-analytics-dashboard-chartjs.md).
 
 ### Production
 

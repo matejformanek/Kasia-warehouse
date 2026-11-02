@@ -235,7 +235,7 @@
       return rows.sort(function (a, b) {
         const x = sortValue(a, col), y = sortValue(b, col);
         const r = typeof x === "string" ? x.localeCompare(y, "cs") : (x === y ? 0 : x - y);
-        return (r || a.name.localeCompare(b.name, "cs")) * state.dir;
+        return r * state.dir || a.name.localeCompare(b.name, "cs");
       });
     }
 

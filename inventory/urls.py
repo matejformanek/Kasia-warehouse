@@ -131,6 +131,8 @@ urlpatterns = [
     ),
     # Aktivita (screen-visit log, per 0077) — vlastník-only.
     path("aktivita/", views.activity_index, name="activity_index"),
+    # Statistiky (analytics, per 0107) — vlastník-only.
+    path("statistiky/", views.statistiky_index, name="statistiky_index"),
     path("nastaveni/", views.settings_edit, name="settings_edit"),
     path(
         "nastaveni/test-smtp/",

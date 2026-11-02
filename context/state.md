@@ -5,6 +5,15 @@
 
 ## Done
 
+- **2026-11-02** — **Statistiky: vlastník analytics screen**
+  ([`0107`](./decisions/0107-analytics-dashboard-chartjs.md)) at
+  `/sklad/statistiky/` (sidebar Správa, vlastník-only). Filters via GET
+  (období, den/měsíc/rok, pobočka, produkty), five tab sections (Přehled,
+  Spotřeba v míchání, Výdeje, Příjem, Dávky a lidé), KPI strip with delta vs the
+  previous period, per-panel table + CSV (BOM, `;`). Panel registry `PANELS` in
+  `inventory/services/analytics.py`; Chart.js 4.4.7 vendored (no CDN). No model,
+  no migration. Spec: `context/screens/18-statistiky.md`; tests
+  `inventory/tests/test_statistiky.py`.
 - **2026-10-06** — **Public-site SEO pass ported + shipped**
   ([`0106`](./decisions/0106-public-seo-pass.md), amends 0051; drafted
   2026-07-14 as "0076" on the never-merged `ft_wa_seo`, renumbered because

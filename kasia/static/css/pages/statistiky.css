@@ -1,0 +1,68 @@
+/* Page CSS: statistiky_index (vlastník analytics, decision 0107). */
+
+.stat-lead { margin: 0 0 1.1rem; }
+.stat-note { color: var(--fg-soft); font-size: .85rem; margin: .6rem 0 1rem; }
+.stat-tabs { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+
+.stat-filters { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+.stat-filters .field { margin-bottom: 0; }
+.stat-actions { display: flex; gap: .6rem; align-items: center; }
+
+.stat-products { min-width: 12rem; }
+.stat-products details { position: relative; padding: 0; margin: 0; border: 0; background: none; }
+.stat-products details[open] summary { margin-bottom: 0; }
+.stat-products summary { color: var(--fg); font-weight: 400; cursor: pointer; padding: .45rem .6rem; border: 1px solid var(--line); background: var(--bg-card); font-size: .9rem; }
+.stat-product-pop { position: absolute; z-index: 5; top: 100%; left: 0; width: 20rem; max-width: calc(100vw - 3rem); padding: .6rem; background: var(--bg-card); border: 1px solid var(--line); }
+.stat-product-list { max-height: 14rem; overflow-y: auto; margin-top: .5rem; display: flex; flex-direction: column; gap: .15rem; }
+.stat-product-list label { display: flex; align-items: center; gap: .4rem; font-size: .9rem; font-weight: 400; }
+
+.stat-delta.up { color: var(--ok); }
+.stat-delta.down { color: var(--error); }
+
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+.stat-panel.wide { grid-column: 1 / -1; }
+.stat-panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: .7rem; }
+.stat-panel-head h2 { margin: 0; font-size: 1.05rem; }
+.stat-panel-head a.secondary { padding: .25rem .6rem; font-size: .8rem; }
+.stat-canvas { position: relative; height: 280px; margin-bottom: .9rem; }
+.stat-table-wrap { overflow-x: auto; max-height: 20rem; overflow-y: auto; }
+.stat-table-wrap table.lines { margin: 0; }
+.stat-empty { margin: 0; }
+table.lines th.num, table.lines td.num { text-align: right; }
+
+@media (max-width: 900px) {
+  .stat-grid { grid-template-columns: 1fr; }
+  .stat-canvas { height: 240px; }
+}
+@media (max-width: 600px) {
+  .stat-filters { flex-direction: column; align-items: stretch; }
+  .stat-product-pop { width: 100%; }
+}
+
+/* Products-over-time explorer (GA4-style). */
+.stat-ex-metrics { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .8rem; }
+.stat-ex-metrics button.tab-chip { font: inherit; font-size: .85rem; cursor: pointer; }
+.stat-ex-canvas { height: 320px; }
+.stat-ex-tools { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: .6rem; }
+.stat-ex-search { min-width: 14rem; padding: .4rem .6rem; border: 1px solid var(--line); font: inherit; font-size: .9rem; }
+.stat-ex-rows { display: flex; gap: .5rem; align-items: center; font-size: .85rem; color: var(--fg-soft); margin-left: auto; }
+.stat-ex-hint { font-size: .85rem; color: var(--warn); }
+.stat-ex-wrap { max-height: none; }
+.stat-ex-sort { all: unset; cursor: pointer; font-weight: 600; white-space: nowrap; }
+.stat-ex-sort:hover { color: var(--accent); }
+.stat-ex-table th.stat-ex-check, .stat-ex-table td.stat-ex-check { white-space: nowrap; width: 3.2rem; }
+.stat-ex-check input { vertical-align: middle; }
+.stat-ex-swatch { display: inline-block; width: .7rem; height: .7rem; margin-left: .4rem; vertical-align: middle; }
+.stat-ex-val { display: block; }
+.stat-ex-val.strong { font-weight: 600; }
+.stat-ex-pct { display: block; font-size: .72rem; }
+.stat-ex-total td { background: var(--accent-tint) !important; }
+.stat-ex-pager { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; margin-top: .6rem; font-size: .85rem; color: var(--fg-soft); }
+.stat-ex-pager button { padding: .25rem .7rem; }
+.stat-ex-pager button:disabled { opacity: .45; }
+
+@media (max-width: 900px) {
+  .stat-ex-canvas { height: 240px; }
+  .stat-ex-rows { margin-left: 0; }
+  .stat-ex-search { min-width: 0; width: 100%; }
+}

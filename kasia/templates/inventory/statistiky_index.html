@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Statistiky — Kasia vera{% endblock %}
+
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/pages/statistiky.css' %}">
+<script src="{% static 'vendor/chart.umd.min.js' %}" defer></script>
+<script src="{% static 'js/statistiky.js' %}" defer></script>{% endblock %}
+
+{% block page_help %}
+<h3>Statistiky</h3>
+<p>Grafy a&nbsp;tabulky o&nbsp;tom, <strong>kolik se čeho spotřebovalo, vyrobilo,
+prodalo a&nbsp;přijalo</strong>. Vidí je jen <strong>vlastník</strong>.</p>
+<h3>Jak na to</h3>
+<ul>
+  <li>Nahoře zvolte <strong>období</strong>, <strong>seskupení</strong> (den / měsíc /
+  rok), případně <strong>pobočku</strong> nebo <strong>produkty</strong>, a&nbsp;klikněte
+  na <strong>Použít</strong>. Adresu stránky můžete poslat dál.</li>
+  <li><strong>Klik na sloupec</strong> v&nbsp;grafu zúží statistiky na tento produkt
+  nebo na toto období.</li>
+  <li><strong>Všechny produkty v čase</strong>: přepínačem zvolte metriku, zaškrtnutím řádků (nejvýše 10) vykreslíte jejich čáry; tabulku lze řadit, hledat a stránkovat.</li>
+  <li><strong>Produkty</strong>: filtr platí pro suroviny v&nbsp;grafech v&nbsp;kg a&nbsp;pro směsi v&nbsp;části Dávky a&nbsp;lidé.</li>
+  <li>Pod každým grafem je tabulka a&nbsp;odkaz <strong>Stáhnout CSV</strong>.</li>
+</ul>
+<h3>Co se počítá</h3>
+<ul>
+  <li><strong>Spotřeba v&nbsp;míchání</strong> — suroviny vydané do míchárny.</li>
+  <li><strong>Prodej</strong> — výdeje odběratelům (bez míchání, inventury a&nbsp;převodů).</li>
+  <li>Jen hotové pohyby; plánované příjmy a&nbsp;neomezené produkty (voda, hotové
+  výrobky) se nepočítají. Všechna množství jsou v&nbsp;kg.</li>
+</ul>
+<p>Podrobněji na stránce <a href="{% url 'inventory:support' %}">Podpora</a>.</p>
+{% endblock %}
+
+{% block content %}
+<h1>Statistiky</h1>
+<p class="muted stat-lead">
+  Spotřeba, výroba, prodej a&nbsp;příjem za zvolené období. Počítají se jen hotové pohyby.
+</p>
+
+<form method="get" class="card stat-filters" id="stat-filter-form">
+  <input type="hidden" name="sekce" value="{{ section }}">
+  <div class="field">
+    <label for="id_rozsah">Období</label>
+    <select name="rozsah" id="id_rozsah">
+      {% for value, label in ranges %}
+        <option value="{{ value }}"{% if preset == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="id_od">Od</label>
+    <input type="date" name="od" id="id_od" value="{{ date_from|date:'Y-m-d' }}">
+  </div>
+  <div class="field">
+    <label for="id_do">Do</label>
+    <input type="date" name="do" id="id_do" value="{{ date_to|date:'Y-m-d' }}">
+  </div>
+  <div class="field">
+    <label for="id_gran">Seskupit po</label>
+    <select name="gran" id="id_gran">
+      {% for value, label in granularities %}
+        <option value="{{ value }}"{% if granularity == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="id_pobocka">Pobočka</label>
+    <select name="pobocka" id="id_pobocka">
+      <option value="">Všechny</option>
+      {% for b in branches %}
+        <option value="{{ b.pk }}"{% if branch_id == b.pk %} selected{% endif %}>{{ b.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field stat-products">
+    <label for="stat-product-search">Produkty{% if product_ids %} ({{ product_ids|length }}){% endif %}</label>
+    <details{% if product_ids %} open{% endif %}>
+      <summary>{% if product_ids %}Vybráno {{ product_ids|length }}{% else %}Všechny{% endif %}</summary>
+      <div class="stat-product-pop">
+        <input type="search" id="stat-product-search" placeholder="Hledat produkt…" autocomplete="off">
+        <div class="stat-product-list" id="stat-product-list">
+          {% for p in products %}
+            <label data-filter-text="{{ p.name_cs }}"><input type="checkbox" name="produkt" value="{{ p.pk }}"{% if p.pk in product_ids %} checked{% endif %}> {{ p.name_cs }}</label>
+          {% endfor %}
+        </div>
+      </div>
+    </details>
+  </div>
+  <div class="stat-actions">
+    <button class="primary" type="submit">Použít</button>
+    <a class="secondary" href="{% url 'inventory:statistiky_index' %}?sekce={{ section }}">Vymazat filtry</a>
+  </div>
+</form>
+
+<p class="stat-note">
+  Filtr produktů platí pro suroviny v&nbsp;grafech v&nbsp;kg a&nbsp;pro směsi v&nbsp;části Dávky a&nbsp;lidé.<br>
+  Období {{ date_from|date:"d. m. Y" }} – {{ date_to|date:"d. m. Y" }}{% if effective_granularity != granularity %} · seskupení zvětšeno, aby graf zůstal čitelný{% endif %}.
+</p>
+
+<div class="tab-chips stat-tabs">
+  {% for value, label in sections %}
+    {% if value == section %}
+      <span class="tab-chip active">{{ label }}</span>
+    {% else %}
+      <a class="tab-chip" href="?sekce={{ value }}&amp;{{ filter_querystring }}">{{ label }}</a>
+    {% endif %}
+  {% endfor %}
+</div>
+
+{% if kpis %}
+  <div class="kpis stat-kpis">
+    {% for k in kpis %}
+      <div class="kpi{% if forloop.first %} accent{% endif %}">
+        <span class="lbl">{{ k.label }}</span>
+        <span class="k-val">{% if k.unit == "kg" %}{{ k.value|floatformat:1 }}{% else %}{{ k.value|floatformat:0 }}{% endif %}<span class="k-unit">{{ k.unit }}</span></span>
+        <span class="k-sub stat-delta {{ k.delta.dir }}">
+          {% if k.delta.dir == "up" %}▲{% elif k.delta.dir == "down" %}▼{% else %}●{% endif %}
+          {% if k.delta.pct is not None %}{{ k.delta.pct|floatformat:1 }} %{% else %}bez srovnání{% endif %}
+          <span class="muted">· dříve {% if k.unit == "kg" %}{{ k.delta.previous|floatformat:1 }}{% else %}{{ k.delta.previous|floatformat:0 }}{% endif %}</span>
+        </span>
+      </div>
+    {% endfor %}
+  </div>
+  <p class="stat-note">Změna je oproti předchozímu období stejné délky ({{ previous.date_from|date:"d. m. Y" }} – {{ previous.date_to|date:"d. m. Y" }}).</p>
+{% endif %}
+
+<div class="stat-grid">
+  {% for p in panels %}
+    <section class="card stat-panel{% if p.wide %} wide{% endif %}" data-panel="{{ p.key }}">
+      <header class="stat-panel-head">
+        <h2>{{ p.title }}</h2>
+        <a class="secondary" href="?format=csv&amp;panel={{ p.key }}&amp;{{ filter_querystring }}">Stáhnout CSV</a>
+      </header>
+      {% if p.has_data %}
+        {% if p.chart.type == "explorer" %}
+          {{ p.chart|json_script:p.dom_id }}
+          <div class="stat-explorer" data-explorer-for="{{ p.dom_id }}">
+            <div class="tab-chips stat-ex-metrics" role="group" aria-label="Metrika"></div>
+            <div class="stat-canvas stat-ex-canvas"><canvas aria-label="{{ p.title }}" role="img"></canvas></div>
+            <div class="stat-ex-tools">
+              <input type="search" class="stat-ex-search" placeholder="Hledat produkt…" autocomplete="off" aria-label="Hledat produkt">
+              <label class="stat-ex-rows">Řádků na stránku
+                <select class="stat-ex-pagesize"><option>10</option><option>25</option><option>50</option></select>
+              </label>
+              <span class="stat-ex-hint muted" hidden>Zobrazit lze nejvýše 10 produktů</span>
+            </div>
+            <div class="stat-table-wrap stat-ex-wrap"><table class="lines stat-ex-table"></table></div>
+            <div class="stat-ex-pager"></div>
+          </div>
+        {% else %}
+        <div class="stat-canvas" data-chart-for="{{ p.dom_id }}"><canvas aria-label="{{ p.title }}" role="img"></canvas></div>
+        {{ p.chart|json_script:p.dom_id }}
+        <div class="stat-table-wrap">
+          <table class="lines">
+            <thead>
+              <tr>
+                {% for c in p.table.columns %}<th{% if c.kind != "text" %} class="num"{% endif %}>{{ c.label }}</th>{% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in p.table.rows %}
+                <tr>
+                  {% for cell in row %}
+                    {% if cell.kind == "kg" %}<td class="num mono">{{ cell.v|floatformat:1 }}</td>
+                    {% elif cell.kind == "int" %}<td class="num mono">{{ cell.v }}</td>
+                    {% else %}<td>{{ cell.v }}</td>{% endif %}
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+      {% else %}
+        <p class="muted stat-empty">Za zvolené období nejsou data.</p>
+      {% endif %}
+    </section>
+  {% endfor %}
+</div>
+{% endblock %}

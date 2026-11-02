@@ -615,6 +615,39 @@ above is authoritative only for dodáky / Podpora-intake / dochází-souhrn:
   via `_active_branch_obsluha_recipients`), not a recipient row; fired from
   `apply_movement`'s `on_commit`. POST-only flow → no `EXCLUDED_URL_NAMES` entry.
 
+## Statistiky — vlastník analytics screen (per 0107)
+
+`/sklad/statistiky/` (`statistiky_index`, `inventory/views/statistiky.py`,
+`inventory/services/analytics.py`). Vlastník-only (403 for obsluha), full-page
+GET, no `EXCLUDED_URL_NAMES` entry. Chart.js is vendored
+(`static/vendor/chart.umd.min.js`) and loaded with `defer` **only** from this
+page's `{% block extra_head %}`, together with `static/js/statistiky.js`. Page
+CSS is `pages/statistiky.css`. Locked hooks:
+
+- **Filter GET params:** `sekce`, `rozsah` (`30d`/`mesic`/`minuly`/`12m`/`rok`/
+  `vlastni`), `od`, `do`, `gran` (`den`/`mesic`/`rok`), `pobocka`, `produkt`
+  (repeatable); CSV is `?format=csv&panel=<key>`. Form `#stat-filter-form`,
+  product picker `#stat-product-search` / `#stat-product-list` (rows carry
+  `data-filter-text`, matched with `window.kasiaRowFilter`).
+- **Panels:** `section.stat-panel[data-panel]`, canvas wrapper
+  `.stat-canvas[data-chart-for="stat-<key>"]`, payload via `json_script` with
+  the same id (`{type, stacked, labels, datasets, drill}`); `drill` is
+  `{param: "product"|"bucket", values}` and a bar click rewrites the URL.
+- **Explorer panel (`products_over_time`, chart type `explorer`):** root
+  `.stat-explorer[data-explorer-for="stat-products_over_time"]` with
+  `.stat-ex-metrics` (metric chips, `.tab-chip`), `.stat-ex-canvas`,
+  `.stat-ex-search`, `.stat-ex-pagesize`, `.stat-ex-hint`, `.stat-ex-table`
+  (+ `.stat-ex-total`, `.stat-ex-check`, `.stat-ex-swatch`, `.stat-ex-sort`,
+  `.stat-ex-pct`) and `.stat-ex-pager`; the table is built entirely in
+  `statistiky.js` from the payload's `explorer` key
+  (`metrics`/`products`/`totals`/`grand`/`grand_prev`), max 10 plotted rows.
+- **Registry:** `PANELS` in `analytics.py` — a new panel is one query function
+  (returns `{labels, datasets, table, drill, has_data}`) plus one `Panel` entry.
+- Classes: `.stat-grid`, `.stat-panel(.wide)`, `.stat-delta.up|down`,
+  `.stat-tabs`, `.stat-filters`; the section chips reuse `.tab-chip`, the KPI
+  strip `.kpis`/`.kpi`. Series colours are read from the `:root` tokens in
+  `statistiky.js` (no hex in the page CSS).
+
 ## Out of scope for web chrome
 
 `inventory/dodaci_list.html` is a **WeasyPrint PDF** and e-mail templates are
